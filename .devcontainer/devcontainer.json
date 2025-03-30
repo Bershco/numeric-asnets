@@ -23,6 +23,6 @@
 
 	"mounts": [
 		// Re-use local Git configuration
-		"source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
+		"source=C:/Users/roeeh/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
 	]
 }
