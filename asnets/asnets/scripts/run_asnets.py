@@ -11,6 +11,7 @@ import sys
 from time import time
 from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import CanonicalState
+from collections import defaultdict
 
 import joblib
 import numpy as np
@@ -68,6 +69,77 @@ class CachingPolicyEvaluator(object):
             act_indices = np.arange(num_actions)
             action = int(np.random.choice(act_indices, p=act_dist))
         return action
+
+from post_training.monte_carlo_tree_search import Node
+class MCTSNode(Node):
+
+    def __init__(self, state, policy):
+        self.state = state
+        self.policy = policy
+
+    def find_children(self):
+        "All possible successors of this board state"
+        act_dist = self.policy(self.state, training=False)
+        return
+
+    def find_random_child(self):
+        "Random successor of this board state (for more efficient simulation)"
+        return None
+
+    def is_terminal(self):
+        "Returns True if the node has no children"
+        return True
+
+    def reward(self):
+        "Assumes `self` is terminal node. 1=win, 0=loss, .5=tie, etc"
+        return 0
+
+    def __hash__(self):
+        "Nodes must be hashable"
+        return self.state.__hash__()
+
+    def __eq__(self, node2):
+        "Nodes must be comparable"
+        return self.state.__eq__(node2.state)
+
+
+class MonteCarloPolicyEvaluator(object):
+
+    def __init__(self, policy, det_sample=True, exploration_weight=1):
+        self.policy = policy
+        self.det_sample = det_sample
+        # Using defaultdict instead of dict so default value for items not in dictionary would be 0 as 'int()' returns 0
+        # or [] for the list defaultdict
+        self.Q = defaultdict(int)
+        self.N = defaultdict(int)
+        self.children = defaultdict(list)
+        self.exploration_weight = exploration_weight
+
+
+    def _select(self, node):
+        "Find an unexplored descendent of `node`"
+        path = []
+        while True:
+            path.append(node)
+            if node not in self.children or not self.children[node]:
+                # node is either unexplored or terminal
+                return path
+            unexplored = self.children[node] - self.children.keys()
+            if unexplored:
+                n = unexplored.pop()
+                path.append(n)
+                return path
+            node = self._uct_select(node)  # descend a layer deeper
+
+    def get_action(self, obs): #obs is the current state
+        assert obs.ndim == 1
+        in_obs = obs[None, :] #inverse obs - from ndarray of shape (n,) into ndarray of shape (1,n)
+        #in_obs = obs.reshape(1,-1) #This is the same as the line above, choose one of them that is more readable
+        act_dist = self.policy(in_obs, training=False)
+
+        pass
+
+
 
 
 @can_profile
@@ -808,6 +880,8 @@ def main():
     parent_death_pact(signal.SIGKILL)
 
     args = parser.parse_args()
+    LOGGER = logging.getLogger(__name__)
+    LOGGER.info('Arguments are: %s', args)
 
     if args.seed is not None:
         set_random_seeds(args.seed)
