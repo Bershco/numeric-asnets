@@ -518,7 +518,7 @@ def main_inner(*,
             print('Launching test on problem %d' % (prob_idx + 1))
             full_flags = main_test_flags + test_prob_flags
             # ensure each job has at least 8Gb of memory
-            job = run_asnets_ray.options(memory=8 * 1024 * 1024 * 1024).remote(
+            job = run_asnets_ray.options(memory=1 * 1024 * 1024 * 1024).remote(
                 flags=full_flags,
                 root_dir=prefix_dir,
                 cwd=root_cwd,
