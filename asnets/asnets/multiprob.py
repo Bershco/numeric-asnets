@@ -17,6 +17,13 @@ import weakref
 import rpyc
 from rpyc.utils.server import OneShotServer
 
+from rpyc.core.protocol import DEFAULT_CONFIG
+
+DEFAULT_CONFIG['allow_getattr'] = True
+DEFAULT_CONFIG['allow_setattr'] = True
+DEFAULT_CONFIG['allow_delattr'] = True
+DEFAULT_CONFIG['safe_attrs'].add("copy")
+
 from asnets.utils.prof_utils import try_save_profile
 from asnets.utils.py_utils import set_random_seeds
 
@@ -61,7 +68,13 @@ def start_server(service_args: 'ProblemServiceConfig',
     from asnets.supervised import make_problem_service
     parent_death_pact(signal=signal.SIGKILL)
     new_service = make_problem_service(service_args, set_proc_title=True)
-    server = OneShotServer(new_service, socket_path=socket_path)
+    protocol_config = {
+        "allow_all_attrs": False,  # Default: False, restricts attributes
+        "allowed_attrs": {"copy"},  # Add 'copy' to the list of allowed attributes
+        "allow_setattr": True,  # Allow setting attributes if needed
+        "allow_delattr": True,  # Allow deleting attributes if needed
+    }
+    server = OneShotServer(new_service, socket_path=socket_path, protocol_config=protocol_config)
     print('Child process starting OneShotServer %s' % server)
     try:
         server.start()
