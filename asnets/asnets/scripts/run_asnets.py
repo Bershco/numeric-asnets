@@ -10,7 +10,7 @@ import signal
 import sys
 from time import time
 from asnets.prob_dom_meta import DomainType
-from asnets.state_reprs import CanonicalState
+from asnets.state_reprs import CanonicalState, sample_next_state
 from collections import defaultdict
 
 import joblib
@@ -70,17 +70,28 @@ class CachingPolicyEvaluator(object):
             action = int(np.random.choice(act_indices, p=act_dist))
         return action
 
+    def get_action_from_cstate(self, cstate):
+        return self.get_action(cstate.to_network_input())
+
+
 from post_training.monte_carlo_tree_search import Node
 class MCTSNode(Node):
 
-    def __init__(self, state, policy):
+    def __init__(self, state, policy, problem_service):
         self.state = state
         self.policy = policy
+        self.problem_service = problem_service
 
     def find_children(self):
         "All possible successors of this board state"
-        act_dist = self.policy(self.state, training=False)
-        return
+        input_format_cstate = self.state.to_network_input()
+        act_dist = self.policy(input_format_cstate, training=False)
+        # act_dist is a vector of shape (1,n) of distribution of action possibilities
+        output = set()
+        for i in range(len(act_dist[0])):
+            cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.p)
+            output.add((i,cstate_after_action_i))
+        return output
 
     def find_random_child(self):
         "Random successor of this board state (for more efficient simulation)"
@@ -103,77 +114,91 @@ class MCTSNode(Node):
         return self.state.__eq__(node2.state)
 
 
-class MonteCarloPolicyEvaluator(object):
+from post_training.monte_carlo_tree_search import MCTS
+class MonteCarloPolicyEvaluator(MCTS):
 
-    def __init__(self, policy, det_sample=True, exploration_weight=1):
+    def __init__(self, policy, problem_service, det_sample=True, exploration_weight=1, n=1000):
+        super().__init__(exploration_weight)
         self.policy = policy
         self.det_sample = det_sample
-        # Using defaultdict instead of dict so default value for items not in dictionary would be 0 as 'int()' returns 0
-        # or [] for the list defaultdict
-        self.Q = defaultdict(int)
-        self.N = defaultdict(int)
-        self.children = defaultdict(list)
-        self.exploration_weight = exploration_weight
+        self.n = n
+        self.problem_service = problem_service
+
+    def wrapInMCTSNode(self, ndarray_node, policy):
+        return MCTSNode(ndarray_node, policy, problem_service=self.problem_service)
+
+    def get_action(self, obs):
+        raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
+
+    def get_action_from_cstate(self, cstate): #cstate is non-terminal
+        root = self.wrapInMCTSNode(cstate, self.policy)
+        for i in range(self.n):
+            self.do_rollout(root)
+
+        def score(pair):
+            _, n = pair  # Extract node from the (action, node) tuple
+            if self.N[n] == 0:
+                return float("-inf")  # Avoid unseen moves
+            return self.Q[n] / self.N[n]  # Average reward
+
+        return max(self.children[root], key=score)
 
 
-    def _select(self, node):
-        "Find an unexplored descendent of `node`"
-        path = []
-        while True:
-            path.append(node)
-            if node not in self.children or not self.children[node]:
-                # node is either unexplored or terminal
-                return path
-            unexplored = self.children[node] - self.children.keys()
-            if unexplored:
-                n = unexplored.pop()
-                path.append(n)
-                return path
-            node = self._uct_select(node)  # descend a layer deeper
-
-    def get_action(self, obs): #obs is the current state
-        assert obs.ndim == 1
-        in_obs = obs[None, :] #inverse obs - from ndarray of shape (n,) into ndarray of shape (1,n)
-        #in_obs = obs.reshape(1,-1) #This is the same as the line above, choose one of them that is more readable
-        act_dist = self.policy(in_obs, training=False)
-
-        pass
-
-
-
+# @can_profile
+# def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False):
+#     """Run policy on problem. Returns (cost, path), where cost may be None if
+#     goal not reached before horizon."""
+#     problem_service = problem_server.service
+#     # 'obs' is actually a numpy vector that's already prepared to be stuffed
+#     # into our network
+#     init_cstate = to_local(problem_service.env_reset())
+#     obs = init_cstate.to_network_input()
+#     # total cost of this run
+#     cost = 0
+#     path = []
+#     for _ in range(1, limit):
+#         action = policy_evaluator.get_action(obs)
+#         new_cstate, step_cost = to_local(problem_service.env_step(action))
+#         new_obs = new_cstate.to_network_input()
+#         path.append(to_local(problem_service.action_name(action)))
+#         obs = new_obs
+#         cost += step_cost
+#         if new_cstate.is_goal:
+#             # path.append('GOAL! :D')
+#             return cost, True, path
+#         # we can run out of time or run out of actions to take
+#         if new_cstate.is_terminal:
+#             break
+#     # path.append('FAIL! D:')
+#     return cost, False, path
 
 @can_profile
 def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False):
     """Run policy on problem. Returns (cost, path), where cost may be None if
     goal not reached before horizon."""
     problem_service = problem_server.service
-    # 'obs' is actually a numpy vector that's already prepared to be stuffed
-    # into our network
-    init_cstate = to_local(problem_service.env_reset())
-    obs = init_cstate.to_network_input()
+    curr_cstate = to_local(problem_service.env_reset())
     # total cost of this run
     cost = 0
     path = []
     for _ in range(1, limit):
-        action = policy_evaluator.get_action(obs)
-        new_cstate, step_cost = to_local(problem_service.env_step(action))
-        new_obs = new_cstate.to_network_input()
+        action = policy_evaluator.get_action_from_cstate(curr_cstate)
+        curr_cstate, step_cost = to_local(problem_service.env_step(action))
         path.append(to_local(problem_service.action_name(action)))
-        obs = new_obs
         cost += step_cost
-        if new_cstate.is_goal:
+        if curr_cstate.is_goal:
             # path.append('GOAL! :D')
             return cost, True, path
         # we can run out of time or run out of actions to take
-        if new_cstate.is_terminal:
+        if curr_cstate.is_terminal:
             break
     # path.append('FAIL! D:')
     return cost, False, path
 
 
 def run_trials(policy, problem_server, trials, limit=1000, det_sample=False):
-    policy_evaluator = CachingPolicyEvaluator(
-        policy=policy, det_sample=det_sample)
+    policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
+    # policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, det_sample=det_sample, problem_service=problem_server.service)
     all_exec_times = []
     all_costs = []
     all_goal_reached = []
@@ -270,7 +295,7 @@ def int_or_float(arg_str):
     except ValueError:
         raise argparse.ArgumentTypeError(
             "Could not convert argument '%s' to non-negative int or float" %
-            (arg_str, ))
+            (arg_str,))
 
 
 parser = argparse.ArgumentParser(description='Trainer for ASNets')
@@ -291,7 +316,7 @@ parser.add_argument(
     type=int,
     default=10,
     help="if best observed undiscounted mean reward is >=1, *and* there has "
-    "been no improvement for this many epochs, then we stop.")
+         "been no improvement for this many epochs, then we stop.")
 parser.add_argument(
     '--max-opt-epochs',
     type=int,
@@ -310,7 +335,7 @@ parser.add_argument(
     default=[],
     dest='lr_steps',
     help='specifying "k r" will step down to LR `r` after `k` epochs (can be '
-    'given multiple times)')
+         'given multiple times)')
 parser.add_argument(
     '--supervised-bs',
     type=int,
@@ -340,14 +365,14 @@ parser.add_argument(
     type=int,
     default=12,
     help='halt after this many epochs with succ. rate >0.8 & no increase (0 '
-    'disables)')
+         'disables)')
 parser.add_argument(
     '--save-every',
     type=int,
     default=0,
     metavar='N',
     help='save models every N epochs, in addition to normal saves for best '
-    'success rate')
+         'success rate')
 parser.add_argument(
     '--seed',
     type=int,
@@ -402,9 +427,9 @@ parser.add_argument(
     default=True,
     action='store_false',
     help='disable pulling entire envelope of teacher policy '
-    'into experience buffer each time ASNet visits a state, '
-    'and instead pull in just a single rollout under the '
-    'teacher policy')
+         'into experience buffer each time ASNet visits a state, '
+         'and instead pull in just a single rollout under the '
+         'teacher policy')
 parser.add_argument(
     '--det-eval',
     action='store_true',
@@ -420,14 +445,14 @@ parser.add_argument(
     default=False,
     action='store_true',
     help="don't create TB files, final snapshot, or other extraneous "
-    "(and expensive) run info")
+         "(and expensive) run info")
 parser.add_argument(
     '--no-use-lm-cuts',
     dest='use_lm_cuts',
     default=True,
     action='store_false',
     help="don't add flags indicating which actions are in lm-cut cuts. On "
-    "numeric domains, lm-cuts are produced by numeric relaxing the domain.")
+         "numeric domains, lm-cuts are produced by numeric relaxing the domain.")
 parser.add_argument(
     '--use-numeric-landmarks',
     dest='use_numeric_landmarks',
@@ -453,7 +478,7 @@ parser.add_argument(
     '--use-saved-training-set',
     default=None,
     help='instead of collecting experience, used this pickled training set '
-    '(produced by --save-training-set)')
+         '(produced by --save-training-set)')
 parser.add_argument(
     '-R', '--rounds-eval', type=int, default=100, help='number of eval rounds')
 parser.add_argument(
@@ -511,33 +536,33 @@ parser.add_argument(
     choices=('static', 'dynamic'),
     default='static',
     help='The exploration algorithm to use. Static exploration is the '
-    'original ASNets algorithm. Dynamic exploration is the algorithm '
-    'proposed for numeric planning.')
+         'original ASNets algorithm. Dynamic exploration is the algorithm '
+         'proposed for numeric planning.')
 parser.add_argument(
     '--rollouts',
     type=int,
     default=75,
     help='Number of rollouts per problem per epoch. For static exploration, '
-    'this is the number of rollouts per problem. For dynamic exploration, '
-    'this is the number of rollouts initially performed per problem.')
+         'this is the number of rollouts per problem. For dynamic exploration, '
+         'this is the number of rollouts initially performed per problem.')
 parser.add_argument(
     '--min-explored',
     type=int,
     default=10,
     help='Minimum number of new states to add per epoch. Only used for dynamic'
-    ' exploration.')
+         ' exploration.')
 parser.add_argument(
     '--max-explored',
     type=int,
     default=1000,
     help='Maximum number of new states to add per epoch. Only used for dynamic'
-    ' exploration.')
+         ' exploration.')
 parser.add_argument(
     '--exploration-learning-ratio',
     type=float,
     default=1,
     help='The ratio of time spent exploring to time spent learning. Only used'
-    ' for dynamic exploration.')
+         ' for dynamic exploration.')
 parser.add_argument(
     '--max-replay-size',
     type=int,
@@ -721,7 +746,7 @@ def make_services(args):
     atexit.register(kill_servers)
 
     only_one_good_action = args.sup_objective \
-        == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
+                           == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
     async_calls = []
     for prob_id, problem_name in enumerate(problem_names, start=1):
         random_seed = None if args.seed is None \
@@ -822,12 +847,12 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
         else:
             raise ValueError(
                 f'Unknown exploration algorithm: {args.exploration_algorithm}')
-              
+
         sup_trainer = SupervisedTrainer(
             problems=problems,
             weight_manager=weight_manager,
             summary_writer=sample_writer,
-            explorer = explorer,
+            explorer=explorer,
             strategy=args.sup_objective,
             batch_size=args.supervised_bs,
             lr=args.supervised_lr,
