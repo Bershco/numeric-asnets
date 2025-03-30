@@ -2,7 +2,7 @@
 ENHSP."""
 
 #### Training settings ####
-MAX_OPT_EPOCHS = 1000
+MAX_OPT_EPOCHS = 2 # Was 1000
 # train supervised or RL? (only supervised supported at the moment)
 SUPERVISED = True
 # learning rate
