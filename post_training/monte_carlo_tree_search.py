@@ -72,13 +72,18 @@ class MCTS:
 
         log_N_vertex = math.log(self.N[node])
 
-        def uct(n):
+        def uct(pair):
             """Upper confidence bound for trees"""
+            _, n = pair  # Extract node from the (action, node) tuple
+
+            if self.N[n] == 0:
+                return float("inf")  # Encourage exploration of unseen moves
+
             return self.Q[n] / self.N[n] + self.exploration_weight * math.sqrt(
                 log_N_vertex / self.N[n]
             )
 
-        return max(self.children[node][1], key=uct)
+        return max(self.children[node], key=uct)
 
 
 class Node(ABC):
