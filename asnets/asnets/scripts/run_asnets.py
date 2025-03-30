@@ -83,7 +83,7 @@ class MCTSNode(Node):
         self.problem_service = problem_service
 
     def find_children(self):
-        "All possible successors of this board state"
+        """All possible successors of this board state"""
         input_format_cstate = self.state.to_network_input()
         act_dist = self.policy(input_format_cstate, training=False)
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
@@ -94,23 +94,23 @@ class MCTSNode(Node):
         return output
 
     def find_random_child(self):
-        "Random successor of this board state (for more efficient simulation)"
+        """Random successor of this board state (for more efficient simulation)"""
         return None
 
     def is_terminal(self):
-        "Returns True if the node has no children"
+        """Returns True if the node has no children"""
         return True
 
     def reward(self):
-        "Assumes `self` is terminal node. 1=win, 0=loss, .5=tie, etc"
+        """Assumes `self` is terminal node. 1=win, 0=loss, .5=tie, etc"""
         return 0
 
     def __hash__(self):
-        "Nodes must be hashable"
+        """Nodes must be hashable"""
         return self.state.__hash__()
 
     def __eq__(self, node2):
-        "Nodes must be comparable"
+        """Nodes must be comparable"""
         return self.state.__eq__(node2.state)
 
 
