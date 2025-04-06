@@ -7,7 +7,8 @@ import random
 
 import click
 import ray
-import tqdm
+# import tqdm
+import tqdm.auto as tqdm
 
 from asnets.interfaces.fd_interface import run_fd_raw, STDOUT_BN
 from asnets.utils.pddl_utils import extract_domain_problem

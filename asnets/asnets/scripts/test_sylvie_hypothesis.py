@@ -4,7 +4,7 @@ table when you can make a constructive move" optimisation."""
 
 import argparse
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from bw_collate_vis import discover_result_jsons, index_pddls
 from pbw_solve import manual_make_actions, parse_file, below_to_spec, \

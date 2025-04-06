@@ -11,7 +11,8 @@ import setproctitle
 import shutil
 import tensorflow as tf
 from time import time
-import tqdm
+# import tqdm
+import tqdm.auto as tqdm
 from types import ModuleType
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 

@@ -12,7 +12,8 @@ import re
 import crayons
 import numpy as np
 import rpyc
-import tqdm
+# import tqdm
+from tdqm.auto import tqdm
 
 from asnets.multiprob import ProblemServer
 from asnets.utils.prof_utils import can_profile
@@ -616,7 +617,7 @@ def main_plan(args, planner_exts):
                   % num_removed)
     state = get_init_cstate(planner_exts)
     gm_images = [render_gm_state(state)]
-    for action in tqdm.tqdm(actions):
+    for action in tqdm(actions):
         name_to_id = {
             act.unique_ident: idx
             for idx, (act, _) in enumerate(state.acts_enabled)

@@ -12,7 +12,8 @@ import random
 import time
 
 import numpy as np
-import tqdm
+# import tqdm
+from tqdm.auto import tqdm
 
 import asnets.interfaces.fd_interface as fdi
 import asnets.utils.pddl_utils as pu
@@ -121,7 +122,7 @@ def main():
     lens_dict = collections.defaultdict(lambda: [])
     with fu.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         exec_map = executor.map(execute, rep_tasks)
-        map_wrapped = tqdm.tqdm(exec_map, total=len(rep_tasks))
+        map_wrapped = tqdm(exec_map, total=len(rep_tasks))
         for key, succ, elapsed, length in map_wrapped:
             succs_dict[key].append(succ)
             if succ:

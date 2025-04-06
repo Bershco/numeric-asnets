@@ -14,7 +14,9 @@ import tempfile
 import textwrap
 
 try:
-    from tqdm import tqdm
+    # from tqdm import tqdm
+    from tqdm.auto import tqdm
+
 except ImportError:
     def tqdm(it, **kwargs):
         # silently ignore the progress bar

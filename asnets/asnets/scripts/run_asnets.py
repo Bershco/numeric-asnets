@@ -20,7 +20,8 @@ import tensorflow as tf
 # for some reason "import tensorflow.python.debug" doesn't work (maybe it's a
 # class or something?)
 from tensorflow.python import debug as tfdbg
-import tqdm
+# import tqdm
+from tqdm.auto import tqdm
 
 from asnets.explorer import StaticExplorer, DynamicExplorer
 from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
@@ -609,8 +610,10 @@ parser.add_argument(
 
 def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
                 iter_num, weight_manager, scratch_dir):
+    LOGGER = logging.getLogger(__name__)
     # now we evaluate the learned policy
-    print('Evaluating policy')
+    # print('Evaluating policy')
+    LOGGER.info('Evaluating policy')
     trial_results, paths = run_trials(
         policy,
         problem_server,
@@ -619,9 +622,10 @@ def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
         det_sample=args.det_eval,
     )
 
-    print('Trial results:')
-    print('\n'.join('%s: %s' % (k, v) for k, v in trial_results.items()))
-
+    # print('Trial results:')
+    LOGGER.info('Trial results')
+    # print('\n'.join('%s: %s' % (k, v) for k, v in trial_results.items()))
+    LOGGER.info('\n'.join('%s: %s' % (k, v) for k, v in trial_results.items()))
     out_dict = {
         'no_train': args.no_train,
         'args_problems': args.problems,
@@ -891,7 +895,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
     # evaluate
     if weight_manager is not None and not args.minimal_file_saves:
         weight_manager.save(path.join(snapshot_dir, 'snapshot_final.pkl'))
-    for problem in tqdm.tqdm(problems, desc='Evaluation'):
+    for problem in tqdm(problems, desc='Evaluation'):
         print('Solving %s' % problem.name)
         eval_single(args, problem.policy, problem.problem_server,
                     unique_prefix + '-' + problem.name, elapsed_time,

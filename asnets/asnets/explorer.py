@@ -4,7 +4,8 @@ import concurrent
 import logging
 import random
 from time import time
-import tqdm
+# import tqdm
+from tqdm.auto import tqdm
 from typing import List, Optional, Tuple
 
 from asnets.multiprob import to_local
@@ -42,7 +43,7 @@ class Explorer(ABC):
                            for problem in self.problems]
             
                 if progress:
-                    futures = tqdm.tqdm(concurrent.futures.as_completed(futures),
+                    futures = tqdm(concurrent.futures.as_completed(futures),
                                         total=len(futures),
                                         desc='trajectories (concurrent)')
                 
@@ -50,7 +51,7 @@ class Explorer(ABC):
                     update_result(future.result())
 
         else:
-            tr = tqdm.tqdm(self.problems, desc='trajectories') if progress else \
+            tr = tqdm(self.problems, desc='trajectories') if progress else \
                 self.problems
             for problem in tr:
                 update_result(inner(problem))
@@ -104,7 +105,7 @@ class StaticExplorer(Explorer):
 
     def explore(self) -> None:
         self._collect_trajectories(self.trajs_per_problem)
-        for problem in tqdm.tqdm(self.problems, desc='static explore'):
+        for problem in tqdm(self.problems, desc='static explore'):
             problem.problem_service.explore_from_trajectories()
 
 
@@ -131,7 +132,7 @@ class DynamicExplorer(Explorer):
     def _is_first_explore(self) -> bool:
         return len(self.recent_learning_times) == 0
     
-    def _terminate(self, start_time: float, t: tqdm.tqdm) -> bool:
+    def _terminate(self, start_time: float, t: tqdm) -> bool:
         """Whether to terminate the exploration phase."""
         new_pairs = [to_local(problem.problem_service.get_num_new_pairs())
                      for problem in self.problems]
@@ -193,7 +194,7 @@ class DynamicExplorer(Explorer):
             self._collect_trajectories(self.init_trajs_per_problem,
                                        progress=True)
         
-        t = tqdm.tqdm(desc='dynamic explore', total=self.max_new_pairs)
+        t = tqdm(desc='dynamic explore', total=self.max_new_pairs)
         self.last_progress_time = time()
         while not self._terminate(start_time, t):
             problem = self._sample_problem()
