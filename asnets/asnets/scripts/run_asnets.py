@@ -85,25 +85,34 @@ class MCTSNode(Node):
     def find_children(self):
         """All possible successors of this board state"""
         input_format_cstate = self.state.to_network_input()
+        input_format_cstate = input_format_cstate[None, :]
         act_dist = self.policy(input_format_cstate, training=False)
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
         output = set()
         for i in range(len(act_dist[0])):
-            cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.p)
+            # cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.p)
+            cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.exposed_get_p())
             output.add((i,cstate_after_action_i))
         return output
 
-    def find_random_child(self):
+    def find_child_by_policy(self):
         """Random successor of this board state (for more efficient simulation)"""
-        return None
+        input_format_cstate = self.state.to_network_input()
+
+        act_dist = self.policy(input_format_cstate, training=False)
+        # act_dist is a vector of shape (1,n) of distribution of action possibilities
+        best_action_ind = np.argmax(act_dist[0])
+        # best_cstate, _ = sample_next_state(self.state, best_action_ind, self.problem_service.p)
+        best_cstate, _ = sample_next_state(self.state, best_action_ind, self.problem_service.exposed_get_p())
+        return wrapInMCTSNode(best_cstate, self.policy, self.problem_service)
+
 
     def is_terminal(self):
         """Returns True if the node has no children"""
-        return True
+        return self.state.is_terminal
 
-    def reward(self):
-        """Assumes `self` is terminal node. 1=win, 0=loss, .5=tie, etc"""
-        return 0
+    def reward(self): #TODO: this class has access to problem_service, might somehow get a domain-specific hueristic
+        return 1 if self.state.is_terminal else 0
 
     def __hash__(self):
         """Nodes must be hashable"""
@@ -113,6 +122,8 @@ class MCTSNode(Node):
         """Nodes must be comparable"""
         return self.state.__eq__(node2.state)
 
+def wrapInMCTSNode(inner_node, policy, problem_service):
+    return MCTSNode(state=inner_node, policy=policy, problem_service=problem_service)
 
 from post_training.monte_carlo_tree_search import MCTS
 class MonteCarloPolicyEvaluator(MCTS):
@@ -124,14 +135,11 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.n = n
         self.problem_service = problem_service
 
-    def wrapInMCTSNode(self, ndarray_node, policy):
-        return MCTSNode(ndarray_node, policy, problem_service=self.problem_service)
-
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
 
     def get_action_from_cstate(self, cstate): #cstate is non-terminal
-        root = self.wrapInMCTSNode(cstate, self.policy)
+        root = wrapInMCTSNode(cstate, self.policy, self.problem_service)
         for i in range(self.n):
             self.do_rollout(root)
 
@@ -197,8 +205,8 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False):
 
 
 def run_trials(policy, problem_server, trials, limit=1000, det_sample=False):
-    policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
-    # policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, det_sample=det_sample, problem_service=problem_server.service)
+    # policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
+    policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, det_sample=det_sample, problem_service=problem_server.service)
     all_exec_times = []
     all_costs = []
     all_goal_reached = []

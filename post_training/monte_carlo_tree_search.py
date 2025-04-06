@@ -99,7 +99,7 @@ class Node(ABC):
         return set()
 
     @abstractmethod
-    def find_random_child(self):
+    def find_child_by_policy(self):
         """Random successor of this board state (for more efficient simulation)"""
         return None
 
