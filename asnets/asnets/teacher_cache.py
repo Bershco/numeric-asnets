@@ -192,7 +192,7 @@ class TeacherCache(ABC):
             visited_states, step_costs \
                 = simulate_plan(cstate, plan, self.planner_exts)
         except ValueError as e:
-            LOGGER.warn('Teacher found invalid plan')
+            LOGGER.warning('Teacher found invalid plan')
             raise TeacherException(f'Teacher found invalid plan') from e
 
         costs_to_goal = np.cumsum(step_costs[::-1])[::-1]

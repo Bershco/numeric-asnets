@@ -77,7 +77,7 @@ class ENHSPCache(TeacherCache):
         
         # Handle the possible outcomes
         if result.status == PlanningStatus.UNKNOWN:
-            LOGGER.warn(f'ENHSP returned UNKNOWN status with problem instance {problem_source}, assuming unsolvable.')
+            LOGGER.warning(f'ENHSP returned UNKNOWN status with problem instance {problem_source}, assuming unsolvable.')
             return None
         if result.status == PlanningStatus.UNSOLVABLE:
             return None

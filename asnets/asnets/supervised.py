@@ -625,7 +625,7 @@ def make_problem_service(config, set_proc_title=False):
             try:
                 teacher_experience = self.opt_pol_experience(cstate)
             except TeacherException as ex:
-                LOGGER.warn(f'Teacher error on problem \
+                LOGGER.warning(f'Teacher error on problem \
                     {self.p.problem_name} ({ex})')
                 return
 
@@ -911,7 +911,7 @@ class SupervisedTrainer:
                     self.optimiser.apply_gradients(
                         grads_and_vars=grads_and_vars)
 
-                    tr.set_postfix(loss=loss)
+                    tr.set_postfix(loss=float(loss))
                     losses.append(loss)
 
                     if (self.batches_seen % 10) == 0:
@@ -1051,7 +1051,7 @@ class SupervisedTrainer:
                 continue
 
             if service.dataset_is_empty():
-                LOGGER.warn("No data for problem '%s' yet (teacher time-out?)",
+                LOGGER.warning("No data for problem '%s' yet (teacher time-out?)",
                             service.get_current_problem_name())
                 batch_iters.append(repeat(None))
                 if self.save_training_set:
