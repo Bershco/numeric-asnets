@@ -88,7 +88,7 @@ class MCTSNode(Node):
 
     def find_children(self):
         """All possible successors of this board state"""
-        input_format_cstate = self.state.to_network_input()[None, :]
+        input_format_cstate = self.to_network_input()
         act_dist = self.policy(input_format_cstate, training=False)
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
         output = set()
@@ -104,8 +104,7 @@ class MCTSNode(Node):
 
     def find_child_by_policy(self):
         """Random successor of this board state (for more efficient simulation)"""
-        input_format_cstate = self.state.to_network_input()
-        input_format_cstate = input_format_cstate[None, :]
+        input_format_cstate = self.to_network_input()
         act_dist = self.policy(input_format_cstate, training=False)
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
         # next_action_ind = np.argmax(act_dist[0]) - this would have just generated a single trajectory from the select-
@@ -128,11 +127,15 @@ class MCTSNode(Node):
         """Return True if the current not is a goal"""
         return self.state.exposed_is_goal()
 
-    def reward(self): #TODO: this class has access to problem_service, might somehow get a domain-specific heuristic
+    def reward(self):
         # return 1 if self.is_terminal() else 0
         if self.is_goal():
-            return self.reward_weight/self.cost_until_now
+            return self.reward_weight / self.cost_until_now
         return 0
+
+    def to_network_input(self):
+        """Make the cstate represented by 'this' MCTSNode to be compatible for the policy network, and transposes it"""
+        return self.state.to_network_input()[None, :]
 
     def __hash__(self):
         """Nodes must be hashable"""
