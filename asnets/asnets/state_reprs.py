@@ -527,6 +527,12 @@ class CanonicalState(object):
 
         return np.concatenate(to_concat)
 
+    def exposed_is_terminal(self):
+        return self.is_terminal
+
+    def exposed_is_goal(self):
+        return self.is_goal
+
 
 def get_init_cstate(planner_exts):
     mdpsim_init = planner_exts.mdpsim_problem.init_state()
@@ -573,7 +579,7 @@ def sample_next_state(
 
         error_str = 'Selected disabled action #{}, {}; {}/{} available'.format(
             action_id, bound_act, tot_enabled, tot_avail)
-        LOGGER.warn(error_str)
+        LOGGER.warning(error_str)
         if not ignore_disabled:
             raise ValueError(error_str)
 

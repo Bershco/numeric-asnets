@@ -13,6 +13,7 @@ from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import CanonicalState, sample_next_state
 from collections import defaultdict
 
+from copy import deepcopy
 import joblib
 import numpy as np
 import rpyc
@@ -78,10 +79,12 @@ class CachingPolicyEvaluator(object):
 from post_training.monte_carlo_tree_search import Node
 class MCTSNode(Node):
 
-    def __init__(self, state, policy, problem_service):
-        self.state = state
+    def __init__(self, state, policy, problem_service, cost_until_now, reward_weight = 1000):
+        self.state = deepcopy(state)
         self.policy = policy
         self.problem_service = problem_service
+        self.cost_until_now = cost_until_now
+        self.reward_weight = reward_weight
 
     def find_children(self):
         """All possible successors of this board state"""
@@ -92,28 +95,41 @@ class MCTSNode(Node):
         output = set()
         for i in range(len(act_dist[0])):
             # cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.p)
-            cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.exposed_get_p())
+            #TODO: this was so much harm to me, I'm leaving this in TODO so you know not to do this again:
+            #cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.exposed_get_p())
+            cstate_after_action_i, step_cost = self.problem_service.env_step(int(i))
             output.add((i,cstate_after_action_i))
         return output
 
     def find_child_by_policy(self):
         """Random successor of this board state (for more efficient simulation)"""
         input_format_cstate = self.state.to_network_input()
-
+        input_format_cstate = input_format_cstate[None, :]
         act_dist = self.policy(input_format_cstate, training=False)
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
-        best_action_ind = np.argmax(act_dist[0])
+        # next_action_ind = np.argmax(act_dist[0]) - this would have just generated a single trajectory from the select-
+        # -ed MCTSNode, changing this to the distribution that is given by the policy network.
+        next_action_ind = np.random.choice(len(act_dist[0]), p=act_dist[0])
         # best_cstate, _ = sample_next_state(self.state, best_action_ind, self.problem_service.p)
-        best_cstate, _ = sample_next_state(self.state, best_action_ind, self.problem_service.exposed_get_p())
-        return wrapInMCTSNode(best_cstate, self.policy, self.problem_service)
+        # TODO: this was so much harm to me, I'm leaving this in TODO so you know not to do this again:
+        #best_cstate, _ = sample_next_state(self.state, best_action_ind, self.problem_service.exposed_get_p())
+        best_cstate, step_cost = self.problem_service.env_step(int(next_action_ind))
+        return wrapInMCTSNode(best_cstate, self.policy, self.problem_service, self.cost_until_now + step_cost)
 
 
     def is_terminal(self):
         """Returns True if the node has no children"""
-        return self.state.is_terminal
+        return self.state.exposed_is_terminal()
 
-    def reward(self): #TODO: this class has access to problem_service, might somehow get a domain-specific hueristic
-        return 1 if self.state.is_terminal else 0
+    def is_goal(self):
+        """Return True if the current not is a goal"""
+        return self.state.exposed_is_goal()
+
+    def reward(self): #TODO: this class has access to problem_service, might somehow get a domain-specific heuristic
+        # return 1 if self.is_terminal() else 0
+        if self.is_goal():
+            return self.reward_weight/self.cost_until_now
+        return 0
 
     def __hash__(self):
         """Nodes must be hashable"""
@@ -123,8 +139,8 @@ class MCTSNode(Node):
         """Nodes must be comparable"""
         return self.state.__eq__(node2.state)
 
-def wrapInMCTSNode(inner_node, policy, problem_service):
-    return MCTSNode(state=inner_node, policy=policy, problem_service=problem_service)
+def wrapInMCTSNode(inner_node, policy, problem_service, cost_until_now):
+    return MCTSNode(state=inner_node, policy=policy, problem_service=problem_service, cost_until_now=cost_until_now)
 
 from post_training.monte_carlo_tree_search import MCTS
 class MonteCarloPolicyEvaluator(MCTS):
@@ -139,10 +155,10 @@ class MonteCarloPolicyEvaluator(MCTS):
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
 
-    def get_action_from_cstate(self, cstate): #cstate is non-terminal
-        root = wrapInMCTSNode(cstate, self.policy, self.problem_service)
+    def get_action_from_cstate(self, cstate, cost): #cstate is non-terminal
+        root = wrapInMCTSNode(cstate, self.policy, self.problem_service, cost)
         for i in range(self.n):
-            self.do_rollout(root)
+            self.do_rollout(root, self.policy)
 
         def score(pair):
             _, n = pair  # Extract node from the (action, node) tuple
@@ -191,7 +207,7 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False):
     cost = 0
     path = []
     for _ in range(1, limit):
-        action = policy_evaluator.get_action_from_cstate(curr_cstate)
+        action = policy_evaluator.get_action_from_cstate(curr_cstate, cost)
         curr_cstate, step_cost = to_local(problem_service.env_step(action))
         path.append(to_local(problem_service.action_name(action)))
         cost += step_cost

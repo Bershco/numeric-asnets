@@ -18,15 +18,15 @@ class MCTS:
         self.children = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
 
-    def do_rollout(self, node):
+    def do_rollout(self, node, policy_network):
         """Make the tree one layer better. (Train for one iteration.)"""
-        path = self._select(node)
+        path = self._select(node, policy_network)
         leaf = path[-1]
         self._expand(leaf)
         reward = self._simulate(leaf)
         self._backpropagate(path, reward)
 
-    def _select(self, node):
+    def _select(self, node, policy_network):
         """Find an unexplored descendent of `node`"""
         path = []
         while True:
@@ -47,15 +47,16 @@ class MCTS:
             return  # already expanded
         self.children[node] = node.find_children()
 
-    def _simulate(self, node):
-        """Returns the reward for a random simulation (to completion) of `node`"""
+    def _simulate(self, node, horizon=1000):
+        """Returns the reward for a random simulation (to a certain horizon) of `node`"""
         invert_reward = True
-        while True:
+        for _ in range(horizon):
             if node.is_terminal():
                 reward = node.reward()
                 return 1 - reward if invert_reward else reward
-            node = node.find_random_child()
+            node = node.find_child_by_policy()
             invert_reward = not invert_reward
+        return 0
 
     def _backpropagate(self, path, reward):
         """Send the reward back up to the ancestors of the leaf"""
