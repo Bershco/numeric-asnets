@@ -88,8 +88,7 @@ class MCTSNode(Node):
 
     def find_children(self):
         """All possible successors of this board state"""
-        input_format_cstate = self.state.to_network_input()
-        input_format_cstate = input_format_cstate[None, :]
+        input_format_cstate = self.state.to_network_input()[None, :]
         act_dist = self.policy(input_format_cstate, training=False)
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
         output = set()
@@ -97,7 +96,9 @@ class MCTSNode(Node):
             # cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.p)
             #TODO: this was so much harm to me, I'm leaving this in TODO so you know not to do this again:
             #cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.exposed_get_p())
-            cstate_after_action_i, step_cost = self.problem_service.env_step(int(i))
+            cstate_after_action_i, step_cost = self.problem_service.env_simulate_step(int(i))
+            #as I don't want to get into those cstates, I'm just simulating the step, and not actually doing it.
+            #this might also be the reason of the warning messages of using inapplicable actions TODO: maybe fix?
             output.add((i,cstate_after_action_i))
         return output
 
@@ -109,11 +110,13 @@ class MCTSNode(Node):
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
         # next_action_ind = np.argmax(act_dist[0]) - this would have just generated a single trajectory from the select-
         # -ed MCTSNode, changing this to the distribution that is given by the policy network.
-        next_action_ind = np.random.choice(len(act_dist[0]), p=act_dist[0])
+        probs_np = act_dist[0].numpy()
+        norm_probs_np = probs_np / probs_np.sum()
+        next_action_ind = np.random.choice(len(act_dist[0]), p=norm_probs_np)
         # best_cstate, _ = sample_next_state(self.state, best_action_ind, self.problem_service.p)
         # TODO: this was so much harm to me, I'm leaving this in TODO so you know not to do this again:
         #best_cstate, _ = sample_next_state(self.state, best_action_ind, self.problem_service.exposed_get_p())
-        best_cstate, step_cost = self.problem_service.env_step(int(next_action_ind))
+        best_cstate, step_cost = self.problem_service.env_simulate_step(int(next_action_ind))
         return wrapInMCTSNode(best_cstate, self.policy, self.problem_service, self.cost_until_now + step_cost)
 
 

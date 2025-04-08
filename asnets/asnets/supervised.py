@@ -404,6 +404,13 @@ def make_problem_service(config, set_proc_title=False):
             self.current_state = next_cstate
             return self.current_state, step_cost
 
+        def exposed_env_simulate_step(self, action_num):
+            """Perform an environment step without actually changing the state"""
+            action_num = to_local(action_num)
+            next_cstate, step_cost = sample_next_state(self.current_state, action_num, self.p)
+            return next_cstate, step_cost
+
+
         # note to self: RPyC doesn't support @property
 
         def exposed_get_ssipp_dead_end_value(self):
