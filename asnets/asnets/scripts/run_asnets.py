@@ -21,7 +21,7 @@ import tensorflow as tf
 # class or something?)
 from tensorflow.python import debug as tfdbg
 # import tqdm
-from tqdm.auto import tqdm
+import tqdm.auto as tqdm
 
 from asnets.explorer import StaticExplorer, DynamicExplorer
 from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
@@ -895,7 +895,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
     # evaluate
     if weight_manager is not None and not args.minimal_file_saves:
         weight_manager.save(path.join(snapshot_dir, 'snapshot_final.pkl'))
-    for problem in tqdm(problems, desc='Evaluation'):
+    for problem in tqdm.tqdm(problems, desc='Evaluation'):
         print('Solving %s' % problem.name)
         eval_single(args, problem.policy, problem.problem_server,
                     unique_prefix + '-' + problem.name, elapsed_time,
