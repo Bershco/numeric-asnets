@@ -7,6 +7,7 @@ https://gist.github.com/qpwo/c538c6f73727e254fdc7fab81024f6e1
 from abc import ABC, abstractmethod
 from collections import defaultdict
 import math
+import numpy as np
 
 
 class MCTS:
@@ -39,7 +40,8 @@ class MCTS:
                 n = unexplored.pop()
                 path.append(n)
                 return path
-            node = self._uct_select(node)  # descend a layer deeper
+            # node = self._uct_select(node)  # descend a layer deeper
+            node = self._puct_select(node, policy_network) # same as the above line, but use the policy network
 
     def _expand(self, node):
         """Update the `children` dict with the children of `node`"""
@@ -85,6 +87,47 @@ class MCTS:
             )
 
         return max(self.children[node], key=uct)
+
+    def _puct_select(self, node, policy_network):
+        """Sample a child of `node` using PUCT scores as softmax logits."""
+
+        # All children of node should already be expanded
+        assert all(n in self.children for _, n in self.children[node])
+
+        # Get the prior probabilities from the policy network
+        priors = policy_network(node.to_network_input())  # should return dict {action: prob}
+        total_visits = self.N[node]
+
+        scores = []
+        actions_nodes = []
+
+        for action, child in self.children[node]:
+            # Use prior if available, otherwise assume 0 (or small epsilon if you prefer)
+            prior = priors.get(action, 0.0)
+
+            if self.N[child] == 0:
+                score = float("inf")  # Encourage at least one visit
+            else:
+                q_value = self.Q[child] / self.N[child]
+                exploration = self.exploration_weight * prior * math.sqrt(total_visits) / (1 + self.N[child])
+                score = q_value + exploration
+
+            scores.append(score)
+            actions_nodes.append((action, child))
+
+        # If any node is unvisited (inf score), choose uniformly among them
+        if any(s == float("inf") for s in scores):
+            unexplored = [an for s, an in zip(scores, actions_nodes) if s == float("inf")]
+            return np.random.choice(unexplored)
+
+        # Convert scores to probabilities via softmax
+        scores = np.array(scores)
+        probs = np.exp(scores - np.max(scores))  # subtract max for numerical stability
+        probs = probs / probs.sum()
+
+        # Sample an index from the softmax
+        idx = np.random.choice(len(actions_nodes), p=probs)
+        return actions_nodes[idx]
 
 
 class Node(ABC):
