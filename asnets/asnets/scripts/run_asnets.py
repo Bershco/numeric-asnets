@@ -96,10 +96,11 @@ class MCTSNode(Node):
             # cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.p)
             #TODO: this was so much harm to me, I'm leaving this in TODO so you know not to do this again:
             #cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.exposed_get_p())
+            if not self.is_applicable_action(int(i)): continue
             cstate_after_action_i, step_cost = self.problem_service.env_simulate_step(int(i))
             #as I don't want to get into those cstates, I'm just simulating the step, and not actually doing it.
-            #this might also be the reason of the warning messages of using inapplicable actions TODO: maybe fix?
-            output.add((i,cstate_after_action_i))
+            wrapped_output_cstate = wrapInMCTSNode(cstate_after_action_i, self.policy, self.problem_service, self.cost_until_now + step_cost)
+            output.add((i,wrapped_output_cstate))
         return output
 
     def find_child_by_policy(self):
@@ -137,6 +138,10 @@ class MCTSNode(Node):
         """Make the cstate represented by 'this' MCTSNode to be compatible for the policy network, and transposes it"""
         return self.state.to_network_input()[None, :]
 
+    def is_applicable_action(self, action_num):
+        _, applicable = self.state.acts_enabled[action_num]
+        return applicable
+
     def __hash__(self):
         """Nodes must be hashable"""
         return self.state.__hash__()
@@ -171,8 +176,11 @@ class MonteCarloPolicyEvaluator(MCTS):
             if self.N[n] == 0:
                 return float("-inf")  # Avoid unseen moves
             return self.Q[n] / self.N[n]  # Average reward
+        # self.children[node] (and specifically, 'root' in this case) is a set of tuples, hence using
+        # max(self.children[root], key=score) would yield the best (action,state) pair, and we just need the action number
+        # TODO: make sure the returned action and the action that SHOULD return are corresponding and not changed somehow.
 
-        return max(self.children[root], key=score)
+        return (max(self.children[root], key=score))[0]
 
 
 # @can_profile

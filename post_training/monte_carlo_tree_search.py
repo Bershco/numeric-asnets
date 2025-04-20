@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 import math
 import numpy as np
+import tensorflow as tf
 
 
 class MCTS:
@@ -34,8 +35,12 @@ class MCTS:
             path.append(node)
             if node not in self.children or not self.children[node]:
                 # node is either unexplored or terminal
+                # Roee: should still work as intended even though we're messing with action_nodes tuples and not just
+                # nodes,because "not self.children[node]" means that there are no applicable actions_node tuples,
+                # hence node is terminal.
                 return path
-            unexplored = self.children[node][1] - self.children.keys()
+            #unexplored = self.children[node][1] - self.children.keys()
+            unexplored = {action_state_tuple[1] for action_state_tuple in self.children[node]} - self.children.keys()
             if unexplored:
                 n = unexplored.pop()
                 path.append(n)
@@ -49,7 +54,7 @@ class MCTS:
             return  # already expanded
         self.children[node] = node.find_children()
 
-    def _simulate(self, node, horizon=1000):
+    def _simulate(self, node, horizon=10):
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
         invert_reward = True
         for _ in range(horizon):
@@ -71,7 +76,8 @@ class MCTS:
         """Select a child of node, balancing exploration & exploitation"""
 
         # All children of node should already be expanded:
-        assert all(n in self.children for n in self.children[node][1])
+        #assert all(n in self.children for n in self.children[node][1]) - this won't work, because self.children[node] is a set and is unsubscriptable
+        assert all(action_cstate_tuple[1] in self.children for action_cstate_tuple in self.children[node]) #Roee: should work this way, same as changed in puct
 
         log_N_vertex = math.log(self.N[node])
 
@@ -92,10 +98,12 @@ class MCTS:
         """Sample a child of `node` using PUCT scores as softmax logits."""
 
         # All children of node should already be expanded
-        assert all(n in self.children for _, n in self.children[node])
+        #assert all(n in self.children for n in self.children[node][1]) - this won't work, because self.children[node] is a set and is unsubscriptable
+        assert all(action_cstate_tuple[1] in self.children for action_cstate_tuple in self.children[node]) #Roee: should work this way, same as changed in uct
 
         # Get the prior probabilities from the policy network
-        priors = policy_network(node.to_network_input())  # should return dict {action: prob}
+        priors = policy_network(node.to_network_input())  # returns an eagertensor
+        priors = tf.squeeze(priors) # makes sure the tensor is (num_of_actions,) and not (1,num_of_actions)
         total_visits = self.N[node]
 
         scores = []
@@ -103,8 +111,9 @@ class MCTS:
 
         for action, child in self.children[node]:
             # Use prior if available, otherwise assume 0 (or small epsilon if you prefer)
-            prior = priors.get(action, 0.0)
-
+            if not isinstance(action, int):
+                raise ValueError(f"Action must be an int, got {type(action)}")
+            prior = float(priors[action]) if isinstance(action, int) and action < priors.shape[0] else 0.0
             if self.N[child] == 0:
                 score = float("inf")  # Encourage at least one visit
             else:
@@ -127,7 +136,7 @@ class MCTS:
 
         # Sample an index from the softmax
         idx = np.random.choice(len(actions_nodes), p=probs)
-        return actions_nodes[idx]
+        return actions_nodes[idx][1]
 
 
 class Node(ABC):
