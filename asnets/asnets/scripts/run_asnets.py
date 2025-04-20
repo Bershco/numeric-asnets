@@ -156,7 +156,7 @@ def wrapInMCTSNode(inner_node, policy, problem_service, cost_until_now):
 from post_training.monte_carlo_tree_search import MCTS
 class MonteCarloPolicyEvaluator(MCTS):
 
-    def __init__(self, policy, problem_service, det_sample=True, exploration_weight=1, n=1000):
+    def __init__(self, policy, problem_service, det_sample=True, exploration_weight=1, n=10):
         super().__init__(exploration_weight)
         self.policy = policy
         self.det_sample = det_sample
