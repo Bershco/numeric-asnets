@@ -81,7 +81,7 @@ class MCTSNode(Node):
 
     def __init__(self, state, policy, problem_service, cost_until_now, reward_weight = 1000):
         self.state = deepcopy(state)
-        self.policy = policy
+        self.policy = policy #TODO: get this out of here.
         self.problem_service = problem_service
         self.cost_until_now = cost_until_now
         self.reward_weight = reward_weight
@@ -113,12 +113,10 @@ class MCTSNode(Node):
         probs_np = act_dist[0].numpy()
         norm_probs_np = probs_np / probs_np.sum()
         next_action_ind = np.random.choice(len(act_dist[0]), p=norm_probs_np)
-        # best_cstate, _ = sample_next_state(self.state, best_action_ind, self.problem_service.p)
         # TODO: this was so much harm to me, I'm leaving this in TODO so you know not to do this again:
         #best_cstate, _ = sample_next_state(self.state, best_action_ind, self.problem_service.exposed_get_p())
         best_cstate, step_cost = self.problem_service.env_simulate_step(int(next_action_ind))
         return wrapInMCTSNode(best_cstate, self.policy, self.problem_service, self.cost_until_now + step_cost)
-
 
     def is_terminal(self):
         """Returns True if the node has no children"""
@@ -156,11 +154,11 @@ def wrapInMCTSNode(inner_node, policy, problem_service, cost_until_now):
 from post_training.monte_carlo_tree_search import MCTS
 class MonteCarloPolicyEvaluator(MCTS):
 
-    def __init__(self, policy, problem_service, det_sample=True, exploration_weight=1, n=10):
+    def __init__(self, policy, problem_service, det_sample=True, exploration_weight=1, iterations=10):
         super().__init__(exploration_weight)
         self.policy = policy
         self.det_sample = det_sample
-        self.n = n
+        self.iterations = iterations
         self.problem_service = problem_service
 
     def get_action(self, obs):
@@ -168,8 +166,8 @@ class MonteCarloPolicyEvaluator(MCTS):
 
     def get_action_from_cstate(self, cstate, cost): #cstate is non-terminal
         root = wrapInMCTSNode(cstate, self.policy, self.problem_service, cost)
-        for i in range(self.n):
-            self.do_rollout(root, self.policy)
+        for i in range(self.iterations):
+            self.simulate(root, self.policy)
 
         def score(pair):
             _, n = pair  # Extract node from the (action, node) tuple
@@ -181,35 +179,6 @@ class MonteCarloPolicyEvaluator(MCTS):
         # TODO: make sure the returned action and the action that SHOULD return are corresponding and not changed somehow.
 
         return (max(self.children[root], key=score))[0]
-
-
-# @can_profile
-# def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False):
-#     """Run policy on problem. Returns (cost, path), where cost may be None if
-#     goal not reached before horizon."""
-#     problem_service = problem_server.service
-#     # 'obs' is actually a numpy vector that's already prepared to be stuffed
-#     # into our network
-#     init_cstate = to_local(problem_service.env_reset())
-#     obs = init_cstate.to_network_input()
-#     # total cost of this run
-#     cost = 0
-#     path = []
-#     for _ in range(1, limit):
-#         action = policy_evaluator.get_action(obs)
-#         new_cstate, step_cost = to_local(problem_service.env_step(action))
-#         new_obs = new_cstate.to_network_input()
-#         path.append(to_local(problem_service.action_name(action)))
-#         obs = new_obs
-#         cost += step_cost
-#         if new_cstate.is_goal:
-#             # path.append('GOAL! :D')
-#             return cost, True, path
-#         # we can run out of time or run out of actions to take
-#         if new_cstate.is_terminal:
-#             break
-#     # path.append('FAIL! D:')
-#     return cost, False, path
 
 @can_profile
 def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False):

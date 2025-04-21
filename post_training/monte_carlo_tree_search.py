@@ -11,29 +11,67 @@ import numpy as np
 import tensorflow as tf
 
 
+class Node(ABC):
+    """
+    A representation of a single board state.
+    MCTS works by constructing a tree of these Nodes.
+    Could be e.g. a chess or checkers board state.
+    """
+
+    @abstractmethod
+    def find_children(self):
+        """All possible successors of this board state"""
+        return set()
+
+    @abstractmethod
+    def find_child_by_policy(self):
+        """Random successor of this board state (for more efficient simulation)"""
+        return None
+
+    @abstractmethod
+    def is_terminal(self):
+        """Returns True if the node has no children"""
+        return True
+
+    @abstractmethod
+    def reward(self):
+        """Assumes `self` is terminal node. 1=win, 0=loss, .5=tie, etc"""
+        return 0
+
+    @abstractmethod
+    def __hash__(self):
+        """Nodes must be hashable"""
+        return 123456789
+
+    @abstractmethod
+    def __eq__(self, node2):
+        """Nodes must be comparable"""
+        return True
+
 class MCTS:
     """Monte Carlo tree searcher. First rollout the tree then choose a move."""
 
     def __init__(self, exploration_weight=1):
         self.Q = defaultdict(int)  # total reward of each node
         self.N = defaultdict(int)  # total visit count for each node
-        self.children = dict()  # actions and children output of each node. structure is (action,result_state)
+        self.children: {Node: tuple} = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
 
-    def do_rollout(self, node, policy_network):
+    def simulate(self, node, policy_network):
         """Make the tree one layer better. (Train for one iteration.)"""
         path = self._select(node, policy_network)
         leaf = path[-1]
         self._expand(leaf)
-        reward = self._simulate(leaf)
+        reward = self._rollout(leaf)
         self._backpropagate(path, reward)
 
-    def _select(self, node, policy_network):
+    def _select(self, node: Node, policy_network):
         """Find an unexplored descendent of `node`"""
         path = []
         while True:
             path.append(node)
-            if node not in self.children or not self.children[node]:
+            # if node not in self.children or not self.children[node]:
+            if self.is_terminal(node) or self.is_unexplored(node):
                 # node is either unexplored or terminal
                 # Roee: should still work as intended even though we're messing with action_nodes tuples and not just
                 # nodes,because "not self.children[node]" means that there are no applicable actions_node tuples,
@@ -54,7 +92,7 @@ class MCTS:
             return  # already expanded
         self.children[node] = node.find_children()
 
-    def _simulate(self, node, horizon=10):
+    def _rollout(self, node, horizon=10):
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
         invert_reward = True
         for _ in range(horizon):
@@ -138,40 +176,11 @@ class MCTS:
         idx = np.random.choice(len(actions_nodes), p=probs)
         return actions_nodes[idx][1]
 
+    def is_terminal(self, node: Node):
+        return node.is_terminal()
 
-class Node(ABC):
-    """
-    A representation of a single board state.
-    MCTS works by constructing a tree of these Nodes.
-    Could be e.g. a chess or checkers board state.
-    """
-
-    @abstractmethod
-    def find_children(self):
-        """All possible successors of this board state"""
-        return set()
-
-    @abstractmethod
-    def find_child_by_policy(self):
-        """Random successor of this board state (for more efficient simulation)"""
-        return None
-
-    @abstractmethod
-    def is_terminal(self):
-        """Returns True if the node has no children"""
-        return True
-
-    @abstractmethod
-    def reward(self):
-        """Assumes `self` is terminal node. 1=win, 0=loss, .5=tie, etc"""
-        return 0
-
-    @abstractmethod
-    def __hash__(self):
-        """Nodes must be hashable"""
-        return 123456789
-
-    @abstractmethod
-    def __eq__(self, node2):
-        """Nodes must be comparable"""
+    def is_unexplored(self, node: Node):
+        for mcts_node in self.children.keys():
+            if mcts_node.state.__eq__(node.state):
+                return False
         return True
