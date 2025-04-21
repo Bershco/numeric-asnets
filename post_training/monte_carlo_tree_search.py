@@ -70,8 +70,7 @@ class MCTS:
         path = []
         while True:
             path.append(node)
-            # if node not in self.children or not self.children[node]:
-            if self.is_terminal(node) or self.is_unexplored(node):
+            if node not in self.children or not self.children[node]:
                 # node is either unexplored or terminal
                 # Roee: should still work as intended even though we're messing with action_nodes tuples and not just
                 # nodes,because "not self.children[node]" means that there are no applicable actions_node tuples,
@@ -114,8 +113,7 @@ class MCTS:
         """Select a child of node, balancing exploration & exploitation"""
 
         # All children of node should already be expanded:
-        #assert all(n in self.children for n in self.children[node][1]) - this won't work, because self.children[node] is a set and is unsubscriptable
-        assert all(action_cstate_tuple[1] in self.children for action_cstate_tuple in self.children[node]) #Roee: should work this way, same as changed in puct
+        assert all(action_cstate_tuple[1] in self.children for action_cstate_tuple in self.children[node])
 
         log_N_vertex = math.log(self.N[node])
 
@@ -136,8 +134,7 @@ class MCTS:
         """Sample a child of `node` using PUCT scores as softmax logits."""
 
         # All children of node should already be expanded
-        #assert all(n in self.children for n in self.children[node][1]) - this won't work, because self.children[node] is a set and is unsubscriptable
-        assert all(action_cstate_tuple[1] in self.children for action_cstate_tuple in self.children[node]) #Roee: should work this way, same as changed in uct
+        assert all(action_cstate_tuple[1] in self.children for action_cstate_tuple in self.children[node])
 
         # Get the prior probabilities from the policy network
         priors = policy_network(node.to_network_input())  # returns an eagertensor
@@ -175,12 +172,3 @@ class MCTS:
         # Sample an index from the softmax
         idx = np.random.choice(len(actions_nodes), p=probs)
         return actions_nodes[idx][1]
-
-    def is_terminal(self, node: Node):
-        return node.is_terminal()
-
-    def is_unexplored(self, node: Node):
-        for mcts_node in self.children.keys():
-            if mcts_node.state.__eq__(node.state):
-                return False
-        return True
