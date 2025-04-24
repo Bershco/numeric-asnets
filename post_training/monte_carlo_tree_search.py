@@ -57,12 +57,12 @@ class MCTS:
         self.children: dict[Node, dict[int, Node]] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
 
-    def simulate(self, node, policy_network):
+    def simulate(self, node, policy_network, horizon):
         """Make the tree one layer better. (Train for one iteration.)"""
         path = self._select(node, policy_network)
         leaf = path[-1]
         self._expand(leaf)
-        reward = self._rollout(leaf)
+        reward = self._rollout(leaf, horizon=horizon)
         self._backpropagate(path, reward)
 
     def _select(self, node: Node, policy_network):

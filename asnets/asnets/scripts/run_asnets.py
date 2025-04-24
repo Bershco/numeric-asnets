@@ -154,20 +154,25 @@ def wrapInMCTSNode(inner_node, policy, problem_service, cost_until_now):
 from post_training.monte_carlo_tree_search import MCTS
 class MonteCarloPolicyEvaluator(MCTS):
 
-    def __init__(self, policy, problem_service, det_sample=True, exploration_weight=1, iterations=10):
+    def __init__(self, policy, problem_service, horizon, det_sample=True, exploration_weight=1, iterations=10):
         super().__init__(exploration_weight)
         self.policy = policy
         self.det_sample = det_sample
         self.iterations = iterations
         self.problem_service = problem_service
+        self.horizon = horizon
+        self.curr_tree_root = None
+        self.debug_orig_root = None
 
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
 
     def get_action_from_cstate(self, cstate, cost): #cstate is non-terminal
-        root = wrapInMCTSNode(cstate, self.policy, self.problem_service, cost)
+        if self.curr_tree_root is None:
+            self.curr_tree_root = wrapInMCTSNode(cstate, self.policy, self.problem_service, 0)
+            self.debug_orig_root = self.curr_tree_root
         for i in range(self.iterations):
-            self.simulate(root, self.policy)
+            self.simulate(self.curr_tree_root, self.policy, self.horizon)
 
         def score(pair):
             _, n = pair  # Extract node from the (action, node) tuple
@@ -203,9 +208,9 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False):
     return cost, False, path
 
 
-def run_trials(policy, problem_server, trials, limit=1000, det_sample=False):
+def run_trials(policy, problem_server, trials, iterations, horizon, limit=1000, det_sample=False):
     # policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
-    policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, det_sample=det_sample, problem_service=problem_server.service)
+    policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, det_sample=det_sample, problem_service=problem_server.service, iterations=iterations, horizon=horizon)
     all_exec_times = []
     all_costs = []
     all_goal_reached = []
@@ -604,6 +609,16 @@ parser.add_argument(
     'pddls',
     nargs='+',
     help='paths to PDDL domain/problem definitions')
+parser.add_argument(
+    '--mcts-iterations',
+    type=int,
+    default=4,
+    help='Number of nodes to select->expand->rollout->backpropagate.')
+parser.add_argument(
+    '--mcts-rollout-horizon',
+    type=int,
+    default=20,
+    help='how far should the rollout go for.')
 
 
 def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
@@ -618,6 +633,8 @@ def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
         args.rounds_eval,
         limit=args.limit_turns,
         det_sample=args.det_eval,
+        iterations=args.mcts_iterations,
+        horizon=args.mcts_rollout_horizon
     )
 
     # print('Trial results:')
