@@ -91,7 +91,7 @@ class MCTSNode(Node):
         input_format_cstate = self.to_network_input()
         act_dist = self.policy(input_format_cstate, training=False)
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
-        output = set()
+        output = dict()
         for i in range(len(act_dist[0])):
             # cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.p)
             #TODO: this was so much harm to me, I'm leaving this in TODO so you know not to do this again:
@@ -100,7 +100,7 @@ class MCTSNode(Node):
             cstate_after_action_i, step_cost = self.problem_service.env_simulate_step(int(i))
             #as I don't want to get into those cstates, I'm just simulating the step, and not actually doing it.
             wrapped_output_cstate = wrapInMCTSNode(cstate_after_action_i, self.policy, self.problem_service, self.cost_until_now + step_cost)
-            output.add((i,wrapped_output_cstate))
+            output[i] = wrapped_output_cstate
         return output
 
     def find_child_by_policy(self):
@@ -174,9 +174,8 @@ class MonteCarloPolicyEvaluator(MCTS):
             if self.N[n] == 0:
                 return float("-inf")  # Avoid unseen moves
             return self.Q[n] / self.N[n]  # Average reward
-        # self.children[node] (and specifically, 'root' in this case) is a set of tuples, hence using
-        # max(self.children[root], key=score) would yield the best (action,state) pair, and we just need the action number
         # TODO: make sure the returned action and the action that SHOULD return are corresponding and not changed somehow.
+        return (max(self.children[self.curr_tree_root].items(), key=score))[0]
 
         return (max(self.children[root], key=score))[0]
 

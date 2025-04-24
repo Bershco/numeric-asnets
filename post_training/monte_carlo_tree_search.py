@@ -54,7 +54,7 @@ class MCTS:
     def __init__(self, exploration_weight=1):
         self.Q = defaultdict(int)  # total reward of each node
         self.N = defaultdict(int)  # total visit count for each node
-        self.children: {Node: tuple} = dict()  # actions and children output of each node. structure is (action,result_state)
+        self.children: dict[Node, dict[int, Node]] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
 
     def simulate(self, node, policy_network):
@@ -76,8 +76,8 @@ class MCTS:
                 # nodes,because "not self.children[node]" means that there are no applicable actions_node tuples,
                 # hence node is terminal.
                 return path
-            #unexplored = self.children[node][1] - self.children.keys()
-            unexplored = {action_state_tuple[1] for action_state_tuple in self.children[node]} - self.children.keys()
+            # unexplored = {action_state_tuple[1] for action_state_tuple in self.children[node]} - self.children.keys()
+            unexplored = set(self.children[node].values()) - self.children.keys()
             if unexplored:
                 n = unexplored.pop()
                 path.append(n)
@@ -113,7 +113,8 @@ class MCTS:
         """Select a child of node, balancing exploration & exploitation"""
 
         # All children of node should already be expanded:
-        assert all(action_cstate_tuple[1] in self.children for action_cstate_tuple in self.children[node])
+        # assert all(action_cstate_tuple[1] in self.children for action_cstate_tuple in self.children[node])
+        assert all(child_node in self.children for child_node in self.children[node].values())
 
         log_N_vertex = math.log(self.N[node])
 
@@ -128,13 +129,14 @@ class MCTS:
                 log_N_vertex / self.N[n]
             )
 
-        return max(self.children[node], key=uct)
+        action, node =  max(self.children[node].items(), key=uct)
+        return node
 
     def _puct_select(self, node, policy_network):
         """Sample a child of `node` using PUCT scores as softmax logits."""
 
         # All children of node should already be expanded
-        assert all(action_cstate_tuple[1] in self.children for action_cstate_tuple in self.children[node])
+        assert all(child_node in self.children for child_node in self.children[node].values())
 
         # Get the prior probabilities from the policy network
         priors = policy_network(node.to_network_input())  # returns an eagertensor
@@ -142,9 +144,9 @@ class MCTS:
         total_visits = self.N[node]
 
         scores = []
-        actions_nodes = []
+        actions_nodes = list(self.children[node].items())  # List of (action, child_node)
 
-        for action, child in self.children[node]:
+        for action, child in actions_nodes:
             # Use prior if available, otherwise assume 0 (or small epsilon if you prefer)
             if not isinstance(action, int):
                 raise ValueError(f"Action must be an int, got {type(action)}")
