@@ -4,6 +4,7 @@ import argparse
 import atexit
 from json import dump
 import logging
+from logging import Logger
 from os import makedirs, path
 import random
 import signal
@@ -148,7 +149,7 @@ class MCTSNode(Node):
         """Nodes must be comparable"""
         return self.state.__eq__(node2.state)
 
-def wrapInMCTSNode(inner_node, policy, problem_service, cost_until_now):
+def wrapInMCTSNode(inner_node: CanonicalState, policy, problem_service, cost_until_now=float('inf')):
     return MCTSNode(state=inner_node, policy=policy, problem_service=problem_service, cost_until_now=cost_until_now)
 
 from post_training.monte_carlo_tree_search import MCTS
@@ -182,7 +183,29 @@ class MonteCarloPolicyEvaluator(MCTS):
         # TODO: make sure the returned action and the action that SHOULD return are corresponding and not changed somehow.
         return (max(self.children[self.curr_tree_root].items(), key=score))[0]
 
-        return (max(self.children[root], key=score))[0]
+
+
+    def progress_to(self, cstate, cost):
+        next_node = self.get_corresponding_mcts_node_root_child(cstate)
+        if next_node is None:
+            logging.getLogger(__name__).info('Next node is not available, creating a new tree.')
+            self.curr_tree_root = wrapInMCTSNode(cstate, self.policy, self.problem_service, cost)
+        else:
+            self.curr_tree_root = next_node
+            logging.getLogger(__name__).info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
+
+    def get_corresponding_mcts_node_root_child(self, cstate):
+        assert self.curr_tree_root is not None
+        for action_node_tuple in self.children[self.curr_tree_root].items():
+            assert (
+                    isinstance(action_node_tuple, tuple)
+                    and len(action_node_tuple) == 2
+                    and isinstance(action_node_tuple[0], int)
+                    and isinstance(action_node_tuple[1], MCTSNode)
+            )
+            if action_node_tuple[1].state.__eq__(cstate):
+                return action_node_tuple[1]
+        return None
 
 @can_profile
 def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False):
@@ -196,6 +219,7 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False):
     for _ in range(1, limit):
         action = policy_evaluator.get_action_from_cstate(curr_cstate, cost)
         curr_cstate, step_cost = to_local(problem_service.env_step(action))
+        policy_evaluator.progress_to(curr_cstate, cost+step_cost)
         path.append(to_local(problem_service.action_name(action)))
         cost += step_cost
         if curr_cstate.is_goal:

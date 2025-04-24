@@ -410,6 +410,8 @@ def make_problem_service(config, set_proc_title=False):
             next_cstate, step_cost = sample_next_state(self.current_state, action_num, self.p)
             return next_cstate, step_cost
 
+        def exposed_current_state(self):
+            return self.current_state
 
         # note to self: RPyC doesn't support @property
 

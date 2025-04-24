@@ -9,6 +9,7 @@ from collections import defaultdict
 import math
 import numpy as np
 import tensorflow as tf
+import logging
 
 
 class Node(ABC):
@@ -141,16 +142,15 @@ class MCTS:
         # Get the prior probabilities from the policy network
         priors = policy_network(node.to_network_input())  # returns an eagertensor
         priors = tf.squeeze(priors) # makes sure the tensor is (num_of_actions,) and not (1,num_of_actions)
-        total_visits = self.N[node]
+        priors = priors.numpy() if hasattr(priors, "numpy") else priors  # if running eagerly
 
+        total_visits = self.N[node]
         scores = []
         actions_nodes = list(self.children[node].items())  # List of (action, child_node)
 
         for action, child in actions_nodes:
             # Use prior if available, otherwise assume 0 (or small epsilon if you prefer)
-            if not isinstance(action, int):
-                raise ValueError(f"Action must be an int, got {type(action)}")
-            prior = float(priors[action]) if isinstance(action, int) and action < priors.shape[0] else 0.0
+            prior = float(priors[action]) if 0 <= action < len(priors) else 0.0
             if self.N[child] == 0:
                 score = float("inf")  # Encourage at least one visit
             else:
@@ -159,18 +159,18 @@ class MCTS:
                 score = q_value + exploration
 
             scores.append(score)
-            actions_nodes.append((action, child))
 
         # If any node is unvisited (inf score), choose uniformly among them
-        if any(s == float("inf") for s in scores):
-            unexplored = [an for s, an in zip(scores, actions_nodes) if s == float("inf")]
+        if any(np.isinf(score) for score in scores):
+            unexplored = [child for score, (_, child) in zip(scores, actions_nodes) if np.isinf(score)]
             return np.random.choice(unexplored)
 
         # Convert scores to probabilities via softmax
-        scores = np.array(scores)
-        probs = np.exp(scores - np.max(scores))  # subtract max for numerical stability
-        probs = probs / probs.sum()
+        scores = np.array(scores, dtype=np.float64)
+        exp_probs = np.exp(scores - np.max(scores))  # subtract max for numerical stability
+        probs = exp_probs / np.sum(exp_probs)
 
         # Sample an index from the softmax
         idx = np.random.choice(len(actions_nodes), p=probs)
+        logging.getLogger(__name__).debug(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
         return actions_nodes[idx][1]
