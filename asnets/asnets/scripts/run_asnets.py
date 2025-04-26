@@ -164,6 +164,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.horizon = horizon
         self.curr_tree_root = None
         self.debug_orig_root = None
+        self.state_to_node = {}
 
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
@@ -193,7 +194,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         return corresponding_actions[0]
 
     def progress_to(self, cstate, cost):
-        next_node = self.get_corresponding_mcts_node_root_child(cstate)
+        next_node = self.get_corresponding_mcts_node(cstate)
         if next_node is None:
             logging.getLogger(__name__).info('Next node is not available, creating a new tree.')
             self.curr_tree_root = wrapInMCTSNode(cstate, self.policy, self.problem_service, cost)
@@ -201,18 +202,18 @@ class MonteCarloPolicyEvaluator(MCTS):
             self.curr_tree_root = next_node
             logging.getLogger(__name__).info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
 
-    def get_corresponding_mcts_node_root_child(self, cstate):
-        assert self.curr_tree_root is not None
-        for action_node_tuple in self.children[self.curr_tree_root].items():
-            assert (
-                    isinstance(action_node_tuple, tuple)
-                    and len(action_node_tuple) == 2
-                    and isinstance(action_node_tuple[0], int)
-                    and isinstance(action_node_tuple[1], MCTSNode)
-            )
-            if action_node_tuple[1].state.__eq__(cstate):
-                return action_node_tuple[1]
-        return None
+    def get_corresponding_mcts_node(self, cstate):
+        return self.state_to_node.get(cstate, None)
+
+    def _expand(self, node):
+        if node in self.children:
+            return
+        self.children[node] = node.find_children()
+        self.state_to_node[node.state] = node
+        for child_node in self.children[node].values():
+            assert isinstance(child_node, MCTSNode)
+            self.state_to_node[child_node.state] = child_node
+
 
 @can_profile
 def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False):
