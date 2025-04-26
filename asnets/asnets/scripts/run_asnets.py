@@ -189,7 +189,7 @@ class MonteCarloPolicyEvaluator(MCTS):
 
         # TODO: make sure the returned action and the action that SHOULD return are corresponding and not changed somehow.
         best_node = max(self.children[self.curr_tree_root].values(), key=node_ranking)
-        corresponding_actions = {ac for ac,node in self.children[self.curr_tree_root].items() if node.__eq__(best_node)}
+        corresponding_actions = [ac for ac,node in self.children[self.curr_tree_root].items() if node.__eq__(best_node)]
         assert len(corresponding_actions) == 1 #if not, there has been a fault somewhere that made two actions cause the same output state (maybe an inapplicable action was used?)
         return corresponding_actions[0]
 
