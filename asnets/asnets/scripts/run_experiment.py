@@ -315,7 +315,7 @@ def get_prefix_dir(checkpoint_path):
     experiment-results/experiments.actprop_2l.../"""
     real_path = path.abspath(checkpoint_path)
     parts = real_path.split(path.sep)
-    for idx in range(len(parts) - 1)[::-1]:
+    for idx in range(len(parts))[::-1]:
         part = parts[idx]
         if part.startswith('experiments.') or part.startswith('experiments_numeric.'):
             return path.sep.join(parts[:idx + 1])
@@ -518,7 +518,7 @@ def main_inner(*,
             print('Launching test on problem %d' % (prob_idx + 1))
             full_flags = main_test_flags + test_prob_flags
             # ensure each job has at least 8Gb of memory
-            job = run_asnets_ray.options(memory=1 * 1024 * 1024 * 1024).remote(
+            job = run_asnets_ray.options(memory=0.1 * 1024 * 1024 * 1024).remote(
                 flags=full_flags,
                 root_dir=prefix_dir,
                 cwd=root_cwd,

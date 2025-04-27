@@ -663,7 +663,6 @@ def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
                 iter_num, weight_manager, scratch_dir):
     LOGGER = logging.getLogger(__name__)
     # now we evaluate the learned policy
-    # print('Evaluating policy')
     LOGGER.info('Evaluating policy')
     trial_results, paths = run_trials(
         policy,
