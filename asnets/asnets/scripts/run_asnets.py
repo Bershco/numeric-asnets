@@ -644,12 +644,12 @@ parser.add_argument(
 parser.add_argument(
     '--mcts-iterations',
     type=int,
-    default=4,
+    default=30,
     help='Number of nodes to select->expand->rollout->backpropagate.')
 parser.add_argument(
     '--mcts-rollout-horizon',
     type=int,
-    default=20,
+    default=3,
     help='how far should the rollout go for.')
 
 
