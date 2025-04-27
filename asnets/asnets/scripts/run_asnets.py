@@ -111,11 +111,17 @@ class MCTSNode(Node):
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
         # next_action_ind = np.argmax(act_dist[0]) - this would have just generated a single trajectory from the select-
         # -ed MCTSNode, changing this to the distribution that is given by the policy network.
-        probs_np = act_dist[0].numpy()
-        norm_probs_np = probs_np / probs_np.sum()
-        next_action_ind = np.random.choice(len(act_dist[0]), p=norm_probs_np)
-        # TODO: this was so much harm to me, I'm leaving this in TODO so you know not to do this again:
-        #best_cstate, _ = sample_next_state(self.state, best_action_ind, self.problem_service.exposed_get_p())
+        act_dist = tf.squeeze(act_dist)
+        mask = tf.convert_to_tensor([self.is_applicable_action(i) for i in range(act_dist.shape[0])], dtype=tf.bool)
+        masked_act_dist = tf.where(mask, act_dist, tf.zeros_like(act_dist))
+        total = tf.reduce_sum(masked_act_dist)
+        normalized_act_dist = tf.cond(
+            tf.greater(total,0),
+            lambda: masked_act_dist / total,
+            lambda: tf.zeros_like(act_dist)
+        )
+        norm_act_dist_np = normalized_act_dist.numpy()
+        next_action_ind = np.random.choice(len(norm_act_dist_np), p=norm_act_dist_np)
         best_cstate, step_cost = self.problem_service.env_simulate_step(int(next_action_ind))
         return wrapInMCTSNode(best_cstate, self.policy, self.problem_service, self.cost_until_now + step_cost)
 
