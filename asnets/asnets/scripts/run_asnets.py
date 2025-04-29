@@ -6,6 +6,7 @@ from json import dump
 import logging
 from logging import Logger
 from os import makedirs, path
+from pathlib import Path
 import random
 import signal
 import sys
@@ -728,7 +729,11 @@ def make_policy(args,
         print('Re-using same weight manager')
     elif args.resume_from:
         print('Reloading weight manager (resuming training)')
-        weight_manager = joblib.load(args.resume_from)
+        resume_from_str = args.resume_from
+        resume_from_str = resume_from_str.replace("\\",'/') # for Windows support, do not delete.
+        resume_from_path_obj = Path(resume_from_str)
+        resume_from_path_obj = resume_from_path_obj.resolve(strict=False)
+        weight_manager = joblib.load(resume_from_path_obj)
     else:
         print('Creating new weight manager (not resuming)')
         # TODO: should save all network metadata with the network weights or
