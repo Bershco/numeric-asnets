@@ -93,17 +93,18 @@ class MCTSNode(Node):
         input_format_cstate = self.to_network_input()
         act_dist = self.policy(input_format_cstate, training=False)
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
+        act_dist = tf.squeeze(act_dist)
+        mask = [self.is_applicable_action(i) for i in range(act_dist.shape[0])]
         output = dict()
-        for i in range(len(act_dist[0])):
-            # cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.p)
-            #TODO: this was so much harm to me, I'm leaving this in TODO so you know not to do this again:
-            #cstate_after_action_i, _ = sample_next_state(self.state, i, self.problem_service.exposed_get_p())
-            if not self.is_applicable_action(int(i)): continue
+        env_use_amount = 0
+        for i in range(len(act_dist)):
+            if not mask[i]: continue
             cstate_after_action_i, step_cost = self.problem_service.env_simulate_step(int(i))
+            env_use_amount += 1
             #as I don't want to get into those cstates, I'm just simulating the step, and not actually doing it.
             wrapped_output_cstate = wrapInMCTSNode(cstate_after_action_i, self.policy, self.problem_service, self.cost_until_now + step_cost)
             output[i] = wrapped_output_cstate
-        return output
+        return output, env_use_amount
 
     def find_child_by_policy(self):
         """Random successor of this board state (for more efficient simulation)"""
@@ -172,6 +173,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.curr_tree_root = None
         self.debug_orig_root = None
         self.state_to_node = {}
+        self.env_use_amount = 0
 
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
@@ -215,7 +217,8 @@ class MonteCarloPolicyEvaluator(MCTS):
     def _expand(self, node):
         if node in self.children:
             return
-        self.children[node] = node.find_children()
+        self.children[node], env_use_amount = node.find_children()
+        self.env_use_amount += env_use_amount
         self.state_to_node[node.state] = node
         for child_node in self.children[node].values():
             assert isinstance(child_node, MCTSNode)

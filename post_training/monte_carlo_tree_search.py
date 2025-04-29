@@ -90,7 +90,7 @@ class MCTS:
         """Update the `children` dict with the children of `node`"""
         if node in self.children:
             return  # already expanded
-        self.children[node] = node.find_children()
+        self.children[node], env_use_amount = node.find_children()
 
     def _rollout(self, node, horizon=10):
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
