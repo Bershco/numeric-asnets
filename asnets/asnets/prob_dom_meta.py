@@ -759,9 +759,11 @@ class DomainMeta:
         Returns:
             str: a string representation of this domain.
         """
-        return 'DomainMeta(%s, %s, %s, %s)' \
-            % (self.name, self.unbound_acts, self.unbound_comps,
-               self.pred_names, self.func_names)
+
+        # return 'DomainMeta(%s, %s, %s, %s)' \
+        #     % (self.name, self.unbound_acts, self.unbound_comps,
+        #        self.pred_names, self.func_names)
+        return f'DomainMeta({self.name}, {self.unbound_acts}, {self.unbound_comps}, {self.pred_names}, {self.func_names})'
 
     # * The two methods below can have overlapping slot numbers.
 
@@ -1053,11 +1055,15 @@ class ProblemMeta:
         Returns:
             str: a string representation of this problem meta.
         """
-        return 'ProblemMeta(%s, %s, %s, %s, %s, %s, %s)' \
-            % (self.name, self.domain, self.bound_acts_ordered,
-               self.bound_props_ordered, self.bound_flnts_ordered,
-               self.bound_comps_ordered, self.goal_props, self.goal_flnts,
-               self.static_flnt_values)
+        # return 'ProblemMeta(%s, %s, %s, %s, %s, %s, %s)' \
+        #     % (self.name, self.domain, self.bound_acts_ordered,
+        #        self.bound_props_ordered, self.bound_flnts_ordered,
+        #        self.bound_comps_ordered, self.goal_props, self.goal_flnts,
+        #        self.static_flnt_values)
+        return (f'ProblemMeta({self.name}, {self.domain}, {self.bound_acts_ordered},'
+                f' {self.bound_props_ordered}, {self.bound_flnts_ordered},'
+                f' {self.bound_comps_ordered}, {self.goal_props}, {self.goal_flnts},'
+                f' {self.static_flnt_values}')
 
     @property
     def num_props(self) -> int:
