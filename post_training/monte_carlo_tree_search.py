@@ -49,6 +49,7 @@ class Node(ABC):
         """Nodes must be comparable"""
         return True
 
+
 class MCTS:
     """Monte Carlo tree searcher. First rollout the tree then choose a move."""
 
@@ -58,7 +59,7 @@ class MCTS:
         self.children: dict[Node, dict[int, Node]] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
 
-    def simulate(self, node, policy_network, horizon):
+    def mcts_iteration(self, node, policy_network, horizon):
         """Make the tree one layer better. (Train for one iteration.)"""
         path = self._select(node, policy_network)
         leaf = path[-1]
@@ -130,18 +131,18 @@ class MCTS:
                 log_N_vertex / self.N[n]
             )
 
-        action, node =  max(self.children[node].items(), key=uct)
+        action, node = max(self.children[node].items(), key=uct)
         return node
 
     def _puct_select(self, node, policy_network):
         """Sample a child of `node` using PUCT scores as softmax logits."""
 
-        # All children of node should already be expanded
+        # All children of node should already be generated
         assert all(child_node in self.children for child_node in self.children[node].values())
 
         # Get the prior probabilities from the policy network
         priors = policy_network(node.to_network_input())  # returns an eagertensor
-        priors = tf.squeeze(priors) # makes sure the tensor is (num_of_actions,) and not (1,num_of_actions)
+        priors = tf.squeeze(priors)  # makes sure the tensor is (num_of_actions,) and not (1,num_of_actions)
         priors = priors.numpy() if hasattr(priors, "numpy") else priors  # if running eagerly
 
         total_visits = self.N[node]
