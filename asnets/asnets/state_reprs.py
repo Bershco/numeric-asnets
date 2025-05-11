@@ -139,10 +139,13 @@ class CanonicalState(object):
             str: string representation of the state.
         """
         # Python-legible state
-        return '%s(%r, %r, %r)' \
-            % (self.__class__.__name__,
-               self.props_true, self.flnt_values, self.comps_true,
-               self.acts_enabled)
+        # return '%s(%r, %r, %r)' \
+        #     % (self.__class__.__name__,
+        #        self.props_true, self.flnt_values, self.comps_true,
+        #        self.acts_enabled)
+        return (f'{self.__class__.__name__},'
+                f' {self.props_true}, {self.flnt_values}, {self.comps_true},'
+                f' {self.acts_enabled}')
 
     def __str__(self) -> str:
         """Return a human-readable string representation of the state.
