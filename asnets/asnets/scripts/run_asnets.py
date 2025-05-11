@@ -250,8 +250,10 @@ class MonteCarloPolicyEvaluator(MCTS):
         print(f'[get_action_from_cstate] - chosen action: {corresponding_actions[0]}')
         return corresponding_actions[0]
 
-    def progress_to(self, cstate, cost):
+    def progress_to(self, action_id, cstate, cost):
         next_node = self.get_corresponding_mcts_node(cstate)
+        assert next_node == self.children[self.curr_tree_root][action_id]
+        self.prune_children_except(self.curr_tree_root, action_id)
         if next_node is None:
             logging.getLogger(__name__).info('Next node is not available, creating a new tree.')
             self.curr_tree_root = wrapInMCTSNode(cstate, self.policy, self.problem_service, cost)
@@ -272,6 +274,29 @@ class MonteCarloPolicyEvaluator(MCTS):
             assert isinstance(child_node, MCTSNode)
             self.state_to_node[child_node.state] = child_node
 
+    def prune_children_except(self, parent_node, keep_action):
+        children_dict = self.children.get(parent_node)
+        if children_dict is None:
+            return
+
+        for action, child_node in list(children_dict.items()):
+            if action == keep_action:
+                continue
+            self._delete_subtree(child_node)
+
+        # Replace children dict with just the one we kept
+        self.children[parent_node] = {
+            keep_action: children_dict[keep_action]
+        }
+
+    def _delete_subtree(self, node):
+        # Recursively delete the subtree rooted at this node
+        for _, child in self.children.get(node, {}).items():
+            self._delete_subtree(child)
+        self.children.pop(node, None)
+        self.N.pop(node, None)
+        self.Q.pop(node, None)
+        self.state_to_node.pop(node.state, None)
 
 @can_profile
 def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, graceful_timeout=300):
@@ -290,7 +315,7 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
             break
         action = policy_evaluator.get_action_from_cstate(curr_cstate, cost)
         curr_cstate, step_cost = to_local(problem_service.env_step(action))
-        policy_evaluator.progress_to(curr_cstate, cost+step_cost)
+        policy_evaluator.progress_to(action, curr_cstate, cost+step_cost)
         path.append(to_local(problem_service.action_name(action)))
         cost += step_cost
         if curr_cstate.is_goal:
