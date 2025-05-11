@@ -404,11 +404,21 @@ def make_problem_service(config, set_proc_title=False):
             self.current_state = next_cstate
             return self.current_state, step_cost
 
-        def exposed_env_simulate_step(self, action_num):
+        def exposed_env_simulate_step(self, cstate_to_simulate_from, action_num):
             """Perform an environment step without actually changing the state"""
-            action_num = to_local(action_num)
-            next_cstate, step_cost = sample_next_state(self.current_state, action_num, self.p)
-            return next_cstate, step_cost
+            try:
+                action_num = to_local(action_num)
+                # print(f"🛠️ Called env_simulate_step with action {action_num}")
+                local_cstate_copy = to_local(cstate_to_simulate_from)
+                following_cstate, step_cost = sample_next_state(local_cstate_copy, action_num, self.p)
+                return following_cstate, step_cost
+            except Exception as e:
+                import traceback
+                print("🚨 Exception inside env_simulate_step:")
+                traceback.print_exc()
+                print("Stack:")
+                traceback.print_stack()
+                raise
 
         def exposed_current_state(self):
             return self.current_state
