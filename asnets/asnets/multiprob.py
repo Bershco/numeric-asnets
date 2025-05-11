@@ -2,7 +2,6 @@
 their own sandboxed Python interpreters so that they can have their own copies
 of MDPSim and SSiPP."""
 
-from copy import deepcopy
 import ctypes
 import getpass
 import os
@@ -26,6 +25,9 @@ DEFAULT_CONFIG['safe_attrs'].add("copy")
 
 from asnets.utils.prof_utils import try_save_profile
 from asnets.utils.py_utils import set_random_seeds
+
+from rpyc.utils.classic import obtain
+
 
 
 def parent_death_pact(signal: signal.Signals=signal.SIGINT) -> None:
@@ -91,7 +93,8 @@ def to_local(obj):
     # faster.
     # TODO: make sure that you're transmitting observations as byte tensors
     # whenever possible (or at most float32s).
-    return deepcopy(obj)
+    # return deepcopy(obj)
+    return obtain(obj)
 
 
 def wait_exists_polling(file_path: str, 
