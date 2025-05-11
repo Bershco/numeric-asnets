@@ -11,6 +11,9 @@ import random
 import signal
 import sys
 from time import time
+
+from tensorflow.python.ops.gen_nn_ops import top_k
+
 from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import CanonicalState, sample_next_state
 from collections import defaultdict
@@ -87,18 +90,53 @@ class MCTSNode(Node):
         self.cost_until_now = cost_until_now
         self.reward_weight = reward_weight
 
+    def top_k_applicable(self, act_dist, mask, k=3):
+        act_dist = tf.convert_to_tensor(act_dist, dtype=tf.float32)
+        mask = tf.convert_to_tensor(mask, dtype=tf.bool)
+
+        # Zero out inapplicable actions
+        masked_act_dist = tf.where(mask, act_dist, tf.zeros_like(act_dist))
+
+        # Get top-k from the masked distribution
+        top_k = tf.math.top_k(masked_act_dist, k=k)
+        top_values = top_k.values  # shape (k,)
+        top_indices = top_k.indices  # shape (k,)
+
+        # Create a zero tensor and scatter top values back
+        pruned = tf.tensor_scatter_nd_update(
+            tf.zeros_like(act_dist),
+            indices=tf.expand_dims(top_indices, axis=1),
+            updates=top_values
+        )
+
+        # Normalize so the sum is 1 (if sum > 0)
+        total = tf.reduce_sum(pruned)
+        normalized = tf.cond(
+            total > 0,
+            lambda: pruned / total,
+            lambda: tf.zeros_like(pruned)
+        )
+
+        return normalized
+
     def find_children(self):
         """All possible successors of this board state"""
-        input_format_cstate = self.to_network_input()
-        act_dist = self.policy(input_format_cstate, training=False)
+        # input_format_cstate = self.to_network_input()
+        # act_dist = self.policy(input_format_cstate, training=False)
+        act_dist = self.get_act_dist_from_policy()
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
         act_dist = tf.squeeze(act_dist)
         mask = [self.is_applicable_action(i) for i in range(act_dist.shape[0])]
+
+        norm_masked_act_dist = self.top_k_applicable(act_dist,mask,k=5)
         output = dict()
         env_use_amount = 0
-        for i in range(len(act_dist)):
-            if not mask[i]: continue
-            cstate_after_action_i, step_cost = self.problem_service.env_simulate_step(int(i))
+        for i in range(len(norm_masked_act_dist)):
+            if norm_masked_act_dist[i] == 0: continue
+            if self.problem_service is None:
+                raise RuntimeError("problem_service is None — was it shut down?")
+            # cstate_after_action_i, step_cost = self.problem_service.env_simulate_step(self.state, int(i))
+            cstate_after_action_i, step_cost = self.simulate_step(i)
             env_use_amount += 1
             #as I don't want to get into those cstates, I'm just simulating the step, and not actually doing it.
             wrapped_output_cstate = wrapInMCTSNode(cstate_after_action_i, self.policy, self.problem_service, self.cost_until_now + step_cost)
@@ -107,24 +145,34 @@ class MCTSNode(Node):
 
     def find_child_by_policy(self):
         """Random successor of this board state (for more efficient simulation)"""
-        input_format_cstate = self.to_network_input()
-        act_dist = self.policy(input_format_cstate, training=False)
+        # input_format_cstate = self.to_network_input()                                                                 # negligible
+        # act_dist = self.policy(input_format_cstate, training=False)                                                   # shares above 90% with env_simulate_step - checking through another method because 'self.policy' is an attribute
+        act_dist = self.get_act_dist_from_policy()
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
         # next_action_ind = np.argmax(act_dist[0]) - this would have just generated a single trajectory from the select-
         # -ed MCTSNode, changing this to the distribution that is given by the policy network.
-        act_dist = tf.squeeze(act_dist)
-        mask = tf.convert_to_tensor([self.is_applicable_action(i) for i in range(act_dist.shape[0])], dtype=tf.bool)
-        masked_act_dist = tf.where(mask, act_dist, tf.zeros_like(act_dist))
-        total = tf.reduce_sum(masked_act_dist)
-        normalized_act_dist = tf.cond(
+        act_dist = tf.squeeze(act_dist)                                                                                 # tf - negligible
+        mask = tf.convert_to_tensor([self.is_applicable_action(i) for i in range(act_dist.shape[0])], dtype=tf.bool)    # tf - negligible
+        masked_act_dist = tf.where(mask, act_dist, tf.zeros_like(act_dist))                                             # tf - negligible
+        total = tf.reduce_sum(masked_act_dist)                                                                          # tf - negligible
+        normalized_act_dist = tf.cond(                                                                                  # tf - negligible
             tf.greater(total,0),
             lambda: masked_act_dist / total,
             lambda: tf.zeros_like(act_dist)
         )
-        norm_act_dist_np = normalized_act_dist.numpy()
-        next_action_ind = np.random.choice(len(norm_act_dist_np), p=norm_act_dist_np)
-        best_cstate, step_cost = self.problem_service.env_simulate_step(int(next_action_ind))
-        return wrapInMCTSNode(best_cstate, self.policy, self.problem_service, self.cost_until_now + step_cost)
+        norm_act_dist_np = normalized_act_dist.numpy()                                                                  # negligible
+        next_action_ind = np.random.choice(len(norm_act_dist_np), p=norm_act_dist_np)                                   # negligible
+        if self.problem_service is None:
+            raise RuntimeError("problem_service is None — was it shut down?")
+        # best_cstate, step_cost = self.problem_service.env_simulate_step(self.state, int(next_action_ind))             # shares above 90% with policy()
+        best_cstate, step_cost = self.simulate_step(next_action_ind)
+        return wrapInMCTSNode(best_cstate, self.policy, self.problem_service, self.cost_until_now + step_cost)          # around 6.9% of function time is wrapInMCTSNode
+
+    def get_act_dist_from_policy(self):
+        return self.policy(self.to_network_input(), training=False)
+
+    def simulate_step(self, action_id):
+        return self.problem_service.env_simulate_step(self.state, int(action_id))
 
     def is_terminal(self):
         """Returns True if the node has no children"""
@@ -181,8 +229,8 @@ class MonteCarloPolicyEvaluator(MCTS):
         if self.curr_tree_root is None:
             self.curr_tree_root = wrapInMCTSNode(cstate, self.policy, self.problem_service, 0)
             self.debug_orig_root = self.curr_tree_root
-        for i in range(self.iterations):
-            self.simulate(self.curr_tree_root, self.policy, self.horizon)
+        for _ in range(self.iterations):
+            self.mcts_iteration(self.curr_tree_root, self.policy, self.horizon)
 
         def score(pair):
             _, n = pair  # Extract node from the (action, node) tuple
