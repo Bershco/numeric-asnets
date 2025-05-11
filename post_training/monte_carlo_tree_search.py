@@ -85,7 +85,7 @@ class MCTS:
                 path.append(n)
                 return path
             # node = self._uct_select(node)  # descend a layer deeper
-            node = self._puct_select(node, policy_network) # same as the above line, but use the policy network
+            node = self._puct_select_no_cycle(node, policy_network, set(path))
 
     def _expand(self, node):
         """Update the `children` dict with the children of `node`"""
@@ -163,6 +163,51 @@ class MCTS:
 
         # If any node is unvisited (inf score), choose uniformly among them
         if any(np.isinf(score) for score in scores):
+            unexplored = [child for score, (_, child) in zip(scores, actions_nodes) if np.isinf(score)]
+            return np.random.choice(unexplored)
+
+        # Convert scores to probabilities via softmax
+        scores = np.array(scores, dtype=np.float64)
+        exp_probs = np.exp(scores - np.max(scores))  # subtract max for numerical stability
+        probs = exp_probs / np.sum(exp_probs)
+
+        # Sample an index from the softmax
+        idx = np.random.choice(len(actions_nodes), p=probs)
+        logging.getLogger(__name__).debug(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
+        return actions_nodes[idx][1]
+
+    def _puct_select_no_cycle(self, node, policy_network, path_set):
+        """Sample a child of `node` using PUCT scores as softmax logits and make sure to not get into cycles"""
+
+        # All children of node should already be generated
+        assert all(child_node in self.children for child_node in self.children[node].values())
+
+        # Get the prior probabilities from the policy network
+        priors = policy_network(node.to_network_input())  # returns an eagertensor
+        priors = tf.squeeze(priors)  # makes sure the tensor is (num_of_actions,) and not (1,num_of_actions)
+        priors = priors.numpy() if hasattr(priors, "numpy") else priors  # if running eagerly
+
+        total_visits = self.N[node]
+        scores = []
+        actions_nodes = list(self.children[node].items())  # List of (action, child_node)
+
+        for action, child in actions_nodes:
+            if child in path_set:  # as to not create a cycle
+                scores.append(float("-inf"))
+                continue
+            # Use prior if available, otherwise assume 0 (or small epsilon if you prefer)
+            prior = float(priors[action]) if 0 <= action < len(priors) else 0.0
+            if self.N[child] == 0:
+                score = float("inf")  # Encourage at least one visit
+            else:
+                q_value = self.Q[child] / self.N[child]
+                exploration = self.exploration_weight * prior * math.sqrt(total_visits) / (1 + self.N[child])
+                score = q_value + exploration
+
+            scores.append(score)
+
+        # If any node is unvisited (inf score), choose uniformly among them
+        if any(np.isposinf(score) for score in scores):
             unexplored = [child for score, (_, child) in zip(scores, actions_nodes) if np.isinf(score)]
             return np.random.choice(unexplored)
 
