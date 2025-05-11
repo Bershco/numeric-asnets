@@ -43,7 +43,7 @@ def get_pin_list():
 
 
 def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
-                     enforce_ncpus, cwd):
+                     enforce_ncpus, cwd, profiling=False):
     """Run ASNets code on current node. May be useful to wrap this in a
     ray.remote()."""
     cmdline = []
@@ -53,7 +53,16 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
         ts_cmd = ['taskset', '--cpu-list', pin_list_str]
         print('Pinning job with "%s"' % ' '.join(ts_cmd))
         cmdline.extend(ts_cmd)
-    cmdline.extend(['python3', '-m', 'asnets.scripts.run_asnets'] + flags)
+    if profiling:
+        cmdline.extend([
+                           'python3', '-m', 'cProfile', '-o', 'profile_output.prof',
+                           '-m', 'asnets.scripts.run_asnets'
+                       ] + flags)
+    else:
+        cmdline.extend(['python3', '-m', 'asnets.scripts.run_asnets'] + flags)
+
+    cmdline.extend(['--graceful-timeout', str(timeout-300)])
+    # for graceful timeout of a single trial - this is specifically for profiling, but can obviously be used otherwise
     print('Running command line "%s"' % ' '.join(cmdline))
 
     # we use this for logging
@@ -338,6 +347,11 @@ parser.add_argument(
     action='store_true',
     help='do not run evaluation (only train)')
 parser.add_argument(
+    '--profiling',
+    default=False,
+    action='store_true',
+    help='run cProfile on subprocesses running "run_asnets.py"')
+parser.add_argument(
     '--serial-test',
     default=False,
     action='store_true',
@@ -412,15 +426,17 @@ def main():
                 ray_kwargs["num_cpus"] = args.ray_ncpus
         ray.init(**ray_kwargs)
 
-    main_inner(arch_mod=arch_mod,
-            prob_mod=prob_mod,
-            job_ncpus=args.job_ncpus,
-            resume_from=args.resume_from,
-            enforce_job_ncpus=args.enforce_job_ncpus,
-            restrict_test_probs=args.restrict_test_probs,
-            override_enhsp_config=args.override_enhsp_config,
-            serial_test=args.serial_test,
-            no_eval=args.no_eval)
+    main_inner( arch_mod=arch_mod,
+                prob_mod=prob_mod,
+                job_ncpus=args.job_ncpus,
+                resume_from=args.resume_from,
+                enforce_job_ncpus=args.enforce_job_ncpus,
+                restrict_test_probs=args.restrict_test_probs,
+                override_enhsp_config=args.override_enhsp_config,
+                serial_test=args.serial_test,
+                no_eval=args.no_eval,
+                profiling = args.profiling,
+    )
     print('Fin :-)')
 
 
@@ -433,7 +449,8 @@ def main_inner(*,
                restrict_test_probs=None,
                override_enhsp_config=None,
                serial_test=None,
-               no_eval=None):
+               no_eval=None,
+               profiling=False):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
 
@@ -510,7 +527,9 @@ def main_inner(*,
                 enforce_ncpus=enforce_job_ncpus,
                 # run_asnets.py has its own timeout which it should obey, so
                 # give it some slack
-                timeout=arch_mod.EVAL_TIME_LIMIT_SECONDS + 30)
+                timeout=arch_mod.EVAL_TIME_LIMIT_SECONDS + 30,
+                profiling = profiling,
+            )
     else:
         print('Starting parallel test loop')
         job_infos = {}
