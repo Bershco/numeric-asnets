@@ -15,7 +15,6 @@ from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import CanonicalState, sample_next_state
 from collections import defaultdict
 
-from copy import deepcopy
 import joblib
 import numpy as np
 import rpyc
@@ -82,7 +81,7 @@ from post_training.monte_carlo_tree_search import Node
 class MCTSNode(Node):
 
     def __init__(self, state, policy, problem_service, cost_until_now, reward_weight = 1000):
-        self.state = deepcopy(state)
+        self.state = to_local(state)
         self.policy = policy #TODO: get this out of here.
         self.problem_service = problem_service
         self.cost_until_now = cost_until_now
