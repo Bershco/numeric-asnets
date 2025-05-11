@@ -247,6 +247,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         best_node = max(self.children[self.curr_tree_root].values(), key=node_ranking)
         corresponding_actions = [ac for ac,node in self.children[self.curr_tree_root].items() if node.__eq__(best_node)]
         assert len(corresponding_actions) == 1 #if not, there has been a fault somewhere that made two actions cause the same output state (maybe an inapplicable action was used?)
+        print(f'[get_action_from_cstate] - chosen action: {corresponding_actions[0]}')
         return corresponding_actions[0]
 
     def progress_to(self, cstate, cost):
@@ -273,15 +274,20 @@ class MonteCarloPolicyEvaluator(MCTS):
 
 
 @can_profile
-def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False):
+def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, graceful_timeout=300):
     """Run policy on problem. Returns (cost, path), where cost may be None if
     goal not reached before horizon."""
+    print(f'Graceful-timeout is set to {graceful_timeout}')
+    trial_start_time = time()
     problem_service = problem_server.service
     curr_cstate = to_local(problem_service.env_reset())
     # total cost of this run
     cost = 0
     path = []
-    for _ in range(1, limit):
+    for i in range(1, limit):
+        if time() - trial_start_time > graceful_timeout:
+            print('Graceful_timeout has been reached :)')
+            break
         action = policy_evaluator.get_action_from_cstate(curr_cstate, cost)
         curr_cstate, step_cost = to_local(problem_service.env_step(action))
         policy_evaluator.progress_to(curr_cstate, cost+step_cost)
@@ -293,11 +299,13 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False):
         # we can run out of time or run out of actions to take
         if curr_cstate.is_terminal:
             break
+        if i == limit-1:
+            print(" I actually reached the end, something weird is happening, only some actions were chosen but limit was reached? ")
     # path.append('FAIL! D:')
     return cost, False, path
 
 
-def run_trials(policy, problem_server, trials, iterations, horizon, limit=1000, det_sample=False):
+def run_trials(policy, problem_server, trials, iterations, horizon, limit=1000, det_sample=False, single_trial_graceful_timeout_sec=300):
     # policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
     policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, det_sample=det_sample, problem_service=problem_server.service, iterations=iterations, horizon=horizon)
     all_exec_times = []
@@ -307,7 +315,7 @@ def run_trials(policy, problem_server, trials, iterations, horizon, limit=1000, 
     for _ in tqdm.trange(trials, desc='trials', leave=True):
         start = time()
         cost, goal_reached, path = run_trial(policy_evaluator, problem_server,
-                                             limit, det_sample)
+                                             limit, det_sample,graceful_timeout=single_trial_graceful_timeout_sec)
         elapsed = time() - start
         paths.append(path)
         all_exec_times.append(elapsed)
@@ -701,13 +709,18 @@ parser.add_argument(
 parser.add_argument(
     '--mcts-iterations',
     type=int,
-    default=30,
+    default=3,
     help='Number of nodes to select->expand->rollout->backpropagate.')
 parser.add_argument(
     '--mcts-rollout-horizon',
     type=int,
     default=3,
     help='how far should the rollout go for.')
+parser.add_argument(
+    '--graceful-timeout',
+    type=int,
+    default=3000000,
+    help='Number of seconds to gracefully timeout after.')
 
 
 def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
@@ -722,7 +735,8 @@ def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
         limit=args.limit_turns,
         det_sample=args.det_eval,
         iterations=args.mcts_iterations,
-        horizon=args.mcts_rollout_horizon
+        horizon=args.mcts_rollout_horizon,
+        single_trial_graceful_timeout_sec=args.graceful_timeout,
     )
 
     # print('Trial results:')
