@@ -95,13 +95,13 @@ class MCTS:
 
     def _rollout(self, node, horizon=10):
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
-        invert_reward = True
+        # invert_reward = True
         for _ in range(horizon):
             if node.is_terminal():
-                reward = node.reward()
-                return 1 - reward if invert_reward else reward
+                return node.reward()
+                # return 1 - reward if invert_reward else reward
             node = node.find_child_by_policy()
-            invert_reward = not invert_reward
+            # invert_reward = not invert_reward
         return 0
 
     def _backpropagate(self, path, reward):
