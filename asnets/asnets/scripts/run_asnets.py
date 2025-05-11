@@ -303,6 +303,7 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
     """Run policy on problem. Returns (cost, path), where cost may be None if
     goal not reached before horizon."""
     print(f'Graceful-timeout is set to {graceful_timeout}')
+    print(f'Limit is set to {limit}')
     trial_start_time = time()
     problem_service = problem_server.service
     curr_cstate = to_local(problem_service.env_reset())
