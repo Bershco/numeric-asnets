@@ -234,8 +234,9 @@ class MonteCarloPolicyEvaluator(MCTS):
             next_action = self.path_until_goal[0]
             self.path_until_goal = self.path_until_goal[1:]
             return next_action
-        for _ in range(self.iterations) and self.path_until_goal is None:
-            self.mcts_iteration(self.curr_tree_root, self.policy, self.horizon)
+        for _ in range(self.iterations):
+            if self.path_until_goal is None:
+                self.mcts_iteration(self.curr_tree_root, self.policy, self.horizon)
 
         def score(pair):
             _, n = pair  # Extract node from the (action, node) tuple
