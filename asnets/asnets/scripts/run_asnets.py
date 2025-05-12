@@ -302,8 +302,8 @@ class MonteCarloPolicyEvaluator(MCTS):
 def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, graceful_timeout=300):
     """Run policy on problem. Returns (cost, path), where cost may be None if
     goal not reached before horizon."""
-    print(f'Graceful-timeout is set to {graceful_timeout}')
-    print(f'Limit is set to {limit}')
+    print(f'\n-------------> Graceful-timeout is set to {graceful_timeout}\n')
+    print(f'\n-------------> Limit is set to {limit}\n')
     trial_start_time = time()
     problem_service = problem_server.service
     curr_cstate = to_local(problem_service.env_reset())
@@ -820,6 +820,7 @@ def make_policy(args,
     elif args.resume_from:
         print('Reloading weight manager (resuming training)')
         resume_from_str = args.resume_from
+        print(f'\n\n[model-loading] - Resuming from: {args.resume_from}\n\n')
         resume_from_str = resume_from_str.replace("\\",'/') # for Windows support, do not delete.
         resume_from_path_obj = Path(resume_from_str)
         resume_from_path_obj = resume_from_path_obj.resolve(strict=False)
