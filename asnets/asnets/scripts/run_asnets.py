@@ -188,6 +188,7 @@ class MCTSNode(Node):
             return self.reward_weight / self.cost_until_now
         return 0
 
+
     def to_network_input(self):
         """Make the cstate represented by 'this' MCTSNode to be compatible for the policy network, and transposes it"""
         return self.state.to_network_input()[None, :]
@@ -229,7 +230,11 @@ class MonteCarloPolicyEvaluator(MCTS):
         if self.curr_tree_root is None:
             self.curr_tree_root = wrapInMCTSNode(cstate, self.policy, self.problem_service, 0)
             self.debug_orig_root = self.curr_tree_root
-        for _ in range(self.iterations):
+        if self.path_until_goal is not None:
+            next_action = self.path_until_goal[0]
+            self.path_until_goal = self.path_until_goal[1:]
+            return next_action
+        for _ in range(self.iterations) and self.path_until_goal is None:
             self.mcts_iteration(self.curr_tree_root, self.policy, self.horizon)
 
         def score(pair):

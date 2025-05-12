@@ -58,6 +58,7 @@ class MCTS:
         self.N = defaultdict(int)  # total visit count for each node
         self.children: dict[Node, dict[int, Node]] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
+        self.path_until_goal = None
 
     def mcts_iteration(self, node, policy_network, horizon):
         """Make the tree one layer better. (Train for one iteration.)"""
@@ -95,14 +96,14 @@ class MCTS:
 
     def _rollout(self, node, horizon=10):
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
-        # invert_reward = True
+        path = []
         for _ in range(horizon):
-            if node.is_terminal():
-                return node.reward()
-                # return 1 - reward if invert_reward else reward
+            path.append(node)
+            if node.is_goal():
+                self.path_until_goal = self.generate_action_path_from_path(path)
+                break
             node = node.find_child_by_policy()
-            # invert_reward = not invert_reward
-        return 0
+        return node.reward()
 
     def _backpropagate(self, path, reward):
         """Send the reward back up to the ancestors of the leaf"""
@@ -220,3 +221,19 @@ class MCTS:
         idx = np.random.choice(len(actions_nodes), p=probs)
         logging.getLogger(__name__).debug(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
         return actions_nodes[idx][1]
+
+    def generate_action_path_from_path(self, path):
+        assert isinstance(path, list) and len(path) > 0
+        action_path = []
+        for i in range(len(path) - 1):
+            curr_node, next_node = path[i], path[i + 1]
+            assert next_node in self.children[curr_node].values()
+
+            for action, node in self.children[curr_node].items():
+                if node == next_node:
+                    action_path.append(action)
+                    break
+            else:
+                raise ValueError(f"No action from {curr_node} to {next_node}")
+
+        return action_path
