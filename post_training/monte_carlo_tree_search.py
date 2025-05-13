@@ -96,13 +96,14 @@ class MCTS:
 
     def _rollout(self, node, horizon=10):
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
-        path = []
+        action_path = []
+        best_action = None
         for _ in range(horizon):
-            path.append(node)
+            action_path.append(best_action)
             if node.is_goal():
-                self.path_until_goal = self.generate_action_path_from_path(path)
+                self.path_until_goal = action_path[1:] #the first one is always None
                 break
-            node = node.find_child_by_policy()
+            best_action, node = node.find_child_by_policy()
         return node.reward()
 
     def _backpropagate(self, path, reward):
@@ -222,18 +223,3 @@ class MCTS:
         logging.getLogger(__name__).debug(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
         return actions_nodes[idx][1]
 
-    def generate_action_path_from_path(self, path):
-        assert isinstance(path, list) and len(path) > 0
-        action_path = []
-        for i in range(len(path) - 1):
-            curr_node, next_node = path[i], path[i + 1]
-            assert next_node in self.children[curr_node].values()
-
-            for action, node in self.children[curr_node].items():
-                if node == next_node:
-                    action_path.append(action)
-                    break
-            else:
-                raise ValueError(f"No action from {curr_node} to {next_node}")
-
-        return action_path

@@ -166,7 +166,7 @@ class MCTSNode(Node):
             raise RuntimeError("problem_service is None — was it shut down?")
         # best_cstate, step_cost = self.problem_service.env_simulate_step(self.state, int(next_action_ind))             # shares above 90% with policy()
         best_cstate, step_cost = self.simulate_step(next_action_ind)
-        return wrapInMCTSNode(best_cstate, self.policy, self.problem_service, self.cost_until_now + step_cost)          # around 6.9% of function time is wrapInMCTSNode
+        return next_action_ind, wrapInMCTSNode(best_cstate, self.policy, self.problem_service, self.cost_until_now + step_cost)          # around 6.9% of function time is wrapInMCTSNode
 
     def get_act_dist_from_policy(self):
         return self.policy(self.to_network_input(), training=False)
@@ -230,13 +230,13 @@ class MonteCarloPolicyEvaluator(MCTS):
         if self.curr_tree_root is None:
             self.curr_tree_root = wrapInMCTSNode(cstate, self.policy, self.problem_service, 0)
             self.debug_orig_root = self.curr_tree_root
+        for _ in range(self.iterations):
+            if self.path_until_goal is None:
+                self.mcts_iteration(self.curr_tree_root, self.policy, self.horizon)
         if self.path_until_goal is not None:
             next_action = self.path_until_goal[0]
             self.path_until_goal = self.path_until_goal[1:]
             return next_action
-        for _ in range(self.iterations):
-            if self.path_until_goal is None:
-                self.mcts_iteration(self.curr_tree_root, self.policy, self.horizon)
 
         def score(pair):
             _, n = pair  # Extract node from the (action, node) tuple
