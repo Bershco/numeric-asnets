@@ -308,7 +308,7 @@ class MonteCarloPolicyEvaluator(MCTS):
 def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, graceful_timeout=300):
     """Run policy on problem. Returns (cost, path), where cost may be None if
     goal not reached before horizon."""
-    print(f'\n-------------> Graceful-timeout is set to {graceful_timeout}\n')
+    print(f'\n-------------> Graceful_timeout is set to {graceful_timeout}\n')
     print(f'\n-------------> Limit is set to {limit}\n')
     trial_start_time = time()
     problem_service = problem_server.service
@@ -344,6 +344,8 @@ def run_trials(policy, problem_server, trials, iterations, horizon, limit=1000, 
     all_costs = []
     all_goal_reached = []
     paths = []
+    print(f'\n-------------> MCTS iterations number: {iterations}\n')
+    print(f'\n-------------> MCTS rollout horizon length: {horizon}\n')
     for _ in tqdm.trange(trials, desc='trials', leave=True):
         start = time()
         cost, goal_reached, path = run_trial(policy_evaluator, problem_server,
@@ -747,7 +749,7 @@ parser.add_argument(
     '--mcts-rollout-horizon',
     type=int,
     default=3,
-    help='how far should the rollout go for.')
+    help='How far should the mcts rollout go for.')
 parser.add_argument(
     '--graceful-timeout',
     type=int,

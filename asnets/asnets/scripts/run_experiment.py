@@ -399,6 +399,16 @@ parser.add_argument(
     metavar='prob-module',
     help='import path for Python file with problem config (e.g. '
     '"experiments.ex_blocksworld")')
+parser.add_argument(
+    '--mcts-iterations',
+    type=int,
+    default=3,
+    help='Number of nodes to select->expand->rollout->backpropagate.')
+parser.add_argument(
+    '--mcts-rollout-horizon',
+    type=int,
+    default=3,
+    help='How far should the mcts rollout go for.')
 
 
 def main():
@@ -436,6 +446,8 @@ def main():
                 serial_test=args.serial_test,
                 no_eval=args.no_eval,
                 profiling = args.profiling,
+                mcts_iterations= args.mcts_iterations,
+                mcts_rollout_horizon= args.mcts_rollout_horizon,
     )
     print('Fin :-)')
 
@@ -450,7 +462,9 @@ def main_inner(*,
                override_enhsp_config=None,
                serial_test=None,
                no_eval=None,
-               profiling=False):
+               profiling=False,
+               mcts_iterations=None,
+               mcts_rollout_horizon=None, ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
 
@@ -508,6 +522,11 @@ def main_inner(*,
     main_test_flags.extend(build_arch_flags(
         arch_mod, is_train=False,
         override_enhsp_config=override_enhsp_config))
+
+    if mcts_iterations is not None:
+        main_test_flags.extend(['--mcts-iterations', str(mcts_iterations)])
+    if mcts_rollout_horizon is not None:
+        main_test_flags.extend(['--mcts-rollout-horizon', str(mcts_rollout_horizon)])
 
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:
