@@ -96,14 +96,13 @@ class MCTS:
 
     def _rollout(self, node, horizon=10):
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
-        action_path = []
-        best_action = None
+        action_following_state_path = []
         for _ in range(horizon):
-            action_path.append(best_action)
             if node.is_goal():
-                self.path_until_goal = action_path[1:] #the first one is always None
+                self.path_until_goal = action_following_state_path
                 break
             best_action, node = node.find_child_by_policy()
+            action_following_state_path.append((best_action, node))
         return node.reward()
 
     def _backpropagate(self, path, reward):
