@@ -103,7 +103,7 @@ class MCTS:
                 action_path = []
                 curr_mcts_node = self.curr_tree_root
                 for action_from_path, mcts_node_from_path in action_following_state_path:
-                    if self.children[curr_mcts_node] is None:
+                    if curr_mcts_node not in self.children:
                         self.children[curr_mcts_node] = dict()
                     self.children[curr_mcts_node][action_from_path] = mcts_node_from_path
                     self.state_to_node[curr_mcts_node.state] = curr_mcts_node
