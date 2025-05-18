@@ -263,6 +263,8 @@ class MonteCarloPolicyEvaluator(MCTS):
 
     def progress_to(self, action_id, cstate, cost):
         next_node = self.get_corresponding_mcts_node(cstate)
+        assert next_node in self.children[self.curr_tree_root].values(), \
+            f"Assertion failed: next_node ({next_node}) is not one of current root's children"
         assert next_node == self.children[self.curr_tree_root][action_id], \
             f"Assertion failed: next_node ({next_node}) != expected ({self.children[self.curr_tree_root][action_id]})"
         self.prune_children_except(self.curr_tree_root, action_id)
