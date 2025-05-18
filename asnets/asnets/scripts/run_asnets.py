@@ -205,6 +205,9 @@ class MCTSNode(Node):
         """Nodes must be comparable"""
         return self.state.__eq__(node2.state)
 
+    def __repr__(self):
+        return self.state.__repr__()
+
 def wrapInMCTSNode(inner_node: CanonicalState, policy, problem_service, cost_until_now=float('inf')):
     return MCTSNode(state=inner_node, policy=policy, problem_service=problem_service, cost_until_now=cost_until_now)
 
@@ -237,7 +240,7 @@ class MonteCarloPolicyEvaluator(MCTS):
             next_action, next_mcts_node = self.path_until_goal[0]
             self.path_until_goal = self.path_until_goal[1:]
             self.children[self.state_to_node[cstate]][next_action] = next_mcts_node
-            self.state_to_node[next_mcts_node.state] = next_mcts_node 
+            self.state_to_node[next_mcts_node.state] = next_mcts_node
             return next_action
 
         def score(pair):
@@ -260,7 +263,8 @@ class MonteCarloPolicyEvaluator(MCTS):
 
     def progress_to(self, action_id, cstate, cost):
         next_node = self.get_corresponding_mcts_node(cstate)
-        assert next_node == self.children[self.curr_tree_root][action_id]
+        assert next_node == self.children[self.curr_tree_root][action_id], \
+            f"Assertion failed: next_node ({next_node}) != expected ({self.children[self.curr_tree_root][action_id]})"
         self.prune_children_except(self.curr_tree_root, action_id)
         if next_node is None:
             logging.getLogger(__name__).info('Next node is not available, creating a new tree.')
