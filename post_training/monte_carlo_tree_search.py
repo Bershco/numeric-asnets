@@ -94,19 +94,25 @@ class MCTS:
             return  # already expanded
         self.children[node], env_use_amount = node.find_children()
 
-    def _rollout(self, node, horizon=10):
+    def _rollout(self, mcts_node, horizon=10):
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
         action_following_state_path = []
         for _ in range(horizon):
-            if node.is_goal():
+            if mcts_node.is_goal():
                 print("\n\n============================================\nGoal was found during rollout\n============================================\n")
-                action_path = [act for act, state in action_following_state_path]
+                action_path = []
+                curr_mcts_node = self.curr_tree_root
+                for action_from_path, mcts_node_from_path in action_following_state_path:
+                    self.children[curr_mcts_node][action_from_path] = mcts_node_from_path
+                    self.state_to_node[curr_mcts_node.state] = curr_mcts_node
+                    curr_mcts_node = mcts_node_from_path
+                    action_path.append(action_from_path)
                 print(f"Next actions are: {action_path}")
                 self.path_until_goal = action_following_state_path
                 break
-            best_action, node = node.find_child_by_policy()
-            action_following_state_path.append((best_action, node))
-        return node.reward()
+            best_action, mcts_node = mcts_node.find_child_by_policy()
+            action_following_state_path.append((best_action, mcts_node))
+        return mcts_node.reward()
 
     def _backpropagate(self, path, reward):
         """Send the reward back up to the ancestors of the leaf"""
