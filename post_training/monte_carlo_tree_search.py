@@ -99,6 +99,7 @@ class MCTS:
         action_following_state_path = []
         for _ in range(horizon):
             if node.is_goal():
+                print("\n\n============================================\nGoal was found during rollout\n============================================")
                 self.path_until_goal = action_following_state_path
                 break
             best_action, node = node.find_child_by_policy()
