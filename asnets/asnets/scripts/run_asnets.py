@@ -239,6 +239,8 @@ class MonteCarloPolicyEvaluator(MCTS):
         if self.path_until_goal is not None:
             next_action, next_mcts_node = self.path_until_goal[0]
             self.path_until_goal = self.path_until_goal[1:]
+            if self.children[self.state_to_node[cstate]] is None:
+                self.children[self.state_to_node[cstate]] = dict()
             self.children[self.state_to_node[cstate]][next_action] = next_mcts_node
             self.state_to_node[next_mcts_node.state] = next_mcts_node
             return next_action
