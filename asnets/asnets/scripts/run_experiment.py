@@ -434,6 +434,7 @@ def main():
                     or args.job_ncpus <= args.ray_ncpus, \
                     "must have --job-ncpus <= --ray-ncpus if both given"
                 ray_kwargs["num_cpus"] = args.ray_ncpus
+        print("[DEBUG_RAY] - ray.init() called with:", ray_kwargs)
         ray.init(**ray_kwargs)
 
     main_inner( arch_mod=arch_mod,

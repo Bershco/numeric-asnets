@@ -7,10 +7,10 @@ https://gist.github.com/qpwo/c538c6f73727e254fdc7fab81024f6e1
 from abc import ABC, abstractmethod
 from collections import defaultdict
 import math
+
 import numpy as np
 import tensorflow as tf
 import logging
-
 
 class Node(ABC):
     """
@@ -67,6 +67,8 @@ class MCTS:
         self._expand(leaf)
         reward = self._rollout(leaf, horizon=horizon)
         self._backpropagate(path, reward)
+        if self.path_until_goal is not None:
+            self.path_until_goal = self.reconstructSelectionPath(node, path) + self.path_until_goal
 
     def _select(self, node: Node, policy_network):
         """Find an unexplored descendent of `node`"""
@@ -233,3 +235,14 @@ class MCTS:
         logging.getLogger(__name__).debug(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
         return actions_nodes[idx][1]
 
+    def reconstructSelectionPath(self, path_root, path):
+        assert path_root == self.curr_tree_root
+        output_path = [(None, path_root)]
+        for mcts_node in path:
+            if mcts_node == path_root:
+                continue
+            assert mcts_node in self.children[output_path[-1][1]].values()
+            for action, next_node in self.children[output_path[-1][1]].items():
+                if mcts_node == next_node:
+                    output_path.append((action, mcts_node))
+        return output_path[1:]
