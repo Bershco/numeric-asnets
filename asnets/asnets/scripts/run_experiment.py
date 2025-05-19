@@ -409,6 +409,11 @@ parser.add_argument(
     type=int,
     default=3,
     help='How far should the mcts rollout go for.')
+parser.add_argument(
+    '--random-seed',
+    type=int,
+    default=None,
+    help='Seed.')
 
 
 def main():
@@ -449,6 +454,7 @@ def main():
                 profiling = args.profiling,
                 mcts_iterations= args.mcts_iterations,
                 mcts_rollout_horizon= args.mcts_rollout_horizon,
+                random_seed=args.random_seed,
     )
     print('Fin :-)')
 
@@ -465,7 +471,9 @@ def main_inner(*,
                no_eval=None,
                profiling=False,
                mcts_iterations=None,
-               mcts_rollout_horizon=None, ):
+               mcts_rollout_horizon=None,
+               random_seed=None,
+               ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
 
@@ -528,6 +536,8 @@ def main_inner(*,
         main_test_flags.extend(['--mcts-iterations', str(mcts_iterations)])
     if mcts_rollout_horizon is not None:
         main_test_flags.extend(['--mcts-rollout-horizon', str(mcts_rollout_horizon)])
+    if random_seed is not None:
+        main_test_flags.extend(['--random-seed', str(random_seed)])
 
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:

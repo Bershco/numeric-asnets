@@ -68,7 +68,7 @@ class MCTS:
         reward = self._rollout(leaf, horizon=horizon)
         self._backpropagate(path, reward)
         if self.path_until_goal is not None:
-            self.path_until_goal = self.reconstructSelectionPath(node, path) + self.path_until_goal
+            self.path_until_goal = self.reconstructSelectionPath(path) + self.path_until_goal
 
     def _select(self, node: Node, policy_network):
         """Find an unexplored descendent of `node`"""
@@ -114,7 +114,7 @@ class MCTS:
                 print(f"Next actions are: {action_path}")
                 self.path_until_goal = action_following_state_path
                 break
-            best_action, mcts_node = mcts_node.find_child_by_policy()
+            best_action, mcts_node = mcts_node.find_child_by_policy(self.seed)
             action_following_state_path.append((best_action, mcts_node))
         return mcts_node.reward()
 
@@ -178,6 +178,7 @@ class MCTS:
         # If any node is unvisited (inf score), choose uniformly among them
         if any(np.isinf(score) for score in scores):
             unexplored = [child for score, (_, child) in zip(scores, actions_nodes) if np.isinf(score)]
+            np.random.seed(self.seed)
             return np.random.choice(unexplored)
 
         # Convert scores to probabilities via softmax
@@ -186,6 +187,7 @@ class MCTS:
         probs = exp_probs / np.sum(exp_probs)
 
         # Sample an index from the softmax
+        np.random.seed(self.seed)
         idx = np.random.choice(len(actions_nodes), p=probs)
         logging.getLogger(__name__).debug(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
         return actions_nodes[idx][1]
@@ -223,6 +225,7 @@ class MCTS:
         # If any node is unvisited (inf score), choose uniformly among them
         if any(np.isposinf(score) for score in scores):
             unexplored = [child for score, (_, child) in zip(scores, actions_nodes) if np.isinf(score)]
+            np.random.seed(self.seed)
             return np.random.choice(unexplored)
 
         # Convert scores to probabilities via softmax
@@ -231,15 +234,16 @@ class MCTS:
         probs = exp_probs / np.sum(exp_probs)
 
         # Sample an index from the softmax
+        np.random.seed(self.seed)
         idx = np.random.choice(len(actions_nodes), p=probs)
-        logging.getLogger(__name__).debug(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
+        # logging.getLogger(__name__).debug(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
+        print(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
         return actions_nodes[idx][1]
 
-    def reconstructSelectionPath(self, path_root, path):
-        assert path_root == self.curr_tree_root
-        output_path = [(None, path_root)]
+    def reconstructSelectionPath(self, path):
+        output_path = [(None, self.curr_tree_root)]
         for mcts_node in path:
-            if mcts_node == path_root:
+            if mcts_node == self.curr_tree_root:
                 continue
             assert mcts_node in self.children[output_path[-1][1]].values()
             for action, next_node in self.children[output_path[-1][1]].items():

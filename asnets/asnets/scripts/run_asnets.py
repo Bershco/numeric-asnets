@@ -83,12 +83,13 @@ class CachingPolicyEvaluator(object):
 from post_training.monte_carlo_tree_search import Node
 class MCTSNode(Node):
 
-    def __init__(self, state, policy, problem_service, cost_until_now, reward_weight = 1000):
+    def __init__(self, state, policy, problem_service, cost_until_now, previous_action, reward_weight = 1000):
         self.state = to_local(state)
         self.policy = policy #TODO: get this out of here.
         self.problem_service = problem_service
         self.cost_until_now = cost_until_now
         self.reward_weight = reward_weight
+        self.previous_action = previous_action
 
     def top_k_applicable(self, act_dist, mask, k=3):
         act_dist = tf.convert_to_tensor(act_dist, dtype=tf.float32)
@@ -139,11 +140,11 @@ class MCTSNode(Node):
             cstate_after_action_i, step_cost = self.simulate_step(i)
             env_use_amount += 1
             #as I don't want to get into those cstates, I'm just simulating the step, and not actually doing it.
-            wrapped_output_cstate = wrapInMCTSNode(cstate_after_action_i, self.policy, self.problem_service, self.cost_until_now + step_cost)
+            wrapped_output_cstate = wrapInMCTSNode(cstate_after_action_i, self.policy, self.problem_service, cost_until_now=self.cost_until_now + step_cost, previous_action=i)
             output[i] = wrapped_output_cstate
         return output, env_use_amount
 
-    def find_child_by_policy(self):
+    def find_child_by_policy(self, seed):
         """Random successor of this board state (for more efficient simulation)"""
         # input_format_cstate = self.to_network_input()                                                                 # negligible
         # act_dist = self.policy(input_format_cstate, training=False)                                                   # shares above 90% with env_simulate_step - checking through another method because 'self.policy' is an attribute
@@ -161,12 +162,13 @@ class MCTSNode(Node):
             lambda: tf.zeros_like(act_dist)
         )
         norm_act_dist_np = normalized_act_dist.numpy()                                                                  # negligible
+        np.random.seed(seed)
         next_action_ind = np.random.choice(len(norm_act_dist_np), p=norm_act_dist_np)                                   # negligible
         if self.problem_service is None:
             raise RuntimeError("problem_service is None — was it shut down?")
         # best_cstate, step_cost = self.problem_service.env_simulate_step(self.state, int(next_action_ind))             # shares above 90% with policy()
         best_cstate, step_cost = self.simulate_step(next_action_ind)
-        return next_action_ind, wrapInMCTSNode(best_cstate, self.policy, self.problem_service, self.cost_until_now + step_cost)          # around 6.9% of function time is wrapInMCTSNode
+        return next_action_ind, wrapInMCTSNode(best_cstate, self.policy, self.problem_service, cost_until_now=self.cost_until_now + step_cost, previous_action=next_action_ind)          # around 6.9% of function time is wrapInMCTSNode
 
     def get_act_dist_from_policy(self):
         return self.policy(self.to_network_input(), training=False)
@@ -208,13 +210,13 @@ class MCTSNode(Node):
     def __repr__(self):
         return self.state.__repr__()
 
-def wrapInMCTSNode(inner_node: CanonicalState, policy, problem_service, cost_until_now=float('inf')):
-    return MCTSNode(state=inner_node, policy=policy, problem_service=problem_service, cost_until_now=cost_until_now)
+def wrapInMCTSNode(inner_node: CanonicalState, policy, problem_service, previous_action, cost_until_now=float('inf')):
+    return MCTSNode(state=inner_node, policy=policy, problem_service=problem_service, cost_until_now=cost_until_now, previous_action=previous_action)
 
 from post_training.monte_carlo_tree_search import MCTS
 class MonteCarloPolicyEvaluator(MCTS):
 
-    def __init__(self, policy, problem_service, horizon, det_sample=True, exploration_weight=1, iterations=10):
+    def __init__(self, policy, problem_service, horizon, det_sample=True, exploration_weight=1, iterations=10, seed=42):
         super().__init__(exploration_weight)
         self.policy = policy
         self.det_sample = det_sample
@@ -225,13 +227,14 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.debug_orig_root = None
         self.state_to_node = {}
         self.env_use_amount = 0
+        self.seed = seed
 
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
 
     def get_action_from_cstate(self, cstate, cost): #cstate is non-terminal
         if self.curr_tree_root is None:
-            self.curr_tree_root = wrapInMCTSNode(cstate, self.policy, self.problem_service, 0)
+            self.curr_tree_root = wrapInMCTSNode(cstate, self.policy, self.problem_service, cost_until_now=0, previous_action=None)
             self.debug_orig_root = self.curr_tree_root
         for _ in range(self.iterations):
             if self.path_until_goal is None:
@@ -239,7 +242,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         if self.path_until_goal is not None:
             next_action, next_mcts_node = self.path_until_goal[0]
             self.path_until_goal = self.path_until_goal[1:]
-            if self.children[self.state_to_node[cstate]] is None:
+            if self.state_to_node[cstate] not in self.children:
                 self.children[self.state_to_node[cstate]] = dict()
             self.children[self.state_to_node[cstate]][next_action] = next_mcts_node
             self.state_to_node[next_mcts_node.state] = next_mcts_node
@@ -272,7 +275,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.prune_children_except(self.curr_tree_root, action_id)
         if next_node is None:
             logging.getLogger(__name__).info('Next node is not available, creating a new tree.')
-            self.curr_tree_root = wrapInMCTSNode(cstate, self.policy, self.problem_service, cost)
+            self.curr_tree_root = wrapInMCTSNode(cstate, self.policy, self.problem_service, cost_until_now=cost,previous_action=action_id)
         else:
             self.curr_tree_root = next_node
             logging.getLogger(__name__).info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
@@ -347,9 +350,9 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
     return cost, False, path
 
 
-def run_trials(policy, problem_server, trials, iterations, horizon, limit=1000, det_sample=False, single_trial_graceful_timeout_sec=300):
+def run_trials(policy, problem_server, trials, iterations, horizon, limit=1000, det_sample=False, single_trial_graceful_timeout_sec=300, seed=42):
     # policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
-    policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, det_sample=det_sample, problem_service=problem_server.service, iterations=iterations, horizon=horizon)
+    policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, det_sample=det_sample, problem_service=problem_server.service, iterations=iterations, horizon=horizon, seed=seed)
     all_exec_times = []
     all_costs = []
     all_goal_reached = []
@@ -765,6 +768,11 @@ parser.add_argument(
     type=int,
     default=3000000,
     help='Number of seconds to gracefully timeout after.')
+parser.add_argument(
+    '--random-seed',
+    type=int,
+    default=None,
+    help='Seed.')
 
 
 def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
@@ -781,6 +789,7 @@ def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
         iterations=args.mcts_iterations,
         horizon=args.mcts_rollout_horizon,
         single_trial_graceful_timeout_sec=args.graceful_timeout,
+        seed=args.random_seed,
     )
 
     # print('Trial results:')
@@ -1113,6 +1122,11 @@ def main():
     snapshot_dir = path.join(scratch_dir, 'snapshots')
     makedirs(snapshot_dir, exist_ok=True)
     print('Snapshot directory:', snapshot_dir)
+
+    if args.random_seed is None:
+        args.random_seed = np.random.randint(int(1e6))
+        print(f'\nRandom seed was not set, so it is now {args.random_seed}\n')
+
 
     main_supervised(args, unique_prefix, snapshot_dir, scratch_dir)
 
