@@ -119,51 +119,6 @@ class MCTSNode(Node):
 
         return normalized
 
-    def find_children(self, policy_network, problem_service):
-        """All possible successors of this board state"""
-        # input_format_cstate = self.to_network_input()
-        act_dist = self.get_act_dist_from_policy()
-        # act_dist is a vector of shape (1,n) of distribution of action possibilities
-        act_dist = tf.squeeze(act_dist)
-        mask = [self.is_applicable_action(i) for i in range(act_dist.shape[0])]
-
-        norm_masked_act_dist = self.top_k_applicable(act_dist,mask,k=5)
-        output = dict()
-        for i in range(len(norm_masked_act_dist)):
-            if norm_masked_act_dist[i] == 0: continue
-            if problem_service is None:
-                raise RuntimeError("problem_service is None — was it shut down?")
-            cstate_after_action_i, step_cost = self.simulate_step(i)
-            #as I don't want to get into those cstates, I'm just simulating the step, and not actually doing it.
-            wrapped_output_cstate = wrapInMCTSNode(cstate_after_action_i, cost_until_now=self.cost_until_now + step_cost, previous_action=i)
-            output[i] = wrapped_output_cstate
-        return output
-
-    def find_child_by_policy(self, seed, policy_network, problem_service):
-        """Random successor of this board state (for more efficient simulation)"""
-        # input_format_cstate = self.to_network_input()                                                                 # negligible
-        act_dist = self.get_act_dist_from_policy(policy_network)
-        # act_dist is a vector of shape (1,n) of distribution of action possibilities
-        # next_action_ind = np.argmax(act_dist[0]) - this would have just generated a single trajectory from the select-
-        # -ed MCTSNode, changing this to the distribution that is given by the policy network.
-        act_dist = tf.squeeze(act_dist)                                                                                 # tf - negligible
-        mask = tf.convert_to_tensor([self.is_applicable_action(i) for i in range(act_dist.shape[0])], dtype=tf.bool)    # tf - negligible
-        masked_act_dist = tf.where(mask, act_dist, tf.zeros_like(act_dist))                                             # tf - negligible
-        total = tf.reduce_sum(masked_act_dist)                                                                          # tf - negligible
-        normalized_act_dist = tf.cond(                                                                                  # tf - negligible
-            tf.greater(total,0),
-            lambda: masked_act_dist / total,
-            lambda: tf.zeros_like(act_dist)
-        )
-        norm_act_dist_np = normalized_act_dist.numpy()                                                                  # negligible
-        np.random.seed(seed)
-        next_action_ind = np.random.choice(len(norm_act_dist_np), p=norm_act_dist_np)                                   # negligible
-        if problem_service is None:
-            raise RuntimeError("problem_service is None — was it shut down?")
-        best_cstate, step_cost = self.simulate_step(next_action_ind, problem_service)
-        return next_action_ind, wrapInMCTSNode(best_cstate, cost_until_now=self.cost_until_now + step_cost,
-                                               previous_action=next_action_ind)                                         # around 6.9% of function time is wrapInMCTSNode
-
     def get_act_dist_from_policy(self, policy_network):
         return policy_network(self.to_network_input(), training=False)
 
@@ -210,17 +165,19 @@ def wrapInMCTSNode(inner_node: CanonicalState, previous_action, cost_until_now=f
 from post_training.monte_carlo_tree_search import MCTS
 class MonteCarloPolicyEvaluator(MCTS):
 
-    def __init__(self, policy, problem_service, horizon, exploration_weight=1, iterations=10, seed=42):
+    def __init__(self, policy, problem_service, horizon, exploration_weight=1, iterations=10, seed=42, num_cstates_to_expand=5,):
         super().__init__(exploration_weight)
         self.policy = policy
         self.problem_service = problem_service
         self.iterations = iterations
         self.horizon = horizon
         self.seed = seed
+        self.k = num_cstates_to_expand
         self.curr_tree_root = None
         self.debug_orig_root = None
         self.state_to_node = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
         self.visited_cstates_hashes: Set[int] = set()
+        self.revisit_counter = 0
 
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
@@ -276,11 +233,34 @@ class MonteCarloPolicyEvaluator(MCTS):
     def _expand(self, node):
         if node in self.children:
             return
-        self.children[node] = node.find_children()
+        # self.children[node] = node.find_children(self.policy, self.problem_service)
+        self.children[node] = self.find_children(node)
         self.state_to_node[node.state] = node
         for child_node in self.children[node].values():
             assert isinstance(child_node, MCTSNode)
             self.state_to_node[child_node.state] = child_node
+
+    def _rollout(self, mcts_node, horizon=10):
+        """Returns the reward for a random simulation (to a certain horizon) of `node`"""
+        action_following_state_path = []
+        for _ in range(horizon):
+            if mcts_node.is_goal():
+                print("\n\n============================================\nGoal was found during rollout\n============================================\n")
+                action_path = []
+                curr_mcts_node = self.curr_tree_root
+                for action_from_path, mcts_node_from_path in action_following_state_path:
+                    if curr_mcts_node not in self.children:
+                        self.children[curr_mcts_node] = dict()
+                    self.children[curr_mcts_node][action_from_path] = mcts_node_from_path
+                    self.state_to_node[curr_mcts_node.state] = curr_mcts_node
+                    curr_mcts_node = mcts_node_from_path
+                    action_path.append(action_from_path)
+                print(f"Next actions are: {action_path}")
+                self.path_until_goal = action_following_state_path
+                break
+            best_action, mcts_node = self.find_child_by_policy(mcts_node)
+            action_following_state_path.append((best_action, mcts_node))
+        return mcts_node.reward()
 
     def prune_children_except(self, parent_node, keep_action):
         children_dict = self.children.get(parent_node)
@@ -305,6 +285,63 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.N.pop(node, None)
         self.Q.pop(node, None)
         self.state_to_node.pop(node.state, None)
+
+    def find_children(self, parent_node: MCTSNode):
+        """Find up to k=5 successors of parent_node that are applicable and not yet visited"""
+        act_dist = tf.squeeze(parent_node.get_act_dist_from_policy(self.policy)).numpy()
+        mask = [parent_node.is_applicable_action(i) for i in range(len(act_dist))]
+        # Rank actions by descending policy probability
+        sorted_indices = sorted(range(len(act_dist)), key=lambda i: act_dist[i], reverse=True)
+        output = dict()
+        selected = 0
+        for i in sorted_indices:
+            if selected >= self.k:
+                break
+            if not mask[i] or act_dist[i] == 0.0:
+                continue
+            if self.problem_service is None:
+                raise RuntimeError("problem_service is None — was it shut down?")
+            # Simulate step only now (expensive!)
+            cstate_after_action_i, step_cost = parent_node.simulate_step(i, self.problem_service)
+            if hash(cstate_after_action_i) in self.visited_cstates_hashes:
+                self.revisit_counter += 1
+                if self.revisit_counter % 100 == 0:
+                    print(f"========>>There has been {self.revisit_counter} re-visitations in canonical states so far.")
+                continue  # skip visited cstates
+            wrapped_output_cstate = wrapInMCTSNode(
+                cstate_after_action_i,
+                cost_until_now=parent_node.cost_until_now + step_cost,
+                previous_action=i
+            )
+            output[i] = wrapped_output_cstate
+            selected += 1
+
+        return output
+    def find_child_by_policy(self, parent_node: MCTSNode):
+        """Random successor of this board state (for more efficient simulation)"""
+        # input_format_cstate = self.to_network_input()                                                                 # negligible
+        act_dist = parent_node.get_act_dist_from_policy(self.policy)
+        # act_dist is a vector of shape (1,n) of distribution of action possibilities
+        # next_action_ind = np.argmax(act_dist[0]) - this would have just generated a single trajectory from the select-
+        # -ed MCTSNode, changing this to the distribution that is given by the policy network.
+        act_dist = tf.squeeze(act_dist)                                                                                 # tf - negligible
+        mask = tf.convert_to_tensor([parent_node.is_applicable_action(i) for i in range(act_dist.shape[0])], dtype=tf.bool)    # tf - negligible
+        masked_act_dist = tf.where(mask, act_dist, tf.zeros_like(act_dist))                                             # tf - negligible
+        total = tf.reduce_sum(masked_act_dist)                                                                          # tf - negligible
+        normalized_act_dist = tf.cond(                                                                                  # tf - negligible
+            tf.greater(total,0),
+            lambda: masked_act_dist / total,
+            lambda: tf.zeros_like(act_dist)
+        )
+        norm_act_dist_np = normalized_act_dist.numpy()                                                                  # negligible
+        np.random.seed(self.seed)
+        next_action_ind = np.random.choice(len(norm_act_dist_np), p=norm_act_dist_np)                                   # negligible
+        if self.problem_service is None:
+            raise RuntimeError("problem_service is None — was it shut down?")
+        best_cstate, step_cost = parent_node.simulate_step(next_action_ind, self.problem_service)
+        return next_action_ind, wrapInMCTSNode(best_cstate, cost_until_now=parent_node.cost_until_now + step_cost,
+                                               previous_action=next_action_ind)                                         # around 6.9% of function time is wrapInMCTSNode
+
 
 @can_profile
 def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, graceful_timeout=300):
@@ -339,9 +376,12 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
     return cost, False, path
 
 
-def run_trials(policy, problem_server, trials, iterations, horizon, limit=1000, det_sample=False, single_trial_graceful_timeout_sec=300, seed=42):
+def run_trials(policy, problem_server, trials, iterations, horizon, limit=1000, det_sample=False,
+               single_trial_graceful_timeout_sec=300, seed=42, num_cstates_to_expand=5):
     # policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
-    policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, det_sample=det_sample, problem_service=problem_server.service, iterations=iterations, horizon=horizon, seed=seed)
+    policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, problem_service=problem_server.service,
+                                                 iterations=iterations, horizon=horizon, seed=seed,
+                                                 num_cstates_to_expand=num_cstates_to_expand)
     all_exec_times = []
     all_costs = []
     all_goal_reached = []
@@ -762,6 +802,11 @@ parser.add_argument(
     type=int,
     default=None,
     help='Seed.')
+parser.add_argument(
+    '--mcts-expansion-size',
+    type=int,
+    default=5,
+    help='Number of MCTS Nodes to generate upon MCTS parent node expansion.')
 
 
 def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
@@ -779,6 +824,7 @@ def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
         horizon=args.mcts_rollout_horizon,
         single_trial_graceful_timeout_sec=args.graceful_timeout,
         seed=args.random_seed,
+        num_cstates_to_expand=args.mcts_expansion_size,
     )
 
     # print('Trial results:')

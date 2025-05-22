@@ -20,16 +20,6 @@ class Node(ABC):
     """
 
     @abstractmethod
-    def find_children(self, policy_network, problem_service):
-        """All possible successors of this board state"""
-        return set()
-
-    @abstractmethod
-    def find_child_by_policy(self, seed, policy_network, problem_service):
-        """Random successor of this board state (for more efficient simulation)"""
-        return None
-
-    @abstractmethod
     def is_terminal(self):
         """Returns True if the node has no children"""
         return True
@@ -92,31 +82,12 @@ class MCTS:
 
     def _expand(self, node):
         """Update the `children` dict with the children of `node`"""
-        if node in self.children:
-            return  # already expanded
-        self.children[node] = node.find_children()
+        raise NotImplemented
+
 
     def _rollout(self, mcts_node, horizon=10):
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
-        action_following_state_path = []
-        for _ in range(horizon):
-            if mcts_node.is_goal():
-                print("\n\n============================================\nGoal was found during rollout\n============================================\n")
-                action_path = []
-                curr_mcts_node = self.curr_tree_root
-                for action_from_path, mcts_node_from_path in action_following_state_path:
-                    if curr_mcts_node not in self.children:
-                        self.children[curr_mcts_node] = dict()
-                    self.children[curr_mcts_node][action_from_path] = mcts_node_from_path
-                    self.state_to_node[curr_mcts_node.state] = curr_mcts_node
-                    curr_mcts_node = mcts_node_from_path
-                    action_path.append(action_from_path)
-                print(f"Next actions are: {action_path}")
-                self.path_until_goal = action_following_state_path
-                break
-            best_action, mcts_node = mcts_node.find_child_by_policy(self.seed)
-            action_following_state_path.append((best_action, mcts_node))
-        return mcts_node.reward()
+        raise NotImplemented
 
     def _backpropagate(self, path, reward):
         """Send the reward back up to the ancestors of the leaf"""

@@ -414,6 +414,11 @@ parser.add_argument(
     type=int,
     default=None,
     help='Seed.')
+parser.add_argument(
+    '--mcts-expansion-size',
+    type=int,
+    default=None,
+    help='Number of MCTS Nodes to generate upon MCTS parent node expansion.')
 
 
 def main():
@@ -455,6 +460,7 @@ def main():
                 mcts_iterations= args.mcts_iterations,
                 mcts_rollout_horizon= args.mcts_rollout_horizon,
                 random_seed=args.random_seed,
+                mcts_expansion_size=args.mcts_expansion_size,
     )
     print('Fin :-)')
 
@@ -473,6 +479,7 @@ def main_inner(*,
                mcts_iterations=None,
                mcts_rollout_horizon=None,
                random_seed=None,
+               mcts_expansion_size=None,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -538,6 +545,8 @@ def main_inner(*,
         main_test_flags.extend(['--mcts-rollout-horizon', str(mcts_rollout_horizon)])
     if random_seed is not None:
         main_test_flags.extend(['--random-seed', str(random_seed)])
+    if mcts_expansion_size is not None:
+        main_test_flags.extend(['--mcts-expansion-size', str(mcts_expansion_size)])
 
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:
