@@ -11,6 +11,7 @@ import random
 import signal
 import sys
 from time import time
+from typing import Set
 
 from tensorflow.python.ops.gen_nn_ops import top_k
 
@@ -83,10 +84,8 @@ class CachingPolicyEvaluator(object):
 from post_training.monte_carlo_tree_search import Node
 class MCTSNode(Node):
 
-    def __init__(self, state, policy, problem_service, cost_until_now, previous_action, reward_weight = 1000):
+    def __init__(self, state, cost_until_now, previous_action, reward_weight = 1000):
         self.state = to_local(state)
-        self.policy = policy #TODO: get this out of here.
-        self.problem_service = problem_service
         self.cost_until_now = cost_until_now
         self.reward_weight = reward_weight
         self.previous_action = previous_action
@@ -120,10 +119,9 @@ class MCTSNode(Node):
 
         return normalized
 
-    def find_children(self):
+    def find_children(self, policy_network, problem_service):
         """All possible successors of this board state"""
         # input_format_cstate = self.to_network_input()
-        # act_dist = self.policy(input_format_cstate, training=False)
         act_dist = self.get_act_dist_from_policy()
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
         act_dist = tf.squeeze(act_dist)
@@ -131,24 +129,20 @@ class MCTSNode(Node):
 
         norm_masked_act_dist = self.top_k_applicable(act_dist,mask,k=5)
         output = dict()
-        env_use_amount = 0
         for i in range(len(norm_masked_act_dist)):
             if norm_masked_act_dist[i] == 0: continue
-            if self.problem_service is None:
+            if problem_service is None:
                 raise RuntimeError("problem_service is None — was it shut down?")
-            # cstate_after_action_i, step_cost = self.problem_service.env_simulate_step(self.state, int(i))
             cstate_after_action_i, step_cost = self.simulate_step(i)
-            env_use_amount += 1
             #as I don't want to get into those cstates, I'm just simulating the step, and not actually doing it.
-            wrapped_output_cstate = wrapInMCTSNode(cstate_after_action_i, self.policy, self.problem_service, cost_until_now=self.cost_until_now + step_cost, previous_action=i)
+            wrapped_output_cstate = wrapInMCTSNode(cstate_after_action_i, cost_until_now=self.cost_until_now + step_cost, previous_action=i)
             output[i] = wrapped_output_cstate
-        return output, env_use_amount
+        return output
 
-    def find_child_by_policy(self, seed):
+    def find_child_by_policy(self, seed, policy_network, problem_service):
         """Random successor of this board state (for more efficient simulation)"""
         # input_format_cstate = self.to_network_input()                                                                 # negligible
-        # act_dist = self.policy(input_format_cstate, training=False)                                                   # shares above 90% with env_simulate_step - checking through another method because 'self.policy' is an attribute
-        act_dist = self.get_act_dist_from_policy()
+        act_dist = self.get_act_dist_from_policy(policy_network)
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
         # next_action_ind = np.argmax(act_dist[0]) - this would have just generated a single trajectory from the select-
         # -ed MCTSNode, changing this to the distribution that is given by the policy network.
@@ -164,17 +158,17 @@ class MCTSNode(Node):
         norm_act_dist_np = normalized_act_dist.numpy()                                                                  # negligible
         np.random.seed(seed)
         next_action_ind = np.random.choice(len(norm_act_dist_np), p=norm_act_dist_np)                                   # negligible
-        if self.problem_service is None:
+        if problem_service is None:
             raise RuntimeError("problem_service is None — was it shut down?")
-        # best_cstate, step_cost = self.problem_service.env_simulate_step(self.state, int(next_action_ind))             # shares above 90% with policy()
-        best_cstate, step_cost = self.simulate_step(next_action_ind)
-        return next_action_ind, wrapInMCTSNode(best_cstate, self.policy, self.problem_service, cost_until_now=self.cost_until_now + step_cost, previous_action=next_action_ind)          # around 6.9% of function time is wrapInMCTSNode
+        best_cstate, step_cost = self.simulate_step(next_action_ind, problem_service)
+        return next_action_ind, wrapInMCTSNode(best_cstate, cost_until_now=self.cost_until_now + step_cost,
+                                               previous_action=next_action_ind)                                         # around 6.9% of function time is wrapInMCTSNode
 
-    def get_act_dist_from_policy(self):
-        return self.policy(self.to_network_input(), training=False)
+    def get_act_dist_from_policy(self, policy_network):
+        return policy_network(self.to_network_input(), training=False)
 
-    def simulate_step(self, action_id):
-        return self.problem_service.env_simulate_step(self.state, int(action_id))
+    def simulate_step(self, action_id, problem_service):
+        return problem_service.env_simulate_step(self.state, int(action_id))
 
     def is_terminal(self):
         """Returns True if the node has no children"""
@@ -210,32 +204,32 @@ class MCTSNode(Node):
     def __repr__(self):
         return self.state.__repr__()
 
-def wrapInMCTSNode(inner_node: CanonicalState, policy, problem_service, previous_action, cost_until_now=float('inf')):
-    return MCTSNode(state=inner_node, policy=policy, problem_service=problem_service, cost_until_now=cost_until_now, previous_action=previous_action)
+def wrapInMCTSNode(inner_node: CanonicalState, previous_action, cost_until_now=float('inf')):
+    return MCTSNode(state=inner_node, cost_until_now=cost_until_now, previous_action=previous_action)
 
 from post_training.monte_carlo_tree_search import MCTS
 class MonteCarloPolicyEvaluator(MCTS):
 
-    def __init__(self, policy, problem_service, horizon, det_sample=True, exploration_weight=1, iterations=10, seed=42):
+    def __init__(self, policy, problem_service, horizon, exploration_weight=1, iterations=10, seed=42):
         super().__init__(exploration_weight)
         self.policy = policy
-        self.det_sample = det_sample
-        self.iterations = iterations
         self.problem_service = problem_service
+        self.iterations = iterations
         self.horizon = horizon
+        self.seed = seed
         self.curr_tree_root = None
         self.debug_orig_root = None
-        self.state_to_node = {}
-        self.env_use_amount = 0
-        self.seed = seed
+        self.state_to_node = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
+        self.visited_cstates_hashes: Set[int] = set()
 
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
 
     def get_action_from_cstate(self, cstate, cost): #cstate is non-terminal
         if self.curr_tree_root is None:
-            self.curr_tree_root = wrapInMCTSNode(cstate, self.policy, self.problem_service, cost_until_now=0, previous_action=None)
+            self.curr_tree_root = wrapInMCTSNode(cstate, cost_until_now=0, previous_action=None)
             self.debug_orig_root = self.curr_tree_root
+            self.visited_cstates_hashes.add(self.curr_tree_root.__hash__())
         for _ in range(self.iterations):
             if self.path_until_goal is None:
                 self.mcts_iteration(self.curr_tree_root, self.policy, self.horizon)
@@ -248,23 +242,19 @@ class MonteCarloPolicyEvaluator(MCTS):
             self.state_to_node[next_mcts_node.state] = next_mcts_node
             return next_action
 
-        def score(pair):
-            _, n = pair  # Extract node from the (action, node) tuple
-            if self.N[n] == 0:
-                return float("-inf")  # Avoid unseen moves
-            return self.Q[n] / self.N[n]  # Average reward
-
         def node_ranking(node):
             if self.N[node] == 0:
                 return float("-inf")
             return self.Q[node] / self.N[node]
 
         # TODO: make sure the returned action and the action that SHOULD return are corresponding and not changed somehow.
-        best_node = max(self.children[self.curr_tree_root].values(), key=node_ranking)
-        corresponding_actions = [ac for ac,node in self.children[self.curr_tree_root].items() if node.__eq__(best_node)]
-        assert len(corresponding_actions) == 1 #if not, there has been a fault somewhere that made two actions cause the same output state (maybe an inapplicable action was used?)
-        print(f'[get_action_from_cstate] - chosen action: {corresponding_actions[0]}')
-        return corresponding_actions[0]
+        best_action, best_node = max(
+            self.children[self.curr_tree_root].items(),
+            key=lambda item: node_ranking(item[1])
+        )
+        print(f'[get_action_from_cstate] - chosen action: {best_action}')
+        self.visited_cstates_hashes.add(best_node.__hash__())
+        return best_action
 
     def progress_to(self, action_id, cstate, cost):
         next_node = self.get_corresponding_mcts_node(cstate)
@@ -275,7 +265,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.prune_children_except(self.curr_tree_root, action_id)
         if next_node is None:
             logging.getLogger(__name__).info('Next node is not available, creating a new tree.')
-            self.curr_tree_root = wrapInMCTSNode(cstate, self.policy, self.problem_service, cost_until_now=cost,previous_action=action_id)
+            self.curr_tree_root = wrapInMCTSNode(cstate, cost_until_now=cost,previous_action=action_id)
         else:
             self.curr_tree_root = next_node
             logging.getLogger(__name__).info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
@@ -286,8 +276,7 @@ class MonteCarloPolicyEvaluator(MCTS):
     def _expand(self, node):
         if node in self.children:
             return
-        self.children[node], env_use_amount = node.find_children()
-        self.env_use_amount += env_use_amount
+        self.children[node] = node.find_children()
         self.state_to_node[node.state] = node
         for child_node in self.children[node].values():
             assert isinstance(child_node, MCTSNode)

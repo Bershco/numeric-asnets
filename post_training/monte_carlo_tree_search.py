@@ -20,12 +20,12 @@ class Node(ABC):
     """
 
     @abstractmethod
-    def find_children(self):
+    def find_children(self, policy_network, problem_service):
         """All possible successors of this board state"""
         return set()
 
     @abstractmethod
-    def find_child_by_policy(self):
+    def find_child_by_policy(self, seed, policy_network, problem_service):
         """Random successor of this board state (for more efficient simulation)"""
         return None
 
@@ -94,7 +94,7 @@ class MCTS:
         """Update the `children` dict with the children of `node`"""
         if node in self.children:
             return  # already expanded
-        self.children[node], env_use_amount = node.find_children()
+        self.children[node] = node.find_children()
 
     def _rollout(self, mcts_node, horizon=10):
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
