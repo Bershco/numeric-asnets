@@ -83,6 +83,9 @@ def start_server(service_args: 'ProblemServiceConfig',
     finally:
         # save kernprof profile for this subprocess if we can
         try_save_profile()
+        import traceback
+        print("🔥 Server crashed with exception:")
+        traceback.print_exc()
 
 
 def to_local(obj):

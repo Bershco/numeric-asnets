@@ -494,7 +494,7 @@ def main_inner(*,
         print('Will put everything in %s' % prefix_dir)
 
         # 3. train network
-        print('\n\n\n\n\n\nTraining network')
+        print('\n\n\nTraining network')
         train_flags = [
             # log and snapshot dirs
             '-e', prefix_dir,
@@ -503,6 +503,17 @@ def main_inner(*,
             arch_mod, is_train=True,
             override_enhsp_config=override_enhsp_config))
         train_flags.extend(build_prob_flags_train(prob_mod))
+        print(f'''
+========================================================
+Starting to train network with the following parameters:
+problem name: {prob_name}
+flags = {train_flags}
+cwd = {root_cwd}
+root_dir = {prefix_dir}
+timeout = {arch_mod.TIME_LIMIT_SECONDS}
+evaluation = {"off" if no_eval else "on"}
+========================================================
+        ''')
         final_checkpoint = run_asnets_local(
             flags=train_flags,
             # we make sure it runs cmd in same dir as us,
