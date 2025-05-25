@@ -43,7 +43,7 @@ def get_pin_list():
 
 
 def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
-                     enforce_ncpus, cwd, profiling=False):
+                     enforce_ncpus, cwd, profiling=False, train_only=False):
     """Run ASNets code on current node. May be useful to wrap this in a
     ray.remote()."""
     cmdline = []
@@ -58,11 +58,14 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
                            'python3', '-m', 'cProfile', '-o', 'profile_output.prof',
                            '-m', 'asnets.scripts.run_asnets'
                        ] + flags)
+        # for graceful timeout of a single trial - this is specifically for profiling, but can obviously be used otherwise
+        cmdline.extend(['--graceful-timeout', str(timeout - 300)])
+
     else:
         cmdline.extend(['python3', '-m', 'asnets.scripts.run_asnets'] + flags)
 
-    cmdline.extend(['--graceful-timeout', str(timeout-300)])
-    # for graceful timeout of a single trial - this is specifically for profiling, but can obviously be used otherwise
+    if train_only:
+        cmdline.append('--no-eval')
     print('Running command line "%s"' % ' '.join(cmdline))
 
     # we use this for logging
@@ -461,6 +464,7 @@ def main():
                 mcts_rollout_horizon= args.mcts_rollout_horizon,
                 random_seed=args.random_seed,
                 mcts_expansion_size=args.mcts_expansion_size,
+                train_only=args.no_eval,
     )
     print('Fin :-)')
 
@@ -480,6 +484,7 @@ def main_inner(*,
                mcts_rollout_horizon=None,
                random_seed=None,
                mcts_expansion_size=None,
+               train_only=False,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -495,6 +500,8 @@ def main_inner(*,
 
         # 3. train network
         print('\n\n\nTraining network')
+        if train_only:
+            print("--and only training, no evaluation afterwards")
         train_flags = [
             # log and snapshot dirs
             '-e', prefix_dir,
@@ -513,7 +520,7 @@ root_dir = {prefix_dir}
 timeout = {arch_mod.TIME_LIMIT_SECONDS}
 evaluation = {"off" if no_eval else "on"}
 ========================================================
-        ''')
+        ''',flush=True)
         final_checkpoint = run_asnets_local(
             flags=train_flags,
             # we make sure it runs cmd in same dir as us,
@@ -523,7 +530,9 @@ evaluation = {"off" if no_eval else "on"}
             need_snapshot=True,
             is_train=True,
             enforce_ncpus=enforce_job_ncpus,
-            timeout=arch_mod.TIME_LIMIT_SECONDS)
+            timeout=arch_mod.TIME_LIMIT_SECONDS,
+            train_only=train_only,
+        )
         print('Last valid checkpoint is %s' % final_checkpoint)
     else:
         final_checkpoint = resume_from

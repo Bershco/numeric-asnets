@@ -807,6 +807,11 @@ parser.add_argument(
     type=int,
     default=5,
     help='Number of MCTS Nodes to generate upon MCTS parent node expansion.')
+parser.add_argument(
+    '--no-eval',
+    action='store_true',
+    default=False,
+    help='Disable evaluation after training.')
 
 
 def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
@@ -1101,6 +1106,9 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
         elapsed_time = iter_num = None
         # normally trainers do this
         # sess.run(tf.compat.v1.global_variables_initializer())
+
+    if args.no_eval:
+        return
 
     # evaluate
     if weight_manager is not None and not args.minimal_file_saves:
