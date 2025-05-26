@@ -50,9 +50,9 @@ class MCTS:
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
 
-    def mcts_iteration(self, node, policy_network, horizon):
+    def mcts_iteration(self, node, horizon):
         """Make the tree one layer better. (Train for one iteration.)"""
-        path = self._select(node, policy_network)
+        path = self._select(node)
         leaf = path[-1]
         self._expand(leaf)
         reward = self._rollout(leaf, horizon=horizon)
@@ -60,7 +60,7 @@ class MCTS:
         if self.path_until_goal is not None:
             self.path_until_goal = self.reconstructSelectionPath(path) + self.path_until_goal
 
-    def _select(self, node: Node, policy_network):
+    def _select(self, node: Node):
         """Find an unexplored descendent of `node`"""
         path = []
         while True:
@@ -78,7 +78,7 @@ class MCTS:
                 path.append(n)
                 return path
             # node = self._uct_select(node)  # descend a layer deeper
-            node = self._puct_select_no_cycle(node, policy_network, set(path))
+            node = self._puct_select_no_cycle(node, set(path))
 
     def _expand(self, node):
         """Update the `children` dict with the children of `node`"""
@@ -96,82 +96,15 @@ class MCTS:
             self.Q[node] += reward
             reward = 1 - reward  # 1 for me is 0 for my enemy, and vice versa
 
-    def _uct_select(self, node):
-        """Select a child of node, balancing exploration & exploitation"""
-
-        # All children of node should already be expanded:
-        # assert all(action_cstate_tuple[1] in self.children for action_cstate_tuple in self.children[node])
-        assert all(child_node in self.children for child_node in self.children[node].values())
-
-        log_N_vertex = math.log(self.N[node])
-
-        def uct(pair):
-            """Upper confidence bound for trees"""
-            _, n = pair  # Extract node from the (action, node) tuple
-
-            if self.N[n] == 0:
-                return float("inf")  # Encourage exploration of unseen moves
-
-            return self.Q[n] / self.N[n] + self.exploration_weight * math.sqrt(
-                log_N_vertex / self.N[n]
-            )
-
-        action, node = max(self.children[node].items(), key=uct)
-        return node
-
-    def _puct_select(self, node, policy_network):
-        """Sample a child of `node` using PUCT scores as softmax logits."""
-
-        # All children of node should already be generated
-        assert all(child_node in self.children for child_node in self.children[node].values())
-
-        # Get the prior probabilities from the policy network
-        priors = policy_network(node.to_network_input())  # returns an eagertensor
-        priors = tf.squeeze(priors)  # makes sure the tensor is (num_of_actions,) and not (1,num_of_actions)
-        priors = priors.numpy() if hasattr(priors, "numpy") else priors  # if running eagerly
-
-        total_visits = self.N[node]
-        scores = []
-        actions_nodes = list(self.children[node].items())  # List of (action, child_node)
-
-        for action, child in actions_nodes:
-            # Use prior if available, otherwise assume 0 (or small epsilon if you prefer)
-            prior = float(priors[action]) if 0 <= action < len(priors) else 0.0
-            if self.N[child] == 0:
-                score = float("inf")  # Encourage at least one visit
-            else:
-                q_value = self.Q[child] / self.N[child]
-                exploration = self.exploration_weight * prior * math.sqrt(total_visits) / (1 + self.N[child])
-                score = q_value + exploration
-
-            scores.append(score)
-
-        # If any node is unvisited (inf score), choose uniformly among them
-        if any(np.isinf(score) for score in scores):
-            unexplored = [child for score, (_, child) in zip(scores, actions_nodes) if np.isinf(score)]
-            np.random.seed(self.seed)
-            return np.random.choice(unexplored)
-
-        # Convert scores to probabilities via softmax
-        scores = np.array(scores, dtype=np.float64)
-        exp_probs = np.exp(scores - np.max(scores))  # subtract max for numerical stability
-        probs = exp_probs / np.sum(exp_probs)
-
-        # Sample an index from the softmax
-        np.random.seed(self.seed)
-        idx = np.random.choice(len(actions_nodes), p=probs)
-        logging.getLogger(__name__).debug(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
-        return actions_nodes[idx][1]
-
-    def _puct_select_no_cycle(self, node, policy_network, path_set):
+    def _puct_select_no_cycle(self, node, path_set):
         """Sample a child of `node` using PUCT scores as softmax logits and make sure to not get into cycles"""
 
         # All children of node should already be generated
         assert all(child_node in self.children for child_node in self.children[node].values())
 
         # Get the prior probabilities from the policy network
-        priors = policy_network(node.to_network_input())  # returns an eagertensor
-        priors = tf.squeeze(priors)  # makes sure the tensor is (num_of_actions,) and not (1,num_of_actions)
+        # priors = policy_network(node.to_network_input())  # returns an eagertensor
+        priors = self.get_act_dist_from_mcts_node(node) # makes sure the tensor is (num_of_actions,) and not (1,num_of_actions)
         priors = priors.numpy() if hasattr(priors, "numpy") else priors  # if running eagerly
 
         total_visits = self.N[node]

@@ -90,38 +90,6 @@ class MCTSNode(Node):
         self.reward_weight = reward_weight
         self.previous_action = previous_action
 
-    def top_k_applicable(self, act_dist, mask, k=3):
-        act_dist = tf.convert_to_tensor(act_dist, dtype=tf.float32)
-        mask = tf.convert_to_tensor(mask, dtype=tf.bool)
-
-        # Zero out inapplicable actions
-        masked_act_dist = tf.where(mask, act_dist, tf.zeros_like(act_dist))
-
-        # Get top-k from the masked distribution
-        top_k = tf.math.top_k(masked_act_dist, k=k)
-        top_values = top_k.values  # shape (k,)
-        top_indices = top_k.indices  # shape (k,)
-
-        # Create a zero tensor and scatter top values back
-        pruned = tf.tensor_scatter_nd_update(
-            tf.zeros_like(act_dist),
-            indices=tf.expand_dims(top_indices, axis=1),
-            updates=top_values
-        )
-
-        # Normalize so the sum is 1 (if sum > 0)
-        total = tf.reduce_sum(pruned)
-        normalized = tf.cond(
-            total > 0,
-            lambda: pruned / total,
-            lambda: tf.zeros_like(pruned)
-        )
-
-        return normalized
-
-    def get_act_dist_from_policy(self, policy_network):
-        return policy_network(self.to_network_input(), training=False)
-
     def simulate_step(self, action_id, problem_service):
         return problem_service.env_simulate_step(self.state, int(action_id))
 
@@ -138,7 +106,6 @@ class MCTSNode(Node):
         if self.is_goal():
             return self.reward_weight / self.cost_until_now
         return 0
-
 
     def to_network_input(self):
         """Make the cstate represented by 'this' MCTSNode to be compatible for the policy network, and transposes it"""
@@ -178,6 +145,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.state_to_node = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
         self.visited_cstates_hashes: Set[int] = set()
         self.revisit_counter = 0
+        self.act_dist_per_node: dict[np.ndarray,tuple[float]] = {}
 
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
@@ -189,7 +157,7 @@ class MonteCarloPolicyEvaluator(MCTS):
             self.visited_cstates_hashes.add(self.curr_tree_root.__hash__())
         for _ in range(self.iterations):
             if self.path_until_goal is None:
-                self.mcts_iteration(self.curr_tree_root, self.policy, self.horizon)
+                self.mcts_iteration(self.curr_tree_root, self.horizon)
         if self.path_until_goal is not None:
             next_action, next_mcts_node = self.path_until_goal[0]
             self.path_until_goal = self.path_until_goal[1:]
@@ -288,7 +256,8 @@ class MonteCarloPolicyEvaluator(MCTS):
 
     def find_children(self, parent_node: MCTSNode):
         """Find up to k=5 successors of parent_node that are applicable and not yet visited"""
-        act_dist = tf.squeeze(parent_node.get_act_dist_from_policy(self.policy)).numpy()
+        # act_dist = tf.squeeze(parent_node.get_act_dist_from_policy(self.policy)).numpy()
+        act_dist = self.get_act_dist_from_mcts_node(parent_node).numpy()
         mask = [parent_node.is_applicable_action(i) for i in range(len(act_dist))]
         # Rank actions by descending policy probability
         sorted_indices = sorted(range(len(act_dist)), key=lambda i: act_dist[i], reverse=True)
@@ -320,11 +289,11 @@ class MonteCarloPolicyEvaluator(MCTS):
     def find_child_by_policy(self, parent_node: MCTSNode):
         """Random successor of this board state (for more efficient simulation)"""
         # input_format_cstate = self.to_network_input()                                                                 # negligible
-        act_dist = parent_node.get_act_dist_from_policy(self.policy)
+        # act_dist = parent_node.get_act_dist_from_policy(self.policy)
+        act_dist = self.get_act_dist_from_mcts_node(parent_node)
         # act_dist is a vector of shape (1,n) of distribution of action possibilities
         # next_action_ind = np.argmax(act_dist[0]) - this would have just generated a single trajectory from the select-
         # -ed MCTSNode, changing this to the distribution that is given by the policy network.
-        act_dist = tf.squeeze(act_dist)                                                                                 # tf - negligible
         mask = tf.convert_to_tensor([parent_node.is_applicable_action(i) for i in range(act_dist.shape[0])], dtype=tf.bool)    # tf - negligible
         masked_act_dist = tf.where(mask, act_dist, tf.zeros_like(act_dist))                                             # tf - negligible
         total = tf.reduce_sum(masked_act_dist)                                                                          # tf - negligible
@@ -341,6 +310,14 @@ class MonteCarloPolicyEvaluator(MCTS):
         best_cstate, step_cost = parent_node.simulate_step(next_action_ind, self.problem_service)
         return next_action_ind, wrapInMCTSNode(best_cstate, cost_until_now=parent_node.cost_until_now + step_cost,
                                                previous_action=next_action_ind)                                         # around 6.9% of function time is wrapInMCTSNode
+
+    def get_act_dist_from_mcts_node(self, node: MCTSNode):
+        node_as_network_input = node.to_network_input()
+        act_dist = self.act_dist_per_node.get(node_as_network_input)
+        if act_dist is None:
+            act_dist = self.policy(node_as_network_input)
+            self.act_dist_per_node[node_as_network_input] = act_dist
+        return tf.squeeze(act_dist)
 
 
 @can_profile
