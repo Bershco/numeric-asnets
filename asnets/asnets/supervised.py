@@ -237,11 +237,15 @@ class PlannerExtensions(object):
         import mdpsim  # noqa: F811
         import ssipp  # noqa: F811
 
+
+        LOGGER.info(f'Starting to parse mdpsim problem...')
         # MDPSim stuff
         self.mdpsim: ModuleType = mdpsim
         self.mdpsim_problem = parse_problem_args(self.mdpsim, self.pddl_files,
                                                  init_problem_name)
         self.problem_name: str = self.mdpsim_problem.name.strip()
+
+        LOGGER.info(f'Finished parsing mdpsim problem: {self.problem_name}')
 
         # Maps to PyGroundAction object in MDPSim. Cannot use type hint.
         self.act_ident_to_mdpsim_act: Dict[str, Any] = {
@@ -249,11 +253,13 @@ class PlannerExtensions(object):
             for a in self.mdpsim_problem.ground_actions
         }
 
+        LOGGER.info(f'Python-side extra data')
         # Python-side extra data
         self.domain_meta = get_domain_meta(self.mdpsim_problem.domain)
         self.problem_meta = get_problem_meta(self.mdpsim_problem,
                                              self.domain_meta)
 
+        LOGGER.info(f'Using domain type: {self.domain_type}')
         # Either use JPDDL (numeric) or SSiPP (otherwise), ugly!
         if self.domain_type == DomainType.NUMERIC:
             domain_file = get_domain_file(self.pddl_files)
