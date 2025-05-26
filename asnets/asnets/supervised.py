@@ -261,12 +261,20 @@ class PlannerExtensions(object):
             assert domain_file is not None
             assert problem_file is not None
 
+            print("Starting JVM...", flush=True)
             start_jvm()
+
+            print("Creating J_PDDLDomain...", flush=True)
             self.j_domain = J_PDDLDomain(domain_file)
-            self.j_problem = J_PDDLProblem(
-                problem_file,
-                self.j_domain
-            )
+
+            print("Creating J_PDDLProblem...", flush=True)
+            self.j_problem = J_PDDLProblem(problem_file, self.j_domain)
+
+            print("Calling prepareForSearch...", flush=True)
+            self.j_problem.prepareForSearch(True, False)
+
+            print("JPDDL init done.", flush=True)
+
             self.j_problem.prepareForSearch(
                 True,  # enable AIBR preprocessing
                 False  # stop after grounding

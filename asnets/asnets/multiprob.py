@@ -14,7 +14,7 @@ import uuid
 import weakref
 
 import rpyc
-from rpyc.utils.server import OneShotServer
+from rpyc.utils.server import OneShotServer, ThreadedServer
 
 from rpyc.core.protocol import DEFAULT_CONFIG
 
@@ -76,15 +76,19 @@ def start_server(service_args: 'ProblemServiceConfig',
         "allow_setattr": True,  # Allow setting attributes if needed
         "allow_delattr": True,  # Allow deleting attributes if needed
     }
-    server = OneShotServer(new_service, socket_path=socket_path, protocol_config=protocol_config)
-    print('Child process starting OneShotServer %s' % server)
+    # server = OneShotServer(new_service, socket_path=socket_path, protocol_config=protocol_config)
+    # print(f'Child process starting OneShotServer {server})
+    server = ThreadedServer(new_service, socket_path=socket_path, protocol_config=protocol_config)
+    print(f'Child process starting ThreadedServer {server}')
+    import traceback
     try:
         server.start()
+    except:
+        print("🔥 Server crashed with exception:")
+        traceback.print_exc()
     finally:
         # save kernprof profile for this subprocess if we can
         try_save_profile()
-        import traceback
-        print("🔥 Server crashed with exception:")
         traceback.print_exc()
 
 
