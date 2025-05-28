@@ -1,4 +1,5 @@
 from collections import Counter, deque
+from copy import deepcopy
 from enum import Enum
 from functools import lru_cache
 from itertools import repeat
@@ -39,6 +40,8 @@ from asnets.utils.tf_utils import cross_entropy, empty_feed_value, \
 import jpype
 import jpype.imports
 from jpype.types import *
+
+from post_training.enhspwrapper import ENHSPEstimator
 
 J_PDDLDomain = None
 J_PDDLProblem = None
@@ -354,7 +357,7 @@ class PlannerExtensions(object):
         return 500
 
 
-def make_problem_service(config, set_proc_title=False):
+def make_problem_service(config, set_proc_title=False, use_estimator=False):
     """Construct Service class for a particular problem. Note that we must
     construct classes, not instances (unfortunately), as there is no way of
     passing arguments to the service's initialisation code (AFAICT).
@@ -567,6 +570,7 @@ def make_problem_service(config, set_proc_title=False):
             # asynchronously (starting up PlannerExtensions & Planner is
             # expensive because it requires grounding the relevant problem)
             self.initialised = False
+            self.estimator_initialised = False
 
         # FIXME: don't cache at this level; it's inefficient when using
         # history-level features, b/c it will lead to lots and lots of
@@ -688,6 +692,16 @@ def make_problem_service(config, set_proc_title=False):
                 qv_lists.append(qv_list)
             qv_tensor = np.array(qv_lists, dtype=float)
             return obs_tensor, qv_tensor
+
+        def exposed_initialise_estimator(self, enhsp_config: str, horizon: int = 100):
+            assert self.initialised, "Can't init estimator before full object"
+            assert not self.estimator_initialised, "Can't double-init"
+            self.estimator = ENHSPEstimator(self.p, enhsp_config, horizon)
+            self.estimator_initialised = True
+
+        def exposed_get_state_h_value(self, cstate: CanonicalState):
+            assert self.estimator_initialised, "Can't get state h value without estimator initialised"
+            return self.estimator.get_state_h_value(cstate)
 
     return ProblemService
 

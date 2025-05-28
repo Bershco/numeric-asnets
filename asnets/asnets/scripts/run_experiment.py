@@ -14,6 +14,8 @@ from time import time
 
 import ray
 
+from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
+
 THIS_DIR = path.dirname(path.abspath(__file__))
 PLANNER_ROOT = path.abspath(path.join(THIS_DIR, '..', '..'))
 # hack to ensure we can find 'experiments' module
@@ -422,6 +424,16 @@ parser.add_argument(
     type=int,
     default=None,
     help='Number of MCTS Nodes to generate upon MCTS parent node expansion.')
+parser.add_argument(
+    '--mcts-value-based',
+    action='store_true',
+    default=False,
+    help='Use value-based mcts instead of rollout-based mcts.')
+parser.add_argument(
+    '--mcts-heuristic',
+    choices=list(ENHSP_CONFIGS.keys()),
+    default='hadd-gbfs',
+    help='When value-based mcts runs, this would be the state-value heuristic function.')
 
 
 def main():
@@ -465,6 +477,8 @@ def main():
                 random_seed=args.random_seed,
                 mcts_expansion_size=args.mcts_expansion_size,
                 train_only=args.no_eval,
+                mcts_value_based=args.mcts_value_based,
+                mcts_heuristic=args.mcts_heuristic,
     )
     print('Fin :-)')
 
@@ -485,6 +499,8 @@ def main_inner(*,
                random_seed=None,
                mcts_expansion_size=None,
                train_only=False,
+               mcts_value_based=False,
+               mcts_heuristic=None,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -567,6 +583,10 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.extend(['--random-seed', str(random_seed)])
     if mcts_expansion_size is not None:
         main_test_flags.extend(['--mcts-expansion-size', str(mcts_expansion_size)])
+    if mcts_value_based:
+        main_test_flags.append('--mcts-value-based')
+    if mcts_heuristic is not None:
+        main_test_flags.extend(['--mcts-heuristic',str(mcts_heuristic)])
 
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:

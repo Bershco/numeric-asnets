@@ -14,7 +14,7 @@ import uuid
 import weakref
 
 import rpyc
-from rpyc.utils.server import OneShotServer, ThreadedServer
+from rpyc.utils.server import ThreadedServer
 
 from rpyc.core.protocol import DEFAULT_CONFIG
 

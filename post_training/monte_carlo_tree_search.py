@@ -44,13 +44,15 @@ class MCTS:
     """Monte Carlo tree searcher. First rollout the tree then choose a move."""
 
     def __init__(self, exploration_weight=1):
+        self.seed = None
+        self.curr_tree_root = None
         self.Q = defaultdict(int)  # total reward of each node
         self.N = defaultdict(int)  # total visit count for each node
         self.children: dict[Node, dict[int, Node]] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
 
-    def mcts_iteration(self, node, horizon):
+    def mcts_iteration_classic(self, node, horizon):
         """Make the tree one layer better. (Train for one iteration.)"""
         path = self._select(node)
         leaf = path[-1]
@@ -59,6 +61,13 @@ class MCTS:
         self._backpropagate(path, reward)
         if self.path_until_goal is not None:
             self.path_until_goal = self.reconstructSelectionPath(path) + self.path_until_goal
+
+    def mcts_iteration_value_based(self, node):
+        path = self._select(node)
+        leaf = path[-1]
+        self._expand(leaf)
+        reward = self._evaluate_node(leaf)
+        self._backpropagate(path,reward)
 
     def _select(self, node: Node):
         """Find an unexplored descendent of `node`"""
@@ -84,17 +93,21 @@ class MCTS:
         """Update the `children` dict with the children of `node`"""
         raise NotImplemented
 
-
     def _rollout(self, mcts_node, horizon=10):
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
         raise NotImplemented
 
     def _backpropagate(self, path, reward):
-        """Send the reward back up to the ancestors of the leaf"""
+        """Backpropagate the reward through the visited nodes in reverse."""
         for node in reversed(path):
             self.N[node] += 1
-            self.Q[node] += reward
-            reward = 1 - reward  # 1 for me is 0 for my enemy, and vice versa
+            q = self.Q.get(node, 0.0)
+            n = self.N[node]
+            self.Q[node] = q + (reward - q) / n  # running average
+
+    def _evaluate_node(self, node):
+        """Use the teacher's (or another) heuristic to evaluate a specific node, in order to use value-based mcts"""
+        raise NotImplemented
 
     def _puct_select_no_cycle(self, node, path_set):
         """Sample a child of `node` using PUCT scores as softmax logits and make sure to not get into cycles"""
@@ -154,3 +167,6 @@ class MCTS:
                 if mcts_node == next_node:
                     output_path.append((action, mcts_node))
         return output_path[1:]
+
+    def get_act_dist_from_mcts_node(self, node):
+        raise NotImplemented

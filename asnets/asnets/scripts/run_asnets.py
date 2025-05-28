@@ -13,6 +13,11 @@ import sys
 from time import time
 from typing import Set
 
+import numpy
+
+from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
+
+
 from tensorflow.python.ops.gen_nn_ops import top_k
 
 from asnets.prob_dom_meta import DomainType
@@ -33,10 +38,12 @@ from asnets.explorer import StaticExplorer, DynamicExplorer
 from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
 from asnets.models import PropNetworkWeights, PropNetwork
 from asnets.supervised import SupervisedTrainer, SupervisedObjective, \
-    ProblemServiceConfig
+    ProblemServiceConfig, make_problem_service
 from asnets.multiprob import ProblemServer, to_local, parent_death_pact
 from asnets.utils.prof_utils import can_profile
 from asnets.utils.py_utils import set_random_seeds
+
+# from post_training.enhspforhwrapper import ENHSPForHWrapper
 
 logging.basicConfig(
     level=logging.INFO,
@@ -132,7 +139,8 @@ def wrapInMCTSNode(inner_node: CanonicalState, previous_action, cost_until_now=f
 from post_training.monte_carlo_tree_search import MCTS
 class MonteCarloPolicyEvaluator(MCTS):
 
-    def __init__(self, policy, problem_service, horizon, exploration_weight=1, iterations=10, seed=42, num_cstates_to_expand=5,):
+    def __init__(self, policy, problem_service, horizon=0, exploration_weight=1, iterations=10, seed=42,
+                 num_cstates_to_expand=5, use_value_based=False):
         super().__init__(exploration_weight)
         self.policy = policy
         self.problem_service = problem_service
@@ -145,7 +153,8 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.state_to_node = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
         self.visited_cstates_hashes: Set[int] = set()
         self.revisit_counter = 0
-        self.act_dist_per_node: dict[np.ndarray,tuple[float]] = {}
+        self.act_dist_per_node: dict[MCTSNode,numpy.ndarray] = {}
+        self.use_value_based=use_value_based
 
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
@@ -155,9 +164,12 @@ class MonteCarloPolicyEvaluator(MCTS):
             self.curr_tree_root = wrapInMCTSNode(cstate, cost_until_now=0, previous_action=None)
             self.debug_orig_root = self.curr_tree_root
             self.visited_cstates_hashes.add(self.curr_tree_root.__hash__())
+        if self.use_value_based:
+            for _ in range(self.iterations):
+                self.mcts_iteration_value_based(self.curr_tree_root)
         for _ in range(self.iterations):
             if self.path_until_goal is None:
-                self.mcts_iteration(self.curr_tree_root, self.horizon)
+                self.mcts_iteration_classic(self.curr_tree_root, self.horizon)
         if self.path_until_goal is not None:
             next_action, next_mcts_node = self.path_until_goal[0]
             self.path_until_goal = self.path_until_goal[1:]
@@ -229,6 +241,10 @@ class MonteCarloPolicyEvaluator(MCTS):
             best_action, mcts_node = self.find_child_by_policy(mcts_node)
             action_following_state_path.append((best_action, mcts_node))
         return mcts_node.reward()
+
+    def _evaluate_node(self, node):
+        """Use the teacher's (or another) heuristic to evaluate a specific node, in order to use value-based mcts"""
+        return self.problem_service.get_state_h_value(cstate=node.state)
 
     def prune_children_except(self, parent_node, keep_action):
         children_dict = self.children.get(parent_node)
@@ -312,11 +328,11 @@ class MonteCarloPolicyEvaluator(MCTS):
                                                previous_action=next_action_ind)                                         # around 6.9% of function time is wrapInMCTSNode
 
     def get_act_dist_from_mcts_node(self, node: MCTSNode):
-        node_as_network_input = node.to_network_input()
-        act_dist = self.act_dist_per_node.get(node_as_network_input)
+        act_dist = self.act_dist_per_node.get(node)
         if act_dist is None:
+            node_as_network_input = node.to_network_input()
             act_dist = self.policy(node_as_network_input)
-            self.act_dist_per_node[node_as_network_input] = act_dist
+            self.act_dist_per_node[node] = act_dist
         return tf.squeeze(act_dist)
 
 
@@ -353,12 +369,14 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
     return cost, False, path
 
 
-def run_trials(policy, problem_server, trials, iterations, horizon, limit=1000, det_sample=False,
-               single_trial_graceful_timeout_sec=300, seed=42, num_cstates_to_expand=5):
+def run_trials(policy, problem_server, trials, iterations, horizon=None, limit=1000, det_sample=False,
+               single_trial_graceful_timeout_sec=300, seed=42, num_cstates_to_expand=5, use_value_based=False, state_value_heuristic=None):
     # policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
     policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, problem_service=problem_server.service,
                                                  iterations=iterations, horizon=horizon, seed=seed,
-                                                 num_cstates_to_expand=num_cstates_to_expand)
+                                                 num_cstates_to_expand=num_cstates_to_expand,
+                                                 use_value_based=use_value_based,
+                                                 )
     all_exec_times = []
     all_costs = []
     all_goal_reached = []
@@ -789,6 +807,21 @@ parser.add_argument(
     action='store_true',
     default=False,
     help='Disable evaluation after training.')
+parser.add_argument(
+    '--mcts-value-based',
+    action='store_true',
+    default=False,
+    help='Use value-based mcts instead of rollout-based mcts.')
+parser.add_argument(
+    '--mcts-heuristic',
+    choices=list(ENHSP_CONFIGS.keys()),
+    default='hadd-gbfs',
+    help='When value-based mcts runs, this would be the state-value heuristic function.')
+parser.add_argument(
+    '--mcts-heuristic-horizon',
+    type=int,
+    default=10,
+    help='Upon using ENHSP as a value estimator - what should the horizon be.')
 
 
 def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
@@ -807,6 +840,7 @@ def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
         single_trial_graceful_timeout_sec=args.graceful_timeout,
         seed=args.random_seed,
         num_cstates_to_expand=args.mcts_expansion_size,
+        use_value_based=args.mcts_value_based,
     )
 
     # print('Trial results:')
@@ -977,7 +1011,9 @@ def make_services(args):
         servers.append(problem_server)
         # must call initialise()
         init_method = rpyc.async_(problem_server.service.initialise)
+        init_method_2 = rpyc.async_(problem_server.service.initialise_estimator)
         async_calls.append(init_method())
+        async_calls.append(init_method_2(enhsp_config=args.mcts_heuristic,horizon=args.mcts_heuristic_horizon))
 
     # wait for initialise() calls to finish
     for async_call in async_calls:
