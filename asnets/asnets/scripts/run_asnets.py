@@ -167,17 +167,18 @@ class MonteCarloPolicyEvaluator(MCTS):
         if self.use_value_based:
             for _ in range(self.iterations):
                 self.mcts_iteration_value_based(self.curr_tree_root)
-        for _ in range(self.iterations):
-            if self.path_until_goal is None:
-                self.mcts_iteration_classic(self.curr_tree_root, self.horizon)
-        if self.path_until_goal is not None:
-            next_action, next_mcts_node = self.path_until_goal[0]
-            self.path_until_goal = self.path_until_goal[1:]
-            if self.state_to_node[cstate] not in self.children:
-                self.children[self.state_to_node[cstate]] = dict()
-            self.children[self.state_to_node[cstate]][next_action] = next_mcts_node
-            self.state_to_node[next_mcts_node.state] = next_mcts_node
-            return next_action
+        else:
+            for _ in range(self.iterations):
+                if self.path_until_goal is None:
+                    self.mcts_iteration_classic(self.curr_tree_root, self.horizon)
+            if self.path_until_goal is not None:
+                next_action, next_mcts_node = self.path_until_goal[0]
+                self.path_until_goal = self.path_until_goal[1:]
+                if self.state_to_node[cstate] not in self.children:
+                    self.children[self.state_to_node[cstate]] = dict()
+                self.children[self.state_to_node[cstate]][next_action] = next_mcts_node
+                self.state_to_node[next_mcts_node.state] = next_mcts_node
+                return next_action
 
         def node_ranking(node):
             if self.N[node] == 0:
