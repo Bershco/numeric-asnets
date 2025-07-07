@@ -2,6 +2,7 @@
 
 import argparse
 import atexit
+from copy import deepcopy
 from json import dump
 import logging
 from logging import Logger
@@ -11,9 +12,15 @@ import random
 import signal
 import sys
 from time import time
-from typing import Set
-
+from pympler import muppy, summary, asizeof
+from array import array
+import bisect
+from typing import Any, Iterator, List, Optional, Tuple, Set
 import numpy
+from pympler.asizeof import asized
+import gc
+
+from rpyc import BaseNetref
 
 from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
 
@@ -50,6 +57,47 @@ logging.basicConfig(
     format='[%(asctime)s] [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s',
     stream=sys.stdout
 )
+
+class FixedChildMap:
+    def __init__(self, keys: List[int], values: List[Any]):
+        assert len(keys) == len(values), "Keys and values must match in length"
+        sorted_pairs = sorted(zip(keys, values))
+        self._keys = array('H', (k for k, _ in sorted_pairs))   # unsigned short
+        self._values = [v for _, v in sorted_pairs]
+
+    def get(self, key: int, default: Optional[Any] = None) -> Optional[Any]:
+        idx = bisect.bisect_left(self._keys, key)
+        if idx < len(self._keys) and self._keys[idx] == key:
+            return self._values[idx]
+        return default
+
+    def __getitem__(self, key: int) -> Any:
+        result = self.get(key)
+        if result is None:
+            raise KeyError(key)
+        return result
+
+    def __contains__(self, key: int) -> bool:
+        return self.get(key) is not None
+
+    def items(self) -> Iterator[Tuple[int, Any]]:
+        return zip(self._keys, self._values)
+
+    def keys(self) -> Iterator[int]:
+        return iter(self._keys)
+
+    def values(self) -> Iterator[Any]:
+        return iter(self._values)
+
+    def __len__(self) -> int:
+        return len(self._keys)
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self._keys)
+
+    def __repr__(self) -> str:
+        items = ', '.join(f"{k}: {v}" for k, v in self.items())
+        return f"FixedChildMap({{{items}}})"
 
 
 class CachingPolicyEvaluator(object):
@@ -90,6 +138,8 @@ class CachingPolicyEvaluator(object):
 
 from post_training.monte_carlo_tree_search import Node
 class MCTSNode(Node):
+    delete_counter = 0
+    __slots__ = ("state", "cost_until_now", "reward_weight", "previous_action")
 
     def __init__(self, state, cost_until_now, previous_action, reward_weight = 1000):
         self.state = to_local(state)
@@ -133,11 +183,100 @@ class MCTSNode(Node):
     def __repr__(self):
         return self.state.__repr__()
 
+    def __del__(self):
+        MCTSNode.delete_counter += 1
+        if MCTSNode.delete_counter % 100 == 0:
+            print(f"Deleted {MCTSNode.delete_counter} MCTSNodes - and counting!")
+
 def wrapInMCTSNode(inner_node: CanonicalState, previous_action, cost_until_now=float('inf')):
     return MCTSNode(state=inner_node, cost_until_now=cost_until_now, previous_action=previous_action)
 
 from post_training.monte_carlo_tree_search import MCTS
 class MonteCarloPolicyEvaluator(MCTS):
+
+    def sanitize_node(self, node):
+        """Deepcopy and strip aux_data from CanonicalState"""
+        try:
+            node_copy = deepcopy(node)
+            if hasattr(node_copy, "state") and hasattr(node_copy.state, "_aux_data"):
+                node_copy.state._aux_data = None
+            return node_copy
+        except Exception as e:
+            print(f"Error copying/sanitizing node: {e}")
+            return None
+
+    def profile_children_dict(self, sample_size=20):
+        total_size = 0
+        count = 0
+
+        for parent, child_dict in self.children.items():
+            if count >= sample_size:
+                break
+            try:
+                parent_clean = self.sanitize_node(parent)
+                if parent_clean is None:
+                    continue
+
+                # Clean each child node
+                cleaned_child_dict = {}
+                for action_id, child_node in child_dict.items():
+                    child_clean = self.sanitize_node(child_node)
+                    if child_clean is not None:
+                        cleaned_child_dict[action_id] = child_clean
+
+                # Bundle together for sizing
+                structure = (parent_clean, cleaned_child_dict)
+                total_size += asized(structure).size
+                count += 1
+
+            except Exception as e:
+                print(f"Failed at sample {count}: {e}")
+                continue
+
+        estimated_total = total_size * len(self.children) / count if count else 0
+        print(f"Estimated total memory for all children: {estimated_total / 1024 ** 2:.2f} MB")
+
+    def profile_state_to_node(self):
+        total = 0
+        for i, node in enumerate(self.state_to_node.values()):
+            try:
+                node_copy = deepcopy(node)
+                node_copy.state._aux_data = None
+                total += asized(node_copy).size
+            except:
+                continue
+            if i >= 20:
+                break
+        estimated_total = total * len(self.state_to_node) / 20
+        print(f"Estimated total memory for all nodes in state_to_node dictionary: {estimated_total / 1024 ** 2:.2f} MB")
+
+    def print_memory_summary(self):
+        all_objects = muppy.get_objects()
+        sum1 = summary.summarize(all_objects)
+        summary.print_(sum1, limit=3)
+        self.profile_state_to_node()
+        self.profile_children_dict()
+        self.safe_asizeof(self.visited_cstates_hashes, name="visited_cstates_hashes")
+
+    def safe_asizeof(self, obj, name):
+        try:
+            size = asizeof.asizeof(obj)
+            print(f"Size of {name}: {size / 1024 ** 2:.6f} MB")
+        except Exception as e:
+            print(f"Error sizing {name}: {e}")
+
+    def log_node_count(self, label=""):
+        gc.collect()
+
+        count = 0
+        for obj in gc.get_objects():
+            # Filter out remote RPyC references explicitly
+            if isinstance(obj, BaseNetref):
+                continue
+            if isinstance(obj, MCTSNode):
+                count += 1
+
+        print(f"{label} - Live MCTSNode instances: {count}")
 
     def __init__(self, policy, problem_service, horizon=0, exploration_weight=1, iterations=10, seed=42,
                  num_cstates_to_expand=5, use_value_based=False):
@@ -185,13 +324,16 @@ class MonteCarloPolicyEvaluator(MCTS):
                 return float("-inf")
             return self.Q[node] / self.N[node]
 
-        # TODO: make sure the returned action and the action that SHOULD return are corresponding and not changed somehow.
+        def custom_tiebreaker(node):
+            return self.N[node]
+
         best_action, best_node = max(
             self.children[self.curr_tree_root].items(),
-            key=lambda item: node_ranking(item[1])
+            key=lambda item: (node_ranking(item[1]), custom_tiebreaker(item[1]))
         )
         print(f'[get_action_from_cstate] - chosen action: {best_action}')
         self.visited_cstates_hashes.add(best_node.__hash__())
+        self.print_memory_summary()
         return best_action
 
     def progress_to(self, action_id, cstate, cost):
@@ -205,8 +347,11 @@ class MonteCarloPolicyEvaluator(MCTS):
             logging.getLogger(__name__).info('Next node is not available, creating a new tree.')
             self.curr_tree_root = wrapInMCTSNode(cstate, cost_until_now=cost,previous_action=action_id)
         else:
+            _temp = self.curr_tree_root
             self.curr_tree_root = next_node
-            logging.getLogger(__name__).info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
+            #This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
+            self._delete_subtree(_temp, recursive=False)
+            # logging.getLogger(__name__).info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
 
     def get_corresponding_mcts_node(self, cstate):
         return self.state_to_node.get(cstate, None)
@@ -214,7 +359,6 @@ class MonteCarloPolicyEvaluator(MCTS):
     def _expand(self, node):
         if node in self.children:
             return
-        # self.children[node] = node.find_children(self.policy, self.problem_service)
         self.children[node] = self.find_children(node)
         self.state_to_node[node.state] = node
         for child_node in self.children[node].values():
@@ -248,37 +392,44 @@ class MonteCarloPolicyEvaluator(MCTS):
         return self.problem_service.get_state_h_value(cstate=node.state)
 
     def prune_children_except(self, parent_node, keep_action):
+        print(f"Pruning parent_node: {hash(parent_node)} of all children except:")
         children_dict = self.children.get(parent_node)
         if children_dict is None:
             return
-
+        keep_child = None
+        self.log_node_count("Before deleting old root's irrelevant children")
         for action, child_node in list(children_dict.items()):
             if action == keep_action:
+                print(f"The chosen child_node: {hash(child_node)}")
+                keep_child = child_node
                 continue
             self._delete_subtree(child_node)
+        self.log_node_count("After deleting old root's irrelevant children")
 
+        assert keep_child is not None
         # Replace children dict with just the one we kept
-        self.children[parent_node] = {
-            keep_action: children_dict[keep_action]
-        }
+        self.children[parent_node] = FixedChildMap([keep_action],[keep_child])
 
-    def _delete_subtree(self, node):
+    def _delete_subtree(self, node, recursive=True):
         # Recursively delete the subtree rooted at this node
-        for _, child in self.children.get(node, {}).items():
-            self._delete_subtree(child)
+        if recursive:
+            for _, child in self.children.get(node, {}).items():
+                self._delete_subtree(child)
         self.children.pop(node, None)
         self.N.pop(node, None)
         self.Q.pop(node, None)
         self.state_to_node.pop(node.state, None)
+        self.act_dist_per_node.pop(node, None)
 
     def find_children(self, parent_node: MCTSNode):
-        """Find up to k=5 successors of parent_node that are applicable and not yet visited"""
-        # act_dist = tf.squeeze(parent_node.get_act_dist_from_policy(self.policy)).numpy()
+        """Find up to k successors of parent_node that are applicable and not yet visited"""
         act_dist = self.get_act_dist_from_mcts_node(parent_node).numpy()
         mask = [parent_node.is_applicable_action(i) for i in range(len(act_dist))]
         # Rank actions by descending policy probability
         sorted_indices = sorted(range(len(act_dist)), key=lambda i: act_dist[i], reverse=True)
-        output = dict()
+        # output = dict()
+        keys = []
+        values = []
         selected = 0
         for i in sorted_indices:
             if selected >= self.k:
@@ -299,10 +450,13 @@ class MonteCarloPolicyEvaluator(MCTS):
                 cost_until_now=parent_node.cost_until_now + step_cost,
                 previous_action=i
             )
-            output[i] = wrapped_output_cstate
+            # output[i] = wrapped_output_cstate
+            keys.append(i)
+            values.append(wrapped_output_cstate)
             selected += 1
+        # return output
+        return FixedChildMap(keys, values)
 
-        return output
     def find_child_by_policy(self, parent_node: MCTSNode):
         """Random successor of this board state (for more efficient simulation)"""
         # input_format_cstate = self.to_network_input()                                                                 # negligible

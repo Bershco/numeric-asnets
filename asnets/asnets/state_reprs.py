@@ -46,7 +46,7 @@ class CanonicalState(object):
     3. Possible to pickle & send between processes.
     4. Efficient to manipulate.
     5. Relatively light on memory."""
-
+    __slots__ = ("props_true", "flnt_values", "acts_enabled", "comps_true", "is_goal", "is_terminal", "_aux_data", "_aux_data_interp", "_aux_data_interp_to_id", "_aux_dat_interp")
     def __init__(self,
                  bound_prop_truth: Iterable[Tuple[BoundProp, bool]],
                  bound_flnt_value: Iterable[Tuple[BoundFlnt, float]],
