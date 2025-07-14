@@ -5,7 +5,6 @@ import atexit
 from copy import deepcopy
 from json import dump
 import logging
-from logging import Logger
 from os import makedirs, path
 from pathlib import Path
 import random
@@ -57,6 +56,8 @@ logging.basicConfig(
     format='[%(asctime)s] [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s',
     stream=sys.stdout
 )
+
+LOGGER = logging.getLogger(__name__)
 
 class FixedChildMap:
     def __init__(self, keys: List[int], values: List[Any]):
@@ -278,8 +279,8 @@ class MonteCarloPolicyEvaluator(MCTS):
 
         print(f"{label} - Live MCTSNode instances: {count}")
 
-    def __init__(self, policy, problem_service, horizon=0, exploration_weight=1, iterations=10, seed=42,
-                 num_cstates_to_expand=5, use_value_based=False):
+    def __init__(self, policy, problem_service, horizon=0, exploration_weight=1, iterations=10,
+                 num_cstates_to_expand=5, use_value_based=False, memory_debug=False):
         super().__init__(exploration_weight)
         self.policy = policy
         self.problem_service = problem_service
@@ -332,7 +333,7 @@ class MonteCarloPolicyEvaluator(MCTS):
             self.children[self.curr_tree_root].items(),
             key=lambda item: (node_ranking(item[1]), custom_tiebreaker(item[1]))
         )
-        print(f'[get_action_from_cstate] - chosen action: {best_action}')
+        LOGGER.info(f'chosen action: {best_action}')
         self.visited_cstates_hashes.add(best_node.__hash__())
         if self.memory_debug:
             self.print_memory_summary()
@@ -346,14 +347,14 @@ class MonteCarloPolicyEvaluator(MCTS):
             f"Assertion failed: next_node ({next_node}) != expected ({self.children[self.curr_tree_root][action_id]})"
         self.prune_children_except(self.curr_tree_root, action_id)
         if next_node is None:
-            logging.getLogger(__name__).info('Next node is not available, creating a new tree.')
+            LOGGER.info('Next node is not available, creating a new tree.')
             self.curr_tree_root = wrapInMCTSNode(cstate, cost_until_now=cost,previous_action=action_id)
         else:
             _temp = self.curr_tree_root
             self.curr_tree_root = next_node
             #This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
             self._delete_subtree(_temp, recursive=False)
-            # logging.getLogger(__name__).info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
+            # LOGGER.info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
 
     def get_corresponding_mcts_node(self, cstate):
         return self.state_to_node.get(cstate, None)
@@ -818,16 +819,28 @@ parser.add_argument(
     help='instead of collecting experience, used this pickled training set '
          '(produced by --save-training-set)')
 parser.add_argument(
-    '-R', '--rounds-eval', type=int, default=100, help='number of eval rounds')
+    '-R', '--rounds-eval',
+    type=int,
+    default=100,
+    help='number of eval rounds')
 parser.add_argument(
-    '-L', '--limit-turns', type=int, default=100, help='max turns per round')
+    '-L', '--limit-turns',
+    type=int,
+    default=100,
+    help='max turns per round')
 parser.add_argument(
-    '--training-limit-turns', type=int, default=50,
+    '--training-limit-turns',
+    type=int,
+    default=50,
     help='max turns per round during training')
 parser.add_argument(
-    '-e', '--expt-dir', default=None, help='path to store experiments in')
+    '-e', '--expt-dir',
+    default=None,
+    help='path to store experiments in')
 parser.add_argument(
-    '--dK', default='dk', help='prefix of the domain knowledge file'
+    '--dK',
+    default='dk',
+    help='prefix of the domain knowledge file'
 )
 parser.add_argument(
     '--debug',
@@ -983,7 +996,6 @@ parser.add_argument(
 
 def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
                 iter_num, weight_manager, scratch_dir):
-    LOGGER = logging.getLogger(__name__)
     # now we evaluate the learned policy
     LOGGER.info('Evaluating policy')
     trial_results, paths = run_trials(
@@ -1306,7 +1318,6 @@ def main():
     parent_death_pact(signal.SIGKILL)
 
     args = parser.parse_args()
-    LOGGER = logging.getLogger(__name__)
     LOGGER.info('Arguments are: %s', args)
 
     if args.seed is not None:
