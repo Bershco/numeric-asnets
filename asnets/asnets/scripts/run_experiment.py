@@ -434,7 +434,10 @@ parser.add_argument(
     choices=list(ENHSP_CONFIGS.keys()),
     default='hadd-gbfs',
     help='When value-based mcts runs, this would be the state-value heuristic function.')
-
+parser.add_argument(
+    '--memory-debug',
+    default=False,
+    help='Enable memory debugging.')
 
 def main():
     args = parser.parse_args()
@@ -479,6 +482,7 @@ def main():
                 train_only=args.no_eval,
                 mcts_value_based=args.mcts_value_based,
                 mcts_heuristic=args.mcts_heuristic,
+                memory_debug=args.memory_debug,
     )
     print('Fin :-)')
 
@@ -501,6 +505,7 @@ def main_inner(*,
                train_only=False,
                mcts_value_based=False,
                mcts_heuristic=None,
+               memory_debug=False,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -587,6 +592,8 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.append('--mcts-value-based')
     if mcts_heuristic is not None:
         main_test_flags.extend(['--mcts-heuristic',str(mcts_heuristic)])
+    if memory_debug:
+        main_test_flags.append('--memory-debug')
 
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:

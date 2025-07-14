@@ -294,6 +294,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.revisit_counter = 0
         self.act_dist_per_node: dict[MCTSNode,numpy.ndarray] = {}
         self.use_value_based=use_value_based
+        self.memory_debug = memory_debug
 
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
@@ -333,7 +334,8 @@ class MonteCarloPolicyEvaluator(MCTS):
         )
         print(f'[get_action_from_cstate] - chosen action: {best_action}')
         self.visited_cstates_hashes.add(best_node.__hash__())
-        self.print_memory_summary()
+        if self.memory_debug:
+            self.print_memory_summary()
         return best_action
 
     def progress_to(self, action_id, cstate, cost):
@@ -392,19 +394,19 @@ class MonteCarloPolicyEvaluator(MCTS):
         return self.problem_service.get_state_h(cstate=node.state)
 
     def prune_children_except(self, parent_node, keep_action):
-        print(f"Pruning parent_node: {hash(parent_node)} of all children except:")
         children_dict = self.children.get(parent_node)
         if children_dict is None:
             return
         keep_child = None
-        self.log_node_count("Before deleting old root's irrelevant children")
+        if self.memory_debug:
+            self.log_node_count("Before deleting old root's irrelevant children")
         for action, child_node in list(children_dict.items()):
             if action == keep_action:
-                print(f"The chosen child_node: {hash(child_node)}")
                 keep_child = child_node
                 continue
             self._delete_subtree(child_node)
-        self.log_node_count("After deleting old root's irrelevant children")
+        if self.memory_debug:
+            self.log_node_count("After deleting old root's irrelevant children")
 
         assert keep_child is not None
         # Replace children dict with just the one we kept
@@ -525,12 +527,13 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
 
 
 def run_trials(policy, problem_server, trials, iterations, horizon=None, limit=1000, det_sample=False,
-               single_trial_graceful_timeout_sec=300, seed=42, num_cstates_to_expand=5, use_value_based=False, state_value_heuristic=None):
+               single_trial_graceful_timeout_sec=300, num_cstates_to_expand=5, use_value_based=False,
+               memory_debug=False):
     # policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
     policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, problem_service=problem_server.service,
                                                  iterations=iterations, horizon=horizon, seed=seed,
                                                  num_cstates_to_expand=num_cstates_to_expand,
-                                                 use_value_based=use_value_based,
+                                                 use_value_based=use_value_based, memory_debug=memory_debug,
                                                  )
     all_exec_times = []
     all_costs = []
@@ -973,10 +976,9 @@ parser.add_argument(
     default='hadd-gbfs',
     help='When value-based mcts runs, this would be the state-value heuristic function.')
 parser.add_argument(
-    '--mcts-heuristic-horizon',
-    type=int,
-    default=10,
-    help='Upon using ENHSP as a value estimator - what should the horizon be.')
+    '--memory-debug',
+    default=False,
+    help='Enable memory debugging.')
 
 
 def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
@@ -996,6 +998,7 @@ def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
         seed=args.random_seed,
         num_cstates_to_expand=args.mcts_expansion_size,
         use_value_based=args.mcts_value_based,
+        memory_debug=args.memory_debug,
     )
 
     # print('Trial results:')
