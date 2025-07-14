@@ -12,6 +12,7 @@ from asnets.state_reprs import CanonicalState
 from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS, ENHSPCache, BLACKLIST_OUTCOMES
 from asnets.teacher_cache import TeacherException
 from asnets.utils.pddl_utils import replace_init_state, hlist_to_sexprs
+from post_training.heuristic_wrapper import get_heuristic
 
 LOGGER = logging.getLogger(__name__)
 
@@ -153,18 +154,29 @@ class ENHSPEstimator(ENHSPCache):
             for a in result.plan]
         return plan
 
-    def get_state_h_value(self, cstate: CanonicalState):
+    # def get_state_h_value(self, cstate: CanonicalState):
+    #     cstate = to_local(cstate)
+    #     if cstate in self.computed_states:
+    #         return self.computed_states[cstate]
+    #     plan = self._get_plan(cstate.to_tup_state())
+    #     if plan is None:
+    #         # didn't find a plan, whether this is unsolvable by the planner or
+    #         # just couldn't in the horizon length, it's the same.
+    #         # also I couldn't care to save this, to conserve memory rather than time
+    #         return self.worst_h
+    #     self.computed_states[cstate] = len(plan)
+    #     return self.computed_states[cstate]
+    #   This is way too much time-consuming as it is creating a plan from scratch.
+
+    def get_state_h(self, cstate: CanonicalState):
         cstate = to_local(cstate)
         if cstate in self.computed_states:
             return self.computed_states[cstate]
-        plan = self._get_plan(cstate.to_tup_state())
-        if plan is None:
-            # didn't find a plan, whether this is unsolvable by the planner or
-            # just couldn't in the horizon length, it's the same.
-            # also I couldn't care to save this, to conserve memory rather than time
-            return self.worst_h
-        self.computed_states[cstate] = len(plan)
-        return self.computed_states[cstate]
+        problem_hlist = replace_init_state(self._problem_hlist, cstate.to_tup_state())
+        problem_source = hlist_to_sexprs(problem_hlist)
+
+        return get_heuristic(self._domain_source, problem_source)
+
 
     def set_estimator_params(self, enhsp_config = DEFAULT_ENHSP_CONFIG, horizon = DEFAULT_HORIZON):
         self.estimator_params = ENHSP_CONFIGS[enhsp_config] \

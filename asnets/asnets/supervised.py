@@ -699,9 +699,9 @@ def make_problem_service(config, set_proc_title=False, use_estimator=False):
             self.estimator = ENHSPEstimator(self.p, enhsp_config, horizon)
             self.estimator_initialised = True
 
-        def exposed_get_state_h_value(self, cstate: CanonicalState):
+        def exposed_get_state_h(self, cstate: CanonicalState):
             assert self.estimator_initialised, "Can't get state h value without estimator initialised"
-            return self.estimator.get_state_h_value(cstate)
+            return self.estimator.get_state_h(cstate)
 
     return ProblemService
 
