@@ -66,5 +66,6 @@ class ENHSPEstimator(ENHSPCache):
                 logger.debug("No heuristic value found through ENHSP heuristic, given infinity instead.")
 
             os.remove(problem_file.name)
+            os.remove(domain_file.name)
             return heuristic_value
 
