@@ -1175,7 +1175,7 @@ def make_services(args):
         init_method = rpyc.async_(problem_server.service.initialise)
         init_method_2 = rpyc.async_(problem_server.service.initialise_estimator)
         async_calls.append(init_method())
-        async_calls.append(init_method_2(enhsp_config=args.mcts_heuristic,horizon=args.mcts_heuristic_horizon))
+        async_calls.append(init_method_2(enhsp_config=args.mcts_heuristic))
 
     # wait for initialise() calls to finish
     for async_call in async_calls:

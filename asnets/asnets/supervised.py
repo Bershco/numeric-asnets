@@ -693,10 +693,10 @@ def make_problem_service(config, set_proc_title=False, use_estimator=False):
             qv_tensor = np.array(qv_lists, dtype=float)
             return obs_tensor, qv_tensor
 
-        def exposed_initialise_estimator(self, enhsp_config: str, horizon: int = 100):
+        def exposed_initialise_estimator(self, enhsp_config: str):
             assert self.initialised, "Can't init estimator before full object"
             assert not self.estimator_initialised, "Can't double-init"
-            self.estimator = ENHSPEstimator(self.p, enhsp_config, horizon)
+            self.estimator = ENHSPEstimator(self.p, enhsp_config)
             self.estimator_initialised = True
 
         def exposed_get_state_h(self, cstate: CanonicalState):
