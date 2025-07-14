@@ -22,6 +22,9 @@ DEFAULT_CONFIG['allow_getattr'] = True
 DEFAULT_CONFIG['allow_setattr'] = True
 DEFAULT_CONFIG['allow_delattr'] = True
 DEFAULT_CONFIG['safe_attrs'].add("copy")
+DEFAULT_CONFIG['safe_attrs'].add("sizeof")
+DEFAULT_CONFIG['safe_attrs'].add("__sizeof__")
+
 
 from asnets.utils.prof_utils import try_save_profile
 from asnets.utils.py_utils import set_random_seeds
