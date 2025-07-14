@@ -389,7 +389,7 @@ class MonteCarloPolicyEvaluator(MCTS):
 
     def _evaluate_node(self, node):
         """Use the teacher's (or another) heuristic to evaluate a specific node, in order to use value-based mcts"""
-        return self.problem_service.get_state_h_value(cstate=node.state)
+        return self.problem_service.get_state_h(cstate=node.state)
 
     def prune_children_except(self, parent_node, keep_action):
         print(f"Pruning parent_node: {hash(parent_node)} of all children except:")

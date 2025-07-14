@@ -7,10 +7,9 @@ https://gist.github.com/qpwo/c538c6f73727e254fdc7fab81024f6e1
 from abc import ABC, abstractmethod
 from collections import defaultdict
 import math
+from typing import Any
 
 import numpy as np
-import tensorflow as tf
-import logging
 
 class Node(ABC):
     """
@@ -48,7 +47,7 @@ class MCTS:
         self.curr_tree_root = None
         self.Q = defaultdict(int)  # total reward of each node
         self.N = defaultdict(int)  # total visit count for each node
-        self.children: dict[Node, dict[int, Node]] = dict()  # actions and children output of each node. structure is (action,result_state)
+        self.children: dict[Node, Any] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
 
@@ -154,7 +153,7 @@ class MCTS:
         np.random.seed(self.seed)
         idx = np.random.choice(len(actions_nodes), p=probs)
         # logging.getLogger(__name__).debug(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
-        print(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
+        # print(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
         return actions_nodes[idx][1]
 
     def reconstructSelectionPath(self, path):
