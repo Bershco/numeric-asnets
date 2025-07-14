@@ -286,7 +286,6 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.problem_service = problem_service
         self.iterations = iterations
         self.horizon = horizon
-        self.seed = seed
         self.k = num_cstates_to_expand
         self.curr_tree_root = None
         self.debug_orig_root = None
@@ -477,7 +476,6 @@ class MonteCarloPolicyEvaluator(MCTS):
             lambda: tf.zeros_like(act_dist)
         )
         norm_act_dist_np = normalized_act_dist.numpy()                                                                  # negligible
-        np.random.seed(self.seed)
         next_action_ind = np.random.choice(len(norm_act_dist_np), p=norm_act_dist_np)                                   # negligible
         if self.problem_service is None:
             raise RuntimeError("problem_service is None — was it shut down?")
@@ -532,7 +530,7 @@ def run_trials(policy, problem_server, trials, iterations, horizon=None, limit=1
                memory_debug=False):
     # policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
     policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, problem_service=problem_server.service,
-                                                 iterations=iterations, horizon=horizon, seed=seed,
+                                                 iterations=iterations, horizon=horizon,
                                                  num_cstates_to_expand=num_cstates_to_expand,
                                                  use_value_based=use_value_based, memory_debug=memory_debug,
                                                  )
@@ -964,11 +962,6 @@ parser.add_argument(
     default=3000000,
     help='Number of seconds to gracefully timeout after.')
 parser.add_argument(
-    '--random-seed',
-    type=int,
-    default=None,
-    help='Seed.')
-parser.add_argument(
     '--mcts-expansion-size',
     type=int,
     default=5,
@@ -1007,7 +1000,6 @@ def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
         iterations=args.mcts_iterations,
         horizon=args.mcts_rollout_horizon,
         single_trial_graceful_timeout_sec=args.graceful_timeout,
-        seed=args.random_seed,
         num_cstates_to_expand=args.mcts_expansion_size,
         use_value_based=args.mcts_value_based,
         memory_debug=args.memory_debug,
@@ -1323,9 +1315,10 @@ def main():
     if args.seed is not None:
         set_random_seeds(args.seed)
     else:
-        # here "defaults" probably just means seeding based on time (although
-        # possibly each library might be a little different)
-        print("No random seed provided; defaults will be used")
+        # if seed was not set, we will create a universal seed through time
+        SEED = int(time() * 1000) % (2 ** 32)
+        set_random_seeds(SEED)
+        LOGGER.info(f'Seed set to {SEED}')
 
     unique_prefix = unique_name(args)
     print('Unique prefix:', unique_prefix)
@@ -1347,11 +1340,6 @@ def main():
     snapshot_dir = path.join(scratch_dir, 'snapshots')
     makedirs(snapshot_dir, exist_ok=True)
     print('Snapshot directory:', snapshot_dir)
-
-    if args.random_seed is None:
-        args.random_seed = np.random.randint(int(1e6))
-        print(f'\nRandom seed was not set, so it is now {args.random_seed}\n')
-
 
     main_supervised(args, unique_prefix, snapshot_dir, scratch_dir)
 
