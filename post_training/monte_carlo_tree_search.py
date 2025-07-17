@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 import math
 from typing import Any
-
+from time import time
 import numpy as np
 
 class Node(ABC):
@@ -50,6 +50,13 @@ class MCTS:
         self.children: dict[Node, Any] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
+        self.time_debug_mcts_iterations = False
+        if self.time_debug_mcts_iterations:
+            self.start_times = []
+            self.after_selection_times = []
+            self.after_expansion_times = []
+            self.after_eval_times = []
+            self.end_times = []
 
     def mcts_iteration_classic(self, node, horizon):
         """Make the tree one layer better. (Train for one iteration.)"""
@@ -62,11 +69,22 @@ class MCTS:
             self.path_until_goal = self.reconstructSelectionPath(path) + self.path_until_goal
 
     def mcts_iteration_value_based(self, node):
+        if self.time_debug_mcts_iterations:
+            self.start_times.append(time())
         path = self._select(node)
+        if self.time_debug_mcts_iterations:
+            self.after_selection_times.append(time())
         leaf = path[-1]
         self._expand(leaf)
+        if self.time_debug_mcts_iterations:
+            self.after_expansion_times.append(time())
         reward = self._evaluate_node(leaf)
+        if self.time_debug_mcts_iterations:
+            self.after_eval_times.append(time())
         self._backpropagate(path,reward)
+        if self.time_debug_mcts_iterations:
+            self.end_times.append(time())
+
 
     def _select(self, node: Node):
         """Find an unexplored descendent of `node`"""

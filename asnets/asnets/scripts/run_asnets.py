@@ -307,6 +307,16 @@ class MonteCarloPolicyEvaluator(MCTS):
         if self.use_value_based:
             for _ in range(self.iterations):
                 self.mcts_iteration_value_based(self.curr_tree_root)
+            if self.time_debug_mcts_iterations:
+                print(f"Total time gone to selection: {sum(b - a for a, b in zip(self.start_times, self.after_selection_times))}")
+                print(f"Total time gone to expansion: {sum(b - a for a, b in zip(self.after_selection_times, self.after_expansion_times))}")
+                print(f"Total time gone to evaluation: {sum(b - a for a, b in zip(self.after_expansion_times, self.after_eval_times))}")
+                print(f"Total time gone to backward propagation: {sum(b - a for a, b in zip(self.after_eval_times, self.end_times))}")
+                self.start_times.clear()
+                self.after_selection_times.clear()
+                self.after_expansion_times.clear()
+                self.after_eval_times.clear()
+                self.end_times.clear()
         else:
             for _ in range(self.iterations):
                 if self.path_until_goal is None:
