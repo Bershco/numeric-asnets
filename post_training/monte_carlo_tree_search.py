@@ -78,7 +78,9 @@ class MCTS:
         self._expand(leaf)
         if self.time_debug_mcts_iterations:
             self.after_expansion_times.append(time())
-        reward = self._evaluate_node(leaf)
+        reward = 1 / (1 + self._evaluate_node(leaf))
+        # numbers might be too low or insignificant?? I think it would be okay...
+        # theoretically and practically it SHOULD not be lower than 1/10001 which isn't that low.
         if self.time_debug_mcts_iterations:
             self.after_eval_times.append(time())
         self._backpropagate(path,reward)
@@ -122,7 +124,7 @@ class MCTS:
             n = self.N[node]
             self.Q[node] = q + (reward - q) / n  # running average
 
-    def _evaluate_node(self, node):
+    def _evaluate_node(self, node) -> float:
         """Use the teacher's (or another) heuristic to evaluate a specific node, in order to use value-based mcts"""
         raise NotImplemented
 

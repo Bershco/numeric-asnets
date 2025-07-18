@@ -399,7 +399,7 @@ class MonteCarloPolicyEvaluator(MCTS):
             action_following_state_path.append((best_action, mcts_node))
         return mcts_node.reward()
 
-    def _evaluate_node(self, node):
+    def _evaluate_node(self, node) -> float:
         """Use the teacher's (or another) heuristic to evaluate a specific node, in order to use value-based mcts"""
         return self.problem_service.get_state_h(cstate=node.state)
 
