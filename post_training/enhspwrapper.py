@@ -5,7 +5,7 @@ import tempfile
 
 from asnets.multiprob import to_local
 from asnets.state_reprs import CanonicalState
-from asnets.interfaces.enhsp_interface import ENHSPCache
+from asnets.interfaces.enhsp_interface import ENHSPCache, ENHSP_CONFIGS
 from asnets.utils.pddl_utils import replace_init_state, hlist_to_sexprs
 
 logger = logging.getLogger(__name__)
@@ -16,6 +16,8 @@ class ENHSPEstimator(ENHSPCache):
 
     def __init__(self, planner_exts, enhsp_config:str = 'hadd-gbfs'):
         super().__init__(planner_exts=planner_exts, timeout_s=-1, enhsp_config=enhsp_config)
+        self.enhsp_config = enhsp_config #The above line directly converts the enhsp text into parameters with timeout
+        # and we later need the parameters without the timeout
         self.computed_states = {}
         self.heuristic_client = None
         self.heuristic_client_initialised = False
@@ -30,7 +32,12 @@ class ENHSPEstimator(ENHSPCache):
         return self.get_heuristic(problem_source)
 
     def initialise_heuristic_server(self, init_instance_oneline: str):
-        self.heuristic_client = HeuristicClient(jar_path=JARPATH, domain_text=self._domain_source, init_instance_text=init_instance_oneline)
+        self.heuristic_client = HeuristicClient(
+            jar_path=JARPATH,
+            domain_text=self._domain_source,
+            init_instance_text=init_instance_oneline,
+            enhsp_config=ENHSP_CONFIGS.get(self.enhsp_config, self.DEFAULT_ENHSP_CONFIG))
+        logger.info(f"Starting the heuristic server with config: {self.enhsp_config}")
         self.heuristic_client_initialised = True
 
     # the problem should already contain the current state as the 'initial' state in order to get its heuristic
@@ -44,7 +51,7 @@ class ENHSPEstimator(ENHSPCache):
 
 
 class HeuristicClient:
-    def __init__(self, jar_path: str, domain_text: str, init_instance_text: str):
+    def __init__(self, jar_path: str, domain_text: str, init_instance_text: str, enhsp_config: str):
         # Create and name the domain temp file
         self._domain_temp = tempfile.NamedTemporaryFile(
             mode='w', delete=False, suffix=".pddl", prefix="domain_heuristic_"
@@ -62,10 +69,11 @@ class HeuristicClient:
         self._instance_temp.close()
         instance_path = self._instance_temp.name
         logger.info(f"Created temporary instance file: {instance_path}")
+        self.enhsp_config = enhsp_config
 
         # Launch the ENHSP server
         self.proc = subprocess.Popen(
-            ['java', '-jar', jar_path, '-o', domain_path, '-f', instance_path],
+            ['java', '-jar', jar_path, '-o', domain_path, '-f', instance_path, *enhsp_config.split()],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

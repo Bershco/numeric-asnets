@@ -549,7 +549,7 @@ def run_trials(policy, problem_server, trials, iterations, horizon=None, limit=1
     all_goal_reached = []
     paths = []
     print(f'\n-------------> MCTS iterations number: {iterations}\n')
-    print(f'\n-------------> MCTS rollout horizon length: {horizon}\n')
+    #print(f'\n-------------> MCTS rollout horizon length: {horizon}\n')
     for _ in tqdm.trange(trials, desc='trials', leave=True):
         start = time()
         cost, goal_reached, path = run_trial(policy_evaluator, problem_server,
