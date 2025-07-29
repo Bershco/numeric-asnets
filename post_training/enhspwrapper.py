@@ -37,7 +37,7 @@ class ENHSPEstimator(ENHSPCache):
             domain_text=self._domain_source,
             init_instance_text=init_instance_oneline,
             enhsp_config=ENHSP_CONFIGS.get(self.enhsp_config, self.DEFAULT_ENHSP_CONFIG))
-        logger.info(f"Starting the heuristic server with config: {self.enhsp_config}")
+        logger.info(f"Starting the heuristic server with config: {self.enhsp_config if ENHSP_CONFIGS.__contains__(self.enhsp_config) else self.DEFAULT_ENHSP_CONFIG}")
         self.heuristic_client_initialised = True
 
     # the problem should already contain the current state as the 'initial' state in order to get its heuristic
