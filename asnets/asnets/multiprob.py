@@ -3,19 +3,18 @@ their own sandboxed Python interpreters so that they can have their own copies
 of MDPSim and SSiPP."""
 
 import ctypes
-import getpass
 from multiprocessing import Process
 import signal
 import sys
 from time import sleep, time
-from typing import Optional
-import uuid
 import weakref
 
 import os, json, socket, rpyc, atexit
 from rpyc.utils.server import ThreadedServer
 
 from rpyc.core.protocol import DEFAULT_CONFIG
+
+from asnets.supervised import ProblemServiceConfig
 
 DEFAULT_CONFIG['allow_getattr'] = True
 DEFAULT_CONFIG['allow_setattr'] = True
@@ -61,7 +60,7 @@ def start_server(service_args: 'ProblemServiceConfig') -> None:
 
     Args:
         service_args (ProblemServiceConfig): config for the problem service.
-        socket_path (str): path to the socket to host the problem
+        # socket_path (str): path to the socket to host the problem
         service on.
     """
     if service_args.random_seed is not None:
@@ -154,17 +153,22 @@ def wait_exists_polling(file_path: str,
     return True
 
 # --- small helpers ---
-def _wait_for_addr(path: str, proc: Process, timeout: float = 60.0, interval: float = 0.1):
-    """Poll for the addr file; bail early if the server dies."""
-    deadline = time() + timeout
-    while time() < deadline:
-        if os.path.exists(path):
+def _wait_for_addr(path: str, timeout: float = 60.0, poll: float = 0.1, proc: "Process|None" = None):
+    deadline = time.time() + timeout
+    last_err = None
+    while time.time() < deadline:
+        try:
             with open(path) as f:
                 return json.load(f)
-        if not proc.is_alive():
-            raise RuntimeError(f"Server exited before writing addr file (exitcode={proc.exitcode}).")
-        sleep(interval)
-    raise TimeoutError(f"Timed out waiting for RPYC addr file: {path}")
+        except FileNotFoundError as e:
+            last_err = e
+            if proc is not None and not proc.is_alive():
+                raise RuntimeError(f"Server exited before writing addr file (exitcode={proc.exitcode}).")
+            time.sleep(poll)
+    # optional: nicer message if we saw a crash
+    if proc is not None and not proc.is_alive():
+        raise RuntimeError(f"Timed out and server is dead (exitcode={proc.exitcode}).")
+    raise TimeoutError(f"Timed out waiting for RPYC addr file: {path}") from last_err
 
 def _connect_via_info(info: dict):
     cfg = {"sync_request_timeout": None}
@@ -233,7 +237,8 @@ class ProblemServer(object):
         # on other end) before shutting down, no matter what
         # (basically weakref.finalize(obj, func) ensures that func is called
         # when obj is destroyed---presumably just beforehand)
-        self._finalizer = weakref.finalize(self._serve_proc, self._kill_conn)
+        # self._finalizer = weakref.finalize(self._serve_proc, self._kill_conn)
+        self._finalizer = weakref.finalize(self._serve_proc, self.stop)
 
     def _kill_conn(self) -> None:
         """Close the connection to the server."""
@@ -241,32 +246,74 @@ class ProblemServer(object):
             self._conn.close()
             self._conn = None
 
+    # def stop(self) -> None:
+    #     """Close the connection to the server and kill the server process."""
+    #     self._kill_conn()
+    #
+    #     try:
+    #         os.unlink(self._unix_sock_path)
+    #     except FileNotFoundError:
+    #         pass
+    #
+    #     if self._serve_proc is None:
+    #         return
+    #
+    #     self._serve_proc.terminate()
+    #
+    #     try:
+    #         self._serve_proc.join(5)
+    #     except Exception:
+    #         print('Process is being difficult.')
+    #         pid = self._serve_proc.pid
+    #
+    #         if pid is not None and self._serve_proc.is_alive():
+    #             print('I know how to handle difficult processes.')
+    #             os.kill(pid, signal.SIGKILL)
+    #             self._serve_proc.join(5)
+    #
+    #     self._serve_proc = None
+
     def stop(self) -> None:
-        """Close the connection to the server and kill the server process."""
-        self._kill_conn()
-
+        """Close the RPyC connection and stop the server process. Idempotent."""
+        # close client connection
         try:
-            os.unlink(self._unix_sock_path)
-        except FileNotFoundError:
-            pass
+            if getattr(self, "_conn", None):
+                try:
+                    self._conn.close()
+                except Exception:
+                    pass
+                finally:
+                    self._conn = None
+        finally:
+            # terminate the server process
+            proc = getattr(self, "_serve_proc", None)
+            if proc is not None:
+                try:
+                    if proc.is_alive():
+                        proc.terminate()
+                        try:
+                            proc.join(timeout=5)
+                        except Exception:
+                            pass
+                        if proc.is_alive():
+                            try:
+                                os.kill(proc.pid, signal.SIGKILL)
+                            except Exception:
+                                pass
+                            try:
+                                proc.join(timeout=5)
+                            except Exception:
+                                pass
+                finally:
+                    self._serve_proc = None
 
-        if self._serve_proc is None:
-            return
-
-        self._serve_proc.terminate()
-
-        try:
-            self._serve_proc.join(5)
-        except Exception:
-            print('Process is being difficult.')
-            pid = self._serve_proc.pid
-
-            if pid is not None and self._serve_proc.is_alive():
-                print('I know how to handle difficult processes.')
-                os.kill(pid, signal.SIGKILL)
-                self._serve_proc.join(5)
-
-        self._serve_proc = None
+            # remove the addr file (server also tries via atexit; this is belt & suspenders)
+            addr = getattr(self, "_addr_file", None)
+            if addr:
+                try:
+                    os.remove(addr)
+                except FileNotFoundError:
+                    pass
 
     def __del__(self):
         """Destructor. This will kill the server process if it's still running.
@@ -275,42 +322,76 @@ class ProblemServer(object):
             print('Cleaning up server process in destructor')
             self.stop()
 
+    # def _get_rpyc_conn(self):
+    #     """Get a connection to the server.
+    #
+    #     This will create a new connection if one doesn't already exist. In this
+    #     case, it will wait for the server to start with a timeout defined by
+    #     self.MAX_WAIT_TIME. It will also sleep for an additional secton to make
+    #     sure the connection is up.
+    #
+    #     Returns:
+    #         The rpyc connection to the server.
+    #     """
+    #     if self._conn is None:
+    #         to_wait = max(0.0, self.MAX_WAIT_TIME - (time() - self._start_time))
+    #         if to_wait > 0:
+    #             # It actually takes a few seconds for the background worker to
+    #             # spool up and start accepting connections. Obviously it could
+    #             # be more than self.MAX_WAIT_TIME, but I don't really have a
+    #             # better way of doing things than this (mostly because all the
+    #             # socket binding in RPyC happens in a monolithic "run
+    #             # everything" method which I can't break up).
+    #             print('Waiting at most %.2fs for rpyc connection' % to_wait)
+    #             # ignore return value; we'll get an error later if the file
+    #             # doesn't exist
+    #             has_sock = wait_exists_polling(
+    #                 self._unix_sock_path, max_wait=to_wait)
+    #             print(f"Wait time up, got has_sock={has_sock}")
+    #
+    #         sleep_time = 1.0
+    #         print(f"Sleeping an extra {sleep_time}s to make sure conn is up")
+    #         sleep(sleep_time)
+    #         self._conn = rpyc.utils.factory.unix_connect(
+    #             path=self._unix_sock_path)
+    #         # we can unlink socket after connecting
+    #         os.unlink(self._unix_sock_path)
+    #
+    #     return self._conn
+
     def _get_rpyc_conn(self):
-        """Get a connection to the server. 
+        """Get or create the TCP RPyC connection using the addr JSON file."""
+        if self._conn is not None:
+            return self._conn
 
-        This will create a new connection if one doesn't already exist. In this
-        case, it will wait for the server to start with a timeout defined by 
-        self.MAX_WAIT_TIME. It will also sleep for an additional secton to make
-        sure the connection is up.
+        # How long to keep waiting from when the server was spawned
+        remaining = max(0.0, self.MAX_WAIT_TIME - (time.time() - self._start_time))
 
-        Returns:
-            The rpyc connection to the server.
-        """
-        if self._conn is None:
-            to_wait = max(0, self.MAX_WAIT_TIME - (time() - self._start_time))
-            if to_wait > 0:
-                # It actually takes a few seconds for the background worker to
-                # spool up and start accepting connections. Obviously it could
-                # be more than self.MAX_WAIT_TIME, but I don't really have a
-                # better way of doing things than this (mostly because all the
-                # socket binding in RPyC happens in a monolithic "run
-                # everything" method which I can't break up).
-                print('Waiting at most %.2fs for rpyc connection' % to_wait)
-                # ignore return value; we'll get an error later if the file
-                # doesn't exist
-                has_sock = wait_exists_polling(
-                    self._unix_sock_path, max_wait=to_wait)
-                print(f"Wait time up, got has_sock={has_sock}")
+        # Where the server published {host, port}; set this in __init__
+        addr_path = getattr(self, "_addr_file", None) or os.environ["RPYC_ADDR_FILE"]
 
-            sleep_time = 1.0
-            print(f"Sleeping an extra {sleep_time}s to make sure conn is up")
-            sleep(sleep_time)
-            self._conn = rpyc.utils.factory.unix_connect(
-                path=self._unix_sock_path)
-            # we can unlink socket after connecting
-            os.unlink(self._unix_sock_path)
+        # Wait for the file to exist and load it
+        info = _wait_for_addr(addr_path, timeout=remaining)
 
-        return self._conn
+        # Dial with a few retries (handles brief race between publish and bind)
+        for _ in range(10):
+            try:
+                if "host" in info and "port" in info:
+                    c = rpyc.connect(info["host"], info["port"], config={"sync_request_timeout": None})
+                elif "unix" in info:
+                    # fallback if you kept a UDS variant somewhere
+                    stream = rpyc.utils.factory.unix_connect(info["unix"])
+                    c = rpyc.connect_stream(stream, service=None, config={"sync_request_timeout": None})
+                else:
+                    raise ValueError(f"Unrecognized addr info: {info}")
+
+                c.ping()  # sanity check
+                self._conn = c
+                return self._conn
+            except Exception:
+                time.sleep(0.25)
+
+        raise RuntimeError("Failed to connect to RPyC server")
 
     @property
     def conn(self):
