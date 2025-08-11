@@ -4,7 +4,6 @@ of MDPSim and SSiPP."""
 
 import ctypes
 import getpass
-import os
 from multiprocessing import Process
 import signal
 import sys
@@ -13,7 +12,7 @@ from typing import Optional
 import uuid
 import weakref
 
-import rpyc
+import os, json, socket, rpyc, atexit
 from rpyc.utils.server import ThreadedServer
 
 from rpyc.core.protocol import DEFAULT_CONFIG
@@ -54,9 +53,7 @@ def parent_death_pact(signal: signal.Signals=signal.SIGINT) -> None:
     if retcode != 0:
         raise Exception("prctl() returned nonzero retcode %d" % retcode)
 
-
-def start_server(service_args: 'ProblemServiceConfig',
-                 socket_path: str) -> None:
+def start_server(service_args: 'ProblemServiceConfig') -> None:
     """Start a OneShotServer with the given service_args and socket_path. This
     function is intended to be run in a subprocess. It will set the random seed,
     set up the problem service, and start the OneShotServer. It will also
@@ -73,15 +70,47 @@ def start_server(service_args: 'ProblemServiceConfig',
     from asnets.supervised import make_problem_service
     parent_death_pact(signal=signal.SIGKILL)
     new_service = make_problem_service(service_args, set_proc_title=True)
+
+    def pick_free_port(host="127.0.0.1"):
+        s = socket.socket()
+        s.bind((host, 0))
+        port = s.getsockname()[1]
+        s.close()
+        return port
+
+    host = "127.0.0.1"
+    port = pick_free_port(host)
+
+    addr_file = os.environ["RPYC_ADDR_FILE"]
+    os.makedirs(os.path.dirname(addr_file), exist_ok=True)
+    tmp = addr_file + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump({"host": host, "port": port}, f)
+        f.flush(); os.fsync(f.fileno())
+    os.replace(tmp, addr_file)
+    os.chmod(addr_file, 0o600)
+
+    @atexit.register
+    def _cleanup():
+        try: os.remove(addr_file)
+        except FileNotFoundError: pass
+
     protocol_config = {
         "allow_all_attrs": False,  # Default: False, restricts attributes
         "allowed_attrs": {"copy"},  # Add 'copy' to the list of allowed attributes
         "allow_setattr": True,  # Allow setting attributes if needed
         "allow_delattr": True,  # Allow deleting attributes if needed
     }
-    # server = OneShotServer(new_service, socket_path=socket_path, protocol_config=protocol_config)
-    # print(f'Child process starting OneShotServer {server})
-    server = ThreadedServer(new_service, socket_path=socket_path, protocol_config=protocol_config)
+
+    print(f"READY RPyC {host}:{port}", flush=True)
+
+    server = ThreadedServer(
+        new_service,
+        hostname=host,
+        port=port,
+        reuse_addr=True,
+        backlog=128,
+        protocol_config=protocol_config)
     print(f'Child process starting ThreadedServer {server}')
     import traceback
     try:
@@ -92,8 +121,6 @@ def start_server(service_args: 'ProblemServiceConfig',
     finally:
         # save kernprof profile for this subprocess if we can
         try_save_profile()
-        traceback.print_exc()
-
 
 def to_local(obj):
     """Convert a NetRef to an object to something that's DEFINITELY local."""
@@ -126,11 +153,37 @@ def wait_exists_polling(file_path: str,
             return False
     return True
 
+# --- small helpers ---
+def _wait_for_addr(path: str, proc: Process, timeout: float = 60.0, interval: float = 0.1):
+    """Poll for the addr file; bail early if the server dies."""
+    deadline = time() + timeout
+    while time() < deadline:
+        if os.path.exists(path):
+            with open(path) as f:
+                return json.load(f)
+        if not proc.is_alive():
+            raise RuntimeError(f"Server exited before writing addr file (exitcode={proc.exitcode}).")
+        sleep(interval)
+    raise TimeoutError(f"Timed out waiting for RPYC addr file: {path}")
+
+def _connect_via_info(info: dict):
+    cfg = {"sync_request_timeout": None}
+    if "host" in info:  # TCP loopback
+        c = rpyc.connect(info["host"], info["port"], config=cfg)
+        c.ping()
+        return c
+    elif "unix" in info:  # fallback if you keep UDS somewhere
+        stream = rpyc.utils.factory.unix_connect(info["unix"])
+        c = rpyc.connect_stream(stream, service=None, config=cfg)
+        c.ping()
+        return c
+    else:
+        raise ValueError(f"Unrecognized addr info: {info}")
 
 class ProblemServer(object):
     """Spools up another process to host a ProblemService."""
     # how long we need to wait for the connection to spool up
-    MAX_WAIT_TIME = 15.0
+    MAX_WAIT_TIME = 30.0
 
     def __init__(self, service_conf: 'ProblemServiceConfig') -> None:
         """Create a new ProblemServer. This will start a new process that will
@@ -147,20 +200,34 @@ class ProblemServer(object):
             service_conf (ProblemServiceConfig): configuration for the
             ProblemService to be hosted.
         """
-        user = getpass.getuser()
-        sock_dir = f'/tmp/asnet-sockets-{user}/'
-        os.makedirs(sock_dir, exist_ok=True)
-        self._unix_sock_path = os.path.join(sock_dir,
-                                            'socket.' + uuid.uuid4().hex)
+        # user = getpass.getuser()
+        # sock_dir = f'/tmp/asnet-sockets-{user}/'
+        # os.makedirs(sock_dir, exist_ok=True)
+        # self._unix_sock_path = os.path.join(sock_dir,
+        #                                     'socket.' + uuid.uuid4().hex)
+        addr_file = os.environ.get("RPYC_ADDR_FILE")
+        # For SLURM batch usage - usage of unix sockets wrecked the runtime of a lot of experiments,
+        # changing to TCP instead. If this doesn't already exist, we'll synthesize another.
+        if not addr_file:
+            # fallback: keep it under the project dir, but your Slurm sets this already
+            addr_file = os.path.join(os.getcwd(), "rpyc_addr",
+                                     f".rpyc_addr_{os.getpid()}.json")
+            os.makedirs(os.path.dirname(addr_file), exist_ok=True)
+            os.environ["RPYC_ADDR_FILE"] = addr_file
+        else:
+            os.makedirs(os.path.dirname(addr_file), exist_ok=True)
+        # Start the server in a separate process
         self._serve_proc = Process(
             target=start_server, args=(
                 service_conf,
-                self._unix_sock_path,
+                # self._unix_sock_path,
             ))
         self._serve_proc.start()
         self._start_time = time()
+        self._addr_file = addr_file
 
-        self._conn = None
+        info = _wait_for_addr(self._addr_file, self._serve_proc, timeout=self.MAX_WAIT_TIME)
+        self._conn = _connect_via_info(info=info)
 
         # this ensures that we always close connection (& thus terminate server
         # on other end) before shutting down, no matter what

@@ -357,7 +357,7 @@ class PlannerExtensions(object):
         return 500
 
 
-def make_problem_service(config, set_proc_title=False, use_estimator=False):
+def make_problem_service(config, set_proc_title=False):
     """Construct Service class for a particular problem. Note that we must
     construct classes, not instances (unfortunately), as there is no way of
     passing arguments to the service's initialisation code (AFAICT).
