@@ -14,8 +14,6 @@ from rpyc.utils.server import ThreadedServer
 
 from rpyc.core.protocol import DEFAULT_CONFIG
 
-from asnets.supervised import ProblemServiceConfig
-
 DEFAULT_CONFIG['allow_getattr'] = True
 DEFAULT_CONFIG['allow_setattr'] = True
 DEFAULT_CONFIG['allow_delattr'] = True
