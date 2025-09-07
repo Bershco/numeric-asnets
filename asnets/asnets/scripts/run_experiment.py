@@ -438,6 +438,11 @@ parser.add_argument(
     '--memory-debug',
     default=False,
     help='Enable memory debugging.')
+parser.add_argument(
+    '--pddl2gym_states',
+    default=False,
+    help='Enable usage of PDDL2Gym states instead of CanonicalState states.',
+)
 
 def main():
     args = parser.parse_args()
@@ -585,7 +590,7 @@ evaluation = {"off" if no_eval else "on"}
     if mcts_rollout_horizon is not None:
         main_test_flags.extend(['--mcts-rollout-horizon', str(mcts_rollout_horizon)])
     if random_seed is not None:
-        main_test_flags.extend(['--random-seed', str(random_seed)])
+        main_test_flags.extend(['--seed', str(random_seed)])
     if mcts_expansion_size is not None:
         main_test_flags.extend(['--mcts-expansion-size', str(mcts_expansion_size)])
     if mcts_value_based:
