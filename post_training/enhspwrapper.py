@@ -22,14 +22,21 @@ class ENHSPEstimator(ENHSPCache):
         self.heuristic_client = None
         self.heuristic_client_initialised = False
 
-    def get_state_h(self, cstate: CanonicalState):
+    def get_cstate_h(self, cstate):
         cstate = to_local(cstate)
         if cstate in self.computed_states:
             return self.computed_states[cstate]
         problem_hlist = replace_init_state(self._problem_hlist, cstate.to_tup_state())
-        problem_source = hlist_to_sexprs(problem_hlist)
+        problem_pddl_oneliner = hlist_to_sexprs(problem_hlist)
 
-        return self.get_heuristic(problem_source)
+        return self.get_heuristic(problem_pddl_oneliner)
+
+    def get_pddl2gym_state_h(self, state):
+        state = to_local(state)
+        if state in self.computed_states:
+            return self.computed_states[state]
+
+        return None
 
     def initialise_heuristic_server(self, init_instance_oneline: str):
         self.heuristic_client = HeuristicClient(
@@ -41,10 +48,10 @@ class ENHSPEstimator(ENHSPCache):
         self.heuristic_client_initialised = True
 
     # the problem should already contain the current state as the 'initial' state in order to get its heuristic
-    def get_heuristic(self, problem_text):
+    def get_heuristic(self, problem_pddl_oneliner):
         if not self.heuristic_client_initialised:
-            self.initialise_heuristic_server(problem_text)
-        heuristic_value = self.heuristic_client.get_heuristic(problem_text)
+            self.initialise_heuristic_server(problem_pddl_oneliner)
+        heuristic_value = self.heuristic_client.get_heuristic(problem_pddl_oneliner)
         if heuristic_value == float("inf"):
             logger.debug("No heuristic value found through ENHSP heuristic, given infinity instead.")
         return heuristic_value
@@ -97,8 +104,8 @@ class HeuristicClient:
     def _read_line(self) -> str:
         return self.proc.stdout.readline()
 
-    def get_heuristic(self, problem_pddl_oneline: str) -> float:
-        self._send_line(problem_pddl_oneline)
+    def get_heuristic(self, problem_pddl_oneliner: str) -> float:
+        self._send_line(problem_pddl_oneliner)
         h = float("inf")
         while True:
             line = self._read_line().strip()
