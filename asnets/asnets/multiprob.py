@@ -154,9 +154,9 @@ def wait_exists_polling(file_path: str,
 
 # --- small helpers ---
 def _wait_for_addr(path: str, timeout: float = 60.0, poll: float = 0.1, proc: "Process|None" = None):
-    deadline = time.time() + timeout
+    deadline = time() + timeout
     last_err = None
-    while time.time() < deadline:
+    while time() < deadline:
         try:
             with open(path) as f:
                 return json.load(f)
@@ -164,7 +164,7 @@ def _wait_for_addr(path: str, timeout: float = 60.0, poll: float = 0.1, proc: "P
             last_err = e
             if proc is not None and not proc.is_alive():
                 raise RuntimeError(f"Server exited before writing addr file (exitcode={proc.exitcode}).")
-            time.sleep(poll)
+            sleep(poll)
     # optional: nicer message if we saw a crash
     if proc is not None and not proc.is_alive():
         raise RuntimeError(f"Timed out and server is dead (exitcode={proc.exitcode}).")
@@ -230,7 +230,7 @@ class ProblemServer(object):
         self._start_time = time()
         self._addr_file = addr_file
 
-        info = _wait_for_addr(self._addr_file, self._serve_proc, timeout=self.MAX_WAIT_TIME)
+        info = _wait_for_addr(self._addr_file, proc=self._serve_proc, timeout=self.MAX_WAIT_TIME)
         self._conn = _connect_via_info(info=info)
 
         # this ensures that we always close connection (& thus terminate server
@@ -365,7 +365,7 @@ class ProblemServer(object):
             return self._conn
 
         # How long to keep waiting from when the server was spawned
-        remaining = max(0.0, self.MAX_WAIT_TIME - (time.time() - self._start_time))
+        remaining = max(0.0, self.MAX_WAIT_TIME - (time() - self._start_time))
 
         # Where the server published {host, port}; set this in __init__
         addr_path = getattr(self, "_addr_file", None) or os.environ["RPYC_ADDR_FILE"]
@@ -389,7 +389,7 @@ class ProblemServer(object):
                 self._conn = c
                 return self._conn
             except Exception:
-                time.sleep(0.25)
+                sleep(0.25)
 
         raise RuntimeError("Failed to connect to RPyC server")
 
