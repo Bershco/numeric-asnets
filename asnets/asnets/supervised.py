@@ -25,7 +25,6 @@ from asnets.prob_dom_meta import BoundAction, DomainType, get_domain_meta, \
     get_problem_meta
 from asnets.interfaces.jpddl_interface import start_jvm
 from asnets.interfaces.ssipp_interface import set_up_ssipp
-from asnets.multiprob import to_local
 from asnets.state_reprs import compute_observation_dim, compute_action_dim, \
     get_action_name, sample_next_state, get_init_cstate, CanonicalState
 from asnets.teacher import DomainSpecificTeacher, FDTeacher, MetricFFTeacher, \
@@ -41,7 +40,6 @@ import jpype
 import jpype.imports
 from jpype.types import *
 
-from post_training.enhspwrapper import ENHSPEstimator
 
 J_PDDLDomain = None
 J_PDDLProblem = None
@@ -357,7 +355,7 @@ class PlannerExtensions(object):
         return 500
 
 
-def make_problem_service(config, set_proc_title=False):
+def make_problem_service(config, set_proc_title=False, pddl2gym_states=False):
     """Construct Service class for a particular problem. Note that we must
     construct classes, not instances (unfortunately), as there is no way of
     passing arguments to the service's initialisation code (AFAICT).
@@ -368,7 +366,8 @@ def make_problem_service(config, set_proc_title=False):
     per environment, and you want to know which subprocess corresponds to which
     environment."""
     assert isinstance(config, ProblemServiceConfig)
-
+    #to avoid circular imports
+    from asnets.multiprob import to_local
     class ProblemService(rpyc.Service):
         """Spools up a new Python interpreter and uses it to sandbox SSiPP and
         MDPSim. Can interact with this to train a Q-network."""
@@ -694,16 +693,37 @@ def make_problem_service(config, set_proc_title=False):
             return obs_tensor, qv_tensor
 
         def exposed_initialise_estimator(self, enhsp_config: str):
+            # to avoid circular imports
+            from post_training.enhspwrapper import ENHSPEstimator
             assert self.initialised, "Can't init estimator before full object"
             assert not self.estimator_initialised, "Can't double-init"
             self.estimator = ENHSPEstimator(self.p, enhsp_config)
             self.estimator_initialised = True
 
-        def exposed_get_state_h(self, cstate: CanonicalState):
+        def exposed_get_state_h(self, cstate):
             assert self.estimator_initialised, "Can't get state h value without estimator initialised"
-            return self.estimator.get_state_h(cstate)
+            return self.estimator.get_cstate_h(cstate)
 
-    return ProblemService
+    class ProblemServicePDDL2Gym(ProblemService):
+        def exposed_env_reset(self):
+            from PDDL2Gym.pddl2gym import PDDL2GYM
+            domain_path = self.p.pddl_files[0]
+            problem_path = self.p.pddl_files[1]
+            assert domain_path.endswith("domain.pddl")
+            assert "instance" in problem_path
+            self.pddl2gym_env = PDDL2GYM(domain_path,problem_path,max_steps=10000)
+
+        def exposed_get_state_h(self, state):
+            assert self.estimator_initialised, "Can't get state h value without estimator initialised"
+            return self.estimator
+
+        # def exposed_initialise(self):
+        #     super().exposed_initialise()
+
+
+
+
+    return ProblemService if not pddl2gym_states else ProblemServicePDDL2Gym
 
 
 
@@ -1063,6 +1083,8 @@ class SupervisedTrainer:
 
     @can_profile
     def _make_batches(self, n_batches: int):
+        # to avoid circular imports
+        from asnets.multiprob import to_local
         """A generator yielding batches of data for training.
 
         Args:
@@ -1147,6 +1169,8 @@ class SupervisedTrainer:
 
     def _get_replay_sizes(self):
         """Get the sizes of replay buffers for each problem."""
+        # to avoid circular imports
+        from asnets.multiprob import to_local
         rv = []
         for problem in self.problems:
             rv.append(to_local(problem.problem_service.get_replay_size()))
@@ -1224,6 +1248,8 @@ class ManualLoss(tf.keras.losses.Loss):
 
     @can_profile
     def _set_up_losses(self, problem, act_dist, ph_q_values):
+        # to avoid circular imports
+        from asnets.multiprob import to_local
         problem_service = problem.problem_service
         loss_parts = []
         # now the loss ops
