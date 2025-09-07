@@ -330,17 +330,15 @@ class MonteCarloPolicyEvaluator(MCTS):
                 self.state_to_node[next_mcts_node.state] = next_mcts_node
                 return next_action
 
-        def node_ranking(node):
-            if self.N[node] == 0:
-                return float("-inf")
-            return self.Q[node] / self.N[node]
+        def node_priority_by_n(node):
+            return self.N.get(node,0)
 
-        def custom_tiebreaker(node):
-            return self.N[node]
+        def tiebreak_by_q(node):
+            return self.Q.get(node,0.0)
 
         best_action, best_node = max(
             self.children[self.curr_tree_root].items(),
-            key=lambda item: (node_ranking(item[1]), custom_tiebreaker(item[1]))
+            key=lambda item: (node_priority_by_n(item[1]), tiebreak_by_q(item[1]))
         )
         LOGGER.info(f'chosen action: {best_action}')
         self.visited_cstates_hashes.add(best_node.__hash__())
