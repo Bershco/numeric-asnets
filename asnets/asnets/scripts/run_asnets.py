@@ -499,6 +499,11 @@ class MonteCarloPolicyEvaluator(MCTS):
             self.act_dist_per_node[node] = act_dist
         return tf.squeeze(act_dist)
 
+    def print_exploration_exploitation_comparison(self):
+        assert self._probe is not None
+        # if it is None, I want to raise an AssertionError so I could catch it. every other error shouldn't be caught.
+        print(self._probe.summary())
+
 
 @can_profile
 def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, graceful_timeout=300):
@@ -522,7 +527,12 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
         path.append(to_local(problem_service.action_name(action)))
         cost += step_cost
         if curr_cstate.is_goal:
-            # path.append('GOAL! :D')
+            try:
+                print("Exploration-Exploitation comparison:")
+                policy_evaluator.print_exploration_exploitation_comparison()
+            except AssertionError as e:
+                print("Exploration-Exploitation comparison failed.")
+                print(e)
             return cost, True, path
         # we can run out of time or run out of actions to take
         if curr_cstate.is_terminal:
@@ -530,6 +540,12 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
         if i == limit-1:
             print(" I actually reached the end, something weird is happening, only some actions were chosen but limit was reached? ")
     # path.append('FAIL! D:')
+    try:
+        print("Exploration-Exploitation comparison:")
+        policy_evaluator.print_exploration_exploitation_comparison()
+    except AssertionError as e:
+        print("Exploration-Exploitation comparison failed.")
+        print(e)
     return cost, False, path
 
 

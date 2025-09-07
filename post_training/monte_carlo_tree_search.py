@@ -38,6 +38,38 @@ class Node(ABC):
         """Nodes must be comparable"""
         return True
 
+class SelectProbe:
+    EPS = 1e-12
+    def __init__(self):
+        self.events = 0
+        self.exploration_share_sum = 0.0
+        self.flip = 0  # argmax(Q+U) != argmax(Q)
+
+    def log(self, q_list, u_list, chosen_idx):
+        # Only log when all edges were "visited" (no +inf first-visit forcing)
+        if any(v is None for v in u_list):  # mark unvisited edges with None below
+            return
+        # who wins by score vs by Q alone?
+        scores = [q + u for q, u in zip(q_list, u_list)]
+        idx_score = int(np.argmax(scores))
+        idx_q     = int(np.argmax(q_list))
+        # share of exploration at chosen edge
+        Qc, Uc = q_list[chosen_idx], u_list[chosen_idx]
+        share = Uc / (abs(Qc) + abs(Uc) + self.EPS)
+
+        self.events += 1
+        self.exploration_share_sum += share
+        if idx_score != idx_q:
+            self.flip += 1
+
+    def summary(self):
+        if self.events == 0:
+            return {"events": 0}
+        return {
+            "events": self.events,
+            "avg_exploration_share": self.exploration_share_sum / self.events,
+            "pct_argmax_flipped_by_U": 100.0 * self.flip / self.events,
+        }
 
 class MCTS:
     """Monte Carlo tree searcher. First rollout the tree then choose a move."""
@@ -46,6 +78,7 @@ class MCTS:
         self.curr_tree_root = None
         self.Q = defaultdict(int)  # total reward of each node
         self.N = defaultdict(int)  # total visit count for each node
+        self.Nsa = defaultdict(int)
         self.children: dict[Node, Any] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
@@ -56,6 +89,10 @@ class MCTS:
             self.after_expansion_times = []
             self.after_eval_times = []
             self.end_times = []
+        self.debug_comparison_exploration_exploitation = True
+        self._probe = None
+        if self.debug_comparison_exploration_exploitation:
+            self._probe = SelectProbe()
 
     def mcts_iteration_classic(self, node, horizon):
         """Make the tree one layer better. (Train for one iteration.)"""
@@ -86,26 +123,32 @@ class MCTS:
         if self.time_debug_mcts_iterations:
             self.end_times.append(time())
 
-
-    def _select(self, node: Node):
-        """Find an unexplored descendent of `node`"""
+    def _select(self, node: "Node"):
+        """Find an unexplored descendent of `node` (returns path including final leaf or frontier child)."""
         path = []
         while True:
             path.append(node)
+
+            # If node has no generated children, it's unexplored or terminal.
             if node not in self.children or not self.children[node]:
-                # node is either unexplored or terminal
-                # Roee: should still work as intended even though we're messing with action_nodes tuples and not just
-                # nodes,because "not self.children[node]" means that there are no applicable actions_node tuples,
-                # hence node is terminal.
                 return path
-            # unexplored = {action_state_tuple[1] for action_state_tuple in self.children[node]} - self.children.keys()
-            unexplored = set(self.children[node].values()) - self.children.keys()
-            if unexplored:
-                n = unexplored.pop()
+
+            # Prefer an unexplored child if any (child not yet in self.children keys)
+            actions_nodes = list(self.children[node].items())  # [(action, child_node), ...]
+            unexplored_edges = [(a, c) for (a, c) in actions_nodes if c not in self.children]
+
+            if unexplored_edges:
+                a, n = unexplored_edges[np.random.randint(len(unexplored_edges))]
+                # count traversed edge
+                self.Nsa[(node, a)] += 1
                 path.append(n)
                 return path
-            # node = self._uct_select(node)  # descend a layer deeper
-            node = self._puct_select_no_cycle(node, set(path))
+
+            # Otherwise pick via PUCT (with no-cycle)
+            a_next, n_next = self._puct_select_no_cycle(node, set(path))
+            # count traversed edge
+            self.Nsa[(node, a_next)] += 1
+            node = n_next
 
     def _expand(self, node):
         """Update the `children` dict with the children of `node`"""
@@ -128,50 +171,68 @@ class MCTS:
         raise NotImplemented
 
     def _puct_select_no_cycle(self, node, path_set):
-        """Sample a child of `node` using PUCT scores as softmax logits and make sure to not get into cycles"""
+        """Sample a child of `node` using PUCT scores as softmax logits while avoiding cycles.
+           Returns (action, child_node)."""
 
         # All children of node should already be generated
-        assert all(child_node in self.children for child_node in self.children[node].values())
+        assert all(child in self.children for child in self.children[node].values())
 
-        # Get the prior probabilities from the policy network
-        # priors = policy_network(node.to_network_input())  # returns an eagertensor
-        priors = self.get_act_dist_from_mcts_node(node) # makes sure the tensor is (num_of_actions,) and not (1,num_of_actions)
-        priors = priors.numpy() if hasattr(priors, "numpy") else priors  # if running eagerly
+        # Priors from policy (vector over action indices)
+        priors = self.get_act_dist_from_mcts_node(node)
+        priors = priors.numpy() if hasattr(priors, "numpy") else priors
+        actions_nodes = list(self.children[node].items())  # [(action, child_node), ...]
 
-        total_visits = self.N[node]
-        scores = []
-        actions_nodes = list(self.children[node].items())  # List of (action, child_node)
+        N_parent = self.N[node]
+
+        q_list, u_list, score_list = [], [], []
+        mask_inf = []  # True if this edge is forced-first-visit (+inf score)
 
         for action, child in actions_nodes:
-            if child in path_set:  # as to not create a cycle
-                scores.append(float("-inf"))
+            if child in path_set:  # avoid cycles
+                q_list.append(-float("inf"))
+                u_list.append(0.0)
+                score_list.append(-float("inf"))
+                mask_inf.append(False)
                 continue
-            # Use prior if available, otherwise assume 0 (or small epsilon if you prefer)
+
             prior = float(priors[action]) if 0 <= action < len(priors) else 0.0
-            if self.N[child] == 0:
-                score = float("inf")  # Encourage at least one visit
+            edge_visits = self.Nsa[(node, action)]
+
+            q_value = self.Q[child]
+
+            if edge_visits == 0:
+                # force at least one try for each edge
+                q_list.append(q_value)
+                u_list.append(None)  # mark as unvisited (for probe)
+                score_list.append(float("inf"))
+                mask_inf.append(True)
             else:
-                q_value = self.Q[child] / self.N[child]
-                exploration = self.exploration_weight * prior * math.sqrt(total_visits) / (1 + self.N[child])
-                score = q_value + exploration
+                # PUCT exploration using edge visits, not child visits
+                u_value = self.exploration_weight * prior * math.sqrt(max(1, N_parent)) / (1 + edge_visits)
+                q_list.append(q_value)
+                u_list.append(u_value)
+                score_list.append(q_value + u_value)
+                mask_inf.append(False)
 
-            scores.append(score)
+        # If any edge is unvisited (forced +inf), choose uniformly among them
+        if any(mask_inf):
+            idxs = [i for i, m in enumerate(mask_inf) if m]
+            idx = int(np.random.choice(idxs))
+            # (Optional) no probe log here because exploration is trivially dominating
+            a, child = actions_nodes[idx]
+            return a, child
 
-        # If any node is unvisited (inf score), choose uniformly among them
-        if any(np.isposinf(score) for score in scores):
-            unexplored = [child for score, (_, child) in zip(scores, actions_nodes) if np.isinf(score)]
-            return np.random.choice(unexplored)
-
-        # Convert scores to probabilities via softmax
-        scores = np.array(scores, dtype=np.float64)
-        exp_probs = np.exp(scores - np.max(scores))  # subtract max for numerical stability
+        # Otherwise sample by softmax over (Q+U)
+        scores = np.array(score_list, dtype=np.float64)
+        exp_probs = np.exp(scores - np.max(scores))  # stability
         probs = exp_probs / np.sum(exp_probs)
+        idx = int(np.random.choice(len(actions_nodes), p=probs))
+        a, child = actions_nodes[idx]
 
-        # Sample an index from the softmax
-        idx = np.random.choice(len(actions_nodes), p=probs)
-        # logging.getLogger(__name__).debug(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
-        # print(f"PUCT probs: {probs}, selected idx: {idx}, action: {actions_nodes[idx][0]}")
-        return actions_nodes[idx][1]
+        # Probe (exploration share + flip vs Q-only)
+        self._probe.log(q_list, u_list, idx)
+
+        return a, child
 
     def reconstructSelectionPath(self, path):
         output_path = [(None, self.curr_tree_root)]
