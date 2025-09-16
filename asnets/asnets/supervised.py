@@ -45,6 +45,7 @@ J_PDDLDomain = None
 J_PDDLProblem = None
 
 LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.INFO)
 
 
 @jpype.onJVMStart
@@ -254,13 +255,13 @@ class PlannerExtensions(object):
             for a in self.mdpsim_problem.ground_actions
         }
 
-        LOGGER.info(f'Python-side extra data')
+        LOGGER.debug(f'Python-side extra data')
         # Python-side extra data
         self.domain_meta = get_domain_meta(self.mdpsim_problem.domain)
         self.problem_meta = get_problem_meta(self.mdpsim_problem,
                                              self.domain_meta)
 
-        LOGGER.info(f'Using domain type: {self.domain_type}')
+        LOGGER.debug(f'Using domain type: {self.domain_type}')
         # Either use JPDDL (numeric) or SSiPP (otherwise), ugly!
         if self.domain_type == DomainType.NUMERIC:
             domain_file = get_domain_file(self.pddl_files)
@@ -268,19 +269,19 @@ class PlannerExtensions(object):
             assert domain_file is not None
             assert problem_file is not None
 
-            print("Starting JVM...", flush=True)
+            LOGGER.debug("Starting JVM...", flush=True)
             start_jvm()
 
-            print("Creating J_PDDLDomain...", flush=True)
+            LOGGER.debug("Creating J_PDDLDomain...", flush=True)
             self.j_domain = J_PDDLDomain(domain_file)
 
-            print("Creating J_PDDLProblem...", flush=True)
+            LOGGER.debug("Creating J_PDDLProblem...", flush=True)
             self.j_problem = J_PDDLProblem(problem_file, self.j_domain)
 
-            print("Calling prepareForSearch...", flush=True)
+            LOGGER.debug("Calling prepareForSearch...", flush=True)
             self.j_problem.prepareForSearch(True, False)
 
-            print("JPDDL init done.", flush=True)
+            LOGGER.debug("JPDDL init done.", flush=True)
 
             self.j_problem.prepareForSearch(
                 True,  # enable AIBR preprocessing
@@ -377,7 +378,7 @@ def make_problem_service(config, set_proc_title=False, pddl2gym_states=False):
             as a function from flattened observation vectors to action
             numbers)."""
             return self.internal_collect_trajectory(
-                model, stochastic=self.stochastic)
+                model)
         
         def exposed_explore_from_trajectories(self):
             self.internal_explore_from_trajectories()
@@ -422,19 +423,10 @@ def make_problem_service(config, set_proc_title=False, pddl2gym_states=False):
 
         def exposed_env_simulate_step(self, cstate_to_simulate_from, action_num):
             """Perform an environment step without actually changing the state"""
-            try:
-                action_num = to_local(action_num)
-                # print(f"🛠️ Called env_simulate_step with action {action_num}")
-                local_cstate_copy = to_local(cstate_to_simulate_from)
-                following_cstate, step_cost = sample_next_state(local_cstate_copy, action_num, self.p)
-                return following_cstate, step_cost
-            except Exception as e:
-                import traceback
-                print("🚨 Exception inside env_simulate_step:")
-                traceback.print_exc()
-                print("Stack:")
-                traceback.print_stack()
-                raise
+            action_num = to_local(action_num)
+            local_cstate_copy = to_local(cstate_to_simulate_from)
+            following_cstate, step_cost = sample_next_state(local_cstate_copy, action_num, self.p)
+            return following_cstate, step_cost
 
         def exposed_current_state(self):
             return self.current_state
@@ -547,8 +539,7 @@ def make_problem_service(config, set_proc_title=False, pddl2gym_states=False):
             self.max_len = config.max_len
             # will hold (state, action) pairs to train on
             self.replay = WeightedReplayBuffer()
-            # current state for stateful Gym-like methods
-            self.current_state = get_init_cstate(self.p)
+            self.exposed_env_reset()
             # hack to decide whether to get one or many rollouts (XXX)
             self.first_rollout = True
 
@@ -593,23 +584,21 @@ def make_problem_service(config, set_proc_title=False, pddl2gym_states=False):
 
 
         def internal_collect_trajectory(self,
-                                        model: Callable,
-                                        stochastic: bool) -> bool:
+                                        model: Callable) -> bool:
             """Collect a single trajectory using the given policy. Add the
             trajectory to the internal trajectory collection.
             
             Args:
                 mode (Callable): The policy to use.
                 max_len (int): The maximum length of the trajectory.
-                stochastic (bool): Whether to use stochastic mode.
-            
+
             Returns:
                 bool: Whether the trajectory was successful.
             """
             prob_meta = self.p.problem_meta
             path = []
             hit_goal = False
-            cstate = get_init_cstate(self.p)
+            cstate = self.internal_get_init_state()
             
             for _ in range(self.max_len):
                 obs = to_local(cstate.to_network_input())
@@ -623,7 +612,7 @@ def make_problem_service(config, set_proc_title=False, pddl2gym_states=False):
                             -1,
                         ],
                     ).numpy()
-                    if not stochastic:
+                    if not self.stochastic:
                         chosen = int(np.argmax(act_dist))
                     else:
                         act_dist = act_dist / np.sum(act_dist)
@@ -676,7 +665,6 @@ def make_problem_service(config, set_proc_title=False, pddl2gym_states=False):
                 filtered_envelope.append((env_cstate, act))
 
             self.expl_states.update(filtered_envelope)
-            
 
         def flatten_obs_qvs(self, rich_obs_qvs):
             cstates, rich_qvs = zip(*rich_obs_qvs)
@@ -704,6 +692,9 @@ def make_problem_service(config, set_proc_title=False, pddl2gym_states=False):
             assert self.estimator_initialised, "Can't get state h value without estimator initialised"
             return self.estimator.get_cstate_h(cstate)
 
+        def internal_get_init_state(self):
+            return get_init_cstate(self.p)
+
     class ProblemServicePDDL2Gym(ProblemService):
         def exposed_env_reset(self):
             from PDDL2Gym.pddl2gym import PDDL2GYM
@@ -724,9 +715,6 @@ def make_problem_service(config, set_proc_title=False, pddl2gym_states=False):
 
 
     return ProblemService if not pddl2gym_states else ProblemServicePDDL2Gym
-
-
-
 
 @lru_cache(None)
 def mock_qvalues(planner: Teacher,

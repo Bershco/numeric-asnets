@@ -105,32 +105,26 @@ class MCTS:
             self.path_until_goal = self.reconstructSelectionPath(path) + self.path_until_goal
 
     def mcts_iteration_value_based(self, node):
-        if self.time_debug_mcts_iterations:
-            self.start_times.append(time())
         path = self._select(node)
-        if self.time_debug_mcts_iterations:
-            self.after_selection_times.append(time())
         leaf = path[-1]
         self._expand(leaf)
-        if self.time_debug_mcts_iterations:
-            self.after_expansion_times.append(time())
         reward = 1 / (1 + self._evaluate_node(leaf))
         # numbers might be too low or insignificant?? I think it would be okay...
         # theoretically and practically it SHOULD not be lower than 1/10001 which isn't that low.
-        if self.time_debug_mcts_iterations:
-            self.after_eval_times.append(time())
         self._backpropagate(path,reward)
-        if self.time_debug_mcts_iterations:
-            self.end_times.append(time())
 
     def _select(self, node: "Node"):
         """Find an unexplored descendent of `node` (returns path including final leaf or frontier child)."""
+        if self.time_debug_mcts_iterations:
+            self.start_times.append(time())
         path = []
         while True:
             path.append(node)
 
             # If node has no generated children, it's unexplored or terminal.
             if node not in self.children or not self.children[node]:
+                if self.time_debug_mcts_iterations:
+                    self.after_selection_times.append(time())
                 return path
 
             # Prefer an unexplored child if any (child not yet in self.children keys)
@@ -142,6 +136,8 @@ class MCTS:
                 # count traversed edge
                 self.Nsa[(node, a)] += 1
                 path.append(n)
+                if self.time_debug_mcts_iterations:
+                    self.after_selection_times.append(time())
                 return path
 
             # Otherwise pick via PUCT (with no-cycle)
@@ -165,6 +161,9 @@ class MCTS:
             q = self.Q.get(node, 0.0)
             n = self.N[node]
             self.Q[node] = q + (reward - q) / n  # running average
+        if self.time_debug_mcts_iterations:
+            self.end_times.append(time())
+
 
     def _evaluate_node(self, node) -> float:
         """Use the teacher's (or another) heuristic to evaluate a specific node, in order to use value-based mcts"""
