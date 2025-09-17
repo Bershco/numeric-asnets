@@ -363,6 +363,17 @@ class MonteCarloPolicyEvaluator(MCTS):
             self._delete_subtree(_temp, recursive=False)
             # LOGGER.info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
 
+    def progress_to_without_cstate(self, action_id, cost):
+        next_node = self.children[self.curr_tree_root][action_id]
+        self.prune_children_except(self.curr_tree_root, action_id)
+        assert next_node is not None, "Somehow need to progress to a non-generated node."
+        _temp = self.curr_tree_root
+        self.curr_tree_root = next_node
+        # This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
+        self._delete_subtree(_temp, recursive=False)
+        # LOGGER.info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
+        return self.curr_tree_root.state, cost #TODO: this 'cost' is useless everywhere.
+
     def get_corresponding_mcts_node(self, cstate):
         return self.state_to_node.get(cstate, None)
 
@@ -528,9 +539,8 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
             print('Graceful_timeout has been reached :)')
             break
         action = policy_evaluator.get_action_from_cstate(curr_state, cost)
-        curr_state, step_cost = to_local(problem_service.env_step(action))
-        policy_evaluator.progress_to(action, curr_state, cost+step_cost)
         path.append(to_local(problem_service.action_name(action)))
+        curr_state, step_cost = move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=False)
         cost += step_cost
         if curr_state.is_goal:
             try:
@@ -553,6 +563,15 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
         print("Exploration-Exploitation comparison failed.")
         print(e)
     return cost, False, path
+
+def move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=True):
+    if current_code:
+        curr_state, step_cost = to_local(problem_service.env_step(action))
+        policy_evaluator.progress_to(action, curr_state, cost+step_cost)
+        return curr_state, step_cost
+    else:
+        assert isinstance(policy_evaluator, MonteCarloPolicyEvaluator)
+        return policy_evaluator.progress_to_without_cstate(action, cost) #TODO: env_step on the problem_service is irrelevant
 
 
 def run_trials(policy, problem_server, trials, iterations, horizon=None, limit=1000, det_sample=False,

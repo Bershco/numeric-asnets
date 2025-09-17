@@ -356,7 +356,7 @@ class PlannerExtensions(object):
         return 500
 
 
-def make_problem_service(config, set_proc_title=False, pddl2gym_states=False):
+def make_problem_service(config, set_proc_title=False):
     """Construct Service class for a particular problem. Note that we must
     construct classes, not instances (unfortunately), as there is no way of
     passing arguments to the service's initialisation code (AFAICT).
@@ -695,26 +695,7 @@ def make_problem_service(config, set_proc_title=False, pddl2gym_states=False):
         def internal_get_init_state(self):
             return get_init_cstate(self.p)
 
-    class ProblemServicePDDL2Gym(ProblemService):
-        def exposed_env_reset(self):
-            from PDDL2Gym.pddl2gym import PDDL2GYM
-            domain_path = self.p.pddl_files[0]
-            problem_path = self.p.pddl_files[1]
-            assert domain_path.endswith("domain.pddl")
-            assert "instance" in problem_path
-            self.pddl2gym_env = PDDL2GYM(domain_path,problem_path,max_steps=10000)
-
-        def exposed_get_state_h(self, state):
-            assert self.estimator_initialised, "Can't get state h value without estimator initialised"
-            return self.estimator
-
-        # def exposed_initialise(self):
-        #     super().exposed_initialise()
-
-
-
-
-    return ProblemService if not pddl2gym_states else ProblemServicePDDL2Gym
+    return ProblemService
 
 @lru_cache(None)
 def mock_qvalues(planner: Teacher,

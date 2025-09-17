@@ -11,7 +11,6 @@ rpyc.core.protocol.DEFAULT_CONFIG.update({
     "sync_request_timeout": 1800,  # optional but nice to have for long calls
 })
 
-
 # Your code paths
 from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import get_init_cstate, sample_next_state, compute_action_dim
@@ -43,8 +42,22 @@ class LocalService:
     def get_act_dim(self):
         return compute_action_dim(self.p)
 
+def _maybe_to_local_pair(x):
+    """Robustly obtain (state, cost) from local or RPyC result."""
+    res = to_local(x)
+    if isinstance(res, tuple) and len(res) == 2:
+        s, c = res
+        try:
+            c = float(c)
+        except Exception:
+            c = float(to_local(c))
+        return s, c
+    # Fallback if service returns only a state
+    return res, 0.0
+
 def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
-          domain_type: str, iterations: int, decisions: int, k: int):
+          domain_type: str, iterations: int, decisions: int, k: int,
+          reroot_per_decision: bool):
     dtype = DomainType.NUMERIC if domain_type == "numeric" else DomainType.PROBABILISTIC
     pddl_files = [pddl_domain, pddl_problem]
 
@@ -58,7 +71,9 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
         service = LocalService(p)
     elif mode == "rpyc":
         cfg = ProblemServiceConfig(pddl_files, problem_name, dtype, teacher_planner="enhsp")
-        srv = ProblemServer(cfg); srv.service.initialise(); srv.service.initialise_estimator("hadd-gbfs")
+        srv = ProblemServer(cfg)
+        srv.service.initialise()
+        srv.service.initialise_estimator("hadd-gbfs")
         service = srv.service
     else:
         raise SystemExit("mode must be local or rpyc")
@@ -74,19 +89,63 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
                                      num_cstates_to_expand=k,
                                      use_value_based=True,
                                      memory_debug=False)
+
     # Turn on your internal timing buckets
     mcts.time_debug_mcts_iterations = True
     mcts.start_times = []; mcts.after_selection_times = []
     mcts.after_expansion_times = []; mcts.after_eval_times = []; mcts.end_times = []
 
-    # Seed root
-    c0 = to_local(service.env_reset())
-    mcts.curr_tree_root = wrapInMCTSNode(c0, cost_until_now=0.0, previous_action=None)
+    # Seed root (state + tree)
+    curr_cstate = to_local(service.env_reset())
+    total_cost = 0.0
+    mcts.curr_tree_root = wrapInMCTSNode(curr_cstate, cost_until_now=total_cost, previous_action=None)
 
     # Run N decisions; each decision performs `iterations` loops and then chooses an action
     t0 = time.perf_counter()
     for _ in range(decisions):
-        _ = mcts.get_action_from_cstate(c0, 0.0)  # uses your whole pipeline
+        # Important: pass the CURRENT state & cost (matches inference usage)
+        action = int(mcts.get_action_from_cstate(curr_cstate, total_cost))
+
+        if reroot_per_decision:
+            # Try to re-root to the existing child node for `action` if present
+            new_root = None
+            try:
+                root = mcts.curr_tree_root
+                if root in mcts.children and mcts.children[root] is not None:
+                    ch = mcts.children[root]
+                    cand = None
+                    if isinstance(ch, dict) and action in ch:
+                        cand = ch[action]
+                    elif hasattr(ch, "get"):
+                        try:
+                            cand = ch.get(action)
+                        except Exception:
+                            cand = None
+                    # Some containers expose .__getitem__
+                    if cand is None and hasattr(ch, "__getitem__"):
+                        try:
+                            cand = ch[action]
+                        except Exception:
+                            cand = None
+                    if cand is not None:
+                        new_root = cand
+            except Exception:
+                new_root = None
+
+            if new_root is not None:
+                # Reuse subtree & state if available
+                mcts.curr_tree_root = new_root
+                if hasattr(new_root, "cstate"):
+                    curr_cstate = to_local(new_root.cstate)
+                # keep total_cost as-is; some trees track cost on node already
+            else:
+                # Fall back to simulating the chosen action and rebuilding root at the next state
+                next_state, step_cost = _maybe_to_local_pair(service.env_simulate_step(curr_cstate, action))
+                total_cost += step_cost
+                curr_cstate = next_state
+                mcts.curr_tree_root = wrapInMCTSNode(curr_cstate, cost_until_now=total_cost, previous_action=action)
+
+
     wall = time.perf_counter() - t0
 
     # Collate stage times from your arrays
@@ -104,8 +163,10 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
           f"eval={1e3*evalv/max(1,total_iters):.3f} ms  back={1e3*back/max(1,total_iters):.3f} ms")
 
     if mode == "rpyc":
-        try: srv.stop()
-        except: pass
+        try:
+            srv.stop()
+        except Exception:
+            pass
 
 def main():
     ap = argparse.ArgumentParser()
@@ -119,6 +180,8 @@ def main():
     ap.add_argument("--run-grid-test", action="store_true")
     ap.add_argument("--run-local", action="store_true")
     ap.add_argument("--run-rpyc", action="store_true")
+    ap.add_argument("--reroot-per-decision", action="store_true",
+                    help="After each decision, re-root the tree to the chosen child (simulate if necessary) and continue from the next state.")
     args = ap.parse_args()
     logger = logging.getLogger(__name__)
 
@@ -134,14 +197,18 @@ def main():
             for iterations_num in (3,5,10):
                 for action_decisions_num in (5,10,50,100):
                     for mode in run_modes:
-                        logger.info(f"Running {mode} mode for {action_decisions_num} action decisions, with {iterations_num} mcts iterations, and {k_value} nodes generated per partial expanion of a single node.")
-                        bench(mode, args.domain, args.problem, args.problem_name, args.domain_type, iterations_num,
-                              decisions=action_decisions_num,k=k_value)
-
+                        logger.info(
+                            f"Running {mode} mode for {action_decisions_num} action decisions, "
+                            f"with {iterations_num} mcts iterations, and {k_value} nodes generated per partial expansion."
+                        )
+                        bench(mode, args.domain, args.problem, args.problem_name, args.domain_type,
+                              iterations_num, decisions=action_decisions_num, k=k_value,
+                              reroot_per_decision=args.reroot_per_decision)
     else:
         for mode in run_modes:
-            bench(mode, args.domain, args.problem, args.problem_name,
-                args.domain_type, args.iterations, args.decisions, args.k)
+            bench(mode, args.domain, args.problem, args.problem_name, args.domain_type,
+                  args.iterations, args.decisions, args.k,
+                  reroot_per_decision=args.reroot_per_decision)
 
 if __name__ == "__main__":
     main()

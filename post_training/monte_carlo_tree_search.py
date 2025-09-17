@@ -171,65 +171,86 @@ class MCTS:
 
     def _puct_select_no_cycle(self, node, path_set):
         """Sample a child of `node` using PUCT scores as softmax logits while avoiding cycles.
-           Returns (action, child_node)."""
+           Returns (action, child_node).  Vectorized over children to reduce Python overhead."""
 
-        # All children of node should already be generated
-        assert all(child in self.children for child in self.children[node].values())
+        # 0) Sanity: children should already be generated for this node
+        children_map = self.children[node]  # dict: action -> child_node
+        assert all(child in self.children for child in children_map.values())
+        actions_nodes = list(children_map.items())  # [(a, child), ...]
+        n_children = len(actions_nodes)
+        assert n_children > 0, "PUCT select called on a node with no children"
 
-        # Priors from policy (vector over action indices)
+        # 1) Priors from policy (vector over action indices)
         priors = self.get_act_dist_from_mcts_node(node)
         priors = priors.numpy() if hasattr(priors, "numpy") else priors
-        actions_nodes = list(self.children[node].items())  # [(action, child_node), ...]
 
-        N_parent = self.N[node]
+        # Build parallel arrays once
+        import numpy as _np, math as _math
+        actions = _np.fromiter((a for a, _ in actions_nodes), dtype=_np.int32, count=n_children)
+        child_list = [c for _, c in actions_nodes]
 
-        q_list, u_list, score_list = [], [], []
-        mask_inf = []  # True if this edge is forced-first-visit (+inf score)
+        # 2) Masks (vectorized)
+        #   - cycle mask: child already on current path => invalidate
+        cycle = _np.fromiter((c in path_set for c in child_list), dtype=bool, count=n_children)
 
-        for action, child in actions_nodes:
-            if child in path_set:  # avoid cycles
-                q_list.append(-float("inf"))
-                u_list.append(0.0)
-                score_list.append(-float("inf"))
-                mask_inf.append(False)
-                continue
+        # 3) Prior lookup (vectorized, with bounds check)
+        prior = _np.zeros(n_children, dtype=_np.float32)
+        if _np.ndim(priors) == 1 and priors.size > 0:
+            valid = (actions >= 0) & (actions < priors.size)
+            if valid.any():
+                prior[valid] = _np.asarray(priors, dtype=_np.float32)[actions[valid]]
+        else:
+            # extremely defensive: if priors is scalar/empty, leave zeros
+            pass
 
-            prior = float(priors[action]) if 0 <= action < len(priors) else 0.0
-            edge_visits = self.Nsa[(node, action)]
+        # 4) Edge visits Nsa(s,a) and child Q(s') in one sweep (still dict-backed, but only one pass)
+        edge_visits = _np.fromiter((self.Nsa[(node, int(a))] for a in actions),
+                                   dtype=_np.int32, count=n_children)
+        Q_child = _np.fromiter((self.Q.get(c, 0.0) for c in child_list),
+                               dtype=_np.float32, count=n_children)
 
-            q_value = self.Q[child]
-
-            if edge_visits == 0:
-                # force at least one try for each edge
-                q_list.append(q_value)
-                u_list.append(None)  # mark as unvisited (for probe)
-                score_list.append(float("inf"))
-                mask_inf.append(True)
+        # 5) Forced first visits: if any edge is unvisited and not a cycle, pick among them
+        unvisited = (edge_visits == 0) & (~cycle)
+        if _np.any(unvisited):
+            cand = _np.flatnonzero(unvisited)
+            # bias by prior if it has any mass, else uniform among unvisited
+            w = prior[cand].astype(_np.float64)
+            s = float(w.sum())
+            if _np.isfinite(s) and s > 0.0:
+                w /= s
+                idx = int(_np.random.choice(cand, p=w))
             else:
-                # PUCT exploration using edge visits, not child visits
-                u_value = self.exploration_weight * prior * math.sqrt(max(1, N_parent)) / (1 + edge_visits)
-                q_list.append(q_value)
-                u_list.append(u_value)
-                score_list.append(q_value + u_value)
-                mask_inf.append(False)
-
-        # If any edge is unvisited (forced +inf), choose uniformly among them
-        if any(mask_inf):
-            idxs = [i for i, m in enumerate(mask_inf) if m]
-            idx = int(np.random.choice(idxs))
-            # (Optional) no probe log here because exploration is trivially dominating
+                idx = int(_np.random.choice(cand))
             a, child = actions_nodes[idx]
+            # (as in your code: skip probe here; exploration is trivially dominating)
             return a, child
 
-        # Otherwise sample by softmax over (Q+U)
-        scores = np.array(score_list, dtype=np.float64)
-        exp_probs = np.exp(scores - np.max(scores))  # stability
-        probs = exp_probs / np.sum(exp_probs)
-        idx = int(np.random.choice(len(actions_nodes), p=probs))
+        # 6) Compute U and score = Q + U (vectorized)
+        N_parent = float(self.N.get(node, 0))
+        sqrtN = _math.sqrt(max(1.0, N_parent))
+        U = self.exploration_weight * prior * (sqrtN / (1.0 + edge_visits.astype(_np.float32)))
+
+        # Invalidate cycles
+        U[cycle] = 0.0
+        score = Q_child + U
+        score[cycle] = -_np.inf
+
+        # 7) Sample by softmax over (Q+U) with numerical stability
+        x = score.astype(_np.float64)
+        x -= _np.max(x)
+        w = _np.exp(x)
+        w[~_np.isfinite(w)] = 0.0
+        s = float(w.sum())
+        if (not _np.isfinite(s)) or s <= 0.0:
+            idx = int(_np.argmax(score))  # fallback if all weights underflow
+        else:
+            p = w / s
+            idx = int(_np.random.choice(n_children, p=p))
+
         a, child = actions_nodes[idx]
 
-        # Probe (exploration share + flip vs Q-only)
-        self._probe.log(q_list, u_list, idx)
+        # 8) Probe (keep your semantics: log q_list, u_list, chosen_idx)
+        self._probe.log(Q_child.tolist(), U.tolist(), idx)
 
         return a, child
 
