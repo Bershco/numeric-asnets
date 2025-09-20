@@ -269,16 +269,16 @@ class PlannerExtensions(object):
             assert domain_file is not None
             assert problem_file is not None
 
-            LOGGER.debug("Starting JVM...", flush=True)
+            LOGGER.debug("Starting JVM...")
             start_jvm()
 
-            LOGGER.debug("Creating J_PDDLDomain...", flush=True)
+            LOGGER.debug("Creating J_PDDLDomain...")
             self.j_domain = J_PDDLDomain(domain_file)
 
-            LOGGER.debug("Creating J_PDDLProblem...", flush=True)
+            LOGGER.debug("Creating J_PDDLProblem...")
             self.j_problem = J_PDDLProblem(problem_file, self.j_domain)
 
-            LOGGER.debug("Calling prepareForSearch...", flush=True)
+            LOGGER.debug("Calling prepareForSearch...")
             self.j_problem.prepareForSearch(True, False)
 
             LOGGER.debug("JPDDL init done.", flush=True)

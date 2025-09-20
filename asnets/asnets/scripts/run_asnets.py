@@ -372,7 +372,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         # This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
         self._delete_subtree(_temp, recursive=False)
         # LOGGER.info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
-        return self.curr_tree_root.state, cost #TODO: this 'cost' is useless everywhere.
+        return self.curr_tree_root.state, 1 #TODO: this 'cost' is useless everywhere.
 
     def get_corresponding_mcts_node(self, cstate):
         return self.state_to_node.get(cstate, None)

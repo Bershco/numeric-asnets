@@ -203,7 +203,7 @@ class MCTS:
             # extremely defensive: if priors is scalar/empty, leave zeros
             pass
 
-        # 4) Edge visits Nsa(s,a) and child Q(s') in one sweep (still dict-backed, but only one pass)
+        # 4) Edge visits Nsa(s,a) and child Q(s') in one sweep
         edge_visits = _np.fromiter((self.Nsa[(node, int(a))] for a in actions),
                                    dtype=_np.int32, count=n_children)
         Q_child = _np.fromiter((self.Q.get(c, 0.0) for c in child_list),
