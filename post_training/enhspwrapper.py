@@ -14,10 +14,9 @@ JARPATH = f"{os.path.dirname(__file__)}/ENHSPHeuristicServer.jar"
 class ENHSPEstimator(ENHSPCache):
     DEFAULT_ENHSP_CONFIG = 'hadd-gbfs'
 
-    def __init__(self, planner_exts, enhsp_config:str = 'hadd-gbfs'):
+    def __init__(self, planner_exts, enhsp_config: str = 'hadd-gbfs'):
         super().__init__(planner_exts=planner_exts, timeout_s=-1, enhsp_config=enhsp_config)
-        self.enhsp_config = enhsp_config #The above line directly converts the enhsp text into parameters with timeout
-        # and we later need the parameters without the timeout
+        self.enhsp_config = enhsp_config
         self.computed_states = {}
         self.heuristic_client = None
         self.heuristic_client_initialised = False
@@ -30,13 +29,6 @@ class ENHSPEstimator(ENHSPCache):
         problem_pddl_oneliner = hlist_to_sexprs(problem_hlist)
 
         return self.get_heuristic(problem_pddl_oneliner)
-
-    def get_pddl2gym_state_h(self, state):
-        state = to_local(state)
-        if state in self.computed_states:
-            return self.computed_states[state]
-
-        return None
 
     def initialise_heuristic_server(self, init_instance_oneline: str):
         self.heuristic_client = HeuristicClient(

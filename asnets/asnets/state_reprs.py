@@ -536,7 +536,6 @@ class CanonicalState(object):
     def exposed_is_goal(self):
         return self.is_goal
 
-
 def get_init_cstate(planner_exts):
     mdpsim_init = planner_exts.mdpsim_problem.init_state()
     cstate_init = CanonicalState.from_mdpsim(mdpsim_init,

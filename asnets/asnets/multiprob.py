@@ -3,6 +3,7 @@ their own sandboxed Python interpreters so that they can have their own copies
 of MDPSim and SSiPP."""
 
 import ctypes
+import logging
 from multiprocessing import Process
 import signal
 import sys
@@ -21,6 +22,8 @@ DEFAULT_CONFIG['safe_attrs'].add("copy")
 DEFAULT_CONFIG['safe_attrs'].add("sizeof")
 DEFAULT_CONFIG['safe_attrs'].add("__sizeof__")
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 from asnets.utils.prof_utils import try_save_profile
 from asnets.utils.py_utils import set_random_seeds
@@ -107,7 +110,8 @@ def start_server(service_args: 'ProblemServiceConfig') -> None:
         port=port,
         reuse_addr=True,
         backlog=128,
-        protocol_config=protocol_config)
+        protocol_config=protocol_config,
+        logger=logger)
     print(f'Child process starting ThreadedServer {server}')
     import traceback
     try:

@@ -27,7 +27,7 @@ from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
 from tensorflow.python.ops.gen_nn_ops import top_k
 
 from asnets.prob_dom_meta import DomainType
-from asnets.state_reprs import CanonicalState, sample_next_state
+from asnets.state_reprs import CanonicalState
 from collections import defaultdict
 
 import joblib
@@ -184,16 +184,19 @@ class MCTSNode(Node):
     def __repr__(self):
         return self.state.__repr__()
 
-    def __del__(self):
-        MCTSNode.delete_counter += 1
-        if MCTSNode.delete_counter % 100 == 0:
-            print(f"Deleted {MCTSNode.delete_counter} MCTSNodes - and counting!")
+    # def __del__(self):
+    #     MCTSNode.delete_counter += 1
+    #     if MCTSNode.delete_counter % 100 == 0:
+    #         print(f"Deleted {MCTSNode.delete_counter} MCTSNodes - and counting!")
 
 def wrapInMCTSNode(inner_node: CanonicalState, previous_action, cost_until_now=float('inf')):
     return MCTSNode(state=inner_node, cost_until_now=cost_until_now, previous_action=previous_action)
 
 from post_training.monte_carlo_tree_search import MCTS
 class MonteCarloPolicyEvaluator(MCTS):
+
+    def is_comparng_exploration_exploitation(self):
+        return self._probe is not None
 
     def sanitize_node(self, node):
         """Deepcopy and strip aux_data from CanonicalState"""
@@ -307,16 +310,16 @@ class MonteCarloPolicyEvaluator(MCTS):
         if self.use_value_based:
             for _ in range(self.iterations):
                 self.mcts_iteration_value_based(self.curr_tree_root)
-            if self.time_debug_mcts_iterations:
-                print(f"Total time gone to selection: {sum(b - a for a, b in zip(self.start_times, self.after_selection_times))}")
-                print(f"Total time gone to expansion: {sum(b - a for a, b in zip(self.after_selection_times, self.after_expansion_times))}")
-                print(f"Total time gone to evaluation: {sum(b - a for a, b in zip(self.after_expansion_times, self.after_eval_times))}")
-                print(f"Total time gone to backward propagation: {sum(b - a for a, b in zip(self.after_eval_times, self.end_times))}")
-                self.start_times.clear()
-                self.after_selection_times.clear()
-                self.after_expansion_times.clear()
-                self.after_eval_times.clear()
-                self.end_times.clear()
+            # if self.time_debug_mcts_iterations:
+            #     print(f"Total time gone to selection: {sum(b - a for a, b in zip(self.start_times, self.after_selection_times))}")
+            #     print(f"Total time gone to expansion: {sum(b - a for a, b in zip(self.after_selection_times, self.after_expansion_times))}")
+            #     print(f"Total time gone to evaluation: {sum(b - a for a, b in zip(self.after_expansion_times, self.after_eval_times))}")
+            #     print(f"Total time gone to backward propagation: {sum(b - a for a, b in zip(self.after_eval_times, self.end_times))}")
+            #     self.start_times.clear()
+            #     self.after_selection_times.clear()
+            #     self.after_expansion_times.clear()
+            #     self.after_eval_times.clear()
+            #     self.end_times.clear()
         else:
             for _ in range(self.iterations):
                 if self.path_until_goal is None:
@@ -340,7 +343,7 @@ class MonteCarloPolicyEvaluator(MCTS):
             self.children[self.curr_tree_root].items(),
             key=lambda item: (node_priority_by_n(item[1]), tiebreak_by_q(item[1]))
         )
-        LOGGER.info(f'chosen action: {best_action}')
+        # LOGGER.info(f'chosen action: {best_action}')
         self.visited_cstates_hashes.add(best_node.__hash__())
         if self.memory_debug:
             self.print_memory_summary()
@@ -363,6 +366,17 @@ class MonteCarloPolicyEvaluator(MCTS):
             self._delete_subtree(_temp, recursive=False)
             # LOGGER.info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
 
+    def progress_to_without_cstate(self, action_id, cost):
+        next_node = self.children[self.curr_tree_root][action_id]
+        self.prune_children_except(self.curr_tree_root, action_id)
+        assert next_node is not None, "Somehow need to progress to a non-generated node."
+        _temp = self.curr_tree_root
+        self.curr_tree_root = next_node
+        # This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
+        self._delete_subtree(_temp, recursive=False)
+        # LOGGER.info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
+        return self.curr_tree_root.state, 1 #TODO: this 'cost' is useless everywhere.
+
     def get_corresponding_mcts_node(self, cstate):
         return self.state_to_node.get(cstate, None)
 
@@ -371,9 +385,23 @@ class MonteCarloPolicyEvaluator(MCTS):
             return
         self.children[node] = self.find_children(node)
         self.state_to_node[node.state] = node
+        if self._probe:
+            try:
+                act_dim = None
+                try:
+                    pri = self.get_act_dist_from_mcts_node(node)
+                    act_dim = len(pri) if pri is not None else None
+                except Exception:
+                    pass
+                self._probe.log_expand(act_dim=act_dim, children_created=len(self.children[node]))
+            except Exception:
+                pass
         for child_node in self.children[node].values():
             assert isinstance(child_node, MCTSNode)
             self.state_to_node[child_node.state] = child_node
+        if self.time_debug_mcts_iterations:
+            self.after_expansion_times.append(time())
+
 
     def _rollout(self, mcts_node, horizon=10):
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
@@ -399,7 +427,10 @@ class MonteCarloPolicyEvaluator(MCTS):
 
     def _evaluate_node(self, node) -> float:
         """Use the teacher's (or another) heuristic to evaluate a specific node, in order to use value-based mcts"""
-        return self.problem_service.get_state_h(cstate=node.state)
+        value = self.problem_service.get_state_h(node.state)
+        if self.time_debug_mcts_iterations:
+            self.after_eval_times.append(time())
+        return value
 
     def prune_children_except(self, parent_node, keep_action):
         children_dict = self.children.get(parent_node)
@@ -450,11 +481,11 @@ class MonteCarloPolicyEvaluator(MCTS):
                 raise RuntimeError("problem_service is None — was it shut down?")
             # Simulate step only now (expensive!)
             cstate_after_action_i, step_cost = parent_node.simulate_step(i, self.problem_service)
-            if hash(cstate_after_action_i) in self.visited_cstates_hashes:
-                self.revisit_counter += 1
-                if self.revisit_counter % 100 == 0:
-                    print(f"========>>There has been {self.revisit_counter} re-visitations in canonical states so far.")
-                continue  # skip visited cstates
+            # if hash(cstate_after_action_i) in self.visited_cstates_hashes:
+            #     self.revisit_counter += 1
+            #     if self.revisit_counter % 100 == 0:
+            #         print(f"========>>There has been {self.revisit_counter} re-visitations so far.")
+            #     continue  # skip visited cstates
             wrapped_output_cstate = wrapInMCTSNode(
                 cstate_after_action_i,
                 cost_until_now=parent_node.cost_until_now + step_cost,
@@ -500,9 +531,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         return tf.squeeze(act_dist)
 
     def print_exploration_exploitation_comparison(self):
-        assert self._probe is not None
-        # if it is None, I want to raise an AssertionError so I could catch it. every other error shouldn't be caught.
-        print(self._probe.summary())
+        self._probe.print_exploration_exploitation_comparison()
 
 
 @can_profile
@@ -513,7 +542,7 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
     print(f'\n-------------> Limit is set to {limit}\n')
     trial_start_time = time()
     problem_service = problem_server.service
-    curr_cstate = to_local(problem_service.env_reset())
+    curr_state = to_local(problem_service.env_reset())
     # total cost of this run
     cost = 0
     path = []
@@ -521,42 +550,45 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
         if time() - trial_start_time > graceful_timeout:
             print('Graceful_timeout has been reached :)')
             break
-        action = policy_evaluator.get_action_from_cstate(curr_cstate, cost)
-        curr_cstate, step_cost = to_local(problem_service.env_step(action))
-        policy_evaluator.progress_to(action, curr_cstate, cost+step_cost)
+        action = policy_evaluator.get_action_from_cstate(curr_state, cost)
         path.append(to_local(problem_service.action_name(action)))
+        curr_state, step_cost = move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=False)
         cost += step_cost
-        if curr_cstate.is_goal:
-            try:
+        if curr_state.is_goal:
+            if policy_evaluator.is_comparng_exploration_exploitation():
                 print("Exploration-Exploitation comparison:")
                 policy_evaluator.print_exploration_exploitation_comparison()
-            except AssertionError as e:
-                print("Exploration-Exploitation comparison failed.")
-                print(e)
             return cost, True, path
         # we can run out of time or run out of actions to take
-        if curr_cstate.is_terminal:
+        if curr_state.is_terminal:
             break
         if i == limit-1:
             print(" I actually reached the end, something weird is happening, only some actions were chosen but limit was reached? ")
     # path.append('FAIL! D:')
-    try:
+    if policy_evaluator.is_comparng_exploration_exploitation():
         print("Exploration-Exploitation comparison:")
         policy_evaluator.print_exploration_exploitation_comparison()
-    except AssertionError as e:
-        print("Exploration-Exploitation comparison failed.")
-        print(e)
     return cost, False, path
+
+def move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=True):
+    if current_code:
+        curr_state, step_cost = to_local(problem_service.env_step(action))
+        policy_evaluator.progress_to(action, curr_state, cost+step_cost)
+        return curr_state, step_cost
+    else:
+        assert isinstance(policy_evaluator, MonteCarloPolicyEvaluator)
+        return policy_evaluator.progress_to_without_cstate(action, cost) #TODO: env_step on the problem_service is irrelevant
 
 
 def run_trials(policy, problem_server, trials, iterations, horizon=None, limit=1000, det_sample=False,
                single_trial_graceful_timeout_sec=300, num_cstates_to_expand=5, use_value_based=False,
-               memory_debug=False):
+               memory_debug=False,mcts_exploration_weight=1):
     # policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
     policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, problem_service=problem_server.service,
                                                  iterations=iterations, horizon=horizon,
                                                  num_cstates_to_expand=num_cstates_to_expand,
                                                  use_value_based=use_value_based, memory_debug=memory_debug,
+                                                 exploration_weight=mcts_exploration_weight,
                                                  )
     all_exec_times = []
     all_costs = []
@@ -1009,7 +1041,12 @@ parser.add_argument(
     '--memory-debug',
     default=False,
     help='Enable memory debugging.')
-
+parser.add_argument(
+    '--mcts-exploration-weight',
+    type=int,
+    default=1,
+    help='PUCT exploration weight (c value).'
+)
 
 def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
                 iter_num, weight_manager, scratch_dir):
@@ -1027,6 +1064,7 @@ def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
         num_cstates_to_expand=args.mcts_expansion_size,
         use_value_based=args.mcts_value_based,
         memory_debug=args.memory_debug,
+        mcts_exploration_weight=args.mcts_exploration_weight,
     )
 
     # print('Trial results:')
