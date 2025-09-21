@@ -283,13 +283,14 @@ class MonteCarloPolicyEvaluator(MCTS):
         print(f"{label} - Live MCTSNode instances: {count}")
 
     def __init__(self, policy, problem_service, horizon=0, exploration_weight=1, iterations=10,
-                 num_cstates_to_expand=5, use_value_based=False, memory_debug=False):
+                 num_cstates_to_generate_per_expansion=5, use_value_based=False, memory_debug=False,
+                 progressive_widening=False):
         super().__init__(exploration_weight)
         self.policy = policy
         self.problem_service = problem_service
         self.iterations = iterations
         self.horizon = horizon
-        self.k = num_cstates_to_expand
+        self.k = num_cstates_to_generate_per_expansion
         self.curr_tree_root = None
         self.debug_orig_root = None
         self.state_to_node = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
@@ -298,6 +299,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.act_dist_per_node: dict[MCTSNode,numpy.ndarray] = {}
         self.use_value_based=use_value_based
         self.memory_debug = memory_debug
+        self.progressive_widening = progressive_widening
 
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
@@ -582,13 +584,15 @@ def move_to_next_state(problem_service, policy_evaluator, action, cost, current_
 
 def run_trials(policy, problem_server, trials, iterations, horizon=None, limit=1000, det_sample=False,
                single_trial_graceful_timeout_sec=300, num_cstates_to_expand=5, use_value_based=False,
-               memory_debug=False,mcts_exploration_weight=1):
+               memory_debug=False,mcts_exploration_weight=1, mcts_smart_expansions=False):
     # policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
+    k = min(iterations - 1, num_cstates_to_expand)
     policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, problem_service=problem_server.service,
                                                  iterations=iterations, horizon=horizon,
-                                                 num_cstates_to_expand=num_cstates_to_expand,
+                                                 num_cstates_to_generate_per_expansion=k,
                                                  use_value_based=use_value_based, memory_debug=memory_debug,
                                                  exploration_weight=mcts_exploration_weight,
+                                                 progressive_widening=mcts_smart_expansions,
                                                  )
     all_exec_times = []
     all_costs = []
@@ -1047,6 +1051,14 @@ parser.add_argument(
     default=1,
     help='PUCT exploration weight (c value).'
 )
+parser.add_argument(
+    '--mcts-smart-expansions',
+    action='store_true',
+    default=False,
+    help='Enable smart expansions, progressive widening (or "unpruning"),'
+         ' otherwise only limits number of generated children nodes to be min(mcts_expansion_size,(mcts_iterations - 1))'
+)
+
 
 def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
                 iter_num, weight_manager, scratch_dir):
@@ -1065,6 +1077,7 @@ def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
         use_value_based=args.mcts_value_based,
         memory_debug=args.memory_debug,
         mcts_exploration_weight=args.mcts_exploration_weight,
+        mcts_smart_expansions=args.mcts_smart_expansions,
     )
 
     # print('Trial results:')

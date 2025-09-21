@@ -86,7 +86,7 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
                                      problem_service=service,
                                      iterations=iterations,
                                      horizon=0,
-                                     num_cstates_to_expand=k,
+                                     num_cstates_to_generate_per_expansion=k,
                                      use_value_based=True,
                                      memory_debug=False)
 

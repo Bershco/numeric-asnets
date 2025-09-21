@@ -444,6 +444,13 @@ parser.add_argument(
     default=1,
     help='PUCT exploration weight (c value).'
 )
+parser.add_argument(
+    '--mcts-smart-expansions',
+    action='store_true',
+    default=False,
+    help='Enable smart expansions, progressive widening (or "unpruning"),'
+         ' otherwise only limits number of generated children nodes to be min(mcts_expansion_size,(mcts_iterations - 1))'
+)
 
 def main():
     args = parser.parse_args()
@@ -490,6 +497,7 @@ def main():
                 mcts_heuristic=args.mcts_heuristic,
                 memory_debug=args.memory_debug,
                 mcts_exploration_weight=args.mcts_exploration_weight,
+                mcts_smart_expansions=args.mcts_smart_expansions,
     )
     print('Fin :-)')
 
@@ -514,6 +522,7 @@ def main_inner(*,
                mcts_heuristic=None,
                memory_debug=False,
                mcts_exploration_weight=1,
+               mcts_smart_expansions=False,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -604,6 +613,8 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.append('--memory-debug')
     if mcts_exploration_weight != 1:
         main_test_flags.extend(['--mcts-exploration-weight',str(mcts_exploration_weight)])
+    if mcts_smart_expansions:
+        main_test_flags.append('--mcts-smart-expansions')
 
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:
