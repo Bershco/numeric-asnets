@@ -195,6 +195,9 @@ def wrapInMCTSNode(inner_node: CanonicalState, previous_action, cost_until_now=f
 from post_training.monte_carlo_tree_search import MCTS
 class MonteCarloPolicyEvaluator(MCTS):
 
+    def is_comparng_exploration_exploitation(self):
+        return self._probe is not None
+
     def sanitize_node(self, node):
         """Deepcopy and strip aux_data from CanonicalState"""
         try:
@@ -382,6 +385,17 @@ class MonteCarloPolicyEvaluator(MCTS):
             return
         self.children[node] = self.find_children(node)
         self.state_to_node[node.state] = node
+        if self._probe:
+            try:
+                act_dim = None
+                try:
+                    pri = self.get_act_dist_from_mcts_node(node)
+                    act_dim = len(pri) if pri is not None else None
+                except Exception:
+                    pass
+                self._probe.log_expand(act_dim=act_dim, children_created=len(self.children[node]))
+            except Exception:
+                pass
         for child_node in self.children[node].values():
             assert isinstance(child_node, MCTSNode)
             self.state_to_node[child_node.state] = child_node
@@ -517,9 +531,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         return tf.squeeze(act_dist)
 
     def print_exploration_exploitation_comparison(self):
-        assert self._probe is not None
-        # if it is None, I want to raise an AssertionError so I could catch it. every other error shouldn't be caught.
-        print(self._probe.summary())
+        self._probe.print_exploration_exploitation_comparison()
 
 
 @can_profile
@@ -543,12 +555,9 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
         curr_state, step_cost = move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=False)
         cost += step_cost
         if curr_state.is_goal:
-            try:
+            if policy_evaluator.is_comparng_exploration_exploitation():
                 print("Exploration-Exploitation comparison:")
                 policy_evaluator.print_exploration_exploitation_comparison()
-            except AssertionError as e:
-                print("Exploration-Exploitation comparison failed.")
-                print(e)
             return cost, True, path
         # we can run out of time or run out of actions to take
         if curr_state.is_terminal:
@@ -556,12 +565,9 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
         if i == limit-1:
             print(" I actually reached the end, something weird is happening, only some actions were chosen but limit was reached? ")
     # path.append('FAIL! D:')
-    try:
+    if policy_evaluator.is_comparng_exploration_exploitation():
         print("Exploration-Exploitation comparison:")
         policy_evaluator.print_exploration_exploitation_comparison()
-    except AssertionError as e:
-        print("Exploration-Exploitation comparison failed.")
-        print(e)
     return cost, False, path
 
 def move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=True):
@@ -576,12 +582,13 @@ def move_to_next_state(problem_service, policy_evaluator, action, cost, current_
 
 def run_trials(policy, problem_server, trials, iterations, horizon=None, limit=1000, det_sample=False,
                single_trial_graceful_timeout_sec=300, num_cstates_to_expand=5, use_value_based=False,
-               memory_debug=False):
+               memory_debug=False,mcts_exploration_weight=1):
     # policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
     policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, problem_service=problem_server.service,
                                                  iterations=iterations, horizon=horizon,
                                                  num_cstates_to_expand=num_cstates_to_expand,
                                                  use_value_based=use_value_based, memory_debug=memory_debug,
+                                                 exploration_weight=mcts_exploration_weight,
                                                  )
     all_exec_times = []
     all_costs = []
@@ -1034,7 +1041,12 @@ parser.add_argument(
     '--memory-debug',
     default=False,
     help='Enable memory debugging.')
-
+parser.add_argument(
+    '--mcts-exploration-weight',
+    type=int,
+    default=1,
+    help='PUCT exploration weight (c value).'
+)
 
 def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
                 iter_num, weight_manager, scratch_dir):
@@ -1052,6 +1064,7 @@ def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
         num_cstates_to_expand=args.mcts_expansion_size,
         use_value_based=args.mcts_value_based,
         memory_debug=args.memory_debug,
+        mcts_exploration_weight=args.mcts_exploration_weight,
     )
 
     # print('Trial results:')

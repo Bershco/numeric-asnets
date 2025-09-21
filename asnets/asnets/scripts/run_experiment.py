@@ -439,9 +439,10 @@ parser.add_argument(
     default=False,
     help='Enable memory debugging.')
 parser.add_argument(
-    '--pddl2gym_states',
-    default=False,
-    help='Enable usage of PDDL2Gym states instead of CanonicalState states.',
+    '--mcts-exploration-weight',
+    type=int,
+    default=1,
+    help='PUCT exploration weight (c value).'
 )
 
 def main():
@@ -488,6 +489,7 @@ def main():
                 mcts_value_based=args.mcts_value_based,
                 mcts_heuristic=args.mcts_heuristic,
                 memory_debug=args.memory_debug,
+                mcts_exploration_weight=args.mcts_exploration_weight,
     )
     print('Fin :-)')
 
@@ -511,6 +513,7 @@ def main_inner(*,
                mcts_value_based=False,
                mcts_heuristic=None,
                memory_debug=False,
+               mcts_exploration_weight=1,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -599,6 +602,8 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.extend(['--mcts-heuristic',str(mcts_heuristic)])
     if memory_debug:
         main_test_flags.append('--memory-debug')
+    if mcts_exploration_weight != 1:
+        main_test_flags.extend(['--mcts-exploration-weight',str(mcts_exploration_weight)])
 
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:
