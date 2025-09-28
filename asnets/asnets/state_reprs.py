@@ -16,7 +16,8 @@ import jpype.imports
 from jpype.types import *
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
+# LOGGER.setLevel(logging.DEBUG)
+LOGGER.setLevel(logging.INFO)
 
 J_BitSet = None
 J_HashMap = None
@@ -312,7 +313,7 @@ class CanonicalState(object):
         missing = [bp.unique_ident for bp in problem_meta.bound_props_ordered
                    if bp.unique_ident not in truth_val_by_name]
         if missing:
-            LOGGER.error("Missing props from MDPSim mask: %s", missing)
+            LOGGER.debug("Missing props from MDPSim mask: %s", missing)
 
         # now build mask from actual BoundPropositions in right order
         prop_mask = [(bp, truth_val_by_name[bp.unique_ident])
@@ -330,7 +331,7 @@ class CanonicalState(object):
         missing = [bf.unique_ident for bf in problem_meta.bound_flnts_ordered
                    if bf.unique_ident not in flnt_val_by_name]
         if missing:
-            LOGGER.error("Missing fluents from MDPSim mask: %s", missing)
+            LOGGER.debug("Missing fluents from MDPSim mask: %s", missing)
 
         flnt_mask = [(bf, flnt_val_by_name[bf.unique_ident])
                      for bf in problem_meta.bound_flnts_ordered]
@@ -347,7 +348,7 @@ class CanonicalState(object):
         missing = [bc.unique_ident for bc in problem_meta.bound_comps_ordered
                    if bc.unique_ident not in truth_val_by_name]
         if missing:
-            LOGGER.error("Missing comparisons from MDPSim mask: %s", missing)
+            LOGGER.debug("Missing comparisons from MDPSim mask: %s", missing)
 
         # now build mask from actual BoundComp in right order
         comp_mask = [(bc, truth_val_by_name[bc.comparison])
@@ -366,7 +367,7 @@ class CanonicalState(object):
         missing = [ba.unique_ident for ba in problem_meta.bound_acts_ordered
                    if ba.unique_ident not in act_on_by_name]
         if missing:
-            LOGGER.error("Missing comparisons from MDPSim mask: %s", missing)
+            LOGGER.debug("Missing comparisons from MDPSim mask: %s", missing)
 
 
         act_mask = [(ba, act_on_by_name[ba.unique_ident])
