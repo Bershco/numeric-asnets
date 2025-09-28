@@ -687,8 +687,10 @@ def make_problem_service(config, set_proc_title=False):
             from post_training.enhspwrapper import ENHSPEstimator
             assert self.initialised, "Can't init estimator before full object"
             assert not self.estimator_initialised, "Can't double-init"
+            LOGGER.debug("ProblemService started estimator initialisation.")
             self.estimator = ENHSPEstimator(self.p, enhsp_config)
             self.estimator_initialised = True
+            LOGGER.debug("ProblemService finished estimator initialisation.")
 
         def exposed_get_state_h(self, cstate):
             assert self.estimator_initialised, "Can't get state h value without estimator initialised"
