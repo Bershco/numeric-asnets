@@ -11,6 +11,9 @@ from time import sleep, time
 import weakref
 
 import os, json, socket, rpyc, atexit
+import uuid, getpass
+
+from rpyc import OneShotServer
 from rpyc.utils.server import ThreadedServer
 
 from rpyc.core.protocol import DEFAULT_CONFIG
@@ -22,8 +25,8 @@ DEFAULT_CONFIG['safe_attrs'].add("copy")
 DEFAULT_CONFIG['safe_attrs'].add("sizeof")
 DEFAULT_CONFIG['safe_attrs'].add("__sizeof__")
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger = logging.getLogger(__name__)
+# logger.setLevel(logging.DEBUG)
 
 from asnets.utils.prof_utils import try_save_profile
 from asnets.utils.py_utils import set_random_seeds
@@ -53,7 +56,7 @@ def parent_death_pact(signal: signal.Signals=signal.SIGINT) -> None:
     if retcode != 0:
         raise Exception("prctl() returned nonzero retcode %d" % retcode)
 
-def start_server(service_args: 'ProblemServiceConfig') -> None:
+def start_server(service_args: 'ProblemServiceConfig',unix_socket_path: str = None) -> None:
     """Start a OneShotServer with the given service_args and socket_path. This
     function is intended to be run in a subprocess. It will set the random seed,
     set up the problem service, and start the OneShotServer. It will also
@@ -71,30 +74,30 @@ def start_server(service_args: 'ProblemServiceConfig') -> None:
     parent_death_pact(signal=signal.SIGKILL)
     new_service = make_problem_service(service_args, set_proc_title=True)
 
-    def pick_free_port(host="127.0.0.1"):
-        s = socket.socket()
-        s.bind((host, 0))
-        port = s.getsockname()[1]
-        s.close()
-        return port
-
-    host = "127.0.0.1"
-    port = pick_free_port(host)
-
-    addr_file = os.environ["RPYC_ADDR_FILE"]
-    os.makedirs(os.path.dirname(addr_file), exist_ok=True)
-    tmp = addr_file + ".tmp"
-    print(f"tmp={tmp}")
-    with open(tmp, "w") as f:
-        json.dump({"host": host, "port": port}, f)
-        f.flush(); os.fsync(f.fileno())
-    os.replace(tmp, addr_file)
-    os.chmod(addr_file, 0o600)
-
-    @atexit.register
-    def _cleanup():
-        try: os.remove(addr_file)
-        except FileNotFoundError: pass
+    # def pick_free_port(host="127.0.0.1"):
+    #     s = socket.socket()
+    #     s.bind((host, 0))
+    #     port = s.getsockname()[1]
+    #     s.close()
+    #     return port
+    #
+    # host = "127.0.0.1"
+    # port = pick_free_port(host)
+    #
+    # addr_file = os.environ["RPYC_ADDR_FILE"]
+    # os.makedirs(os.path.dirname(addr_file), exist_ok=True)
+    # tmp = addr_file + ".tmp"
+    # print(f"tmp={tmp}")
+    # with open(tmp, "w") as f:
+    #     json.dump({"host": host, "port": port}, f)
+    #     f.flush(); os.fsync(f.fileno())
+    # os.replace(tmp, addr_file)
+    # os.chmod(addr_file, 0o600)
+    #
+    # @atexit.register
+    # def _cleanup():
+    #     try: os.remove(addr_file)
+    #     except FileNotFoundError: pass
 
     protocol_config = {
         "allow_all_attrs": False,  # Default: False, restricts attributes
@@ -103,16 +106,26 @@ def start_server(service_args: 'ProblemServiceConfig') -> None:
         "allow_delattr": True,  # Allow deleting attributes if needed
     }
 
-    print(f"READY RPyC {host}:{port}", flush=True)
-
+    # print(f"READY RPyC {host}:{port}", flush=True)
+    print(f"READY RPyC {unix_socket_path}", flush=True)
     server = ThreadedServer(
         new_service,
-        hostname=host,
-        port=port,
+        # hostname=host,
+        # port=port,
+        socket_path=unix_socket_path,
         reuse_addr=True,
         backlog=128,
         protocol_config=protocol_config,
-        logger=logger)
+    )
+    # server = OneShotServer(
+    #     new_service,
+    #     hostname=host,
+    #     port=port,
+    #     # socket_path=unix_socket_path,
+    #     reuse_addr=True,
+    #     backlog=128,
+    #     protocol_config=protocol_config,
+    # )
 
     print(f'Child process starting {server.__class__.__name__} {server}')
 
@@ -175,19 +188,27 @@ def _wait_for_addr(path: str, timeout: float = 60.0, poll: float = 0.1, proc: "P
         raise RuntimeError(f"Timed out and server is dead (exitcode={proc.exitcode}).")
     raise TimeoutError(f"Timed out waiting for RPYC addr file: {path}") from last_err
 
-def _connect_via_info(info: dict):
-    cfg = {"sync_request_timeout": None}
-    if "host" in info:  # TCP loopback
-        c = rpyc.connect(info["host"], info["port"], config=cfg)
-        c.ping()
-        return c
-    elif "unix" in info:  # fallback if you keep UDS somewhere
-        stream = rpyc.utils.factory.unix_connect(info["unix"])
-        c = rpyc.connect_stream(stream, service=None, config=cfg)
-        c.ping()
-        return c
-    else:
-        raise ValueError(f"Unrecognized addr info: {info}")
+# def _connect_via_info(info: dict):
+#     cfg = {"sync_request_timeout": None}
+#     if "host" in info:  # TCP loopback
+#         c = rpyc.connect(info["host"], info["port"], config=cfg)
+#         c.ping()
+#         return c
+#     elif "unix" in info:  # fallback if you keep UDS somewhere
+#         stream = rpyc.utils.factory.unix_connect(info["unix"])
+#         c = rpyc.connect_stream(stream, service=None, config=cfg)
+#         c.ping()
+#         return c
+#     else:
+#         raise ValueError(f"Unrecognized addr info: {info}")
+
+def _connect_via_info(info):
+    import rpyc
+    from rpyc.utils.factory import unix_connect
+    c = unix_connect(info)
+    c.ping()
+    return c
+
 
 class ProblemServer(object):
     """Spools up another process to host a ProblemService."""
@@ -209,11 +230,11 @@ class ProblemServer(object):
             service_conf (ProblemServiceConfig): configuration for the
             ProblemService to be hosted.
         """
-        # user = getpass.getuser()
-        # sock_dir = f'/tmp/asnet-sockets-{user}/'
-        # os.makedirs(sock_dir, exist_ok=True)
-        # self._unix_sock_path = os.path.join(sock_dir,
-        #                                     'socket.' + uuid.uuid4().hex)
+        user = getpass.getuser()
+        sock_dir = f'/tmp/asnet-sockets-{user}/'
+        os.makedirs(sock_dir, exist_ok=True)
+        self._unix_sock_path = os.path.join(sock_dir,
+                                            'socket.' + uuid.uuid4().hex)
         addr_file = os.environ.get("RPYC_ADDR_FILE")
         # For SLURM batch usage - usage of unix sockets wrecked the runtime of a lot of experiments,
         # changing to TCP instead. If this doesn't already exist, we'll synthesize another.
@@ -229,14 +250,16 @@ class ProblemServer(object):
         self._serve_proc = Process(
             target=start_server, args=(
                 service_conf,
-                # self._unix_sock_path,
+                self._unix_sock_path,
             ))
         self._serve_proc.start()
         self._start_time = time()
         self._addr_file = addr_file
 
-        info = _wait_for_addr(self._addr_file, proc=self._serve_proc, timeout=self.MAX_WAIT_TIME)
-        self._conn = _connect_via_info(info=info)
+        # info = _wait_for_addr(self._addr_file, proc=self._serve_proc, timeout=self.MAX_WAIT_TIME)
+        # self._conn = _connect_via_info(info=info)
+        wait_exists_polling(self._unix_sock_path, max_wait=self.MAX_WAIT_TIME)
+        self._conn = _connect_via_info(self._unix_sock_path)
 
         # this ensures that we always close connection (& thus terminate server
         # on other end) before shutting down, no matter what
@@ -327,76 +350,76 @@ class ProblemServer(object):
             print('Cleaning up server process in destructor')
             self.stop()
 
-    # def _get_rpyc_conn(self):
-    #     """Get a connection to the server.
-    #
-    #     This will create a new connection if one doesn't already exist. In this
-    #     case, it will wait for the server to start with a timeout defined by
-    #     self.MAX_WAIT_TIME. It will also sleep for an additional secton to make
-    #     sure the connection is up.
-    #
-    #     Returns:
-    #         The rpyc connection to the server.
-    #     """
-    #     if self._conn is None:
-    #         to_wait = max(0.0, self.MAX_WAIT_TIME - (time() - self._start_time))
-    #         if to_wait > 0:
-    #             # It actually takes a few seconds for the background worker to
-    #             # spool up and start accepting connections. Obviously it could
-    #             # be more than self.MAX_WAIT_TIME, but I don't really have a
-    #             # better way of doing things than this (mostly because all the
-    #             # socket binding in RPyC happens in a monolithic "run
-    #             # everything" method which I can't break up).
-    #             print('Waiting at most %.2fs for rpyc connection' % to_wait)
-    #             # ignore return value; we'll get an error later if the file
-    #             # doesn't exist
-    #             has_sock = wait_exists_polling(
-    #                 self._unix_sock_path, max_wait=to_wait)
-    #             print(f"Wait time up, got has_sock={has_sock}")
-    #
-    #         sleep_time = 1.0
-    #         print(f"Sleeping an extra {sleep_time}s to make sure conn is up")
-    #         sleep(sleep_time)
-    #         self._conn = rpyc.utils.factory.unix_connect(
-    #             path=self._unix_sock_path)
-    #         # we can unlink socket after connecting
-    #         os.unlink(self._unix_sock_path)
-    #
-    #     return self._conn
-
     def _get_rpyc_conn(self):
-        """Get or create the TCP RPyC connection using the addr JSON file."""
-        if self._conn is not None:
-            return self._conn
+        """Get a connection to the server.
 
-        # How long to keep waiting from when the server was spawned
-        remaining = max(0.0, self.MAX_WAIT_TIME - (time() - self._start_time))
+        This will create a new connection if one doesn't already exist. In this
+        case, it will wait for the server to start with a timeout defined by
+        self.MAX_WAIT_TIME. It will also sleep for an additional secton to make
+        sure the connection is up.
 
-        # Where the server published {host, port}; set this in __init__
-        addr_path = getattr(self, "_addr_file", None) or os.environ["RPYC_ADDR_FILE"]
+        Returns:
+            The rpyc connection to the server.
+        """
+        if self._conn is None:
+            to_wait = max(0.0, self.MAX_WAIT_TIME - (time() - self._start_time))
+            if to_wait > 0:
+                # It actually takes a few seconds for the background worker to
+                # spool up and start accepting connections. Obviously it could
+                # be more than self.MAX_WAIT_TIME, but I don't really have a
+                # better way of doing things than this (mostly because all the
+                # socket binding in RPyC happens in a monolithic "run
+                # everything" method which I can't break up).
+                print('Waiting at most %.2fs for rpyc connection' % to_wait)
+                # ignore return value; we'll get an error later if the file
+                # doesn't exist
+                has_sock = wait_exists_polling(
+                    self._unix_sock_path, max_wait=to_wait)
+                print(f"Wait time up, got has_sock={has_sock}")
 
-        # Wait for the file to exist and load it
-        info = _wait_for_addr(addr_path, timeout=remaining)
+            sleep_time = 1.0
+            print(f"Sleeping an extra {sleep_time}s to make sure conn is up")
+            sleep(sleep_time)
+            self._conn = rpyc.utils.factory.unix_connect(
+                path=self._unix_sock_path)
+            # we can unlink socket after connecting
+            os.unlink(self._unix_sock_path)
 
-        # Dial with a few retries (handles brief race between publish and bind)
-        for _ in range(10):
-            try:
-                if "host" in info and "port" in info:
-                    c = rpyc.connect(info["host"], info["port"], config={"sync_request_timeout": None})
-                elif "unix" in info:
-                    # fallback if you kept a UDS variant somewhere
-                    stream = rpyc.utils.factory.unix_connect(info["unix"])
-                    c = rpyc.connect_stream(stream, service=None, config={"sync_request_timeout": None})
-                else:
-                    raise ValueError(f"Unrecognized addr info: {info}")
+        return self._conn
 
-                c.ping()  # sanity check
-                self._conn = c
-                return self._conn
-            except Exception:
-                sleep(0.25)
-
-        raise RuntimeError("Failed to connect to RPyC server")
+    # def _get_rpyc_conn(self):
+    #     """Get or create the TCP RPyC connection using the addr JSON file."""
+    #     if self._conn is not None:
+    #         return self._conn
+    #
+    #     # How long to keep waiting from when the server was spawned
+    #     remaining = max(0.0, self.MAX_WAIT_TIME - (time() - self._start_time))
+    #
+    #     # Where the server published {host, port}; set this in __init__
+    #     addr_path = getattr(self, "_addr_file", None) or os.environ["RPYC_ADDR_FILE"]
+    #
+    #     # Wait for the file to exist and load it
+    #     info = _wait_for_addr(addr_path, timeout=remaining)
+    #
+    #     # Dial with a few retries (handles brief race between publish and bind)
+    #     for _ in range(10):
+    #         try:
+    #             if "host" in info and "port" in info:
+    #                 c = rpyc.connect(info["host"], info["port"], config={"sync_request_timeout": None})
+    #             elif "unix" in info:
+    #                 # fallback if you kept a UDS variant somewhere
+    #                 stream = rpyc.utils.factory.unix_connect(info["unix"])
+    #                 c = rpyc.connect_stream(stream, service=None, config={"sync_request_timeout": None})
+    #             else:
+    #                 raise ValueError(f"Unrecognized addr info: {info}")
+    #
+    #             c.ping()  # sanity check
+    #             self._conn = c
+    #             return self._conn
+    #         except Exception:
+    #             sleep(0.25)
+    #
+    #     raise RuntimeError("Failed to connect to RPyC server")
 
     @property
     def conn(self):

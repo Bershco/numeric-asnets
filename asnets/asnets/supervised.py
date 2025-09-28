@@ -407,7 +407,7 @@ def make_problem_service(config, set_proc_title=False):
             return obs_tensor, qv_tensor, counts
 
         def exposed_env_reset(self):
-            self.current_state = get_init_cstate(self.p)
+            self.current_state = self.internal_get_init_state()
             return self.current_state
 
         def exposed_action_name(self, action_num):
@@ -540,7 +540,7 @@ def make_problem_service(config, set_proc_title=False):
             self.max_len = config.max_len
             # will hold (state, action) pairs to train on
             self.replay = WeightedReplayBuffer()
-            self.exposed_env_reset()
+            self.cached_init_state = self.exposed_env_reset()
             # hack to decide whether to get one or many rollouts (XXX)
             self.first_rollout = True
 
@@ -697,6 +697,8 @@ def make_problem_service(config, set_proc_title=False):
             return self.estimator.get_cstate_h(cstate)
 
         def internal_get_init_state(self):
+            if hasattr(self,"cached_init_state"):
+                return self.cached_init_state
             return get_init_cstate(self.p)
 
     return ProblemService
