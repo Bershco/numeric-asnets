@@ -23,7 +23,7 @@ DEFAULT_CONFIG['safe_attrs'].add("sizeof")
 DEFAULT_CONFIG['safe_attrs'].add("__sizeof__")
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 from asnets.utils.prof_utils import try_save_profile
 from asnets.utils.py_utils import set_random_seeds
@@ -84,6 +84,7 @@ def start_server(service_args: 'ProblemServiceConfig') -> None:
     addr_file = os.environ["RPYC_ADDR_FILE"]
     os.makedirs(os.path.dirname(addr_file), exist_ok=True)
     tmp = addr_file + ".tmp"
+    print(f"tmp={tmp}")
     with open(tmp, "w") as f:
         json.dump({"host": host, "port": port}, f)
         f.flush(); os.fsync(f.fileno())
@@ -112,7 +113,9 @@ def start_server(service_args: 'ProblemServiceConfig') -> None:
         backlog=128,
         protocol_config=protocol_config,
         logger=logger)
-    print(f'Child process starting ThreadedServer {server}')
+
+    print(f'Child process starting {server.__class__.__name__} {server}')
+
     import traceback
     try:
         server.start()
