@@ -114,7 +114,7 @@ def start_server(service_args: 'ProblemServiceConfig',unix_socket_path: str = No
         # port=port,
         socket_path=unix_socket_path,
         reuse_addr=True,
-        backlog=128,
+        backlog=1024,
         protocol_config=protocol_config,
     )
     # server = OneShotServer(
@@ -123,7 +123,7 @@ def start_server(service_args: 'ProblemServiceConfig',unix_socket_path: str = No
     #     port=port,
     #     # socket_path=unix_socket_path,
     #     reuse_addr=True,
-    #     backlog=128,
+    #     backlog=1024,
     #     protocol_config=protocol_config,
     # )
 
@@ -231,7 +231,8 @@ class ProblemServer(object):
             ProblemService to be hosted.
         """
         user = getpass.getuser()
-        sock_dir = f'/tmp/asnet-sockets-{user}/'
+        # sock_dir = f'/tmp/asnet-sockets-{user}/'
+        sock_dir = os.path.join(os.getcwd(), "asnet-sockets")
         os.makedirs(sock_dir, exist_ok=True)
         self._unix_sock_path = os.path.join(sock_dir,
                                             'socket.' + uuid.uuid4().hex)
