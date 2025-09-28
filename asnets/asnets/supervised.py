@@ -45,7 +45,7 @@ J_PDDLDomain = None
 J_PDDLProblem = None
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.INFO)
+LOGGER.setLevel(logging.DEBUG)
 
 
 @jpype.onJVMStart
@@ -281,7 +281,7 @@ class PlannerExtensions(object):
             LOGGER.debug("Calling prepareForSearch...")
             self.j_problem.prepareForSearch(True, False)
 
-            LOGGER.debug("JPDDL init done.", flush=True)
+            LOGGER.debug("JPDDL init done.")
 
             self.j_problem.prepareForSearch(
                 True,  # enable AIBR preprocessing
@@ -489,6 +489,7 @@ def make_problem_service(config, set_proc_title=False):
 
         def exposed_initialise(self):
             assert not self.initialised, "Can't double-init"
+            LOGGER.debug("ProblemService started initialisation.")
 
             self.p = PlannerExtensions(
                 config.pddl_files,
@@ -554,6 +555,7 @@ def make_problem_service(config, set_proc_title=False):
             self.stochastic = True
 
             self.initialised = True
+            LOGGER.debug("ProblemService finished initialisation.")
 
         def on_connect(self, conn):
             # we let the initialiser run later, so that it can execute
