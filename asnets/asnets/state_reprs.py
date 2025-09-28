@@ -16,6 +16,7 @@ import jpype.imports
 from jpype.types import *
 
 LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.DEBUG)
 
 J_BitSet = None
 J_HashMap = None
@@ -298,44 +299,76 @@ class CanonicalState(object):
         data_gens = planner_exts.data_gens
         problem_meta = planner_exts.problem_meta
 
+        LOGGER.debug(f"MDPSim[prop_truth_mask] about to run; mdpsim_state={mdpsim_state}")
         mdpsim_props_true \
             = planner_exts.mdpsim_problem.prop_truth_mask(mdpsim_state)
+        LOGGER.debug(f"MDPSim[prop_truth_mask] OK; n={len(mdpsim_props_true)}")
         truth_val_by_name = {
             # <mdpsim_prop>.identifier includes parens around it, which we want
             # to strip
             strip_parens(mp.identifier): truth_value
             for mp, truth_value in mdpsim_props_true
         }
+        missing = [bp.unique_ident for bp in problem_meta.bound_props_ordered
+                   if bp.unique_ident not in truth_val_by_name]
+        if missing:
+            LOGGER.error("Missing props from MDPSim mask: %s", missing)
+
         # now build mask from actual BoundPropositions in right order
         prop_mask = [(bp, truth_val_by_name[bp.unique_ident])
                      for bp in problem_meta.bound_props_ordered]
 
+        LOGGER.debug(f"MDPSim[fluent_value_mask] about to run; mdpsim_state={mdpsim_state}")
         mdpsim_flnt_value \
             = planner_exts.mdpsim_problem.fluent_value_mask(mdpsim_state)
+        LOGGER.debug(f"MDPSim[fluent_value_mask] OK; n={len(mdpsim_flnt_value)}")
+
         flnt_val_by_name = {
             strip_parens(mf.identifier): v
             for mf, v in mdpsim_flnt_value
         }
+        missing = [bf.unique_ident for bf in problem_meta.bound_flnts_ordered
+                   if bf.unique_ident not in flnt_val_by_name]
+        if missing:
+            LOGGER.error("Missing fluents from MDPSim mask: %s", missing)
+
         flnt_mask = [(bf, flnt_val_by_name[bf.unique_ident])
                      for bf in problem_meta.bound_flnts_ordered]
 
+        LOGGER.debug(f"MDPSim[comp_truth_mask] about to run; mdpsim_state={mdpsim_state}")
         mdpsim_comp_true \
             = planner_exts.mdpsim_problem.comp_truth_mask(mdpsim_state)
+        LOGGER.debug(f"MDPSim[comp_truth_mask] OK; n={len(mdpsim_comp_true)}")
         truth_val_by_name = {
             str(mc): truth_value
             for mc, truth_value in mdpsim_comp_true
         }
+
+        missing = [bc.unique_ident for bc in problem_meta.bound_comps_ordered
+                   if bc.unique_ident not in truth_val_by_name]
+        if missing:
+            LOGGER.error("Missing comparisons from MDPSim mask: %s", missing)
+
         # now build mask from actual BoundComp in right order
         comp_mask = [(bc, truth_val_by_name[bc.comparison])
                      for bc in problem_meta.bound_comps_ordered]
 
         # similar stuff for action selection
+        LOGGER.debug(f"MDPSim[act_applicable_mask] about to run; mdpsim_state={mdpsim_state}")
         mdpsim_acts_enabled \
             = planner_exts.mdpsim_problem.act_applicable_mask(mdpsim_state)
+        LOGGER.debug(f"MDPSim[act_applicable_mask] OK; n={len(mdpsim_acts_enabled)}")
         act_on_by_name = {
             strip_parens(ma.identifier): enabled
             for ma, enabled in mdpsim_acts_enabled
         }
+
+        missing = [ba.unique_ident for ba in problem_meta.bound_acts_ordered
+                   if ba.unique_ident not in act_on_by_name]
+        if missing:
+            LOGGER.error("Missing comparisons from MDPSim mask: %s", missing)
+
+
         act_mask = [(ba, act_on_by_name[ba.unique_ident])
                     for ba in problem_meta.bound_acts_ordered]
 
