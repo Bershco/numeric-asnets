@@ -12,44 +12,29 @@ import signal
 import sys
 from time import time
 from pympler import muppy, summary, asizeof
-from array import array
-import bisect
-from typing import Any, Iterator, List, Optional, Tuple, Set
+from typing import Set
 import numpy
 from pympler.asizeof import asized
-import gc
-
 from rpyc import BaseNetref
-
-from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
-
-
-from tensorflow.python.ops.gen_nn_ops import top_k
 
 from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import CanonicalState
-from collections import defaultdict
 
 import joblib
 import numpy as np
 import rpyc
 import tensorflow as tf
-# for some reason "import tensorflow.python.debug" doesn't work (maybe it's a
-# class or something?)
-from tensorflow.python import debug as tfdbg
-# import tqdm
 import tqdm.auto as tqdm
 
 from asnets.explorer import StaticExplorer, DynamicExplorer
 from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
 from asnets.models import PropNetworkWeights, PropNetwork
 from asnets.supervised import SupervisedTrainer, SupervisedObjective, \
-    ProblemServiceConfig, make_problem_service
+    ProblemServiceConfig
 from asnets.multiprob import ProblemServer, to_local, parent_death_pact
 from asnets.utils.prof_utils import can_profile
 from asnets.utils.py_utils import set_random_seeds
 
-# from post_training.enhspforhwrapper import ENHSPForHWrapper
 
 logging.basicConfig(
     level=logging.INFO,
@@ -337,7 +322,8 @@ class MonteCarloPolicyEvaluator(MCTS):
     def find_children(self, parent_node: MCTSNode):
         """Find up to k successors of parent_node that are applicable and not yet visited"""
         act_dist = self.get_act_dist_from_mcts_node(parent_node).numpy()
-        mask = [parent_node.is_applicable_action(i) for i in range(len(act_dist))]
+        # mask = [parent_node.is_applicable_action(i) for i in range(len(act_dist))]
+        mask = self.get_applicable_action_mask(parent_node)
         # Rank actions by descending policy probability
         sorted_indices = sorted(range(len(act_dist)), key=lambda i: act_dist[i], reverse=True)
         # output = dict()
@@ -404,6 +390,12 @@ class MonteCarloPolicyEvaluator(MCTS):
 
     def print_exploration_exploitation_comparison(self):
         self._probe.print_exploration_exploitation_comparison()
+
+    def get_applicable_action_mask(self, node: MCTSNode):
+        if isinstance(node.state, BaseNetref):
+            return self.problem_service.get_applicable_action_mask(node.state)
+        return [activated for _, activated in node.state.acts_enabled]
+
 
 
 @can_profile

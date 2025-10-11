@@ -34,7 +34,8 @@ from asnets.utils.pddl_utils import get_domain_file, get_problem_file
 from asnets.utils.py_utils import RandomPopContainer, TimerContext, \
     strip_parens, weak_ref_to, weighted_batch_iter
 from asnets.utils.tf_utils import cross_entropy, empty_feed_value, \
-    escape_name_tf
+    escape_name_tf, mean_squared_error
+from post_training.training_mcts import TrainingMCTS
 
 import jpype
 import jpype.imports
@@ -379,11 +380,11 @@ def make_problem_service(config, set_proc_title=False):
             return self.internal_collect_trajectory(
                 model)
         
-        def exposed_explore_from_trajectories(self):
-            self.internal_explore_from_trajectories()
+        def exposed_explore_from_trajectories(self, network: Callable):
+            self.internal_explore_from_trajectories(network)
         
-        def exposed_explore_from_random_state(self):
-            self.internal_explore_from_random_state()
+        def exposed_explore_from_random_state(self, network: Callable):
+            self.internal_explore_from_random_state(network)
 
         def exposed_dataset_is_empty(self):
             return len(self.replay) == 0
@@ -399,11 +400,12 @@ def make_problem_service(config, set_proc_title=False):
                 third element is the weight of each cstate, which is really just
                 a count of how many times we saw that cstate.
             """
-            rich_obs_qvs, counts = self.replay.get_full_dataset()
-            assert len(rich_obs_qvs) > 0, "Empty replay %s" % (self.replay, )
+            rich_obs_qvs_zs, counts = self.replay.get_full_dataset()
+            assert len(rich_obs_qvs_zs) > 0, "Empty replay %s" % (self.replay, )
             counts = np.asarray(counts, dtype='float32')
-            obs_tensor, qv_tensor = self.flatten_obs_qvs(rich_obs_qvs)
-            return obs_tensor, qv_tensor, counts
+            # obs_tensor, pi_tensor = self.flatten_obs_qvs(rich_obs_qvs_zs)
+            obs_tensor, pi_tensor, z_tensor = self.flatten_obs_pi_z(rich_obs_qvs_zs)
+            return obs_tensor, pi_tensor, z_tensor, counts
 
         def exposed_env_reset(self):
             self.current_state = self.internal_get_init_state()
@@ -639,33 +641,91 @@ def make_problem_service(config, set_proc_title=False):
 
             return hit_goal
         
-        def internal_explore_from_trajectories(self) -> None:
+        def internal_explore_from_trajectories(self, network: Callable) -> None:
             """Explore from the trajectory states."""
             while len(self.traj_states) > 0:
-                self.internal_explore_from_random_state()
+                self.internal_explore_from_random_state(network)
             
-        def internal_explore_from_random_state(self) -> None:
-            """Explore from a random state."""
+        # def internal_explore_from_random_state(self) -> None:
+        #     """Explore from a random state."""
+        #     cstate = self.traj_states.pop_random()
+        #
+        #     try:
+        #         teacher_experience = self.opt_pol_experience(cstate)
+        #     except TeacherException as ex:
+        #         LOGGER.warning(f'Teacher error on problem \
+        #             {self.p.problem_name} ({ex})')
+        #         return
+        #
+        #     filtered_envelope = []
+        #
+        #     for env_cstate, act in teacher_experience:
+        #         nactions = sum(p[1] for p in env_cstate.acts_enabled)
+        #
+        #         if nactions <= 1:
+        #             # skip states
+        #             continue
+        #         filtered_envelope.append((env_cstate, act))
+        #
+        #     self.expl_states.update(filtered_envelope)
+
+        def internal_explore_from_random_state(self, network: Callable) -> None:
+            """Self-play exploration for AlphaZero-style data generation."""
+
             cstate = self.traj_states.pop_random()
 
-            try:
-                teacher_experience = self.opt_pol_experience(cstate)
-            except TeacherException as ex:
-                LOGGER.warning(f'Teacher error on problem \
-                    {self.p.problem_name} ({ex})')
-                return
+            mcts_tree = TrainingMCTS(
+                network=network,
+                problem_service=self,
+                # iterations=10,
+                iterations=1,
+                # TODO: implement curriculum training - don't use high iterations at the beginning
+                #  as the network is quite random, and increase towards late phases
+                expansion_k=5,
+                # TODO: find a way to propagate expansion size from arguments - make sure to regard iterations number
+                #  or progressive widening
+                exploration_weight=1,
+                # TODO: optimise hyper-parameter 'exploration_weight' ('c' in puct formula)
+            )
+            mcts_tree.initialise_tree(cstate)
 
-            filtered_envelope = []
+            trajectory = []  # will store (cstate, pi) along the episode
 
-            for env_cstate, act in teacher_experience:
-                nactions = sum(p[1] for p in env_cstate.acts_enabled)
+            # simulate one full episode
+            for _ in range(self.max_len):
+                if cstate.is_terminal:
+                    break
 
-                if nactions <= 1:
-                    # skip states
-                    continue
-                filtered_envelope.append((env_cstate, act))
+                # 1. Run MCTS from current state to get action distribution pi
+                pi = mcts_tree.run_search()  # np.array [num_actions]
 
-            self.expl_states.update(filtered_envelope)
+                # 2. Store current state and pi
+                trajectory.append((cstate, pi))
+
+
+                # 3. Sample action from masked pi and re-root tree
+                mask = mcts_tree.get_children_mask(act_dim=self.exposed_get_act_dim())
+                # Zero out masked-out elements
+                masked_pi = pi * mask
+                # Renormalize to sum to 1
+                masked_pi /= masked_pi.sum()
+
+                action_index = np.random.choice(np.arange(len(pi)), p=masked_pi)
+
+                cstate = mcts_tree.step_forward(action_index)
+
+            # 4. Determine game outcome z
+            if cstate.is_goal:
+                z = 1.0
+            elif cstate.is_terminal:
+                z = -1.0
+            else:
+                z = 0.0 # reached max_len without being terminal
+
+            # 5. Add all states from trajectory with same outcome z
+            for cstate, pi in trajectory:
+                pi_key = tuple(np.ravel(pi)) if isinstance(pi, np.ndarray) else pi
+                self.expl_states.add((cstate, (pi_key, z)))
 
         def flatten_obs_qvs(self, rich_obs_qvs):
             cstates, rich_qvs = zip(*rich_obs_qvs)
@@ -680,6 +740,20 @@ def make_problem_service(config, set_proc_title=False):
                 qv_lists.append(qv_list)
             qv_tensor = np.array(qv_lists, dtype=float)
             return obs_tensor, qv_tensor
+
+        def flatten_obs_pi_z(self, rich_obs_pi_z):
+            cstates, rich_pi_z = zip(*rich_obs_pi_z)  # each entry is (cstate, (pi, z))
+            obs_tensor = np.stack([s.to_network_input() for s in cstates], axis=0)
+
+            pi_list = []
+            z_list = []
+            for pi, z in rich_pi_z:
+                pi_list.append(pi)  # already a distribution over actions
+                z_list.append(z)  # scalar outcome
+            pi_tensor = np.array(pi_list, dtype=float)
+            z_tensor = np.array(z_list, dtype=float).reshape(-1, 1)
+
+            return obs_tensor, pi_tensor, z_tensor
 
         def exposed_initialise_estimator(self, enhsp_config: str):
             # to avoid circular imports
@@ -699,6 +773,14 @@ def make_problem_service(config, set_proc_title=False):
             if hasattr(self,"cached_init_state"):
                 return self.cached_init_state
             return get_init_cstate(self.p)
+
+        def exposed_to_network_input(self, cstate: CanonicalState):
+            if cstate is None:
+                return self.current_state.to_network_input()
+            return cstate.to_network_input()
+
+        def exposed_get_applicable_action_mask(self, cstate: CanonicalState):
+            return [activated for _, activated in cstate.acts_enabled]
 
     return ProblemService
 
@@ -807,6 +889,8 @@ class SupervisedObjective(Enum):
     # get the teacher to give you an arbitrary good action and use xent loss to
     # match exactly that action (& not the others); makes planning faster!
     THERE_CAN_ONLY_BE_ONE = 2
+    # Use MCTS policy distribution instead of a teacher altogether
+    MCTS_POLICY_DIST = 3
 
 
 class SupervisedTrainer:
@@ -942,11 +1026,19 @@ class SupervisedTrainer:
 
             with tf.name_scope('grads_opt'):
                 with tf.GradientTape() as tape:
-                    obs_by_prob, qv_by_prob = list(zip(*feed_dict))
-                    preds_by_prob = []
+                    obs_by_prob, qv_by_prob, z_by_prob = list(zip(*feed_dict))
+                    act_preds_by_prob = []
+                    value_preds_by_prob = []
                     for i, problem in enumerate(self.problems):
-                        preds_by_prob.append(problem.policy(obs_by_prob[i]))
-                    loss = self.loss_fn(preds_by_prob, qv_by_prob)
+                        obs = obs_by_prob[i]
+                        if len(obs.shape) == 1:
+                            obs = np.expand_dims(obs, axis=0)
+                        policy, value = problem.network(obs)
+                        act_preds_by_prob.append(policy)
+                        value_preds_by_prob.append(value)
+                        # act_preds_by_prob.append(problem.policy(obs_by_prob[i]))
+                    loss = self.loss_fn(act_preds_by_prob, qv_by_prob,
+                                        target_values=z_by_prob, pred_values=value_preds_by_prob)
                     grads = tape.gradient(loss, params)
                     grads_and_vars = zip(grads, params)
                     self.optimiser.apply_gradients(
@@ -1100,10 +1192,10 @@ class SupervisedTrainer:
                 if self.save_training_set:
                     to_save[problem.name] = None
             else:
-                prob_obs_tensor, prob_qv_tensor, prob_counts \
+                prob_obs_tensor, prob_pi_tensor, prob_z_tensor, prob_counts \
                     = to_local(service.weighted_dataset())
                 it = weighted_batch_iter(
-                    (prob_obs_tensor, prob_qv_tensor),
+                    (prob_obs_tensor, prob_pi_tensor, prob_z_tensor),
                     prob_counts,
                     self.batch_size_per_problem,
                     n_batches,
@@ -1111,7 +1203,7 @@ class SupervisedTrainer:
                 batch_iters.append(it)
                 if self.save_training_set:
                     to_save[problem.name] \
-                        = (prob_obs_tensor, prob_qv_tensor, prob_counts)
+                        = (prob_obs_tensor, prob_pi_tensor, prob_counts)
             cached_shapes[problem.name] = (
                 service.get_obs_dim(), service.get_act_dim())
 
@@ -1151,7 +1243,7 @@ class SupervisedTrainer:
         return rv
 
 
-class ManualLoss(tf.keras.losses.Loss):
+class ManualLoss:
     def __init__(self,
                  problems,
                  weight_manager,
@@ -1162,7 +1254,8 @@ class ManualLoss(tf.keras.losses.Loss):
                  reduction=tf.keras.losses.Reduction.AUTO,
                  name=None,
                  strategy=SupervisedObjective.ANY_GOOD_ACTION):
-        super().__init__(reduction, name)
+        # super().__init__(reduction, name)
+        # #TODO: check if Loss class that was previously a superclass did anything in its init method
         self.problems = problems
         self.weight_manager = weight_manager
         self.summary_writer = summary_writer
@@ -1171,7 +1264,7 @@ class ManualLoss(tf.keras.losses.Loss):
         self.l1_l2_reg_coeff = l1_l2_reg_coeff
         self.strategy = strategy
 
-    def call(self, act_pred: List[tf.Tensor], q_values: List[tf.Tensor]) \
+    def __call__(self, act_pred: List[tf.Tensor], q_values: List[tf.Tensor], target_values=None, pred_values=None) \
             -> float:
         assert len(self.problems) == len(act_pred), \
             "inconsistent input data size with num. problems"
@@ -1182,8 +1275,14 @@ class ManualLoss(tf.keras.losses.Loss):
         loss_parts = None
         for i, problem in enumerate(self.problems):
             act_dist, ph_q_values = act_pred[i], q_values[i]
-            this_loss, this_loss_parts = self._set_up_losses(
-                problem, act_dist, ph_q_values)
+            if target_values is not None and pred_values is not None:
+                z, v = target_values[i], pred_values[i]
+                this_loss, this_loss_parts = self._set_up_losses(
+                    problem, act_dist, ph_q_values,
+                    target_values=z,pred_values=v
+                )
+            else:
+                this_loss, this_loss_parts = self._set_up_losses(problem, act_dist, ph_q_values)
 
             this_batch_size = tf.shape(input=act_dist)[0]
             losses.append(this_loss)
@@ -1221,10 +1320,7 @@ class ManualLoss(tf.keras.losses.Loss):
         return op_loss
 
     @can_profile
-    def _set_up_losses(self, problem, act_dist, ph_q_values):
-        # to avoid circular imports
-        from asnets.multiprob import to_local
-        problem_service = problem.problem_service
+    def _set_up_losses(self, problem, act_dist, ph_q_values, target_values=0, pred_values=0):
         loss_parts = []
         # now the loss ops
         with tf.name_scope('loss'):
@@ -1238,7 +1334,10 @@ class ManualLoss(tf.keras.losses.Loss):
                 label_sum = tf.reduce_sum(
                     input_tensor=act_labels, axis=-1, keepdims=True)
                 act_label_dist = act_labels / tf.math.maximum(label_sum, 1.0)
+
                 # zero out disabled or dead-end actions!
+                from asnets.multiprob import to_local
+                problem_service = problem.problem_service
                 dead_end_value = to_local(
                     problem_service.get_ssipp_dead_end_value())
                 act_label_dist *= tf.cast(act_labels < dead_end_value,
@@ -1261,6 +1360,24 @@ class ManualLoss(tf.keras.losses.Loss):
                 # because it ensures that zero loss = optimal policy
                 q_loss = tf.reduce_mean(input_tensor=exp_vs - state_values)
                 loss_parts.append(('qloss', q_loss))
+            elif self.strategy == SupervisedObjective.MCTS_POLICY_DIST:
+                pi_targets = tf.convert_to_tensor(ph_q_values, dtype=tf.float32)
+                pi_targets = tf.maximum(pi_targets, 0.0)
+
+                row_sums = tf.reduce_sum(pi_targets, axis=-1, keepdims=True)
+                row_sums = tf.where(row_sums > 0.0, row_sums, tf.ones_like(row_sums))
+                pi_targets = pi_targets / row_sums
+
+                xent = tf.cond(
+                    tf.size(pi_targets) > 0,
+                    true_fn=lambda: tf.reduce_mean(cross_entropy(act_dist, pi_targets)),
+                    false_fn=lambda: tf.constant(0.0, dtype=tf.float32)
+                )
+                loss_parts.append(('xent', xent))
+
+                mse = tf.reduce_mean(mean_squared_error(pred_values, target_values))
+                loss_parts.append(('mse', mse))
+
             else:
                 raise ValueError("Unknown strategy %s" % self.strategy)
 
@@ -1321,5 +1438,6 @@ class ManualLoss(tf.keras.losses.Loss):
 
             with tf.name_scope('combine_parts'):
                 loss = sum(p[1] for p in loss_parts)
+                # loss = 0
 
         return loss, loss_parts

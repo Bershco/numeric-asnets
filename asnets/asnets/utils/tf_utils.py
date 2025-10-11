@@ -103,6 +103,12 @@ def cross_entropy(act_dist, labels):
             return tf.reduce_sum(
                 input_tensor=-labels * tf.math.log(clipped), axis=-1, name='xent_sum')
 
+def mean_squared_error(pred_value, target_value):
+    with tf.name_scope('mean_squared_error'):
+        diff = target_value - pred_value
+        return tf.reduce_mean(tf.square(diff), axis=-1, name='mse')
+
+
 
 _tf_invalid_char_re = re.compile(r'[^A-Za-z0-9_.\-/]+')
 _tf_invalid_char_re_noslash = re.compile(r'[^A-Za-z0-9_.\-]+')
