@@ -18,9 +18,8 @@ from asnets.supervised import PlannerExtensions, ProblemServiceConfig
 from asnets.multiprob import ProblemServer, to_local
 
 # Import your evaluator & node wrappers
-from run_asnets import MonteCarloPolicyEvaluator  # uses your _expand/find_children
-from post_training.monte_carlo_tree_search import wrapInMCTSNode
-
+from run_asnets import MonteCarloPolicyEvaluator, move_to_next_state  # uses your _expand/find_children
+from post_training.monte_carlo_tree_search import wrapInMCTSNode, FixedChildMap
 
 from asnets import state_reprs
 
@@ -99,7 +98,8 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
     mcts.after_expansion_times = []; mcts.after_eval_times = []; mcts.end_times = []
 
     # Seed root (state + tree)
-    curr_cstate = to_local(service.env_reset())
+    # curr_cstate = to_local(service.env_reset()) TODO: check that it's okay that the first cstate is a netref
+    curr_cstate = service.env_reset()
     total_cost = 0.0
     mcts.curr_tree_root = wrapInMCTSNode(curr_cstate, cost_until_now=total_cost, previous_action=None)
 
@@ -111,42 +111,45 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
 
         if reroot_per_decision:
             # Try to re-root to the existing child node for `action` if present
-            new_root = None
-            try:
-                root = mcts.curr_tree_root
-                if root in mcts.children and mcts.children[root] is not None:
-                    ch = mcts.children[root]
-                    cand = None
-                    if isinstance(ch, dict) and action in ch:
-                        cand = ch[action]
-                    elif hasattr(ch, "get"):
-                        try:
-                            cand = ch.get(action)
-                        except Exception:
-                            cand = None
-                    # Some containers expose .__getitem__
-                    if cand is None and hasattr(ch, "__getitem__"):
-                        try:
-                            cand = ch[action]
-                        except Exception:
-                            cand = None
-                    if cand is not None:
-                        new_root = cand
-            except Exception:
-                new_root = None
-
-            if new_root is not None:
-                # Reuse subtree & state if available
-                mcts.curr_tree_root = new_root
-                if hasattr(new_root, "cstate"):
-                    curr_cstate = to_local(new_root.cstate)
-                # keep total_cost as-is; some trees track cost on node already
-            else:
-                # Fall back to simulating the chosen action and rebuilding root at the next state
-                next_state, step_cost = _maybe_to_local_pair(service.env_simulate_step(curr_cstate, action))
-                total_cost += step_cost
-                curr_cstate = next_state
-                mcts.curr_tree_root = wrapInMCTSNode(curr_cstate, cost_until_now=total_cost, previous_action=action)
+            curr_cstate, step_cost = move_to_next_state(problem_service=service, policy_evaluator=mcts, action=action, cost=total_cost, current_code=False)
+            # new_root = None
+            # try:
+            #     root = mcts.curr_tree_root
+            #     # if root in mcts.children and mcts.children[root] is not None:
+            #     if root.children is not None:
+            #         # root_children = mcts.children[root]
+            #         root_children = root.children
+            #         next_node = None
+            #         if isinstance(root_children, FixedChildMap) and action in root_children:
+            #             next_node = root_children[action]
+            #         elif hasattr(root_children, "get"):
+            #             try:
+            #                 next_node = root_children.get(action)
+            #             except Exception:
+            #                 next_node = None
+            #         # Some containers expose .__getitem__
+            #         if next_node is None and hasattr(root_children, "__getitem__"):
+            #             try:
+            #                 next_node = root_children[action]
+            #             except Exception:
+            #                 next_node = None
+            #         if next_node is not None:
+            #             new_root = next_node
+            # except Exception:
+            #     new_root = None
+            #
+            # if new_root is not None:
+            #     # Reuse subtree & state if available
+            #     mcts.curr_tree_root = new_root
+            #     if hasattr(new_root, "state"):
+            #         curr_cstate = new_root.state
+            #     # keep total_cost as-is; some trees track cost on node already
+            # else:
+            #     # Fall back to simulating the chosen action and rebuilding root at the next state
+            #     next_state, step_cost = _maybe_to_local_pair(service.env_simulate_step(curr_cstate, action))
+            #     total_cost += step_cost
+            #     curr_cstate = next_state
+            #     mcts.curr_tree_root = wrapInMCTSNode(curr_cstate, cost_until_now=total_cost, previous_action=action)
 
 
     wall = time.perf_counter() - t0

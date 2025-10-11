@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 from asnets.multiprob import to_local
-from .monte_carlo_tree_search import MCTS, wrapInMCTSNode
+from .monte_carlo_tree_search import MCTS, wrapInMCTSNode, FixedChildMap
 
 
 class TrainingMCTS(MCTS):
@@ -23,7 +23,8 @@ class TrainingMCTS(MCTS):
 
     def _expand(self, node):
         """Expand children using policy priors (top-k by prob)."""
-        if node in self.children:
+        # if node in self.children:
+        if node.children is not None:
             return
 
         # get priors from network
@@ -54,7 +55,8 @@ class TrainingMCTS(MCTS):
             self.state_to_node[child.state] = child
             selected += 1
 
-        self.children[node] = dict(zip(keys, values))
+        # self.children[node] = dict(zip(keys, values)) #TODO: change to FixedChildMap
+        node.children = FixedChildMap(keys,values)
 
     def _evaluate_node(self, node) -> float:
         return self._rollout(node)
@@ -76,7 +78,7 @@ class TrainingMCTS(MCTS):
         """Start a new tree for a fresh episode."""
         self.curr_tree_root = wrapInMCTSNode(cstate, cost_until_now=0, previous_action=None)
         self.state_to_node[self.curr_tree_root.state] = self.curr_tree_root
-        self.children.clear()
+        # self.children.clear()
         self.N.clear()
         self.Q.clear()
         self.act_dist_per_node.clear()
@@ -89,7 +91,8 @@ class TrainingMCTS(MCTS):
 
         act_dim = self.problem_service.exposed_get_act_dim()
         pi = np.zeros(act_dim, dtype=np.float32)
-        children = self.children.get(root, {})
+        # children = self.children.get(root, {})
+        children = root.children
         for action, child in children.items():
             pi[action] = self.N.get(child, 0)
         # Normalize visit counts
@@ -107,7 +110,8 @@ class TrainingMCTS(MCTS):
     def step_forward(self, action_id):
         """Re-root at chosen child and prune irrelevant branches."""
         parent = self.curr_tree_root
-        next_node = self.children[parent][action_id]
+        # next_node = self.children[parent][action_id]
+        next_node = parent.children[action_id]
         self.prune_children_except(parent, action_id)
         self.curr_tree_root = next_node
         return self.curr_tree_root.state
@@ -116,11 +120,12 @@ class TrainingMCTS(MCTS):
         assert act_dim is not None, "Can't get a mask without a size!"
         if node is None:
             node=self.curr_tree_root
-        assert node in self.children, "No children, no mask!"
-
+        # assert node in self.children, "No children, no mask!"
+        assert node.children is not None, "No children, no mask!"
         mask = np.zeros(act_dim, dtype=bool)
 
-        for action in self.children.get(node):
+        # for action in self.children.get(node):
+        for action in node.children.keys():
             mask[int(action)] = True
 
         return mask

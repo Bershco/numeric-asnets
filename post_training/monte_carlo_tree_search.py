@@ -217,9 +217,12 @@ class MCTS:
         self.Q = defaultdict(int)  # total reward of each node
         self.N = defaultdict(int)  # total visit count for each node
         self.Nsa = defaultdict(int)
-        self.children: dict[Node, Any] = dict()  # actions and children output of each node. structure is (action,result_state)
+        # self.children: dict[Node, Any] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
+        self.state_to_node = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
+        self.act_dist_per_node: dict[MCTSNode,np.ndarray] = {}
+
         self.debug_memory = debug_memory
         self.debug_time_mcts_iterations = debug_time_mcts_iterations
         if self.debug_time_mcts_iterations:
@@ -252,16 +255,17 @@ class MCTS:
         # theoretically and practically it SHOULD not be lower than 1/10001 which isn't that low.
         self._backpropagate(path,reward)
 
-    def _select(self, node: "Node"):
+    def _select(self, node: "MCTSNode"):
         """Find an unexplored descendent of `node` (returns path including final leaf or frontier child)."""
         if self.debug_time_mcts_iterations:
             self.start_times.append(time())
         path = []
-        children = self.children
+        # children = self.children
         while True:
             path.append(node)
 
-            childmap: FixedChildMap | None = children.get(node, None)
+            # childmap: FixedChildMap | None = children.get(node, None)
+            childmap: FixedChildMap | None = node.children
 
             # If node has no generated children (i.e. node not in children dict, or is in dict with None value) -
             # it's unexplored or terminal.
@@ -289,7 +293,8 @@ class MCTS:
             chosen_pair = None
             count = 0
             for a, c in childmap.items():
-                if c not in children:
+                # if c not in children:
+                if c.children is None:
                     count += 1
                     # Each unexplored edge has 1/count chance to replace current choice
                     if np.random.randint(count) == 0:
@@ -340,8 +345,8 @@ class MCTS:
            Returns (action, child_node).  Vectorized over children to reduce Python overhead."""
 
         # 0) Sanity: children should already be generated for this node
-        children_map = self.children[node]  # dict: action -> child_node
-        # assert all(child in self.children for child in children_map.values())
+        # children_map = self.children[node]  # dict: action -> child_node
+        children_map = node.children
         actions_nodes = list(children_map.items())  # [(a, child), ...]
         n_children = len(actions_nodes)
         assert n_children > 0, "PUCT select called on a node with no children"
@@ -458,8 +463,11 @@ class MCTS:
         for mcts_node in path:
             if mcts_node == self.curr_tree_root:
                 continue
-            assert mcts_node in self.children[output_path[-1][1]].values()
-            for action, next_node in self.children[output_path[-1][1]].items():
+            # assert mcts_node in self.children[output_path[-1][1]].values()
+            assert output_path[-1][1].children is not None
+            assert mcts_node in output_path[-1][1].children.values()
+            # for action, next_node in self.children[output_path[-1][1]].items():
+            for action, next_node in output_path[-1][1].children.items():
                 if mcts_node == next_node:
                     output_path.append((action, mcts_node))
         return output_path[1:]
@@ -470,9 +478,12 @@ class MCTS:
     def _delete_subtree(self, node, recursive=True):
         # Recursively delete the subtree rooted at this node
         if recursive:
-            for _, child in self.children.get(node, {}).items():
-                self._delete_subtree(child)
-        self.children.pop(node, None)
+            # for _, child in self.children.get(node, {}).items():
+            if node.children is not None:
+                for _, child in node.children.items():
+                    self._delete_subtree(child)
+        # self.children.pop(node, None)
+        node.children = None
         self.N.pop(node, None)
         self.Q.pop(node, None)
         self.state_to_node.pop(node.state, None)
@@ -492,7 +503,8 @@ class MCTS:
         print(f"{label} - Live MCTSNode instances: {count}")
 
     def prune_children_except(self, parent_node, keep_action):
-        children_dict = self.children.get(parent_node)
+        # children_dict = self.children.get(parent_node)
+        children_dict = parent_node.children
         if children_dict is None:
             return
         keep_child = None
@@ -508,12 +520,12 @@ class MCTS:
 
         assert keep_child is not None
         # Replace children dict with just the one we kept
-        self.children[parent_node] = FixedChildMap([keep_action], [keep_child])
-
+        # self.children[parent_node] = FixedChildMap([keep_action], [keep_child])
+        parent_node.children = FixedChildMap([keep_action],[keep_child])
 
 class MCTSNode(Node):
     delete_counter = 0
-    __slots__ = ("state", "cost_until_now", "reward_weight", "previous_action","_hash")
+    __slots__ = ("state", "cost_until_now", "reward_weight", "previous_action","_hash","children")
 
     def __init__(self, state, cost_until_now, previous_action, reward_weight = 1000):
         # self.state = to_local(state)
@@ -522,6 +534,7 @@ class MCTSNode(Node):
         self.cost_until_now = cost_until_now
         self.reward_weight = reward_weight
         self.previous_action = previous_action
+        self.children = None
 
     def simulate_step(self, action_id, problem_service):
         if hasattr(problem_service, "env_simulate_step"):

@@ -13,7 +13,6 @@ import sys
 from time import time
 from pympler import muppy, summary, asizeof
 from typing import Set
-import numpy
 from pympler.asizeof import asized
 from rpyc import BaseNetref
 
@@ -151,7 +150,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         sum1 = summary.summarize(all_objects)
         summary.print_(sum1, limit=3)
         self.profile_state_to_node()
-        self.profile_children_dict()
+        # self.profile_children_dict() #FIXME: only works with children as a dictionary of the whole tree, not recursive right now
         self.safe_asizeof(self.visited_cstates_hashes, name="visited_cstates_hashes")
 
     def safe_asizeof(self, obj, name):
@@ -178,10 +177,8 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.k = num_cstates_to_generate_per_expansion
         self.curr_tree_root = None
         self.debug_orig_root = None
-        self.state_to_node = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
         self.visited_cstates_hashes: Set[int] = set()
         self.revisit_counter = 0
-        self.act_dist_per_node: dict[MCTSNode,numpy.ndarray] = {}
         self.use_value_based=use_value_based
         self.memory_debug = debug_memory
         self.progressive_widening = progressive_widening
@@ -214,9 +211,10 @@ class MonteCarloPolicyEvaluator(MCTS):
             if self.path_until_goal is not None:
                 next_action, next_mcts_node = self.path_until_goal[0]
                 self.path_until_goal = self.path_until_goal[1:]
-                if self.state_to_node[cstate] not in self.children:
-                    self.children[self.state_to_node[cstate]] = dict()
-                self.children[self.state_to_node[cstate]][next_action] = next_mcts_node
+                # if self.state_to_node[cstate] not in self.children:
+                #     self.children[self.state_to_node[cstate]] = dict()
+                # self.children[self.state_to_node[cstate]][next_action] = next_mcts_node
+                self.state_to_node[cstate].children = FixedChildMap([next_action],[next_mcts_node])
                 self.state_to_node[next_mcts_node.state] = next_mcts_node
                 return next_action
 
@@ -227,7 +225,8 @@ class MonteCarloPolicyEvaluator(MCTS):
             return self.Q.get(node,0.0)
 
         best_action, best_node = max(
-            self.children[self.curr_tree_root].items(),
+            # self.children[self.curr_tree_root].items(),
+            self.curr_tree_root.children.items(),
             key=lambda item: (node_priority_by_n(item[1]), tiebreak_by_q(item[1]))
         )
         # LOGGER.info(f'chosen action: {best_action}')
@@ -238,10 +237,15 @@ class MonteCarloPolicyEvaluator(MCTS):
 
     def progress_to(self, action_id, cstate, cost):
         next_node = self.get_corresponding_mcts_node(cstate)
-        assert next_node in self.children[self.curr_tree_root].values(), \
+        # assert next_node in self.children[self.curr_tree_root].values(), \
+        assert self.curr_tree_root.children is not None
+        assert next_node in self.curr_tree_root.children.values(), \
             f"Assertion failed: next_node ({next_node}) is not one of current root's children"
-        assert next_node == self.children[self.curr_tree_root][action_id], \
-            f"Assertion failed: next_node ({next_node}) != expected ({self.children[self.curr_tree_root][action_id]})"
+        # assert next_node == self.children[self.curr_tree_root][action_id], \
+            # f"Assertion failed: next_node ({next_node}) != expected ({self.children[self.curr_tree_root][action_id]})"
+        assert next_node == self.curr_tree_root.children[action_id], \
+            f"Assertion failed: next_node ({next_node} != expected ({self.curr_tree_root.children[action_id]})"
+        # TODO: these two assertions above might be redundant
         self.prune_children_except(self.curr_tree_root, action_id)
         if next_node is None:
             LOGGER.info('Next node is not available, creating a new tree.')
@@ -254,7 +258,8 @@ class MonteCarloPolicyEvaluator(MCTS):
             # LOGGER.info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
 
     def progress_to_without_cstate(self, action_id, cost):
-        next_node = self.children[self.curr_tree_root][action_id]
+        # next_node = self.children[self.curr_tree_root][action_id]
+        next_node = self.curr_tree_root.children[action_id]
         self.prune_children_except(self.curr_tree_root, action_id)
         assert next_node is not None, "Somehow need to progress to a non-generated node."
         _temp = self.curr_tree_root
@@ -268,9 +273,11 @@ class MonteCarloPolicyEvaluator(MCTS):
         return self.state_to_node.get(cstate, None)
 
     def _expand(self, node):
-        if node in self.children:
+        # if node in self.children:
+        if node.children is not None:
             return
-        self.children[node] = self.find_children(node)
+        # self.children[node] = self.find_children(node)
+        node.children = self.find_children(node)
         self.state_to_node[node.state] = node
         if self._probe:
             try:
@@ -280,10 +287,12 @@ class MonteCarloPolicyEvaluator(MCTS):
                     act_dim = len(pri) if pri is not None else None
                 except Exception:
                     pass
-                self._probe.log_expand(act_dim=act_dim, children_created=len(self.children[node]))
+                # self._probe.log_expand(act_dim=act_dim, children_created=len(self.children[node]))
+                self._probe.log_expand(act_dim=act_dim, children_created=len(node.children))
             except Exception:
                 pass
-        for child_node in self.children[node].values():
+        # for child_node in self.children[node].values():
+        for child_node in node.children.values():
             assert isinstance(child_node, MCTSNode)
             self.state_to_node[child_node.state] = child_node
         if self.debug_time_mcts_iterations:
@@ -299,9 +308,12 @@ class MonteCarloPolicyEvaluator(MCTS):
                 action_path = []
                 curr_mcts_node = self.curr_tree_root
                 for action_from_path, mcts_node_from_path in action_following_state_path:
-                    if curr_mcts_node not in self.children:
-                        self.children[curr_mcts_node] = dict()
-                    self.children[curr_mcts_node][action_from_path] = mcts_node_from_path
+                    # if curr_mcts_node not in self.children:
+                    # if curr_mcts_node.children is None:
+                        # self.children[curr_mcts_node] = dict()
+                        # curr_mcts_node.children = None
+                    # self.children[curr_mcts_node][action_from_path] = mcts_node_from_path
+                    curr_mcts_node.children = FixedChildMap([action_from_path],[mcts_node_from_path])
                     self.state_to_node[curr_mcts_node.state] = curr_mcts_node
                     curr_mcts_node = mcts_node_from_path
                     action_path.append(action_from_path)
@@ -319,7 +331,7 @@ class MonteCarloPolicyEvaluator(MCTS):
             self.after_eval_times.append(time())
         return value
 
-    def find_children(self, parent_node: MCTSNode):
+    def find_children(self, parent_node: MCTSNode) -> FixedChildMap:
         """Find up to k successors of parent_node that are applicable and not yet visited"""
         act_dist = self.get_act_dist_from_mcts_node(parent_node).numpy()
         # mask = [parent_node.is_applicable_action(i) for i in range(len(act_dist))]
