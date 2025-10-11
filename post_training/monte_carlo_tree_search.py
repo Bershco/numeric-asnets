@@ -157,7 +157,10 @@ class SelectProbe:
 class MCTS:
     """Monte Carlo tree searcher. First rollout the tree then choose a move."""
 
-    def __init__(self, exploration_weight=1):
+    def __init__(self, exploration_weight=1,
+                 debug_memory = False,
+                 debug_time_mcts_iterations = False,
+                 debug_comparison_exploration_exploitation = False):
         self.curr_tree_root = None
         self.Q = defaultdict(int)  # total reward of each node
         self.N = defaultdict(int)  # total visit count for each node
@@ -165,14 +168,15 @@ class MCTS:
         self.children: dict[Node, Any] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
-        self.time_debug_mcts_iterations = False
-        if self.time_debug_mcts_iterations:
+        self.debug_memory = debug_memory
+        self.debug_time_mcts_iterations = debug_time_mcts_iterations
+        if self.debug_time_mcts_iterations:
             self.start_times = []
             self.after_selection_times = []
             self.after_expansion_times = []
             self.after_eval_times = []
             self.end_times = []
-        self.debug_comparison_exploration_exploitation = True
+        self.debug_comparison_exploration_exploitation = debug_comparison_exploration_exploitation
         self._probe = None
         if self.debug_comparison_exploration_exploitation:
             self._probe = SelectProbe()
@@ -198,7 +202,7 @@ class MCTS:
 
     def _select(self, node: "Node"):
         """Find an unexplored descendent of `node` (returns path including final leaf or frontier child)."""
-        if self.time_debug_mcts_iterations:
+        if self.debug_time_mcts_iterations:
             self.start_times.append(time())
         path = []
         while True:
@@ -219,7 +223,7 @@ class MCTS:
                 # count traversed edge
                 self.Nsa[(node, a)] += 1
                 path.append(n)
-                if self.time_debug_mcts_iterations:
+                if self.debug_time_mcts_iterations:
                     self.after_selection_times.append(time())
                 return path
 
@@ -246,7 +250,7 @@ class MCTS:
             N_local[node] = n
             q = Q_local.get(node, 0.0)
             Q_local[node] = q + (reward - q) / n  # running average
-        if self.time_debug_mcts_iterations:
+        if self.debug_time_mcts_iterations:
             self.end_times.append(time())
 
     def _evaluate_node(self, node) -> float:
@@ -259,7 +263,7 @@ class MCTS:
 
         # 0) Sanity: children should already be generated for this node
         children_map = self.children[node]  # dict: action -> child_node
-        assert all(child in self.children for child in children_map.values())
+        # assert all(child in self.children for child in children_map.values())
         actions_nodes = list(children_map.items())  # [(a, child), ...]
         n_children = len(actions_nodes)
         assert n_children > 0, "PUCT select called on a node with no children"

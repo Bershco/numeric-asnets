@@ -193,6 +193,7 @@ class CanonicalState(object):
         return (self.props_true, self.flnt_values, self.comps_true,
                 self.acts_enabled, self._aux_data is None)
 
+
     def __hash__(self) -> int:
         """Return a hash of the state.
 
@@ -274,7 +275,7 @@ class CanonicalState(object):
         else:
             self._aux_data = np.concatenate(
                 extra_data, axis=1).astype('float32').flatten()
-        self._aux_dat_interp = interp
+        self._aux_data_interp = interp
         if requires_memory:
             # one of the memory-based DataGenerators (ActionCountDataGenerator)
             # needs to know what slots the dims map onto.

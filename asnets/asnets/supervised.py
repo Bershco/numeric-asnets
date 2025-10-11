@@ -605,7 +605,7 @@ def make_problem_service(config, set_proc_title=False):
                 obs = to_local(cstate.to_network_input())
                 obs_bytes = obs.tostring()
                 if obs_bytes not in self.model_cache:
-                    act_dist = model(obs[None], training=False)
+                    act_dist, _ = model(obs[None], training=False)
                     
                     act_dist = tf.reshape(
                         to_local(act_dist),

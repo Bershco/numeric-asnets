@@ -121,7 +121,7 @@ class CachingPolicyEvaluator(object):
         else:
             self._misses += 1
             in_obs = obs[None, :]
-            act_dist = self.policy(in_obs, training=False)
+            act_dist, _ = self.policy(in_obs, training=False)
             self.cache[obs_key] = act_dist
         # we cache action *distribution* instead of action so that we can draw
         # a different random sample each time (caching should be transparent!)
@@ -532,8 +532,8 @@ class MonteCarloPolicyEvaluator(MCTS):
     def get_act_dist_from_mcts_node(self, node: MCTSNode):
         act_dist = self.act_dist_per_node.get(node)
         if act_dist is None:
-            node_as_network_input = node.to_network_input()
-            act_dist = self.policy(node_as_network_input)
+            node_as_network_input = node.to_network_input(self.problem_service)
+            act_dist, _ = self.policy(node_as_network_input)
             self.act_dist_per_node[node] = act_dist
         return tf.squeeze(act_dist)
 

@@ -708,7 +708,35 @@ class PropNetwork(tf.keras.layers.Layer):
 
         l_pre_softmax = _merge_finals(prob_meta, finals)
         # voila!
-        return masked_softmax(l_pre_softmax, act_mask)
+
+        # policy head
+        policy_out = masked_softmax(l_pre_softmax, act_mask)
+
+        # value head
+        # state_repr = tf.reduce_mean(l_pre_softmax, axis=1)  # [batch, hidden_dim]
+        # could also experiment with reduce_sum, reduce_max for better results
+
+        # if len(state_repr) == 1:
+        #     state_repr = tf.reshape(state_repr, (-1, tf.shape(state_repr)[-1]))
+        # elif len(state_repr.shape) > 2:
+        #     state_repr = tf.reshape(state_repr, (tf.shape(state_repr)[0], -1))
+
+        if len(l_pre_softmax.shape) == 3:
+            # typical case: (batch, n_props, hidden)
+            state_repr = tf.reduce_mean(l_pre_softmax, axis=1)
+        elif len(l_pre_softmax.shape) == 2:
+            # already (batch, hidden)
+            state_repr = l_pre_softmax
+        elif len(l_pre_softmax.shape) == 1:
+            # single vector, no batch
+            state_repr = tf.expand_dims(l_pre_softmax, axis=0)
+        else:
+            raise ValueError(f"Unexpected shape for l_pre_softmax: {l_pre_softmax.shape}")
+
+        value_hidden = tf.keras.layers.Dense(64, activation='relu')(state_repr)
+        value_out = tf.keras.layers.Dense(1, activation='tanh')(value_hidden)
+
+        return policy_out, value_out
 
 
 def _merge_finals(prob_meta, final_acts):
