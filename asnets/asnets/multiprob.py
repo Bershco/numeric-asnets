@@ -230,8 +230,6 @@ class ProblemServer(object):
             service_conf (ProblemServiceConfig): configuration for the
             ProblemService to be hosted.
         """
-        user = getpass.getuser()
-        # sock_dir = f'/tmp/asnet-sockets-{user}/'
         sock_dir = os.path.join(os.getcwd(), "asnet-sockets")
         os.makedirs(sock_dir, exist_ok=True)
         self._unix_sock_path = os.path.join(sock_dir,
