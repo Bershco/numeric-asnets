@@ -4,13 +4,23 @@ Luke Harold Miles, July 2019, Public Domain Dedication
 See also https://en.wikipedia.org/wiki/Monte_Carlo_tree_search
 https://gist.github.com/qpwo/c538c6f73727e254fdc7fab81024f6e1
 """
+import gc
 import logging
 from abc import ABC, abstractmethod
+from array import array
+import bisect
 from collections import defaultdict
 import math
-from typing import Any
+from typing import Any, List, Optional, Iterator, Tuple
 from time import time
 import numpy as np
+import rpyc
+from rpyc import BaseNetref
+from typing_extensions import Self
+
+from asnets.multiprob import to_local
+from asnets.state_reprs import CanonicalState
+
 
 class Node(ABC):
     """
@@ -38,6 +48,48 @@ class Node(ABC):
     def __eq__(self, node2):
         """Nodes must be comparable"""
         return True
+
+class FixedChildMap:
+    def __init__(self, keys: List[int], values: List[Any]):
+        assert len(keys) == len(values), "Keys and values must match in length"
+        sorted_pairs = sorted(zip(keys, values))
+        self._keys = array('H', (k for k, _ in sorted_pairs))   # unsigned short
+        self._values = [v for _, v in sorted_pairs]
+
+    def get(self, key: int, default: Optional[Any] = None) -> Optional[Any]:
+        idx = bisect.bisect_left(self._keys, key)
+        if idx < len(self._keys) and self._keys[idx] == key:
+            return self._values[idx]
+        return default
+
+    def __getitem__(self, key: int) -> Any:
+        result = self.get(key)
+        if result is None:
+            raise KeyError(key)
+        return result
+
+    def __contains__(self, key: int) -> bool:
+        return self.get(key) is not None
+
+    def items(self) -> Iterator[Tuple[int, Any]]:
+        return zip(self._keys, self._values)
+
+    def keys(self) -> Iterator[int]:
+        return iter(self._keys)
+
+    def values(self) -> Iterator[Any]:
+        return iter(self._values)
+
+    def __len__(self) -> int:
+        return len(self._keys)
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self._keys)
+
+    def __repr__(self) -> str:
+        items = ', '.join(f"{k}: {v}" for k, v in self.items())
+        return f"FixedChildMap({{{items}}})"
+
 
 class SelectProbe:
     """Lightweight, backward-compatible probe.
@@ -205,22 +257,48 @@ class MCTS:
         if self.debug_time_mcts_iterations:
             self.start_times.append(time())
         path = []
+        children = self.children
         while True:
             path.append(node)
 
-            # If node has no generated children, it's unexplored or terminal.
-            if node not in self.children or not self.children[node]:
-                if self.time_debug_mcts_iterations:
+            childmap: FixedChildMap | None = children.get(node, None)
+
+            # If node has no generated children (i.e. node not in children dict, or is in dict with None value) -
+            # it's unexplored or terminal.
+            # if node not in children or not children[node]:
+            if childmap is None:
+                if self.debug_time_mcts_iterations:
                     self.after_selection_times.append(time())
                 return path
 
-            # Prefer an unexplored child if any (child not yet in self.children keys)
-            actions_nodes = list(self.children[node].items())  # [(action, child_node), ...]
-            unexplored_edges = [(a, c) for (a, c) in actions_nodes if c not in self.children]
+            # actions_nodes = list(children[node].items())  # [(action, child_node), ...]
+            # unexplored_edges = [(a, c) for (a, c) in actions_nodes if c not in children]
+            #
+            # if unexplored_edges:
+            #     a, n = unexplored_edges[np.random.randint(len(unexplored_edges))]
+            #     # count traversed edge
+            #     self.Nsa[(node, a)] += 1
+            #     path.append(n)
+            #     if self.debug_time_mcts_iterations:
+            #         self.after_selection_times.append(time())
+            #     return path
 
-            if unexplored_edges:
-                a, n = unexplored_edges[np.random.randint(len(unexplored_edges))]
-                # count traversed edge
+
+            # Prefer an unexplored child if any (child not yet in children keys)
+            # Using uniform reservoir sampling over unexplored edges
+            chosen_pair = None
+            count = 0
+            for a, c in childmap.items():
+                if c not in children:
+                    count += 1
+                    # Each unexplored edge has 1/count chance to replace current choice
+                    if np.random.randint(count) == 0:
+                        # First pair is definite chosen, possibly be replaced later
+                        # But it's impossible for chosen_pair to stay None if there's at least a single unexplored edge
+                        chosen_pair = (a, c)
+
+            if chosen_pair is not None:
+                a, n = chosen_pair
                 self.Nsa[(node, a)] += 1
                 path.append(n)
                 if self.debug_time_mcts_iterations:
@@ -273,12 +351,15 @@ class MCTS:
         priors = priors.numpy() if hasattr(priors, "numpy") else priors
 
         # Build parallel arrays once
-        actions = np.fromiter((a for a, _ in actions_nodes), dtype=np.int32, count=n_children)
-        child_list = [c for _, c in actions_nodes]
+        # actions = np.fromiter((a for a, _ in actions_nodes), dtype=np.int32, count=n_children)
+        # child_list = [c for _, c in actions_nodes]
+        actions, child_list = zip(*actions_nodes)
 
         # 2) Masks (vectorized)
         #   - cycle mask: child already on current path => invalidate
-        cycle = np.fromiter((c in path_set for c in child_list), dtype=bool, count=n_children)
+        # cycle = np.fromiter((c in path_set for c in child_list), dtype=bool, count=n_children)
+        actions = np.frombuffer(np.array(actions, dtype=np.int32), dtype=np.int32)
+        cycle = np.array([c in path_set for c in child_list], dtype=bool)
 
         # 3) Prior lookup (vectorized, with bounds check)
         prior = np.zeros(n_children, dtype=np.float32)
@@ -286,15 +367,20 @@ class MCTS:
             valid = (actions >= 0) & (actions < priors.size)
             if valid.any():
                 prior[valid] = np.asarray(priors, dtype=np.float32)[actions[valid]]
-        else:
-            # extremely defensive: if priors is scalar/empty, leave zeros
-            pass
 
         # 4) Edge visits Nsa(s,a) and child Q(s') in one sweep
-        edge_visits = np.fromiter((self.Nsa[(node, int(a))] for a in actions),
-                                   dtype=np.int32, count=n_children)
-        Q_child = np.fromiter((self.Q.get(c, 0.0) for c in child_list),
-                               dtype=np.float32, count=n_children)
+        # edge_visits = np.fromiter((self.Nsa[(node, int(a))] for a in actions),
+        #                            dtype=np.int32, count=n_children)
+        # Q_child = np.fromiter((self.Q.get(c, 0.0) for c in child_list),
+        #                        dtype=np.float32, count=n_children)
+        edge_visits = np.array(
+            [self.Nsa.get((node, int(a)), 0) for a in actions],
+            dtype=np.int32
+        )
+        Q_child = np.array(
+            [self.Q.get(c, 0.0) for c in child_list],
+            dtype=np.float32
+        )
 
         # 5) Forced first visits: if any edge is unvisited and not a cycle, pick among them
         unvisited = (edge_visits == 0) & (~cycle)
@@ -308,8 +394,9 @@ class MCTS:
                 idx = int(np.random.choice(cand, p=w))
             else:
                 idx = int(np.random.choice(cand))
-            a, child = actions_nodes[idx]
-            if self._probe: self._probe.log_select_unvisited()
+            a, child = actions[int(idx)], child_list[int(idx)]
+            if self._probe:
+                self._probe.log_select_unvisited()
             return a, child
 
         # 6) Compute U and score = Q + U (vectorized)
@@ -334,7 +421,7 @@ class MCTS:
             p = w / s
             idx = int(np.random.choice(n_children, p=p))
 
-        a, child = actions_nodes[idx]
+        a, child = actions[int(idx)], child_list[int(idx)]
 
         # small O(n) helpers
         cycle_present = bool(cycle.any())
@@ -350,14 +437,14 @@ class MCTS:
         edge_visits_chosen = int(edge_visits[idx])
 
         # minimal event
-        if self._probe: self._probe.log_select_softmax(
-            prior_entropy=prior_entropy,
-            chosen_p=chosen_p,
-            edge_visits_chosen=edge_visits_chosen,
-            cycle_present=cycle_present
-        )
+        if self._probe:
+            self._probe.log_select_softmax(
+                prior_entropy=prior_entropy,
+                chosen_p=chosen_p,
+                edge_visits_chosen=edge_visits_chosen,
+                cycle_present=cycle_present
+            )
 
-        # keep your existing summary call (DON'T remove this)
         if self._probe:
             try:
                 self._probe.log(Q_child.tolist(), U.tolist(), idx)
@@ -379,3 +466,112 @@ class MCTS:
 
     def get_act_dist_from_mcts_node(self, node):
         raise NotImplemented
+
+    def _delete_subtree(self, node, recursive=True):
+        # Recursively delete the subtree rooted at this node
+        if recursive:
+            for _, child in self.children.get(node, {}).items():
+                self._delete_subtree(child)
+        self.children.pop(node, None)
+        self.N.pop(node, None)
+        self.Q.pop(node, None)
+        self.state_to_node.pop(node.state, None)
+        self.act_dist_per_node.pop(node, None)
+
+    def log_node_count(self, label=""):
+        gc.collect()
+
+        count = 0
+        for obj in gc.get_objects():
+            # Filter out remote RPyC references explicitly
+            if isinstance(obj, BaseNetref):
+                continue
+            if isinstance(obj, MCTSNode):
+                count += 1
+
+        print(f"{label} - Live MCTSNode instances: {count}")
+
+    def prune_children_except(self, parent_node, keep_action):
+        children_dict = self.children.get(parent_node)
+        if children_dict is None:
+            return
+        keep_child = None
+        if self.debug_memory:
+            self.log_node_count("Before deleting old root's irrelevant children")
+        for action, child_node in list(children_dict.items()):
+            if action == keep_action:
+                keep_child = child_node
+                continue
+            self._delete_subtree(child_node)
+        if self.debug_memory:
+            self.log_node_count("After deleting old root's irrelevant children")
+
+        assert keep_child is not None
+        # Replace children dict with just the one we kept
+        self.children[parent_node] = FixedChildMap([keep_action], [keep_child])
+
+
+class MCTSNode(Node):
+    delete_counter = 0
+    __slots__ = ("state", "cost_until_now", "reward_weight", "previous_action","_hash")
+
+    def __init__(self, state, cost_until_now, previous_action, reward_weight = 1000):
+        # self.state = to_local(state)
+        self.state = state
+        self._hash = hash(state) # This prevents repeated rpyc calls and interceptions, context switching and pickling
+        self.cost_until_now = cost_until_now
+        self.reward_weight = reward_weight
+        self.previous_action = previous_action
+
+    def simulate_step(self, action_id, problem_service):
+        if hasattr(problem_service, "env_simulate_step"):
+            return problem_service.env_simulate_step(self.state, int(action_id))
+        return problem_service.exposed_env_simulate_step(self.state, int(action_id))
+
+    def is_terminal(self):
+        """Returns True if the node has no children"""
+        return self.state.exposed_is_terminal()
+
+    def is_goal(self):
+        """Return True if the current not is a goal"""
+        return self.state.exposed_is_goal()
+
+    def reward(self):
+        # return 1 if self.is_terminal() else 0
+        if self.is_goal():
+            return self.reward_weight / self.cost_until_now
+        return 0
+
+    def to_network_input(self, problem_service):
+        """Make the cstate represented by 'this' MCTSNode to be compatible for the policy network, and transposes it"""
+        if isinstance(self.state, BaseNetref):
+            return problem_service.to_network_input(self.state)
+        return self.state.to_network_input()[None, :]
+
+    def is_applicable_action(self, action_num):
+        _, applicable = self.state.acts_enabled[action_num]
+        return applicable
+
+    def __hash__(self):
+        """Nodes must be hashable"""
+        return self._hash
+
+    def __eq__(self, node2: Self) -> bool:
+        """
+        Nodes must be comparable.
+        That being said, employing rpyc interception, pickling, serialization etc. just for equality seems redundant.
+        At least if their hashes already don't fit.
+        """
+        return hash(self) == hash(node2) and self.state == node2.state
+
+    def __repr__(self):
+        return self.state.__repr__()
+
+    # def __del__(self):
+    #     MCTSNode.delete_counter += 1
+    #     if MCTSNode.delete_counter % 100 == 0:
+    #         print(f"Deleted {MCTSNode.delete_counter} MCTSNodes - and counting!")
+
+
+def wrapInMCTSNode(inner_state: CanonicalState, previous_action, cost_until_now=float('inf')):
+    return MCTSNode(state=inner_state, cost_until_now=cost_until_now, previous_action=previous_action)

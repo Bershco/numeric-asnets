@@ -59,46 +59,6 @@ logging.basicConfig(
 
 LOGGER = logging.getLogger(__name__)
 
-class FixedChildMap:
-    def __init__(self, keys: List[int], values: List[Any]):
-        assert len(keys) == len(values), "Keys and values must match in length"
-        sorted_pairs = sorted(zip(keys, values))
-        self._keys = array('H', (k for k, _ in sorted_pairs))   # unsigned short
-        self._values = [v for _, v in sorted_pairs]
-
-    def get(self, key: int, default: Optional[Any] = None) -> Optional[Any]:
-        idx = bisect.bisect_left(self._keys, key)
-        if idx < len(self._keys) and self._keys[idx] == key:
-            return self._values[idx]
-        return default
-
-    def __getitem__(self, key: int) -> Any:
-        result = self.get(key)
-        if result is None:
-            raise KeyError(key)
-        return result
-
-    def __contains__(self, key: int) -> bool:
-        return self.get(key) is not None
-
-    def items(self) -> Iterator[Tuple[int, Any]]:
-        return zip(self._keys, self._values)
-
-    def keys(self) -> Iterator[int]:
-        return iter(self._keys)
-
-    def values(self) -> Iterator[Any]:
-        return iter(self._values)
-
-    def __len__(self) -> int:
-        return len(self._keys)
-
-    def __iter__(self) -> Iterator[int]:
-        return iter(self._keys)
-
-    def __repr__(self) -> str:
-        items = ', '.join(f"{k}: {v}" for k, v in self.items())
-        return f"FixedChildMap({{{items}}})"
 
 
 class CachingPolicyEvaluator(object):
@@ -137,62 +97,9 @@ class CachingPolicyEvaluator(object):
         return self.get_action(cstate.to_network_input())
 
 
-from post_training.monte_carlo_tree_search import Node
-class MCTSNode(Node):
-    delete_counter = 0
-    __slots__ = ("state", "cost_until_now", "reward_weight", "previous_action")
+from post_training.monte_carlo_tree_search import MCTSNode, wrapInMCTSNode, MCTS, FixedChildMap
 
-    def __init__(self, state, cost_until_now, previous_action, reward_weight = 1000):
-        self.state = to_local(state)
-        self.cost_until_now = cost_until_now
-        self.reward_weight = reward_weight
-        self.previous_action = previous_action
 
-    def simulate_step(self, action_id, problem_service):
-        return problem_service.env_simulate_step(self.state, int(action_id))
-
-    def is_terminal(self):
-        """Returns True if the node has no children"""
-        return self.state.exposed_is_terminal()
-
-    def is_goal(self):
-        """Return True if the current not is a goal"""
-        return self.state.exposed_is_goal()
-
-    def reward(self):
-        # return 1 if self.is_terminal() else 0
-        if self.is_goal():
-            return self.reward_weight / self.cost_until_now
-        return 0
-
-    def to_network_input(self):
-        """Make the cstate represented by 'this' MCTSNode to be compatible for the policy network, and transposes it"""
-        return self.state.to_network_input()[None, :]
-
-    def is_applicable_action(self, action_num):
-        _, applicable = self.state.acts_enabled[action_num]
-        return applicable
-
-    def __hash__(self):
-        """Nodes must be hashable"""
-        return self.state.__hash__()
-
-    def __eq__(self, node2):
-        """Nodes must be comparable"""
-        return self.state.__eq__(node2.state)
-
-    def __repr__(self):
-        return self.state.__repr__()
-
-    # def __del__(self):
-    #     MCTSNode.delete_counter += 1
-    #     if MCTSNode.delete_counter % 100 == 0:
-    #         print(f"Deleted {MCTSNode.delete_counter} MCTSNodes - and counting!")
-
-def wrapInMCTSNode(inner_node: CanonicalState, previous_action, cost_until_now=float('inf')):
-    return MCTSNode(state=inner_node, cost_until_now=cost_until_now, previous_action=previous_action)
-
-from post_training.monte_carlo_tree_search import MCTS
 class MonteCarloPolicyEvaluator(MCTS):
 
     def is_comparng_exploration_exploitation(self):
@@ -269,18 +176,6 @@ class MonteCarloPolicyEvaluator(MCTS):
         except Exception as e:
             print(f"Error sizing {name}: {e}")
 
-    def log_node_count(self, label=""):
-        gc.collect()
-
-        count = 0
-        for obj in gc.get_objects():
-            # Filter out remote RPyC references explicitly
-            if isinstance(obj, BaseNetref):
-                continue
-            if isinstance(obj, MCTSNode):
-                count += 1
-
-        print(f"{label} - Live MCTSNode instances: {count}")
 
     def __init__(self, policy, problem_service, horizon=0, exploration_weight=1, iterations=10,
                  num_cstates_to_generate_per_expansion=5, use_value_based=False, debug_memory=False,
@@ -438,36 +333,6 @@ class MonteCarloPolicyEvaluator(MCTS):
         if self.debug_time_mcts_iterations:
             self.after_eval_times.append(time())
         return value
-
-    def prune_children_except(self, parent_node, keep_action):
-        children_dict = self.children.get(parent_node)
-        if children_dict is None:
-            return
-        keep_child = None
-        if self.memory_debug:
-            self.log_node_count("Before deleting old root's irrelevant children")
-        for action, child_node in list(children_dict.items()):
-            if action == keep_action:
-                keep_child = child_node
-                continue
-            self._delete_subtree(child_node)
-        if self.memory_debug:
-            self.log_node_count("After deleting old root's irrelevant children")
-
-        assert keep_child is not None
-        # Replace children dict with just the one we kept
-        self.children[parent_node] = FixedChildMap([keep_action],[keep_child])
-
-    def _delete_subtree(self, node, recursive=True):
-        # Recursively delete the subtree rooted at this node
-        if recursive:
-            for _, child in self.children.get(node, {}).items():
-                self._delete_subtree(child)
-        self.children.pop(node, None)
-        self.N.pop(node, None)
-        self.Q.pop(node, None)
-        self.state_to_node.pop(node.state, None)
-        self.act_dist_per_node.pop(node, None)
 
     def find_children(self, parent_node: MCTSNode):
         """Find up to k successors of parent_node that are applicable and not yet visited"""
