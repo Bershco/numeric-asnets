@@ -18,12 +18,15 @@ from asnets.supervised import PlannerExtensions, ProblemServiceConfig
 from asnets.multiprob import ProblemServer, to_local
 
 # Import your evaluator & node wrappers
-from run_asnets import MonteCarloPolicyEvaluator, wrapInMCTSNode  # uses your _expand/find_children
-# ^ If your module path differs, adjust the import.
+from run_asnets import MonteCarloPolicyEvaluator  # uses your _expand/find_children
+from post_training.monte_carlo_tree_search import wrapInMCTSNode
+
+
+from asnets import state_reprs
 
 def uniform_policy(act_dim: int):
     def _pi(in_obs_batch, training=False):
-        return tf.nn.softmax(tf.zeros((1, act_dim), dtype=tf.float32))
+        return tf.nn.softmax(tf.zeros((1, act_dim), dtype=tf.float32)), 1
     return _pi
 
 class LocalService:
@@ -88,10 +91,10 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
                                      horizon=0,
                                      num_cstates_to_generate_per_expansion=k,
                                      use_value_based=True,
-                                     memory_debug=False)
+                                     debug_memory=False)
 
     # Turn on your internal timing buckets
-    mcts.time_debug_mcts_iterations = True
+    mcts.debug_time_mcts_iterations = True
     mcts.start_times = []; mcts.after_selection_times = []
     mcts.after_expansion_times = []; mcts.after_eval_times = []; mcts.end_times = []
 
@@ -182,6 +185,7 @@ def main():
     ap.add_argument("--run-rpyc", action="store_true")
     ap.add_argument("--reroot-per-decision", action="store_true",
                     help="After each decision, re-root the tree to the chosen child (simulate if necessary) and continue from the next state.")
+
     args = ap.parse_args()
     logger = logging.getLogger(__name__)
 
