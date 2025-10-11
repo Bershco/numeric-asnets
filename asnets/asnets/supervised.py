@@ -198,7 +198,6 @@ class ProblemServiceConfig(object):
         self.only_one_good_action = only_one_good_action
         self.use_teacher_envelope = use_teacher_envelope
 
-
 class PlannerExtensions(object):
     """Wrapper to hold references to SSiPP and MDPSim modules, and references
     to the relevant loaded problems (like the old ModuleSandbox). Mostly
@@ -921,7 +920,7 @@ class SupervisedTrainer:
         param_set = set(map(lambda v: v.ref(), params))
         tf_param_set = set(map(
             lambda v: v.ref(),
-            self.problems[0].policy.trainable_weights))
+            self.problems[0].network.trainable_weights))
 
         assert param_set == tf_param_set, \
             "network has weird variables---debug this"

@@ -283,9 +283,14 @@ class MonteCarloPolicyEvaluator(MCTS):
         print(f"{label} - Live MCTSNode instances: {count}")
 
     def __init__(self, policy, problem_service, horizon=0, exploration_weight=1, iterations=10,
-                 num_cstates_to_generate_per_expansion=5, use_value_based=False, memory_debug=False,
-                 progressive_widening=False):
-        super().__init__(exploration_weight)
+                 num_cstates_to_generate_per_expansion=5, use_value_based=False, debug_memory=False,
+                 progressive_widening=False,
+                 debug_time_mcts_iterations=False,
+                 debug_comparison_exploration_exploitation=True):
+        super().__init__(exploration_weight,
+                         debug_memory=debug_memory,
+                         debug_time_mcts_iterations=debug_time_mcts_iterations,
+                         debug_comparison_exploration_exploitation=debug_comparison_exploration_exploitation)
         self.policy = policy
         self.problem_service = problem_service
         self.iterations = iterations
@@ -298,7 +303,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.revisit_counter = 0
         self.act_dist_per_node: dict[MCTSNode,numpy.ndarray] = {}
         self.use_value_based=use_value_based
-        self.memory_debug = memory_debug
+        self.memory_debug = debug_memory
         self.progressive_widening = progressive_widening
 
     def get_action(self, obs):
@@ -360,7 +365,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.prune_children_except(self.curr_tree_root, action_id)
         if next_node is None:
             LOGGER.info('Next node is not available, creating a new tree.')
-            self.curr_tree_root = wrapInMCTSNode(cstate, cost_until_now=cost,previous_action=action_id)
+            self.curr_tree_root = wrapInMCTSNode(cstate, cost_until_now=cost, previous_action=action_id)
         else:
             _temp = self.curr_tree_root
             self.curr_tree_root = next_node
@@ -401,7 +406,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         for child_node in self.children[node].values():
             assert isinstance(child_node, MCTSNode)
             self.state_to_node[child_node.state] = child_node
-        if self.time_debug_mcts_iterations:
+        if self.debug_time_mcts_iterations:
             self.after_expansion_times.append(time())
 
 
@@ -430,7 +435,7 @@ class MonteCarloPolicyEvaluator(MCTS):
     def _evaluate_node(self, node) -> float:
         """Use the teacher's (or another) heuristic to evaluate a specific node, in order to use value-based mcts"""
         value = self.problem_service.get_state_h(node.state)
-        if self.time_debug_mcts_iterations:
+        if self.debug_time_mcts_iterations:
             self.after_eval_times.append(time())
         return value
 
@@ -590,7 +595,7 @@ def run_trials(policy, problem_server, trials, iterations, horizon=None, limit=1
     policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, problem_service=problem_server.service,
                                                  iterations=iterations, horizon=horizon,
                                                  num_cstates_to_generate_per_expansion=k,
-                                                 use_value_based=use_value_based, memory_debug=memory_debug,
+                                                 use_value_based=use_value_based, debug_memory=memory_debug,
                                                  exploration_weight=mcts_exploration_weight,
                                                  progressive_widening=mcts_smart_expansions,
                                                  )
@@ -1113,13 +1118,13 @@ def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
 
 
 @can_profile
-def make_policy(args,
-                obs_dim,
-                act_dim,
-                dom_meta,
-                prob_meta,
-                dg_extra_dim=None,
-                weight_manager=None):
+def make_network(args,
+                 obs_dim,
+                 act_dim,
+                 dom_meta,
+                 prob_meta,
+                 dg_extra_dim=None,
+                 weight_manager=None):
     # size of input and output
     obs_dim = int(obs_dim)
     act_dim = int(act_dim)
@@ -1193,7 +1198,7 @@ class SingleProblem(object):
         self.act_dim = to_local(self.problem_service.get_act_dim())
         self.dg_extra_dim = to_local(self.problem_service.get_dg_extra_dim())
         # will get filled in later
-        self.policy = None
+        self.network = None
 
 
 @can_profile
@@ -1273,7 +1278,7 @@ def make_services(args):
                 f'Skipping {problem_name} for training because it has obs_dim {problem.obs_dim} > {args.limit_train_obs_size}')
 
         print('Setting up policy and weight manager for %s' % problem_name)
-        problem.policy, weight_manager = make_policy(
+        problem.network, weight_manager = make_network(
             args,
             problem.obs_dim,
             problem.act_dim,
@@ -1303,6 +1308,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
     # just a snapshot of the global TF op graph at the time a given
     # `FileWriter` is instantiated)
     summary_path = path.join(scratch_dir, 'tensorboard')
+    LOGGER.info(f'Tensorboard summary path: {summary_path}')
     if args.minimal_file_saves:
         sample_writer = None
     else:
