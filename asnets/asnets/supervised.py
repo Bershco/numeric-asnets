@@ -1,3 +1,4 @@
+import traceback
 from collections import Counter, deque
 from copy import deepcopy
 from enum import Enum
@@ -40,6 +41,8 @@ from post_training.training_mcts import TrainingMCTS
 import jpype
 import jpype.imports
 from jpype.types import *
+
+import sys
 
 
 J_PDDLDomain = None
@@ -409,7 +412,9 @@ def make_problem_service(config, set_proc_title=False):
 
         def exposed_env_reset(self):
             self.current_state = self.internal_get_init_state()
-            return self.current_state
+            self.id_hash_to_state.clear()
+            init_state_id, init_state_hash = self.internal_get_state_identifiers(self.current_state)
+            return init_state_id, init_state_hash
 
         def exposed_action_name(self, action_num):
             action_num = to_local(action_num)
@@ -420,14 +425,58 @@ def make_problem_service(config, set_proc_title=False):
             next_cstate, step_cost \
                 = sample_next_state(self.current_state, action_num, self.p)
             self.current_state = next_cstate
-            return self.current_state, step_cost
+            current_state_id, current_state_hash = self.internal_get_state_identifiers(self.current_state)
+            return (current_state_id, current_state_hash, step_cost, self.current_state.is_goal,
+                    self.current_state.is_terminal, self.internal_to_network_input(self.current_state),
+                    self.internal_get_applicable_action_mask(self.current_state))
 
         def exposed_env_simulate_step(self, cstate_to_simulate_from, action_num):
             """Perform an environment step without actually changing the state"""
-            action_num = to_local(action_num)
             local_cstate_copy = to_local(cstate_to_simulate_from)
             following_cstate, step_cost = sample_next_state(local_cstate_copy, action_num, self.p)
-            return following_cstate, step_cost
+            following_cstate_id, following_cstate_hash = self.internal_get_state_identifiers(following_cstate)
+            return (following_cstate_id, following_cstate_hash, step_cost,
+                    following_cstate.is_goal, following_cstate.is_terminal,
+                    self.internal_to_network_input(following_cstate),
+                    self.internal_get_applicable_action_mask(following_cstate))
+
+        def exposed_env_simulate_batch_steps(self, cstate_id, cstate_hash, action_nums):
+            """
+            Perform multiple environment steps from the same parent state in one RPC call.
+            Returns a list of (next_state, step_cost, is_goal, is_terminal) tuples.
+            """
+            try:
+                cstate = self.id_hash_to_state.get((cstate_id,cstate_hash), None)
+                if cstate is None:
+                    return None
+                results = []
+                for action_num in action_nums:
+                    next_state, step_cost = sample_next_state(cstate, action_num, self.p)
+                    next_state_id, next_state_hash = self.internal_get_state_identifiers(next_state)
+                    results.append((
+                        action_num,
+                        next_state_id,
+                        next_state_hash,
+                        step_cost,
+                        next_state.is_goal,
+                        next_state.is_terminal,
+                        self.internal_to_network_input(next_state), self.internal_get_applicable_action_mask(next_state),
+                    ))
+                return results
+            except Exception as e:
+                log_path = "/tmp/problemservice_exceptions.log"
+                with open(log_path, "a") as f:
+                    f.write("\n" + "=" * 80 + "\n")
+                    f.write(f"[PID {os.getpid()}] Exception in env_simulate_batch_steps:\n")
+                    traceback.print_exc(file=f)
+                    f.write("=" * 80 + "\n")
+
+                # also print to stderr for live feedback
+                print(f"[SERVER ERROR] Exception in env_simulate_batch_steps: {e}", file=sys.stderr)
+                traceback.print_exc()
+
+                # re-raise to ensure RPyC propagates the error correctly
+                raise
 
         def exposed_current_state(self):
             return self.current_state
@@ -510,6 +559,9 @@ def make_problem_service(config, set_proc_title=False):
             self.model_cache = {}
             self.expl_states = set()
 
+            self.id_hash_to_state: dict[tuple[int,int],CanonicalState] = {}
+            self.curr_state_id = 0
+
             if config.teacher_planner == 'fd':
                 # TODO: consider passing in teacher heuristic here, too; that
                 # should give me more control over how the FD teacher works
@@ -541,7 +593,7 @@ def make_problem_service(config, set_proc_title=False):
             self.max_len = config.max_len
             # will hold (state, action) pairs to train on
             self.replay = WeightedReplayBuffer()
-            self.cached_init_state = self.exposed_env_reset()
+            self.cached_init_state = self.internal_get_init_state()
             # hack to decide whether to get one or many rollouts (XXX)
             self.first_rollout = True
 
@@ -557,6 +609,9 @@ def make_problem_service(config, set_proc_title=False):
 
             self.initialised = True
             LOGGER.debug("ProblemService finished initialisation.")
+
+        def on_disconnect(self, conn):
+            print(f"[DEBUG] Connection {conn} closed", file=sys.stderr, flush=True)
 
         def on_connect(self, conn):
             # we let the initialiser run later, so that it can execute
@@ -645,6 +700,14 @@ def make_problem_service(config, set_proc_title=False):
             """Explore from the trajectory states."""
             while len(self.traj_states) > 0:
                 self.internal_explore_from_random_state(network)
+
+        def internal_get_state_identifiers(self, cstate: CanonicalState):
+            state_hash = hash(cstate)
+            self.curr_state_id += 1
+            state_id = self.curr_state_id
+            self.id_hash_to_state[state_id, state_hash] = cstate
+            return state_id, state_hash
+
             
         # def internal_explore_from_random_state(self) -> None:
         #     """Explore from a random state."""
@@ -765,21 +828,66 @@ def make_problem_service(config, set_proc_title=False):
             self.estimator_initialised = True
             LOGGER.debug("ProblemService finished estimator initialisation.")
 
-        def exposed_get_state_h(self, cstate):
+        def internal_get_state_h(self, cstate):
             assert self.estimator_initialised, "Can't get state h value without estimator initialised"
             return self.estimator.get_cstate_h(cstate)
+
+        def exposed_get_state_h(self, cstate_id: int, cstate_hash: int):
+            return self.internal_get_state_h(self.id_hash_to_state.get((cstate_id, cstate_hash), None))
 
         def internal_get_init_state(self):
             if hasattr(self,"cached_init_state"):
                 return self.cached_init_state
             return get_init_cstate(self.p)
 
-        def exposed_to_network_input(self, cstate: CanonicalState):
+        def internal_to_network_input(self, cstate):
             if cstate is None:
                 return self.current_state.to_network_input()
             return cstate.to_network_input()
 
-        def exposed_get_applicable_action_mask(self, cstate: CanonicalState):
+        def exposed_to_network_input(self, cstate_id : int, cstate_hash : int):
+            try:
+                cstate = self.id_hash_to_state.get((cstate_id,cstate_hash),None)
+                return self.internal_to_network_input(cstate)
+            except Exception as e:
+                log_path = "/tmp/problemservice_exceptions.log"
+                with open(log_path, "a") as f:
+                    f.write("\n" + "=" * 80 + "\n")
+                    f.write(f"[PID {os.getpid()}] Exception in to_network_input:\n")
+                    traceback.print_exc(file=f)
+                    f.write("=" * 80 + "\n")
+
+                # also print to stderr for live feedback
+                print(f"[SERVER ERROR] Exception in to_network_input: {e}", file=sys.stderr)
+                traceback.print_exc()
+
+                # re-raise to ensure RPyC propagates the error correctly
+                raise
+
+
+        def exposed_get_applicable_action_mask(self, cstate_id, cstate_hash):
+            try:
+                cstate = self.id_hash_to_state.get((cstate_id,cstate_hash), None)
+                if cstate is None:
+                    return None
+                return self.internal_get_applicable_action_mask(cstate)
+            except Exception as e:
+                log_path = "/tmp/problemservice_exceptions.log"
+                with open(log_path, "a") as f:
+                    f.write("\n" + "=" * 80 + "\n")
+                    f.write(f"[PID {os.getpid()}] Exception in get_applicable_action_mask:\n")
+                    traceback.print_exc(file=f)
+                    f.write("=" * 80 + "\n")
+
+                # also print to stderr for live feedback
+                print(f"[SERVER ERROR] Exception in get_applicable_action_mask: {e}", file=sys.stderr)
+                traceback.print_exc()
+
+                # re-raise to ensure RPyC propagates the error correctly
+                raise
+
+
+        def internal_get_applicable_action_mask(self, cstate: CanonicalState):
             return [activated for _, activated in cstate.acts_enabled]
 
     return ProblemService
@@ -1017,12 +1125,6 @@ class SupervisedTrainer:
         for feed_dict in tr:
             # Each feed_dict is a list of batched data sets for each problem.
             # Each data set is a tuple of obs_tensor and q-value tensor.
-            #
-            # The obs_tensor has shape [batch_size, obs_dim]
-            # The q-value tensor has shape [batch_size, num_actions]
-            #
-            # Second axis of he q-values are ordered in the same order as action
-            # in bound_acts_ordered for the ProblemMeta.
 
             with tf.name_scope('grads_opt'):
                 with tf.GradientTape() as tape:
@@ -1036,7 +1138,7 @@ class SupervisedTrainer:
                         policy, value = problem.network(obs)
                         act_preds_by_prob.append(policy)
                         value_preds_by_prob.append(value)
-                        # act_preds_by_prob.append(problem.policy(obs_by_prob[i]))
+                        # act_preds_by_prob.append(problem.network(obs_by_prob[i]))
                     loss = self.loss_fn(act_preds_by_prob, qv_by_prob,
                                         target_values=z_by_prob, pred_values=value_preds_by_prob)
                     grads = tape.gradient(loss, params)
