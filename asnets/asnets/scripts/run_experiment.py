@@ -64,7 +64,7 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
         cmdline.extend(['--graceful-timeout', str(timeout - 300)])
 
     else:
-        cmdline.extend(['python3', '-m', 'asnets.scripts.run_asnets'] + flags)
+        cmdline.extend(['python3', '-u', '-m', 'asnets.scripts.run_asnets'] + flags)
 
     if train_only:
         cmdline.append('--no-eval')
