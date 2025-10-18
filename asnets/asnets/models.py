@@ -548,6 +548,8 @@ class PropNetwork(tf.keras.layers.Layer):
         # 5) `comparisons` tells us what comparisons are satisfied, only exists
         #    if args.use_comparisons is True, and only used if
         #    self.use_comparisons is True
+        if len(inputs.shape) == 1:
+            inputs = tf.expand_dims(inputs, 0)
         super().call(inputs, *args, **kwargs)
 
         hidden_sizes = self._weight_manager.hidden_sizes
