@@ -12,18 +12,18 @@ import signal
 import sys
 from time import time
 from pympler import muppy, summary, asizeof
-from typing import Set
+from typing import Set, Any
 from pympler.asizeof import asized
-from rpyc import BaseNetref
 
 from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import CanonicalState
 
 import joblib
 import numpy as np
-import rpyc
+import rpyc, gc
 import tensorflow as tf
 import tqdm.auto as tqdm
+
 
 from asnets.explorer import StaticExplorer, DynamicExplorer
 from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
@@ -86,7 +86,7 @@ from post_training.monte_carlo_tree_search import MCTSNode, wrapInMCTSNode, MCTS
 
 class MonteCarloPolicyEvaluator(MCTS):
 
-    def is_comparng_exploration_exploitation(self):
+    def is_comparing_exploration_exploitation(self):
         return self._probe is not None
 
     def sanitize_node(self, node):
@@ -100,40 +100,9 @@ class MonteCarloPolicyEvaluator(MCTS):
             print(f"Error copying/sanitizing node: {e}")
             return None
 
-    def profile_children_dict(self, sample_size=20):
-        total_size = 0
-        count = 0
-
-        for parent, child_dict in self.children.items():
-            if count >= sample_size:
-                break
-            try:
-                parent_clean = self.sanitize_node(parent)
-                if parent_clean is None:
-                    continue
-
-                # Clean each child node
-                cleaned_child_dict = {}
-                for action_id, child_node in child_dict.items():
-                    child_clean = self.sanitize_node(child_node)
-                    if child_clean is not None:
-                        cleaned_child_dict[action_id] = child_clean
-
-                # Bundle together for sizing
-                structure = (parent_clean, cleaned_child_dict)
-                total_size += asized(structure).size
-                count += 1
-
-            except Exception as e:
-                print(f"Failed at sample {count}: {e}")
-                continue
-
-        estimated_total = total_size * len(self.children) / count if count else 0
-        print(f"Estimated total memory for all children: {estimated_total / 1024 ** 2:.2f} MB")
-
-    def profile_state_to_node(self):
+    def profile_state_id_to_node(self):
         total = 0
-        for i, node in enumerate(self.state_to_node.values()):
+        for i, node in enumerate(self.state_id_to_node.values()):
             try:
                 node_copy = deepcopy(node)
                 node_copy.state._aux_data = None
@@ -142,15 +111,14 @@ class MonteCarloPolicyEvaluator(MCTS):
                 continue
             if i >= 20:
                 break
-        estimated_total = total * len(self.state_to_node) / 20
+        estimated_total = total * len(self.state_id_to_node) / 20
         print(f"Estimated total memory for all nodes in state_to_node dictionary: {estimated_total / 1024 ** 2:.2f} MB")
 
     def print_memory_summary(self):
         all_objects = muppy.get_objects()
         sum1 = summary.summarize(all_objects)
         summary.print_(sum1, limit=3)
-        self.profile_state_to_node()
-        # self.profile_children_dict() #FIXME: only works with children as a dictionary of the whole tree, not recursive right now
+        self.profile_state_id_to_node()
         self.safe_asizeof(self.visited_cstates_hashes, name="visited_cstates_hashes")
 
     def safe_asizeof(self, obj, name):
@@ -161,17 +129,17 @@ class MonteCarloPolicyEvaluator(MCTS):
             print(f"Error sizing {name}: {e}")
 
 
-    def __init__(self, policy, problem_service, horizon=0, exploration_weight=1, iterations=10,
-                 num_cstates_to_generate_per_expansion=5, use_value_based=False, debug_memory=False,
-                 progressive_widening=False,
-                 debug_time_mcts_iterations=False,
-                 debug_comparison_exploration_exploitation=True):
+    def __init__(self, network, problem_service, horizon = 0, exploration_weight = 1, iterations = 10,
+                 use_value_based = False, num_cstates_to_generate_per_expansion = 5, batch_expansion_call = True,
+                 progressive_widening = False, problem_server = None,
+                 debug_memory = False, debug_time_mcts_iterations = False,
+                 debug_comparison_exploration_exploitation = False,):
         super().__init__(exploration_weight,
+                         problem_service=problem_service,
                          debug_memory=debug_memory,
                          debug_time_mcts_iterations=debug_time_mcts_iterations,
                          debug_comparison_exploration_exploitation=debug_comparison_exploration_exploitation)
-        self.policy = policy
-        self.problem_service = problem_service
+        self.network = network
         self.iterations = iterations
         self.horizon = horizon
         self.k = num_cstates_to_generate_per_expansion
@@ -182,30 +150,23 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.use_value_based=use_value_based
         self.memory_debug = debug_memory
         self.progressive_widening = progressive_widening
+        self.batch_expansion_call=batch_expansion_call
 
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
 
-    def get_action_from_cstate(self, cstate, cost): #cstate is non-terminal
+    def get_action_from_cstate_id_hash(self, cstate_id, cstate_hash, cost): #cstate is non-terminal
         if self.curr_tree_root is None:
-            self.curr_tree_root = wrapInMCTSNode(cstate, cost_until_now=0, previous_action=None)
+            self.curr_tree_root = wrapInMCTSNode(cstate_id=cstate_id,hashed_state=cstate_hash, cost_until_now=0, previous_action=None)
             self.debug_orig_root = self.curr_tree_root
             self.visited_cstates_hashes.add(self.curr_tree_root.__hash__())
         if self.use_value_based:
-            for _ in range(self.iterations):
+            for i in range(self.iterations):
+                if i%5==0:
+                    gc.collect()
                 self.mcts_iteration_value_based(self.curr_tree_root)
-            # if self.time_debug_mcts_iterations:
-            #     print(f"Total time gone to selection: {sum(b - a for a, b in zip(self.start_times, self.after_selection_times))}")
-            #     print(f"Total time gone to expansion: {sum(b - a for a, b in zip(self.after_selection_times, self.after_expansion_times))}")
-            #     print(f"Total time gone to evaluation: {sum(b - a for a, b in zip(self.after_expansion_times, self.after_eval_times))}")
-            #     print(f"Total time gone to backward propagation: {sum(b - a for a, b in zip(self.after_eval_times, self.end_times))}")
-            #     self.start_times.clear()
-            #     self.after_selection_times.clear()
-            #     self.after_expansion_times.clear()
-            #     self.after_eval_times.clear()
-            #     self.end_times.clear()
         else:
-            for _ in range(self.iterations):
+            for i in range(self.iterations):
                 if self.path_until_goal is None:
                     self.mcts_iteration_classic(self.curr_tree_root, self.horizon)
             if self.path_until_goal is not None:
@@ -214,8 +175,8 @@ class MonteCarloPolicyEvaluator(MCTS):
                 # if self.state_to_node[cstate] not in self.children:
                 #     self.children[self.state_to_node[cstate]] = dict()
                 # self.children[self.state_to_node[cstate]][next_action] = next_mcts_node
-                self.state_to_node[cstate].children = FixedChildMap([next_action],[next_mcts_node])
-                self.state_to_node[next_mcts_node.state] = next_mcts_node
+                self.state_id_to_node[cstate_id].children = FixedChildMap([next_action], [next_mcts_node])
+                self.state_id_to_node[next_mcts_node.state_id] = next_mcts_node
                 return next_action
 
         def node_priority_by_n(node):
@@ -260,17 +221,17 @@ class MonteCarloPolicyEvaluator(MCTS):
     def progress_to_without_cstate(self, action_id, cost):
         # next_node = self.children[self.curr_tree_root][action_id]
         next_node = self.curr_tree_root.children[action_id]
-        self.prune_children_except(self.curr_tree_root, action_id)
+        # self.prune_children_except(self.curr_tree_root, action_id) TODO: check if memory explodes again, or if this is ok to drop entirely
         assert next_node is not None, "Somehow need to progress to a non-generated node."
         _temp = self.curr_tree_root
         self.curr_tree_root = next_node
         # This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
         self._delete_subtree(_temp, recursive=False)
         # LOGGER.info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
-        return self.curr_tree_root.state, 1 #TODO: this 'cost' is useless everywhere.
+        return self.curr_tree_root.state_id, 1, self.curr_tree_root.goal_state, self.curr_tree_root.terminal_state
 
     def get_corresponding_mcts_node(self, cstate):
-        return self.state_to_node.get(cstate, None)
+        return self.state_id_to_node.get(cstate, None)
 
     def _expand(self, node):
         # if node in self.children:
@@ -278,7 +239,7 @@ class MonteCarloPolicyEvaluator(MCTS):
             return
         # self.children[node] = self.find_children(node)
         node.children = self.find_children(node)
-        self.state_to_node[node.state] = node
+        self.state_id_to_node[node.state_id] = node
         if self._probe:
             try:
                 act_dim = None
@@ -294,7 +255,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         # for child_node in self.children[node].values():
         for child_node in node.children.values():
             assert isinstance(child_node, MCTSNode)
-            self.state_to_node[child_node.state] = child_node
+            self.state_id_to_node[child_node.state_id] = child_node
         if self.debug_time_mcts_iterations:
             self.after_expansion_times.append(time())
 
@@ -314,7 +275,7 @@ class MonteCarloPolicyEvaluator(MCTS):
                         # curr_mcts_node.children = None
                     # self.children[curr_mcts_node][action_from_path] = mcts_node_from_path
                     curr_mcts_node.children = FixedChildMap([action_from_path],[mcts_node_from_path])
-                    self.state_to_node[curr_mcts_node.state] = curr_mcts_node
+                    self.state_id_to_node[curr_mcts_node.state_id] = curr_mcts_node
                     curr_mcts_node = mcts_node_from_path
                     action_path.append(action_from_path)
                 print(f"Next actions are: {action_path}")
@@ -324,9 +285,10 @@ class MonteCarloPolicyEvaluator(MCTS):
             action_following_state_path.append((best_action, mcts_node))
         return mcts_node.reward()
 
-    def _evaluate_node(self, node) -> float:
+    def _evaluate_node(self, node: MCTSNode) -> float:
         """Use the teacher's (or another) heuristic to evaluate a specific node, in order to use value-based mcts"""
-        value = self.problem_service.get_state_h(node.state)
+        # value = self.problem_service.get_state_h(*node.get_identifiers())
+        value = self.get_value_from_mcts_node(node)
         if self.debug_time_mcts_iterations:
             self.after_eval_times.append(time())
         return value
@@ -334,80 +296,113 @@ class MonteCarloPolicyEvaluator(MCTS):
     def find_children(self, parent_node: MCTSNode) -> FixedChildMap:
         """Find up to k successors of parent_node that are applicable and not yet visited"""
         act_dist = self.get_act_dist_from_mcts_node(parent_node).numpy()
-        # mask = [parent_node.is_applicable_action(i) for i in range(len(act_dist))]
         mask = self.get_applicable_action_mask(parent_node)
         # Rank actions by descending policy probability
         sorted_indices = sorted(range(len(act_dist)), key=lambda i: act_dist[i], reverse=True)
-        # output = dict()
-        keys = []
-        values = []
-        selected = 0
-        for i in sorted_indices:
-            if selected >= self.k:
-                break
-            if not mask[i] or act_dist[i] == 0.0:
-                continue
-            if self.problem_service is None:
-                raise RuntimeError("problem_service is None — was it shut down?")
-            # Simulate step only now (expensive!)
-            cstate_after_action_i, step_cost = parent_node.simulate_step(i, self.problem_service)
-            # if hash(cstate_after_action_i) in self.visited_cstates_hashes:
-            #     self.revisit_counter += 1
-            #     if self.revisit_counter % 100 == 0:
-            #         print(f"========>>There has been {self.revisit_counter} re-visitations so far.")
-            #     continue  # skip visited cstates
-            wrapped_output_cstate = wrapInMCTSNode(
-                cstate_after_action_i,
-                cost_until_now=parent_node.cost_until_now + step_cost,
-                previous_action=i
-            )
-            # output[i] = wrapped_output_cstate
-            keys.append(i)
-            values.append(wrapped_output_cstate)
-            selected += 1
-        # return output
+        keys, values = self.get_actions_and_nodes(parent_node, sorted_indices, mask, act_dist)
         return FixedChildMap(keys, values)
+
+    def get_actions_and_nodes(self, parent_node, sorted_indices, mask, act_dist) -> tuple[list[Any], list[Any]]:
+        actions = []
+        nodes = []
+        if self.batch_expansion_call:
+            selected_actions = []
+            for i in sorted_indices:
+                if len(selected_actions) >= self.k:
+                    break
+                if not mask[i] or act_dist[i] == 0.0:
+                    continue
+                selected_actions.append(i)
+
+            # print("[DEBUG] Before RPC alive?", self.problem_server.is_conn_alive(), flush=True)
+            # sock = self.problem_server._conn._channel.stream.sock
+            # print(
+            #     f"[DEBUG] sock fileno={sock.fileno()}, sndbuf={sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)}, "
+            #     f"rcvbuf={sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)}", flush=True)
+
+            # Single RPC for all k selected actions
+            results = self.problem_service.env_simulate_batch_steps(*parent_node.get_identifiers(), selected_actions)
+
+            # print("[DEBUG] After RPC alive?", self.problem_server.is_conn_alive(), flush=True)
+            # print(
+            #     f"[DEBUG] sent bytes so far: {sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUFFORCE) if hasattr(socket, 'SO_SNDBUFFORCE') else 'n/a'}",
+            #     flush=True)
+            generated_ids = []
+            for (action_id, cstate_after_action_i_id, cstate_after_action_i_hash,
+                step_cost, is_goal, is_terminal,
+                network_ready_repr,applicable_action_mask
+                 ) in results:
+                generated_ids.append(cstate_after_action_i_id)
+                wrapped_output_cstate = wrapInMCTSNode(
+                    cstate_id=cstate_after_action_i_id,
+                    cost_until_now=parent_node.cost_until_now + step_cost,
+                    previous_action=action_id,
+                    is_goal=is_goal,
+                    is_terminal=is_terminal,
+                    as_network_input=network_ready_repr, applicable_action_mask=applicable_action_mask,
+                    hashed_state=cstate_after_action_i_hash,
+                )
+                actions.append(action_id)
+                nodes.append(wrapped_output_cstate)
+            ids = ",".join([str(i) for i in generated_ids])
+            print(f"Generated nodes with ids: {ids}")
+
+        else:
+            selected = 0
+            for i in sorted_indices:
+                if selected >= self.k:
+                    break
+                if not mask[i] or act_dist[i] == 0.0:
+                    continue
+                if self.problem_service is None:
+                    raise RuntimeError("problem_service is None — was it shut down?")
+                # Simulate step only now (expensive!)
+                cstate_after_action_i, step_cost, is_goal, is_terminal, network_ready_repr,\
+                    applicable_action_mask, state_hash = parent_node.simulate_step(i, self.problem_service)
+                wrapped_output_cstate = wrapInMCTSNode(
+                    cstate_after_action_i,
+                    cost_until_now=parent_node.cost_until_now + step_cost,
+                    previous_action=i,
+                    is_goal=is_goal,
+                    is_terminal=is_terminal,
+                    as_network_input=network_ready_repr,
+                    applicable_action_mask=applicable_action_mask,
+                    hashed_state=state_hash,
+                )
+                # output[i] = wrapped_output_cstate
+                actions.append(i)
+                nodes.append(wrapped_output_cstate)
+                selected += 1
+        return actions, nodes
 
     def find_child_by_policy(self, parent_node: MCTSNode):
         """Random successor of this board state (for more efficient simulation)"""
-        # input_format_cstate = self.to_network_input()                                                                 # negligible
-        # act_dist = parent_node.get_act_dist_from_policy(self.policy)
         act_dist = self.get_act_dist_from_mcts_node(parent_node)
-        # act_dist is a vector of shape (1,n) of distribution of action possibilities
-        # next_action_ind = np.argmax(act_dist[0]) - this would have just generated a single trajectory from the select-
-        # -ed MCTSNode, changing this to the distribution that is given by the policy network.
-        mask = tf.convert_to_tensor([parent_node.is_applicable_action(i) for i in range(act_dist.shape[0])], dtype=tf.bool)    # tf - negligible
-        masked_act_dist = tf.where(mask, act_dist, tf.zeros_like(act_dist))                                             # tf - negligible
-        total = tf.reduce_sum(masked_act_dist)                                                                          # tf - negligible
-        normalized_act_dist = tf.cond(                                                                                  # tf - negligible
+        mask = self.get_applicable_action_mask(parent_node)
+        masked_act_dist = tf.where(mask, act_dist, tf.zeros_like(act_dist))
+        total = tf.reduce_sum(masked_act_dist)
+        normalized_act_dist = tf.cond(
             tf.greater(total,0),
             lambda: masked_act_dist / total,
             lambda: tf.zeros_like(act_dist)
         )
-        norm_act_dist_np = normalized_act_dist.numpy()                                                                  # negligible
-        next_action_ind = np.random.choice(len(norm_act_dist_np), p=norm_act_dist_np)                                   # negligible
+        norm_act_dist_np = normalized_act_dist.numpy()
+        next_action_ind = np.random.choice(len(norm_act_dist_np), p=norm_act_dist_np)
         if self.problem_service is None:
             raise RuntimeError("problem_service is None — was it shut down?")
         best_cstate, step_cost = parent_node.simulate_step(next_action_ind, self.problem_service)
         return next_action_ind, wrapInMCTSNode(best_cstate, cost_until_now=parent_node.cost_until_now + step_cost,
-                                               previous_action=next_action_ind)                                         # around 6.9% of function time is wrapInMCTSNode
+                                               previous_action=next_action_ind)
 
-    def get_act_dist_from_mcts_node(self, node: MCTSNode):
-        act_dist = self.act_dist_per_node.get(node)
-        if act_dist is None:
-            node_as_network_input = node.to_network_input(self.problem_service)
-            act_dist, _ = self.policy(node_as_network_input)
-            self.act_dist_per_node[node] = act_dist
-        return tf.squeeze(act_dist)
+    def get_value_from_mcts_node(self, node: MCTSNode):
+        node_as_network_input = node.as_network_input
+        if node_as_network_input is None:
+            node_as_network_input = self.problem_service.to_network_input(*node.get_identifiers())
+        _, value = self.network(node_as_network_input)
+        return value
 
     def print_exploration_exploitation_comparison(self):
         self._probe.print_exploration_exploitation_comparison()
-
-    def get_applicable_action_mask(self, node: MCTSNode):
-        if isinstance(node.state, BaseNetref):
-            return self.problem_service.get_applicable_action_mask(node.state)
-        return [activated for _, activated in node.state.acts_enabled]
-
 
 
 @can_profile
@@ -426,22 +421,22 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
         if time() - trial_start_time > graceful_timeout:
             print('Graceful_timeout has been reached :)')
             break
-        action = policy_evaluator.get_action_from_cstate(curr_state, cost)
+        action = policy_evaluator.get_action_from_cstate_id_hash(curr_state, cost)
         path.append(to_local(problem_service.action_name(action)))
-        curr_state, step_cost = move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=False)
+        curr_state, step_cost, is_goal, is_terminal = move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=False)
         cost += step_cost
-        if curr_state.is_goal:
-            if policy_evaluator.is_comparng_exploration_exploitation():
+        if is_goal:
+            if policy_evaluator.is_comparing_exploration_exploitation():
                 print("Exploration-Exploitation comparison:")
                 policy_evaluator.print_exploration_exploitation_comparison()
             return cost, True, path
         # we can run out of time or run out of actions to take
-        if curr_state.is_terminal:
+        if is_terminal:
             break
         if i == limit-1:
             print(" I actually reached the end, something weird is happening, only some actions were chosen but limit was reached? ")
     # path.append('FAIL! D:')
-    if policy_evaluator.is_comparng_exploration_exploitation():
+    if policy_evaluator.is_comparing_exploration_exploitation():
         print("Exploration-Exploitation comparison:")
         policy_evaluator.print_exploration_exploitation_comparison()
     return cost, False, path
@@ -450,18 +445,19 @@ def move_to_next_state(problem_service, policy_evaluator, action, cost, current_
     if current_code:
         curr_state, step_cost = to_local(problem_service.env_step(action))
         policy_evaluator.progress_to(action, curr_state, cost+step_cost)
-        return curr_state, step_cost
+        return curr_state, step_cost #FIXME: this currently does not work, must return also if the curr_state is goal
     else:
         assert isinstance(policy_evaluator, MonteCarloPolicyEvaluator)
         return policy_evaluator.progress_to_without_cstate(action, cost) #TODO: env_step on the problem_service is irrelevant
 
 
-def run_trials(policy, problem_server, trials, iterations, horizon=None, limit=1000, det_sample=False,
+def run_trials(network, problem_server, trials, iterations, horizon=None, limit=1000, det_sample=False,
                single_trial_graceful_timeout_sec=300, num_cstates_to_expand=5, use_value_based=False,
                memory_debug=False,mcts_exploration_weight=1, mcts_smart_expansions=False):
-    # policy_evaluator = CachingPolicyEvaluator(policy=policy, det_sample=det_sample)
+    # policy_evaluator = CachingPolicyEvaluator(policy=network, det_sample=det_sample)
     k = min(iterations - 1, num_cstates_to_expand)
-    policy_evaluator = MonteCarloPolicyEvaluator(policy=policy, problem_service=problem_server.service,
+    policy_evaluator = MonteCarloPolicyEvaluator(network=network, problem_service=problem_server.service,
+                                                 problem_server=problem_server,
                                                  iterations=iterations, horizon=horizon,
                                                  num_cstates_to_generate_per_expansion=k,
                                                  use_value_based=use_value_based, debug_memory=memory_debug,
@@ -934,12 +930,12 @@ parser.add_argument(
 )
 
 
-def eval_single(args, policy, problem_server, unique_prefix, elapsed_time,
+def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
                 iter_num, weight_manager, scratch_dir):
-    # now we evaluate the learned policy
-    LOGGER.info('Evaluating policy')
+    # now we evaluate the learned network
+    LOGGER.info('Evaluating network')
     trial_results, paths = run_trials(
-        policy,
+        network,
         problem_server,
         args.rounds_eval,
         limit=args.limit_turns,
@@ -1240,7 +1236,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
         weight_manager.save(path.join(snapshot_dir, 'snapshot_final.pkl'))
     for problem in tqdm.tqdm(problems, desc='Evaluation'):
         print('Solving %s' % problem.name)
-        eval_single(args, problem.policy, problem.problem_server,
+        eval_single(args, problem.network, problem.problem_server,
                     unique_prefix + '-' + problem.name, elapsed_time,
                     iter_num, weight_manager, scratch_dir)
 
