@@ -16,17 +16,13 @@ import uuid, getpass
 from rpyc import OneShotServer
 from rpyc.utils.server import ThreadedServer
 
-from rpyc.core.protocol import DEFAULT_CONFIG
 
-DEFAULT_CONFIG['allow_getattr'] = True
-DEFAULT_CONFIG['allow_setattr'] = True
-DEFAULT_CONFIG['allow_delattr'] = True
-DEFAULT_CONFIG['safe_attrs'].add("copy")
-DEFAULT_CONFIG['safe_attrs'].add("sizeof")
-DEFAULT_CONFIG['safe_attrs'].add("__sizeof__")
-
-# logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
+rpyc.core.protocol.DEFAULT_CONFIG['allow_getattr'] = True
+rpyc.core.protocol.DEFAULT_CONFIG['allow_setattr'] = True
+rpyc.core.protocol.DEFAULT_CONFIG['allow_delattr'] = True
+rpyc.core.protocol.DEFAULT_CONFIG['safe_attrs'].add("copy")
+rpyc.core.protocol.DEFAULT_CONFIG['safe_attrs'].add("sizeof")
+rpyc.core.protocol.DEFAULT_CONFIG['safe_attrs'].add("__sizeof__")
 
 from asnets.utils.prof_utils import try_save_profile
 from asnets.utils.py_utils import set_random_seeds
@@ -74,31 +70,6 @@ def start_server(service_args: 'ProblemServiceConfig',unix_socket_path: str = No
     parent_death_pact(signal=signal.SIGKILL)
     new_service = make_problem_service(service_args, set_proc_title=True)
 
-    # def pick_free_port(host="127.0.0.1"):
-    #     s = socket.socket()
-    #     s.bind((host, 0))
-    #     port = s.getsockname()[1]
-    #     s.close()
-    #     return port
-    #
-    # host = "127.0.0.1"
-    # port = pick_free_port(host)
-    #
-    # addr_file = os.environ["RPYC_ADDR_FILE"]
-    # os.makedirs(os.path.dirname(addr_file), exist_ok=True)
-    # tmp = addr_file + ".tmp"
-    # print(f"tmp={tmp}")
-    # with open(tmp, "w") as f:
-    #     json.dump({"host": host, "port": port}, f)
-    #     f.flush(); os.fsync(f.fileno())
-    # os.replace(tmp, addr_file)
-    # os.chmod(addr_file, 0o600)
-    #
-    # @atexit.register
-    # def _cleanup():
-    #     try: os.remove(addr_file)
-    #     except FileNotFoundError: pass
-
     protocol_config = {
         "allow_all_attrs": False,  # Default: False, restricts attributes
         "allowed_attrs": {"copy"},  # Add 'copy' to the list of allowed attributes
@@ -108,6 +79,34 @@ def start_server(service_args: 'ProblemServiceConfig',unix_socket_path: str = No
 
     # print(f"READY RPyC {host}:{port}", flush=True)
     print(f"READY RPyC {unix_socket_path}", flush=True)
+
+    import socket
+
+    _old_close = socket.socket.close
+
+    def _debug_close(self, *a, **kw):
+        print(f"[DEBUG SOCKET CLOSE] {self} pid={os.getpid()}", flush=True)
+        return _old_close(self, *a, **kw)
+
+    socket.socket.close = _debug_close
+
+    import rpyc
+    _old_serve_client = rpyc.utils.server.ThreadedServer._serve_client
+
+    def _debug_serve_client(self, sock, credentials):
+        import traceback, os
+        try:
+            print(f"[DEBUG WORKER START] {sock} pid={os.getpid()}", flush=True)
+            return _old_serve_client(self, sock, credentials)
+        except Exception as e:
+            print(f"[DEBUG WORKER CRASH] {e}", flush=True)
+            traceback.print_exc()
+            raise
+        finally:
+            print(f"[DEBUG WORKER END] {sock} pid={os.getpid()}", flush=True)
+
+    rpyc.utils.server.ThreadedServer._serve_client = _debug_serve_client
+
     server = ThreadedServer(
         new_service,
         # hostname=host,
@@ -117,27 +116,35 @@ def start_server(service_args: 'ProblemServiceConfig',unix_socket_path: str = No
         backlog=1024,
         protocol_config=protocol_config,
     )
-    # server = OneShotServer(
-    #     new_service,
-    #     hostname=host,
-    #     port=port,
-    #     # socket_path=unix_socket_path,
-    #     reuse_addr=True,
-    #     backlog=1024,
-    #     protocol_config=protocol_config,
-    # )
 
     print(f'Child process starting {server.__class__.__name__} {server}')
 
-    import traceback
+    import psutil, threading, gc
+
+    def monitor():
+        p = psutil.Process(os.getpid())
+        while True:
+            sleep(1)
+            mem = p.memory_info().rss / 1e6
+            fds = p.num_fds() if hasattr(p, "num_fds") else None
+            threads = len(threading.enumerate())
+            async_objs = [o for o in gc.get_objects() if isinstance(o, rpyc.core.async_.AsyncResult)]
+            print(f"[DEBUG MONITOR] mem={mem:.1f}MB fds={fds} threads={threads}, active async results={len(async_objs)}", flush=True)
+
+    threading.Thread(target=monitor, daemon=True).start()
+
+
     try:
+        print(f"[DEBUG] Server entering main loop (PID={os.getpid()})", flush=True)
         server.start()
-    except:
-        print("🔥 Server crashed with exception:")
-        traceback.print_exc()
+        print(f"[DEBUG] Server main loop exited normally (PID={os.getpid()})", flush=True)
+    except Exception as e:
+        import traceback, sys
+        print(f"[SERVER ERROR] Exception in server.start(): {e}", flush=True)
+        traceback.print_exc(file=sys.stderr)
     finally:
-        # save kernprof profile for this subprocess if we can
-        try_save_profile()
+        print("[SERVER] Shutting down cleanly", flush=True)
+
 
 def to_local(obj):
     """Convert a NetRef to an object to something that's DEFINITELY local."""
@@ -188,22 +195,8 @@ def _wait_for_addr(path: str, timeout: float = 60.0, poll: float = 0.1, proc: "P
         raise RuntimeError(f"Timed out and server is dead (exitcode={proc.exitcode}).")
     raise TimeoutError(f"Timed out waiting for RPYC addr file: {path}") from last_err
 
-# def _connect_via_info(info: dict):
-#     cfg = {"sync_request_timeout": None}
-#     if "host" in info:  # TCP loopback
-#         c = rpyc.connect(info["host"], info["port"], config=cfg)
-#         c.ping()
-#         return c
-#     elif "unix" in info:  # fallback if you keep UDS somewhere
-#         stream = rpyc.utils.factory.unix_connect(info["unix"])
-#         c = rpyc.connect_stream(stream, service=None, config=cfg)
-#         c.ping()
-#         return c
-#     else:
-#         raise ValueError(f"Unrecognized addr info: {info}")
 
 def _connect_via_info(info):
-    import rpyc
     from rpyc.utils.factory import unix_connect
     c = unix_connect(info)
     c.ping()
@@ -251,6 +244,9 @@ class ProblemServer(object):
                 service_conf,
                 self._unix_sock_path,
             ))
+        self._serve_proc.daemon = False  # ensure child stays attached to parent console
+        sys.stdout.flush()
+        sys.stderr.flush()  # flush parent before fork
         self._serve_proc.start()
         self._start_time = time()
         self._addr_file = addr_file
@@ -258,7 +254,7 @@ class ProblemServer(object):
         # info = _wait_for_addr(self._addr_file, proc=self._serve_proc, timeout=self.MAX_WAIT_TIME)
         # self._conn = _connect_via_info(info=info)
         wait_exists_polling(self._unix_sock_path, max_wait=self.MAX_WAIT_TIME)
-        self._conn = _connect_via_info(self._unix_sock_path)
+        self._conn = None
 
         # this ensures that we always close connection (& thus terminate server
         # on other end) before shutting down, no matter what
@@ -269,6 +265,7 @@ class ProblemServer(object):
 
     def _kill_conn(self) -> None:
         """Close the connection to the server."""
+        print("[DEBUG] Closing connection to the server through '_kill_conn'.")
         if self._conn is not None:
             self._conn.close()
             self._conn = None
@@ -303,6 +300,9 @@ class ProblemServer(object):
     def stop(self) -> None:
         """Close the RPyC connection and stop the server process. Idempotent."""
         # close client connection
+        print("[DEBUG] Closing connection to the server through 'stop'.")
+        print(f"[PARENT] Server process exited with code {self._serve_proc.exitcode if self._serve_proc is not None else 0}")
+        print(f"[DEBUG] Process alive? {self._serve_proc.is_alive() if self._serve_proc is not None else False}")
         try:
             if getattr(self, "_conn", None):
                 try:
@@ -379,9 +379,20 @@ class ProblemServer(object):
             sleep_time = 1.0
             print(f"Sleeping an extra {sleep_time}s to make sure conn is up")
             sleep(sleep_time)
+            protocol_config = {
+                "allow_all_attrs": False,  # Default: False, restricts attributes
+                "allowed_attrs": {"copy"},  # Add 'copy' to the list of allowed attributes
+                "allow_setattr": True,  # Allow setting attributes if needed
+                "allow_delattr": True,  # Allow deleting attributes if needed
+                "sync_request_timeout": None,  # disable watchdog
+                "async_request_timeout": None,
+                "ping_interval": None,
+            }
+
             self._conn = rpyc.utils.factory.unix_connect(
-                path=self._unix_sock_path)
+                path=self._unix_sock_path, config=protocol_config)
             # we can unlink socket after connecting
+            print(f"[DEBUG] Connected socket path exists? {os.path.exists(self._unix_sock_path)} before unlink", flush=True)
             os.unlink(self._unix_sock_path)
 
         return self._conn
@@ -435,3 +446,13 @@ class ProblemServer(object):
         """Return handle on root service for connection, which in this case is a
         ProblemService."""
         return self.conn.root
+
+    def is_conn_alive(self):
+        """Return True if RPyC connection still open."""
+        try:
+            if self._conn is None:
+                return False
+            return not self._conn.closed
+        except Exception as e:
+            print(f"[DEBUG] Conn health check failed: {e}")
+            return False
