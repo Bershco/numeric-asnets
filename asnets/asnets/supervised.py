@@ -619,6 +619,7 @@ def make_problem_service(config, set_proc_title=False):
             # expensive because it requires grounding the relevant problem)
             self.initialised = False
             self.estimator_initialised = False
+            print(f"[DEBUG] Connection {conn} opened", file=sys.stderr, flush=True)
 
         # FIXME: don't cache at this level; it's inefficient when using
         # history-level features, b/c it will lead to lots and lots of
