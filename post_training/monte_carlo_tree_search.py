@@ -67,6 +67,7 @@ class MCTSNode(Node):
         self.applicable_action_mask = applicable_action_mask
         self.act_dist = None
         self.value = None
+        self.Q_value = 0
 
     def simulate_step(self, action_id, problem_service):
         if hasattr(problem_service, "env_simulate_step"):
@@ -388,12 +389,14 @@ class MCTS:
     def _backpropagate(self, path, reward):
         """Backpropagate the reward through the visited nodes in reverse."""
         N_local = self.N  # local refs to cut attribute lookups
-        Q_local = self.Q
+        # Q_local = self.Q
         for node in reversed(path):
             n = N_local[node] + 1
             N_local[node] = n
-            q = Q_local.get(node, 0.0)
-            Q_local[node] = q + (reward - q) / n  # running average
+            # q = Q_local.get(node, 0.0)
+            q = self.get_value_from_mcts_node(node)
+            # Q_local[node] = q + (reward - q) / n  # running average
+            node.Q_value = q + (reward - q) / n # running average
         if self.debug_time_mcts_iterations:
             self.end_times.append(time())
 
@@ -444,7 +447,8 @@ class MCTS:
             dtype=np.int32
         )
         Q_child = np.array(
-            [self.Q.get(c, 0.0) for c in child_list],
+            # [self.Q.get(c, 0.0) for c in child_list],
+            [node.Q_value for node in child_list],
             dtype=np.float32
         )
 
@@ -537,14 +541,16 @@ class MCTS:
         if node.act_dist is None:
             if node.as_network_input is None:
                 node.as_network_input = self.problem_service.to_network_input(*node.get_identifiers())
-            node.act_dist, node.value = self.network(node.as_network_input)
+            node.act_dist, value_tensor = self.network(node.as_network_input)
+            node.value = float(value_tensor.numpy().squeeze())
         return tf.squeeze(node.act_dist)
 
     def get_value_from_mcts_node(self, node: MCTSNode):
         if node.value is None:
             if node.as_network_input is None:
                 node.as_network_input = self.problem_service.to_network_input(*node.get_identifiers())
-            node.act_dist, node.value = self.network(node.as_network_input)
+            node.act_dist, value_tensor = self.network(node.as_network_input)
+            node.value = float(value_tensor.numpy().squeeze())
         return node.value
 
     def _delete_subtree(self, node, recursive=True):
@@ -557,7 +563,7 @@ class MCTS:
         # self.children.pop(node, None)
         node.children = None
         self.N.pop(node, None)
-        self.Q.pop(node, None)
+        # self.Q.pop(node, None)
         self.state_id_to_node.pop(node.state_id, None)
         # self.act_dist_per_node.pop(node, None)
 

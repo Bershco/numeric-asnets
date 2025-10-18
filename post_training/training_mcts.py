@@ -72,7 +72,7 @@ class TrainingMCTS(MCTS):
         self.state_to_node[self.curr_tree_root.state] = self.curr_tree_root
         # self.children.clear()
         self.N.clear()
-        self.Q.clear()
+        # self.Q.clear()
         self.act_dist_per_node.clear()
 
     def run_search(self):

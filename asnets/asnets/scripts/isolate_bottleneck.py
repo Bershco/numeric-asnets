@@ -104,9 +104,9 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
     mcts.after_expansion_times = []; mcts.after_eval_times = []; mcts.end_times = []
 
     # Seed root (state + tree)
-    curr_cstate_id, curr_state_hash = service.env_reset()
+    curr_state_id, curr_state_hash = service.env_reset()
     total_cost = 0.0
-    mcts.curr_tree_root = wrapInMCTSNode(cstate_id=curr_cstate_id, hashed_state=curr_state_hash, cost_until_now=total_cost, previous_action=None)
+    mcts.curr_tree_root = wrapInMCTSNode(cstate_id=curr_state_id, hashed_state=curr_state_hash, cost_until_now=total_cost, previous_action=None)
 
     # Run N decisions; each decision performs `iterations` loops and then chooses an action
     t0 = time.perf_counter()
@@ -115,12 +115,12 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
         if i%50==0:
             gc.collect()  # Force Python to clean up finished AsyncResults
         # Important: pass the CURRENT state & cost (matches inference usage)
-        action = int(mcts.get_action_from_cstate_id_hash(curr_cstate_id, curr_state_hash, total_cost))
+        action = int(mcts.get_action_from_cstate_id_hash(curr_state_id, curr_state_hash, total_cost))
         print(f"Chosen action: {action}")
 
         if reroot_per_decision:
             # Try to re-root to the existing child node for `action` if present
-            curr_cstate_id, step_cost, is_goal, is_terminal = move_to_next_state(problem_service=service, policy_evaluator=mcts, action=action, cost=total_cost, current_code=False)
+            curr_state_id, curr_state_hash, step_cost, is_goal, is_terminal = move_to_next_state(problem_service=service, policy_evaluator=mcts, action=action, cost=total_cost, current_code=False)
             # new_root = None
             # try:
             #     root = mcts.curr_tree_root

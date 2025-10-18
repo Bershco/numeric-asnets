@@ -183,7 +183,8 @@ class MonteCarloPolicyEvaluator(MCTS):
             return self.N.get(node,0)
 
         def tiebreak_by_q(node):
-            return self.Q.get(node,0.0)
+            # return self.Q.get(node,0.0)
+            return node.Q_value
 
         best_action, best_node = max(
             # self.children[self.curr_tree_root].items(),
@@ -228,7 +229,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         # This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
         self._delete_subtree(_temp, recursive=False)
         # LOGGER.info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
-        return self.curr_tree_root.state_id, 1, self.curr_tree_root.goal_state, self.curr_tree_root.terminal_state
+        return self.curr_tree_root.state_id, hash(self.curr_tree_root), 1, self.curr_tree_root.goal_state, self.curr_tree_root.terminal_state
 
     def get_corresponding_mcts_node(self, cstate):
         return self.state_id_to_node.get(cstate, None)
@@ -394,13 +395,6 @@ class MonteCarloPolicyEvaluator(MCTS):
         return next_action_ind, wrapInMCTSNode(best_cstate, cost_until_now=parent_node.cost_until_now + step_cost,
                                                previous_action=next_action_ind)
 
-    def get_value_from_mcts_node(self, node: MCTSNode):
-        node_as_network_input = node.as_network_input
-        if node_as_network_input is None:
-            node_as_network_input = self.problem_service.to_network_input(*node.get_identifiers())
-        _, value = self.network(node_as_network_input)
-        return value
-
     def print_exploration_exploitation_comparison(self):
         self._probe.print_exploration_exploitation_comparison()
 
@@ -413,7 +407,9 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
     print(f'\n-------------> Limit is set to {limit}\n')
     trial_start_time = time()
     problem_service = problem_server.service
-    curr_state = to_local(problem_service.env_reset())
+    # curr_state = to_local(problem_service.env_reset())
+    curr_state_id, curr_state_hash = to_local(problem_service.env_reset())
+
     # total cost of this run
     cost = 0
     path = []
@@ -421,9 +417,9 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
         if time() - trial_start_time > graceful_timeout:
             print('Graceful_timeout has been reached :)')
             break
-        action = policy_evaluator.get_action_from_cstate_id_hash(curr_state, cost)
+        action = policy_evaluator.get_action_from_cstate_id_hash(curr_state_id, curr_state_hash, cost)
         path.append(to_local(problem_service.action_name(action)))
-        curr_state, step_cost, is_goal, is_terminal = move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=False)
+        curr_state_id, curr_sate_hash, step_cost, is_goal, is_terminal = move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=False)
         cost += step_cost
         if is_goal:
             if policy_evaluator.is_comparing_exploration_exploitation():
