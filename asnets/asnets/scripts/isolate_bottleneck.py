@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-import argparse, time, numpy as np, tensorflow as tf
+import argparse, time, tensorflow as tf
 import logging
 
-import rpyc
+import rpyc, gc
 
 from post_training.enhspwrapper import ENHSPEstimator
 
@@ -19,14 +19,18 @@ from asnets.multiprob import ProblemServer, to_local
 
 # Import your evaluator & node wrappers
 from run_asnets import MonteCarloPolicyEvaluator, move_to_next_state  # uses your _expand/find_children
-from post_training.monte_carlo_tree_search import wrapInMCTSNode, FixedChildMap
-
-from asnets import state_reprs
+from post_training.monte_carlo_tree_search import wrapInMCTSNode
 
 def uniform_policy(act_dim: int):
     def _pi(in_obs_batch, training=False):
         return tf.nn.softmax(tf.zeros((1, act_dim), dtype=tf.float32)), 1
     return _pi
+
+def count_async_results():
+    # find all AsyncResult objects tracked by the GC
+    objs = [o for o in gc.get_objects() if isinstance(o, rpyc.core.async_.AsyncResult)]
+    return len(objs)
+
 
 class LocalService:
     """In-process service exposing the minimal API your evaluator calls."""
@@ -62,7 +66,8 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
           reroot_per_decision: bool):
     dtype = DomainType.NUMERIC if domain_type == "numeric" else DomainType.PROBABILISTIC
     pddl_files = [pddl_domain, pddl_problem]
-
+    srv = None
+    service = None
     if mode == "local":
         p = PlannerExtensions(pddl_files, problem_name, dtype,
                               dg_ssipp_heuristic_name=None,
@@ -84,13 +89,14 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
     policy = uniform_policy(act_dim)
 
     # Wire your evaluator
-    mcts = MonteCarloPolicyEvaluator(policy=policy,
+    mcts = MonteCarloPolicyEvaluator(network=policy,
                                      problem_service=service,
                                      iterations=iterations,
                                      horizon=0,
                                      num_cstates_to_generate_per_expansion=k,
                                      use_value_based=True,
-                                     debug_memory=False)
+                                     debug_memory=False,
+                                     batch_expansion_call=True,)
 
     # Turn on your internal timing buckets
     mcts.debug_time_mcts_iterations = True
@@ -98,20 +104,23 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
     mcts.after_expansion_times = []; mcts.after_eval_times = []; mcts.end_times = []
 
     # Seed root (state + tree)
-    # curr_cstate = to_local(service.env_reset()) TODO: check that it's okay that the first cstate is a netref
-    curr_cstate = service.env_reset()
+    curr_cstate_id, curr_state_hash = service.env_reset()
     total_cost = 0.0
-    mcts.curr_tree_root = wrapInMCTSNode(curr_cstate, cost_until_now=total_cost, previous_action=None)
+    mcts.curr_tree_root = wrapInMCTSNode(cstate_id=curr_cstate_id, hashed_state=curr_state_hash, cost_until_now=total_cost, previous_action=None)
 
     # Run N decisions; each decision performs `iterations` loops and then chooses an action
     t0 = time.perf_counter()
-    for _ in range(decisions):
+    for i in range(decisions):
+        print("Active async results:", count_async_results())
+        if i%50==0:
+            gc.collect()  # Force Python to clean up finished AsyncResults
         # Important: pass the CURRENT state & cost (matches inference usage)
-        action = int(mcts.get_action_from_cstate(curr_cstate, total_cost))
+        action = int(mcts.get_action_from_cstate_id_hash(curr_cstate_id, curr_state_hash, total_cost))
+        print(f"Chosen action: {action}")
 
         if reroot_per_decision:
             # Try to re-root to the existing child node for `action` if present
-            curr_cstate, step_cost = move_to_next_state(problem_service=service, policy_evaluator=mcts, action=action, cost=total_cost, current_code=False)
+            curr_cstate_id, step_cost, is_goal, is_terminal = move_to_next_state(problem_service=service, policy_evaluator=mcts, action=action, cost=total_cost, current_code=False)
             # new_root = None
             # try:
             #     root = mcts.curr_tree_root
