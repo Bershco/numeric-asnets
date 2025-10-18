@@ -13,8 +13,7 @@ class TrainingMCTS(MCTS):
     def __init__(self, network, problem_service,
                  iterations=10, expansion_k=5,
                  exploration_weight=1.0):
-        super().__init__(exploration_weight)
-        self.network = network
+        super().__init__(exploration_weight, network=network)
         self.problem_service = problem_service
         self.iterations = iterations
         self.k = expansion_k
@@ -28,7 +27,7 @@ class TrainingMCTS(MCTS):
             return
 
         # get priors from network
-        act_dist, _ = self.network(node.to_network_input())
+        act_dist = self.get_act_dist_from_mcts_node(node)
         act_dist = to_local(act_dist)
         act_dist = tf.squeeze(act_dist).numpy()
         self.act_dist_per_node[node] = act_dist
@@ -63,16 +62,9 @@ class TrainingMCTS(MCTS):
 
     def _rollout(self, node, horizon=0):
         """Use value head for evaluation instead of random rollout."""
-        _, value = self.network(node.to_network_input(), training=False)
+        value = self.get_value_from_mcts_node(node)
         value = to_local(value)
         return float(tf.squeeze(value).numpy())
-
-    def get_act_dist_from_mcts_node(self, node):
-        """Return cached priors if available."""
-        if node not in self.act_dist_per_node:
-            act_dist, _ = self.network(node.to_network_input())
-            self.act_dist_per_node[node] = tf.squeeze(act_dist).numpy()
-        return self.act_dist_per_node[node]
 
     def initialise_tree(self, cstate):
         """Start a new tree for a fresh episode."""
@@ -99,7 +91,7 @@ class TrainingMCTS(MCTS):
         if pi.sum() > 0:
             pi /= pi.sum()
         else:
-            mask = [root.is_applicable_action(i) for i in range(act_dim)]
+            mask = self.get_applicable_action_mask(root)
             valid = np.where(mask)[0]
             if len(valid) > 0:
                 pi[valid] = 1.0 / len(valid)
