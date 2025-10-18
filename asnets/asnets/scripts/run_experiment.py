@@ -570,6 +570,7 @@ evaluation = {"off" if no_eval else "on"}
             enforce_ncpus=enforce_job_ncpus,
             timeout=arch_mod.TIME_LIMIT_SECONDS,
             train_only=train_only,
+            profiling=profiling,
         )
         print('Last valid checkpoint is %s' % final_checkpoint)
     else:
