@@ -17,10 +17,7 @@ import numpy as np
 import rpyc
 from rpyc import BaseNetref
 from typing_extensions import Self
-
-from asnets.multiprob import to_local
-from asnets.state_reprs import CanonicalState
-
+import tensorflow as tf
 
 class Node(ABC):
     """
@@ -48,6 +45,67 @@ class Node(ABC):
     def __eq__(self, node2):
         """Nodes must be comparable"""
         return True
+
+class MCTSNode(Node):
+    delete_counter = 0
+    __slots__ = ("state_id", "cost_until_now", "reward_weight",
+                 "previous_action","_hash","children","goal_state","terminal_state","as_network_input",
+                 "applicable_action_mask")
+
+    def __init__(self, state_id, cost_until_now, previous_action, reward_weight = 1000,
+        is_goal = False, is_terminal = False, as_network_input = None, applicable_action_mask = None,
+                 hashed_state = -1):
+        self.state_id = state_id
+        self._hash = hashed_state
+        self.cost_until_now = cost_until_now
+        self.reward_weight = reward_weight
+        self.previous_action = previous_action
+        self.children = None
+        self.goal_state = is_goal
+        self.terminal_state = is_terminal
+        self.as_network_input = as_network_input
+        self.applicable_action_mask = applicable_action_mask
+        self.act_dist = None
+        self.value = None
+
+    def simulate_step(self, action_id, problem_service):
+        if hasattr(problem_service, "env_simulate_step"):
+            return problem_service.env_simulate_step(self.state_id, self._hash, int(action_id))
+        return problem_service.exposed_env_simulate_step(self.state_id, self._hash, int(action_id))
+
+    def is_terminal(self):
+        """Returns True if the node has no children"""
+        return self.terminal_state
+
+    def is_goal(self):
+        """Return True if the current not is a goal"""
+        return self.goal_state
+
+    def reward(self):
+        # return 1 if self.is_terminal() else 0
+        if self.is_goal():
+            return self.reward_weight / self.cost_until_now
+        return 0
+
+    def to_network_input(self):
+        """Make the cstate represented by 'this' MCTSNode to be compatible for the policy network, and transposes it"""
+        return self.as_network_input
+
+    def __hash__(self):
+        """Nodes must be hashable"""
+        return self._hash
+
+    def __eq__(self, node2: Self) -> bool:
+        """
+        Nodes must be comparable.
+        That being said, employing rpyc interception, pickling, serialization etc. just for equality seems redundant.
+        At least if their hashes already don't fit.
+        """
+        return hash(self) == hash(node2) and self.state_id == node2.state_id
+
+    def get_identifiers(self) -> tuple[int,int]:
+        return self.state_id, self._hash
+
 
 class FixedChildMap:
     def __init__(self, keys: List[int], values: List[Any]):
@@ -130,7 +188,6 @@ class SelectProbe:
 
     # -------- old callsite (keep working) --------
     def log(self, q_list, u_list, chosen_idx):
-        import numpy as np
         scores = [q + u for q, u in zip(q_list, u_list)]
         idx_score = int(np.argmax(scores))
         idx_q     = int(np.argmax(q_list))
@@ -210,6 +267,8 @@ class MCTS:
     """Monte Carlo tree searcher. First rollout the tree then choose a move."""
 
     def __init__(self, exploration_weight=1,
+                 network = None,
+                 problem_service = None,
                  debug_memory = False,
                  debug_time_mcts_iterations = False,
                  debug_comparison_exploration_exploitation = False):
@@ -220,8 +279,10 @@ class MCTS:
         # self.children: dict[Node, Any] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
-        self.state_to_node = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
-        self.act_dist_per_node: dict[MCTSNode,np.ndarray] = {}
+        self.state_id_to_node = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
+        # self.act_dist_per_node: dict[MCTSNode,np.ndarray] = {}
+        self.problem_service = problem_service
+        self.network = network
 
         self.debug_memory = debug_memory
         self.debug_time_mcts_iterations = debug_time_mcts_iterations
@@ -472,8 +533,19 @@ class MCTS:
                     output_path.append((action, mcts_node))
         return output_path[1:]
 
-    def get_act_dist_from_mcts_node(self, node):
-        raise NotImplemented
+    def get_act_dist_from_mcts_node(self, node: MCTSNode):
+        if node.act_dist is None:
+            if node.as_network_input is None:
+                node.as_network_input = self.problem_service.to_network_input(*node.get_identifiers())
+            node.act_dist, node.value = self.network(node.as_network_input)
+        return tf.squeeze(node.act_dist)
+
+    def get_value_from_mcts_node(self, node: MCTSNode):
+        if node.value is None:
+            if node.as_network_input is None:
+                node.as_network_input = self.problem_service.to_network_input(*node.get_identifiers())
+            node.act_dist, node.value = self.network(node.as_network_input)
+        return node.value
 
     def _delete_subtree(self, node, recursive=True):
         # Recursively delete the subtree rooted at this node
@@ -486,8 +558,8 @@ class MCTS:
         node.children = None
         self.N.pop(node, None)
         self.Q.pop(node, None)
-        self.state_to_node.pop(node.state, None)
-        self.act_dist_per_node.pop(node, None)
+        self.state_id_to_node.pop(node.state_id, None)
+        # self.act_dist_per_node.pop(node, None)
 
     def log_node_count(self, label=""):
         gc.collect()
@@ -517,74 +589,18 @@ class MCTS:
             self._delete_subtree(child_node)
         if self.debug_memory:
             self.log_node_count("After deleting old root's irrelevant children")
-
         assert keep_child is not None
         # Replace children dict with just the one we kept
         # self.children[parent_node] = FixedChildMap([keep_action], [keep_child])
         parent_node.children = FixedChildMap([keep_action],[keep_child])
 
-class MCTSNode(Node):
-    delete_counter = 0
-    __slots__ = ("state", "cost_until_now", "reward_weight", "previous_action","_hash","children")
+    def get_applicable_action_mask(self, node: MCTSNode):
+        if node.applicable_action_mask is None:  # Fallback
+            node.applicable_action_mask = self.problem_service.get_applicable_action_mask(*node.get_identifiers())
+        return node.applicable_action_mask
 
-    def __init__(self, state, cost_until_now, previous_action, reward_weight = 1000):
-        # self.state = to_local(state)
-        self.state = state
-        self._hash = hash(state) # This prevents repeated rpyc calls and interceptions, context switching and pickling
-        self.cost_until_now = cost_until_now
-        self.reward_weight = reward_weight
-        self.previous_action = previous_action
-        self.children = None
-
-    def simulate_step(self, action_id, problem_service):
-        if hasattr(problem_service, "env_simulate_step"):
-            return problem_service.env_simulate_step(self.state, int(action_id))
-        return problem_service.exposed_env_simulate_step(self.state, int(action_id))
-
-    def is_terminal(self):
-        """Returns True if the node has no children"""
-        return self.state.exposed_is_terminal()
-
-    def is_goal(self):
-        """Return True if the current not is a goal"""
-        return self.state.exposed_is_goal()
-
-    def reward(self):
-        # return 1 if self.is_terminal() else 0
-        if self.is_goal():
-            return self.reward_weight / self.cost_until_now
-        return 0
-
-    def to_network_input(self, problem_service):
-        """Make the cstate represented by 'this' MCTSNode to be compatible for the policy network, and transposes it"""
-        if isinstance(self.state, BaseNetref):
-            return problem_service.to_network_input(self.state)
-        return self.state.to_network_input()[None, :]
-
-    def is_applicable_action(self, action_num):
-        _, applicable = self.state.acts_enabled[action_num]
-        return applicable
-
-    def __hash__(self):
-        """Nodes must be hashable"""
-        return self._hash
-
-    def __eq__(self, node2: Self) -> bool:
-        """
-        Nodes must be comparable.
-        That being said, employing rpyc interception, pickling, serialization etc. just for equality seems redundant.
-        At least if their hashes already don't fit.
-        """
-        return hash(self) == hash(node2) and self.state == node2.state
-
-    def __repr__(self):
-        return self.state.__repr__()
-
-    # def __del__(self):
-    #     MCTSNode.delete_counter += 1
-    #     if MCTSNode.delete_counter % 100 == 0:
-    #         print(f"Deleted {MCTSNode.delete_counter} MCTSNodes - and counting!")
-
-
-def wrapInMCTSNode(inner_state: CanonicalState, previous_action, cost_until_now=float('inf')):
-    return MCTSNode(state=inner_state, cost_until_now=cost_until_now, previous_action=previous_action)
+def wrapInMCTSNode(cstate_id: int, previous_action, cost_until_now=float('inf'), is_goal=False,
+                   is_terminal=False, as_network_input=None, applicable_action_mask=None, hashed_state = -1):
+    return MCTSNode(state_id=cstate_id, cost_until_now=cost_until_now, previous_action=previous_action,is_goal=is_goal,
+                    is_terminal=is_terminal, as_network_input=as_network_input,
+                    applicable_action_mask=applicable_action_mask, hashed_state=hashed_state)
