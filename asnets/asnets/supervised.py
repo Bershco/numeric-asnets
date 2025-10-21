@@ -358,6 +358,10 @@ class PlannerExtensions(object):
         # (especially for numeric domains). SSiPP just hardcodes this as 500.
         return 500
 
+def tf_and_print(name: str, value):
+    tf.summary.scalar(name, value)
+    base_name = tf.get_current_name_scope()
+    print(f"[TF_SUMMARY_SCALAR_LOG] {base_name + '/' if base_name is not None else ''}{name} : {value}")
 
 def make_problem_service(config, set_proc_title=False):
     """Construct Service class for a particular problem. Note that we must
@@ -411,9 +415,8 @@ def make_problem_service(config, set_proc_title=False):
             return obs_tensor, pi_tensor, z_tensor, counts
 
         def exposed_env_reset(self):
-            self.current_state = self.internal_get_init_state()
             self.id_hash_to_state.clear()
-            init_state_id, init_state_hash = self.internal_get_state_identifiers(self.current_state)
+            init_state_id, init_state_hash = self.internal_get_state_identifiers(self.internal_get_init_state())
             return init_state_id, init_state_hash
 
         def exposed_action_name(self, action_num):
@@ -641,7 +644,6 @@ def make_problem_service(config, set_proc_title=False):
                                  self.only_one_good_action,
                                  self.use_teacher_envelope)
 
-
         def internal_collect_trajectory(self,
                                         model: Callable) -> bool:
             """Collect a single trajectory using the given policy. Add the
@@ -709,7 +711,9 @@ def make_problem_service(config, set_proc_title=False):
             self.id_hash_to_state[state_id, state_hash] = cstate
             return state_id, state_hash
 
-            
+        def internal_get_state_from_identifiers(self, cstate_id: int, cstate_hash: int) -> CanonicalState:
+            return self.id_hash_to_state.get((cstate_id, cstate_hash), None)
+
         # def internal_explore_from_random_state(self) -> None:
         #     """Explore from a random state."""
         #     cstate = self.traj_states.pop_random()
@@ -776,7 +780,8 @@ def make_problem_service(config, set_proc_title=False):
 
                 action_index = np.random.choice(np.arange(len(pi)), p=masked_pi)
 
-                cstate = mcts_tree.step_forward(action_index)
+                cstate_id, cstate_hash = mcts_tree.step_forward(action_index)
+                cstate = self.internal_get_state_from_identifiers(cstate_id, cstate_hash)
 
             # 4. Determine game outcome z
             if cstate.is_goal:
@@ -864,7 +869,6 @@ def make_problem_service(config, set_proc_title=False):
 
                 # re-raise to ensure RPyC propagates the error correctly
                 raise
-
 
         def exposed_get_applicable_action_mask(self, cstate_id, cstate_hash):
             try:
@@ -1097,7 +1101,8 @@ class SupervisedTrainer:
             l2_reg_coeff=self.l2_reg_coeff,
             l1_l2_reg_coeff=self.l1_l2_reg_coeff,
             name="loss_fn",
-            strategy=SupervisedObjective.ANY_GOOD_ACTION
+            # strategy=SupervisedObjective.ANY_GOOD_ACTION
+            strategy=self.strategy,
         )
         # tensorboard ops
         self._log_ops = {}
@@ -1151,7 +1156,9 @@ class SupervisedTrainer:
                     losses.append(loss)
 
                     if (self.batches_seen % 10) == 0:
-                        tf.summary.scalar('train-loss', loss)
+                        # tf.summary.scalar('train-loss', loss)
+                        tf_and_print('train-loss', loss)
+
 
                     self.batches_seen += 1
 
@@ -1184,20 +1191,24 @@ class SupervisedTrainer:
             replay_sizes = self._get_replay_sizes()
             replay_size = sum(replay_sizes)
 
-            tf.summary.scalar('lr', self.optimiser.lr)
+            # tf.summary.scalar('lr', self.optimiser.lr)
+            tf_and_print('lr', self.optimiser.lr)
             # update output
             tr.set_postfix(
                 succ_rate=total_succ_rate,
                 net_loss=mean_loss,
                 states=replay_size,
                 lr=self.optimiser.lr)
-            tf.summary.scalar('succ-rate/mean', total_succ_rate)
+            # tf.summary.scalar('succ-rate/mean', total_succ_rate)
+            tf_and_print('succ-rate/mean', total_succ_rate)
 
             for prob, prob_succ_rate in succs_probs:
                 pname = escape_name_tf(prob.name)
-                tf.summary.scalar('succ-rate/%s' % pname, prob_succ_rate)
+                # tf.summary.scalar('succ-rate/%s' % pname, prob_succ_rate)
+                tf_and_print('succ-rate/%s' % pname, prob_succ_rate)
 
-            tf.summary.scalar('replay-size', replay_size)
+            # tf.summary.scalar('replay-size', replay_size)
+            tf_and_print('replay-size', replay_size)
             mean_loss = self._optimise(self.opt_batches_per_epoch)
             iter_num += 1
             # update output again
@@ -1418,8 +1429,8 @@ class ManualLoss:
         assert loss_parts is not None
 
         for part_loss_name, part_loss in loss_parts:
-            tf.summary.scalar('loss-%s' % part_loss_name, part_loss)
-
+            # tf.summary.scalar('loss-%s' % part_loss_name, part_loss)
+            tf_and_print('loss-%s' % part_loss_name, part_loss)
         return op_loss
 
     @can_profile
@@ -1465,11 +1476,21 @@ class ManualLoss:
                 loss_parts.append(('qloss', q_loss))
             elif self.strategy == SupervisedObjective.MCTS_POLICY_DIST:
                 pi_targets = tf.convert_to_tensor(ph_q_values, dtype=tf.float32)
-                pi_targets = tf.maximum(pi_targets, 0.0)
+                # pi_targets = tf.maximum(pi_targets, 0.0)
 
                 row_sums = tf.reduce_sum(pi_targets, axis=-1, keepdims=True)
                 row_sums = tf.where(row_sums > 0.0, row_sums, tf.ones_like(row_sums))
-                pi_targets = pi_targets / row_sums
+                # pi_targets = pi_targets / row_sums
+                pi_targets = tf.math.divide_no_nan(pi_targets, row_sums)
+
+                act_dist_entropy = -tf.reduce_sum(act_dist * tf.math.log(act_dist + 1e-8), axis=-1)
+                mean_act_dist_entropy = tf.reduce_mean(act_dist_entropy)
+                # tf.summary.scalar("act_dist_entropy", mean_act_dist_entropy)
+                tf_and_print("act_dist_entropy", mean_act_dist_entropy)
+                pi_targets_entropy = -tf.reduce_sum(pi_targets * tf.math.log(pi_targets + 1e-8), axis=-1)
+                mean_pi_targets_entropy = tf.reduce_mean(pi_targets_entropy)
+                # tf.summary.scalar("pi_entropy", mean_pi_targets_entropy)
+                tf_and_print("pi_entropy", mean_pi_targets_entropy)
 
                 xent = tf.cond(
                     tf.size(pi_targets) > 0,
