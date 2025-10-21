@@ -273,7 +273,7 @@ class MCTS:
                  debug_memory = False,
                  debug_time_mcts_iterations = False,
                  debug_comparison_exploration_exploitation = False):
-        self.curr_tree_root = None
+        self.curr_tree_root: MCTSNode = None
         self.Q = defaultdict(int)  # total reward of each node
         self.N = defaultdict(int)  # total visit count for each node
         self.Nsa = defaultdict(int)
@@ -322,33 +322,17 @@ class MCTS:
         if self.debug_time_mcts_iterations:
             self.start_times.append(time())
         path = []
-        # children = self.children
         while True:
             path.append(node)
 
-            # childmap: FixedChildMap | None = children.get(node, None)
             childmap: FixedChildMap | None = node.children
 
             # If node has no generated children (i.e. node not in children dict, or is in dict with None value) -
             # it's unexplored or terminal.
-            # if node not in children or not children[node]:
             if childmap is None:
                 if self.debug_time_mcts_iterations:
                     self.after_selection_times.append(time())
                 return path
-
-            # actions_nodes = list(children[node].items())  # [(action, child_node), ...]
-            # unexplored_edges = [(a, c) for (a, c) in actions_nodes if c not in children]
-            #
-            # if unexplored_edges:
-            #     a, n = unexplored_edges[np.random.randint(len(unexplored_edges))]
-            #     # count traversed edge
-            #     self.Nsa[(node, a)] += 1
-            #     path.append(n)
-            #     if self.debug_time_mcts_iterations:
-            #         self.after_selection_times.append(time())
-            #     return path
-
 
             # Prefer an unexplored child if any (child not yet in children keys)
             # Using uniform reservoir sampling over unexplored edges
@@ -409,7 +393,6 @@ class MCTS:
            Returns (action, child_node).  Vectorized over children to reduce Python overhead."""
 
         # 0) Sanity: children should already be generated for this node
-        # children_map = self.children[node]  # dict: action -> child_node
         children_map = node.children
         actions_nodes = list(children_map.items())  # [(a, child), ...]
         n_children = len(actions_nodes)
@@ -420,13 +403,10 @@ class MCTS:
         priors = priors.numpy() if hasattr(priors, "numpy") else priors
 
         # Build parallel arrays once
-        # actions = np.fromiter((a for a, _ in actions_nodes), dtype=np.int32, count=n_children)
-        # child_list = [c for _, c in actions_nodes]
         actions, child_list = zip(*actions_nodes)
 
         # 2) Masks (vectorized)
         #   - cycle mask: child already on current path => invalidate
-        # cycle = np.fromiter((c in path_set for c in child_list), dtype=bool, count=n_children)
         actions = np.frombuffer(np.array(actions, dtype=np.int32), dtype=np.int32)
         cycle = np.array([c in path_set for c in child_list], dtype=bool)
 
@@ -438,10 +418,6 @@ class MCTS:
                 prior[valid] = np.asarray(priors, dtype=np.float32)[actions[valid]]
 
         # 4) Edge visits Nsa(s,a) and child Q(s') in one sweep
-        # edge_visits = np.fromiter((self.Nsa[(node, int(a))] for a in actions),
-        #                            dtype=np.int32, count=n_children)
-        # Q_child = np.fromiter((self.Q.get(c, 0.0) for c in child_list),
-        #                        dtype=np.float32, count=n_children)
         edge_visits = np.array(
             [self.Nsa.get((node, int(a)), 0) for a in actions],
             dtype=np.int32
