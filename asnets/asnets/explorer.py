@@ -162,7 +162,7 @@ class DynamicExplorer(Explorer):
         if total_new_pairs >= self.min_new_pairs:
             return time() - start_time >= \
                 self.expl_learn_ratio * self.recent_learning_time
-        return False
+        return t.n > t.total
     
     def _sample_problem(self) -> Optional['SingleProblem']:
         """Samples a problem to explore from."""
