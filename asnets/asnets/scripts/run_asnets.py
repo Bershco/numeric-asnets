@@ -315,19 +315,9 @@ class MonteCarloPolicyEvaluator(MCTS):
                     continue
                 selected_actions.append(i)
 
-            # print("[DEBUG] Before RPC alive?", self.problem_server.is_conn_alive(), flush=True)
-            # sock = self.problem_server._conn._channel.stream.sock
-            # print(
-            #     f"[DEBUG] sock fileno={sock.fileno()}, sndbuf={sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)}, "
-            #     f"rcvbuf={sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)}", flush=True)
-
             # Single RPC for all k selected actions
             results = self.problem_service.env_simulate_batch_steps(*parent_node.get_identifiers(), selected_actions)
 
-            # print("[DEBUG] After RPC alive?", self.problem_server.is_conn_alive(), flush=True)
-            # print(
-            #     f"[DEBUG] sent bytes so far: {sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUFFORCE) if hasattr(socket, 'SO_SNDBUFFORCE') else 'n/a'}",
-            #     flush=True)
             generated_ids = []
             for (action_id, cstate_after_action_i_id, cstate_after_action_i_hash,
                 step_cost, is_goal, is_terminal,
