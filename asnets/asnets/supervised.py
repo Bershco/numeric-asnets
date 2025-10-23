@@ -423,15 +423,15 @@ def make_problem_service(config, set_proc_title=False):
             action_num = to_local(action_num)
             return get_action_name(self.p, action_num)
 
-        def exposed_env_step(self, action_num):
-            action_num = to_local(action_num)
-            next_cstate, step_cost \
-                = sample_next_state(self.current_state, action_num, self.p)
-            self.current_state = next_cstate
-            current_state_id, current_state_hash = self.internal_get_state_identifiers(self.current_state)
-            return (current_state_id, current_state_hash, step_cost, self.current_state.is_goal,
-                    self.current_state.is_terminal, self.internal_to_network_input(self.current_state),
-                    self.internal_get_applicable_action_mask(self.current_state))
+        # def exposed_env_step(self, action_num):
+        #     action_num = to_local(action_num)
+        #     next_cstate, step_cost \
+        #         = sample_next_state(self.current_state, action_num, self.p)
+        #     self.current_state = next_cstate
+        #     current_state_id, current_state_hash = self.internal_get_state_identifiers(self.current_state)
+        #     return (current_state_id, current_state_hash, step_cost, self.current_state.is_goal,
+        #             self.current_state.is_terminal, self.internal_to_network_input(self.current_state),
+        #             self.internal_get_applicable_action_mask(self.current_state))
 
         def exposed_env_simulate_step(self, cstate_to_simulate_from, action_num):
             """Perform an environment step without actually changing the state"""
@@ -624,6 +624,9 @@ def make_problem_service(config, set_proc_title=False):
             self.estimator_initialised = False
             print(f"[DEBUG] Connection {conn} opened", file=sys.stderr, flush=True)
 
+        def exposed_set_policy_only(self, value):
+            self.policy_only = value
+
         # FIXME: don't cache at this level; it's inefficient when using
         # history-level features, b/c it will lead to lots and lots of
         # near-identical cstates being thrown into the cache
@@ -665,7 +668,10 @@ def make_problem_service(config, set_proc_title=False):
                 obs = to_local(cstate.to_network_input())
                 obs_bytes = obs.tostring()
                 if obs_bytes not in self.model_cache:
-                    act_dist, _ = model(obs[None], training=False)
+                    if self.policy_only:
+                        act_dist = model(obs[None], training=False)
+                    else:
+                        act_dist, _ = model(obs[None], training=False)
                     
                     act_dist = tf.reshape(
                         to_local(act_dist),
@@ -741,17 +747,14 @@ def make_problem_service(config, set_proc_title=False):
             """Self-play exploration for AlphaZero-style data generation."""
 
             cstate = self.traj_states.pop_random()
-
             mcts_tree = TrainingMCTS(
                 network=network,
                 problem_service=self,
-                # iterations=10,
-                iterations=1,
+                iterations=10,
+                # iterations=1,
                 # TODO: implement curriculum training - don't use high iterations at the beginning
                 #  as the network is quite random, and increase towards late phases
                 expansion_k=5,
-                # TODO: find a way to propagate expansion size from arguments - make sure to regard iterations number
-                #  or progressive widening
                 exploration_weight=1,
                 # TODO: optimise hyper-parameter 'exploration_weight' ('c' in puct formula)
             )
@@ -1036,6 +1039,7 @@ class SupervisedTrainer:
         # gets incremented to deal with TF
         self.batches_seen = 0
         self.problems = problems
+        self.policy_only = self.problems[0].network.policy_only()
         self.weight_manager = weight_manager
         # may be None if no summaries tuple()should be written
         self.summary_writer = summary_writer
@@ -1134,19 +1138,28 @@ class SupervisedTrainer:
 
             with tf.name_scope('grads_opt'):
                 with tf.GradientTape() as tape:
-                    obs_by_prob, qv_by_prob, z_by_prob = list(zip(*feed_dict))
                     act_preds_by_prob = []
-                    value_preds_by_prob = []
+                    if self.policy_only:
+                        obs_by_prob, qv_by_prob = list(zip(*feed_dict))
+                    else:
+                        obs_by_prob, qv_by_prob, z_by_prob = list(zip(*feed_dict))
+                        value_preds_by_prob = []
+
                     for i, problem in enumerate(self.problems):
                         obs = obs_by_prob[i]
                         if len(obs.shape) == 1:
                             obs = np.expand_dims(obs, axis=0)
-                        policy, value = problem.network(obs)
+                        if self.policy_only:
+                            policy = problem.network(obs)
+                        else:
+                            policy, value = problem.network(obs)
+                            value_preds_by_prob.append(value)
                         act_preds_by_prob.append(policy)
-                        value_preds_by_prob.append(value)
-                        # act_preds_by_prob.append(problem.network(obs_by_prob[i]))
-                    loss = self.loss_fn(act_preds_by_prob, qv_by_prob,
-                                        target_values=z_by_prob, pred_values=value_preds_by_prob)
+                    if self.policy_only:
+                        loss = self.loss_fn(act_preds_by_prob, qv_by_prob)
+                    else:
+                        loss = self.loss_fn(act_preds_by_prob, qv_by_prob,
+                                            target_values=z_by_prob, pred_values=value_preds_by_prob)
                     grads = tape.gradient(loss, params)
                     grads_and_vars = zip(grads, params)
                     self.optimiser.apply_gradients(
@@ -1388,37 +1401,38 @@ class ManualLoss:
         batch_sizes = []
         loss_parts = None
         for i, problem in enumerate(self.problems):
-            act_dist, ph_q_values = act_pred[i], q_values[i]
-            if target_values is not None and pred_values is not None:
-                z, v = target_values[i], pred_values[i]
-                this_loss, this_loss_parts = self._set_up_losses(
-                    problem, act_dist, ph_q_values,
-                    target_values=z,pred_values=v
-                )
-            else:
-                this_loss, this_loss_parts = self._set_up_losses(problem, act_dist, ph_q_values)
+            with tf.name_scope(f'Problem-{i}'):
+                act_dist, ph_q_values = act_pred[i], q_values[i]
+                if target_values is not None and pred_values is not None:
+                    z, v = target_values[i], pred_values[i]
+                    this_loss, this_loss_parts = self._set_up_losses(
+                        problem, act_dist, ph_q_values,
+                        target_values=z,pred_values=v
+                    )
+                else:
+                    this_loss, this_loss_parts = self._set_up_losses(problem, act_dist, ph_q_values)
 
-            this_batch_size = tf.shape(input=act_dist)[0]
-            losses.append(this_loss)
-            batch_sizes.append(tf.cast(this_batch_size, tf.float32))
-            if loss_parts is None:
-                loss_parts = this_loss_parts
-            else:
-                # we care about these parts because we want to display them to
-                # the user (e.g. how much of my loss is L2 regularisation
-                # loss?)
-                assert len(loss_parts) == len(this_loss_parts), \
-                    'diff. loss breakdown for diff. probs. (%s vs %s)' \
-                    % (loss_parts, this_loss_parts)
-                # sum up all the parts
-                new_loss_parts = []
-                for old_part, new_part in zip(loss_parts, this_loss_parts):
-                    assert old_part[0] == new_part[0], \
-                        "names (%s vs. %s) don't match" % (old_part[0],
-                                                           new_part[0])
-                    to_add = new_part[1] * tf.cast(this_batch_size, tf.float32)
-                    new_loss_parts.append((old_part[0], old_part[1] + to_add))
-                loss_parts = new_loss_parts
+                this_batch_size = tf.shape(input=act_dist)[0]
+                losses.append(this_loss)
+                batch_sizes.append(tf.cast(this_batch_size, tf.float32))
+                if loss_parts is None:
+                    loss_parts = this_loss_parts
+                else:
+                    # we care about these parts because we want to display them to
+                    # the user (e.g. how much of my loss is L2 regularisation
+                    # loss?)
+                    assert len(loss_parts) == len(this_loss_parts), \
+                        'diff. loss breakdown for diff. probs. (%s vs %s)' \
+                        % (loss_parts, this_loss_parts)
+                    # sum up all the parts
+                    new_loss_parts = []
+                    for old_part, new_part in zip(loss_parts, this_loss_parts):
+                        assert old_part[0] == new_part[0], \
+                            "names (%s vs. %s) don't match" % (old_part[0],
+                                                               new_part[0])
+                        to_add = new_part[1] * tf.cast(this_batch_size, tf.float32)
+                        new_loss_parts.append((old_part[0], old_part[1] + to_add))
+                    loss_parts = new_loss_parts
         with tf.name_scope('combine_all_losses'):
             op_loss \
                 = sum(l * s for l, s in zip(losses, batch_sizes)) \

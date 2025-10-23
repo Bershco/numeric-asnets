@@ -86,6 +86,28 @@ from post_training.monte_carlo_tree_search import MCTSNode, wrapInMCTSNode, MCTS
 
 class MonteCarloPolicyEvaluator(MCTS):
 
+    def __init__(self, network, problem_service, horizon = 0, exploration_weight = 1, iterations = 10,
+                 use_value_based = False, num_cstates_to_generate_per_expansion = 5, batch_expansion_call = True,
+                 progressive_widening = False, problem_server = None,
+                 debug_memory = False, debug_time_mcts_iterations = False,
+                 debug_comparison_exploration_exploitation = False,):
+        super().__init__(exploration_weight, network=network,
+                         problem_service=problem_service,
+                         debug_memory=debug_memory,
+                         debug_time_mcts_iterations=debug_time_mcts_iterations,
+                         debug_comparison_exploration_exploitation=debug_comparison_exploration_exploitation)
+        self.iterations = iterations
+        self.horizon = horizon
+        self.k = num_cstates_to_generate_per_expansion
+        self.curr_tree_root = None
+        self.debug_orig_root = None
+        self.visited_cstates_hashes: Set[int] = set()
+        self.revisit_counter = 0
+        self.use_value_based=use_value_based
+        self.memory_debug = debug_memory
+        self.progressive_widening = progressive_widening
+        self.batch_expansion_call=batch_expansion_call
+
     def is_comparing_exploration_exploitation(self):
         return self._probe is not None
 
@@ -128,29 +150,6 @@ class MonteCarloPolicyEvaluator(MCTS):
         except Exception as e:
             print(f"Error sizing {name}: {e}")
 
-
-    def __init__(self, network, problem_service, horizon = 0, exploration_weight = 1, iterations = 10,
-                 use_value_based = False, num_cstates_to_generate_per_expansion = 5, batch_expansion_call = True,
-                 progressive_widening = False, problem_server = None,
-                 debug_memory = False, debug_time_mcts_iterations = False,
-                 debug_comparison_exploration_exploitation = False,):
-        super().__init__(exploration_weight,
-                         problem_service=problem_service,
-                         debug_memory=debug_memory,
-                         debug_time_mcts_iterations=debug_time_mcts_iterations,
-                         debug_comparison_exploration_exploitation=debug_comparison_exploration_exploitation)
-        self.network = network
-        self.iterations = iterations
-        self.horizon = horizon
-        self.k = num_cstates_to_generate_per_expansion
-        self.curr_tree_root = None
-        self.debug_orig_root = None
-        self.visited_cstates_hashes: Set[int] = set()
-        self.revisit_counter = 0
-        self.use_value_based=use_value_based
-        self.memory_debug = debug_memory
-        self.progressive_widening = progressive_widening
-        self.batch_expansion_call=batch_expansion_call
 
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
@@ -914,6 +913,11 @@ parser.add_argument(
     help='Enable smart expansions, progressive widening (or "unpruning"),'
          ' otherwise only limits number of generated children nodes to be min(mcts_expansion_size,(mcts_iterations - 1))'
 )
+parser.add_argument(
+    '--policy-network-only',
+    action='store_true',
+    help='Revert to policy network only instead of the new dual-head network (for ablation study)'
+)
 
 
 def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
@@ -1009,7 +1013,7 @@ def make_network(args,
             use_fluents=args.use_fluents,
             use_comparisons=args.use_comparisons)
     custom_network = PropNetwork(
-        weight_manager, prob_meta, dropout=dropout, debug=args.net_debug)
+        weight_manager, prob_meta, dropout=dropout, debug=args.net_debug, policy_network_only=args.policy_network_only)
 
     # weight_manager will sometimes be None
     return custom_network, weight_manager
@@ -1108,6 +1112,12 @@ def make_services(args):
         async_calls.append(init_method())
         async_calls.append(init_method_2(enhsp_config=args.mcts_heuristic))
 
+        init_method_3 = rpyc.async_(problem_server.service.set_policy_only)
+        if args.policy_network_only:
+            async_calls.append(init_method_3(True))
+        else:
+            async_calls.append(init_method_3(False))
+
     # wait for initialise() calls to finish
     for async_call in async_calls:
         async_call.wait()
@@ -1136,7 +1146,8 @@ def make_services(args):
             problem.dom_meta,
             problem.prob_meta,
             problem.dg_extra_dim,
-            weight_manager=weight_manager)
+            weight_manager=weight_manager,
+        )
         problems.append(problem)
 
     return problems, weight_manager
@@ -1182,12 +1193,14 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
             raise ValueError(
                 f'Unknown exploration algorithm: {args.exploration_algorithm}')
 
+        # we maintain the old loss for usage of policy network only (instead of dual-head using the new loss)
+        strategy = SupervisedObjective.ANY_GOOD_ACTION if args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST and args.policy_network_only else args.sup_objective
         sup_trainer = SupervisedTrainer(
             problems=problems,
             weight_manager=weight_manager,
             summary_writer=sample_writer,
             explorer=explorer,
-            strategy=args.sup_objective,
+            strategy=strategy,
             batch_size=args.supervised_bs,
             lr=args.supervised_lr,
             lr_steps=args.lr_steps,

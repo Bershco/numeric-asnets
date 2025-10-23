@@ -19,6 +19,9 @@ from rpyc import BaseNetref
 from typing_extensions import Self
 import tensorflow as tf
 
+from asnets.multiprob import to_local
+
+
 class Node(ABC):
     """
     A representation of a single board state.
@@ -283,7 +286,8 @@ class MCTS:
         self.state_id_to_node = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
         # self.act_dist_per_node: dict[MCTSNode,np.ndarray] = {}
         self.problem_service = problem_service
-        self.network = network
+        self.network = to_local(network)
+        self.policy_only = self.network.policy_only()
 
         self.debug_memory = debug_memory
         self.debug_time_mcts_iterations = debug_time_mcts_iterations
@@ -517,17 +521,23 @@ class MCTS:
         if node.act_dist is None:
             if node.as_network_input is None:
                 node.as_network_input = self.problem_service.to_network_input(*node.get_identifiers())
-            node.act_dist, value_tensor = self.network(node.as_network_input)
-            node.value = float(value_tensor.numpy().squeeze())
+            if self.policy_only:
+                node.act_dist = self.network(node.as_network_input)
+            else:
+                node.act_dist, value_tensor = self.network(node.as_network_input)
+                node.value = float(value_tensor.numpy().squeeze())
         return tf.squeeze(node.act_dist)
 
     def get_value_from_mcts_node(self, node: MCTSNode):
-        if node.value is None:
-            if node.as_network_input is None:
-                node.as_network_input = self.problem_service.to_network_input(*node.get_identifiers())
-            node.act_dist, value_tensor = self.network(node.as_network_input)
-            node.value = float(value_tensor.numpy().squeeze())
-        return node.value
+        if self.policy_only:
+            return self.problem_service.get_state_h(node.state_id,hash(node))
+        else:
+            if node.value is None:
+                if node.as_network_input is None:
+                    node.as_network_input = self.problem_service.to_network_input(*node.get_identifiers())
+                node.act_dist, value_tensor = self.network(node.as_network_input)
+                node.value = float(value_tensor.numpy().squeeze())
+            return node.value
 
     def _delete_subtree(self, node, recursive=True):
         # Recursively delete the subtree rooted at this node

@@ -329,6 +329,7 @@ class PropNetwork(tf.keras.layers.Layer):
                  name: Optional[str] = None,
                  dtype=None,
                  dynamic: bool = False,
+                 policy_network_only: bool = False,
                  **kwargs):
         super().__init__(trainable, name, dtype, dynamic, **kwargs)
 
@@ -358,6 +359,8 @@ class PropNetwork(tf.keras.layers.Layer):
         self.action_layer_input = {}
         self.weights_collection = []
         self.bias_collection = []
+
+        self.policy_network_only = policy_network_only
 
         # hidden layers
         for hid_idx, hid_sizes in enumerate(hidden_sizes):
@@ -714,6 +717,9 @@ class PropNetwork(tf.keras.layers.Layer):
         # policy head
         policy_out = masked_softmax(l_pre_softmax, act_mask)
 
+        if self.policy_network_only:
+            return policy_out
+
         # value head
         # state_repr = tf.reduce_mean(l_pre_softmax, axis=1)  # [batch, hidden_dim]
         # could also experiment with reduce_sum, reduce_max for better results
@@ -739,6 +745,9 @@ class PropNetwork(tf.keras.layers.Layer):
         value_out = tf.keras.layers.Dense(1, activation='tanh')(value_hidden)
 
         return policy_out, value_out
+
+    def policy_only(self) -> bool:
+        return self.policy_network_only
 
 
 def _merge_finals(prob_meta, final_acts):

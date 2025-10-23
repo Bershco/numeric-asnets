@@ -124,14 +124,14 @@ def start_server(service_args: 'ProblemServiceConfig',unix_socket_path: str = No
     def monitor():
         p = psutil.Process(os.getpid())
         while True:
-            sleep(1)
+            sleep(10)
             mem = p.memory_info().rss / 1e6
             fds = p.num_fds() if hasattr(p, "num_fds") else None
             threads = len(threading.enumerate())
             async_objs = [o for o in gc.get_objects() if isinstance(o, rpyc.core.async_.AsyncResult)]
             print(f"[DEBUG MONITOR] mem={mem:.1f}MB fds={fds} threads={threads}, active async results={len(async_objs)}", flush=True)
 
-    threading.Thread(target=monitor, daemon=True).start()
+    # threading.Thread(target=monitor, daemon=True).start()
 
 
     try:

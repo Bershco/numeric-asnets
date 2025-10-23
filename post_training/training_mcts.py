@@ -109,9 +109,12 @@ class TrainingMCTS(MCTS):
         if node.act_dist is None:
             if node.as_network_input is None:
                 node.as_network_input = self.problem_service.exposed_to_network_input(*node.get_identifiers())
-            node.act_dist, value_tensor = to_local(self.network(node.as_network_input))
-            # value_tensor = to_local(value_tensor)
-            node.value = float(value_tensor.numpy().squeeze())
+            if self.policy_only:
+                node.act_dist = to_local(self.network(node.as_network_input))
+            else:
+                node.act_dist, value_tensor = to_local(self.network(node.as_network_input))
+                # value_tensor = to_local(value_tensor)
+                node.value = float(value_tensor.numpy().squeeze())
         return tf.squeeze(node.act_dist)
 
     def run_search(self):
