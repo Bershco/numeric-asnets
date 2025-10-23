@@ -32,9 +32,11 @@ JARS_DIR = os.path.join(
 def start_jvm() -> None:
     """Start the JVM. Only the first call to this function will do anything."""
     jpype.startJVM(
-        jvmpath=jpype.getDefaultJVMPath(),
+        jpype.getDefaultJVMPath(),
+        "-Xcheck:jni",
         classpath=get_files_with_extension(JARS_DIR, '.jar')
     )
+    print(f"[JPYPE OK] JVM active in PID={os.getpid()}")
 
 
 @jpype.onJVMStart
@@ -101,6 +103,9 @@ class NumericLandmarkGenerator:
         Returns:
             List[NumericLandmark]: A list of landmarks.
         """
+        if not jpype.isJVMStarted():
+            print(f"[JPYPE WARN] JVM not running in PID={os.getpid()} "
+                  f"({self.__class__.__name__}), about to fail.")
         if cstate in self._cache:
             return self._cache[cstate]
 

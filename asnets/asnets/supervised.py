@@ -358,6 +358,10 @@ class PlannerExtensions(object):
         # (especially for numeric domains). SSiPP just hardcodes this as 500.
         return 500
 
+    def __del__(self):
+        import jpype, os
+        print(f"[DEBUG GC] JVM running at del? {jpype.isJVMStarted()} PID={os.getpid()}")
+
 def tf_and_print(name: str, value):
     tf.summary.scalar(name, value)
     base_name = tf.get_current_name_scope()
