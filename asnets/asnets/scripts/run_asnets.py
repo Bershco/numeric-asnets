@@ -285,14 +285,6 @@ class MonteCarloPolicyEvaluator(MCTS):
             action_following_state_path.append((best_action, mcts_node))
         return mcts_node.reward()
 
-    def _evaluate_node(self, node: MCTSNode) -> float:
-        """Use the teacher's (or another) heuristic to evaluate a specific node, in order to use value-based mcts"""
-        # value = self.problem_service.get_state_h(*node.get_identifiers())
-        value = self.get_value_from_mcts_node(node)
-        if self.debug_time_mcts_iterations:
-            self.after_eval_times.append(time())
-        return value
-
     def find_children(self, parent_node: MCTSNode) -> FixedChildMap:
         """Find up to k successors of parent_node that are applicable and not yet visited"""
         act_dist = self.get_act_dist_from_mcts_node(parent_node).numpy()

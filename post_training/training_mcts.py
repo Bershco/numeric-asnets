@@ -80,9 +80,6 @@ class TrainingMCTS(MCTS):
 
         node.children = FixedChildMap(keys,values)
 
-    def _evaluate_node(self, node) -> float:
-        return self._rollout(node)
-
     def _rollout(self, node, horizon=0):
         """Use value head for evaluation instead of random rollout."""
         return self.get_value_from_mcts_node(node)

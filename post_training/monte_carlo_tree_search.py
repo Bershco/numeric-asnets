@@ -152,6 +152,8 @@ class FixedChildMap:
         items = ', '.join(f"{k}: {v}" for k, v in self.items())
         return f"FixedChildMap({{{items}}})"
 
+    def is_empty(self) -> bool:
+        return len(self._keys) == 0
 
 class SelectProbe:
     """Lightweight, backward-compatible probe.
@@ -316,7 +318,8 @@ class MCTS:
         path = self._select(node)
         leaf = path[-1]
         self._expand(leaf)
-        reward = 1 / (1 + self._evaluate_node(leaf))
+        # reward = 1 / (1 + self._evaluate_node(leaf))
+        reward = self._evaluate_node(leaf)
         # numbers might be too low or insignificant?? I think it would be okay...
         # theoretically and practically it SHOULD not be lower than 1/10001 which isn't that low.
         self._backpropagate(path,reward)
@@ -333,7 +336,7 @@ class MCTS:
 
             # If node has no generated children (i.e. node not in children dict, or is in dict with None value) -
             # it's unexplored or terminal.
-            if childmap is None:
+            if childmap is None or childmap.is_empty():
                 if self.debug_time_mcts_iterations:
                     self.after_selection_times.append(time())
                 return path
@@ -388,9 +391,13 @@ class MCTS:
         if self.debug_time_mcts_iterations:
             self.end_times.append(time())
 
-    def _evaluate_node(self, node) -> float:
+    def _evaluate_node(self, node: MCTSNode) -> float:
         """Use the teacher's (or another) heuristic to evaluate a specific node, in order to use value-based mcts"""
-        raise NotImplemented
+        # value = self.problem_service.get_state_h(*node.get_identifiers())
+        value = self.get_value_from_mcts_node(node)
+        if self.debug_time_mcts_iterations:
+            self.after_eval_times.append(time())
+        return value
 
     def _puct_select_no_cycle(self, node, path_set):
         """Sample a child of `node` using PUCT scores as softmax logits while avoiding cycles.
@@ -530,7 +537,9 @@ class MCTS:
 
     def get_value_from_mcts_node(self, node: MCTSNode):
         if self.policy_only:
-            return self.problem_service.get_state_h(node.state_id,hash(node))
+            # Heuristic value (received by get_state_h) would be the distance to goal,
+            # reward \ value for a node\state would be 'how good it is' - hence the inverse
+            return 1 / (1 + self.problem_service.get_state_h(node.state_id,hash(node)))
         else:
             if node.value is None:
                 if node.as_network_input is None:
