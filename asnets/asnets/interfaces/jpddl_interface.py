@@ -13,6 +13,7 @@ from asnets.utils.py_utils import get_files_with_extension, run_once
 import jpype
 import jpype.imports
 from jpype.types import *
+import threading
 
 from asnets.prob_dom_meta import BoundAction
 from asnets.state_reprs import CanonicalState
@@ -36,7 +37,8 @@ def start_jvm() -> None:
         "-Xcheck:jni",
         classpath=get_files_with_extension(JARS_DIR, '.jar')
     )
-    print(f"[JPYPE OK] JVM active in PID={os.getpid()}")
+    print(f"[JPYPE OK] PID={os.getpid()} Thread={threading.current_thread().name} JVM started?"
+          f"{jpype.isJVMStarted()} attached? {jpype.isThreadAttachedToJVM()}")
 
 
 @jpype.onJVMStart
@@ -106,6 +108,9 @@ class NumericLandmarkGenerator:
         if not jpype.isJVMStarted():
             print(f"[JPYPE WARN] JVM not running in PID={os.getpid()} "
                   f"({self.__class__.__name__}), about to fail.")
+        if not jpype.isThreadAttachedToJVM():
+            print(f"[WARN] Attaching thread {threading.current_thread().name} to JVM in PID={os.getpid()}")
+            jpype.attachThreadToJVM()
         if cstate in self._cache:
             return self._cache[cstate]
 
