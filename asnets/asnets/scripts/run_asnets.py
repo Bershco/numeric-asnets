@@ -104,7 +104,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.visited_cstates_hashes: Set[int] = set()
         self.revisit_counter = 0
         self.use_value_based=use_value_based
-        self.memory_debug = debug_memory
+        self.debug_memory = debug_memory
         self.progressive_widening = progressive_widening
         self.batch_expansion_call=batch_expansion_call
 
@@ -192,7 +192,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         )
         # LOGGER.info(f'chosen action: {best_action}')
         self.visited_cstates_hashes.add(best_node.__hash__())
-        if self.memory_debug:
+        if self.debug_memory:
             self.print_memory_summary()
         return best_action
 
@@ -430,14 +430,14 @@ def move_to_next_state(problem_service, policy_evaluator, action, cost, current_
 
 def run_trials(network, problem_server, trials, iterations, horizon=None, limit=1000, det_sample=False,
                single_trial_graceful_timeout_sec=300, num_cstates_to_expand=5, use_value_based=False,
-               memory_debug=False,mcts_exploration_weight=1, mcts_smart_expansions=False):
+               debug_memory=False, mcts_exploration_weight=1, mcts_smart_expansions=False):
     # policy_evaluator = CachingPolicyEvaluator(policy=network, det_sample=det_sample)
     k = min(iterations - 1, num_cstates_to_expand)
     policy_evaluator = MonteCarloPolicyEvaluator(network=network, problem_service=problem_server.service,
                                                  problem_server=problem_server,
                                                  iterations=iterations, horizon=horizon,
                                                  num_cstates_to_generate_per_expansion=k,
-                                                 use_value_based=use_value_based, debug_memory=memory_debug,
+                                                 use_value_based=use_value_based, debug_memory=debug_memory,
                                                  exploration_weight=mcts_exploration_weight,
                                                  progressive_widening=mcts_smart_expansions,
                                                  )
@@ -889,7 +889,7 @@ parser.add_argument(
     default='hadd-gbfs',
     help='When value-based mcts runs, this would be the state-value heuristic function.')
 parser.add_argument(
-    '--memory-debug',
+    '--debug-memory',
     default=False,
     help='Enable memory debugging.')
 parser.add_argument(
@@ -927,7 +927,7 @@ def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
         single_trial_graceful_timeout_sec=args.graceful_timeout,
         num_cstates_to_expand=args.mcts_expansion_size,
         use_value_based=args.mcts_value_based,
-        memory_debug=args.memory_debug,
+        debug_memory=args.debug_memory,
         mcts_exploration_weight=args.mcts_exploration_weight,
         mcts_smart_expansions=args.mcts_smart_expansions,
     )
@@ -1180,7 +1180,8 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
                 min_new_pairs=args.min_explored,
                 max_new_pairs=args.max_explored,
                 expl_learn_ratio=args.exploration_learning_ratio,
-                max_replay_size=args.max_replay_size)
+                max_replay_size=args.max_replay_size,
+                debug_memory=args.debug_memory)
         else:
             raise ValueError(
                 f'Unknown exploration algorithm: {args.exploration_algorithm}')

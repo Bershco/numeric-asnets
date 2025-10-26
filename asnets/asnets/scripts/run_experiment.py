@@ -435,7 +435,7 @@ parser.add_argument(
     default='hadd-gbfs',
     help='When value-based mcts runs, this would be the state-value heuristic function.')
 parser.add_argument(
-    '--memory-debug',
+    '--debug-memory',
     default=False,
     help='Enable memory debugging.')
 parser.add_argument(
@@ -483,28 +483,28 @@ def main():
         print("[DEBUG_RAY] - ray.init() called with:", ray_kwargs)
         ray.init(**ray_kwargs)
 
-    main_inner( arch_mod=arch_mod,
-                prob_mod=prob_mod,
-                job_ncpus=args.job_ncpus,
-                resume_from=args.resume_from,
-                enforce_job_ncpus=args.enforce_job_ncpus,
-                restrict_test_probs=args.restrict_test_probs,
-                override_enhsp_config=args.override_enhsp_config,
-                serial_test=args.serial_test,
-                no_eval=args.no_eval,
-                profiling = args.profiling,
-                mcts_iterations= args.mcts_iterations,
-                mcts_rollout_horizon= args.mcts_rollout_horizon,
-                random_seed=args.random_seed,
-                mcts_expansion_size=args.mcts_expansion_size,
-                train_only=args.no_eval,
-                mcts_value_based=args.mcts_value_based,
-                mcts_heuristic=args.mcts_heuristic,
-                memory_debug=args.memory_debug,
-                mcts_exploration_weight=args.mcts_exploration_weight,
-                mcts_smart_expansions=args.mcts_smart_expansions,
-                policy_network_only=args.policy_network_only,
-    )
+    main_inner(arch_mod=arch_mod,
+               prob_mod=prob_mod,
+               job_ncpus=args.job_ncpus,
+               resume_from=args.resume_from,
+               enforce_job_ncpus=args.enforce_job_ncpus,
+               restrict_test_probs=args.restrict_test_probs,
+               override_enhsp_config=args.override_enhsp_config,
+               serial_test=args.serial_test,
+               no_eval=args.no_eval,
+               profiling = args.profiling,
+               mcts_iterations= args.mcts_iterations,
+               mcts_rollout_horizon= args.mcts_rollout_horizon,
+               random_seed=args.random_seed,
+               mcts_expansion_size=args.mcts_expansion_size,
+               train_only=args.no_eval,
+               mcts_value_based=args.mcts_value_based,
+               mcts_heuristic=args.mcts_heuristic,
+               debug_memory=args.debug_memory,
+               mcts_exploration_weight=args.mcts_exploration_weight,
+               mcts_smart_expansions=args.mcts_smart_expansions,
+               policy_network_only=args.policy_network_only,
+               )
     print('Fin :-)')
 
 
@@ -526,7 +526,7 @@ def main_inner(*,
                train_only=False,
                mcts_value_based=False,
                mcts_heuristic=None,
-               memory_debug=False,
+               debug_memory=False,
                mcts_exploration_weight=1,
                mcts_smart_expansions=False,
                policy_network_only=False,
@@ -617,8 +617,8 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.append('--mcts-value-based')
     if mcts_heuristic is not None:
         main_test_flags.extend(['--mcts-heuristic',str(mcts_heuristic)])
-    if memory_debug:
-        main_test_flags.append('--memory-debug')
+    if debug_memory:
+        main_test_flags.append('--debug-memory')
     if mcts_exploration_weight != 1:
         main_test_flags.extend(['--mcts-exploration-weight',str(mcts_exploration_weight)])
     if mcts_smart_expansions:

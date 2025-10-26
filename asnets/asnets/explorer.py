@@ -4,9 +4,11 @@ import concurrent
 import logging
 import random
 from time import time
-# import tqdm
 import tqdm.auto as tqdm
 from typing import List, Optional, Tuple
+
+from collections import Counter
+import gc
 
 from asnets.multiprob import to_local
 
@@ -55,6 +57,8 @@ class Explorer(ABC):
                 self.problems
             for problem in tr:
                 update_result(inner(problem))
+            if hasattr(tr,'close'):
+                tr.close()
         
         for problem in self.problems:
             self.traj_sizes[problem] = \
@@ -117,7 +121,8 @@ class DynamicExplorer(Explorer):
                  min_new_pairs: int,
                  max_new_pairs: int,
                  expl_learn_ratio: float,
-                 max_replay_size: int):
+                 max_replay_size: int,
+                 debug_memory: bool = False):
         super().__init__(problems)
         self.init_trajs_per_problem = init_trajs_per_problem
         self.min_new_pairs = min_new_pairs
@@ -128,6 +133,7 @@ class DynamicExplorer(Explorer):
         # this is the easiest way to do it. Also different exploration
         # algorithm manage the buffer differently
         self.max_replay_size = max_replay_size
+        self.debug_memory = debug_memory
     
     def _is_first_explore(self) -> bool:
         return len(self.recent_learning_times) == 0
@@ -206,3 +212,10 @@ class DynamicExplorer(Explorer):
             self.traj_sizes[problem] -= 1
             problem.problem_service.explore_from_random_state(problem.network)
         t.close()
+
+        if self.debug_memory:
+            objs = gc.get_objects()
+            types = Counter(type(o).__name__ for o in objs)
+            top = types.most_common(10)
+            print("[MEM] top object types:", top)
+            print("[MEM] total objects:", len(objs))
