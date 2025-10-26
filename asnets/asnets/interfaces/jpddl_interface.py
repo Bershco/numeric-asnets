@@ -13,6 +13,7 @@ import atexit
 import jpype
 import jpype.imports
 from jpype.types import *
+jpype.shutdownJVM = lambda *a, **kw: print("[DEBUG] Suppressed jpype.shutdownJVM() call")
 import threading
 
 from asnets.prob_dom_meta import BoundAction
@@ -28,17 +29,20 @@ JARS_DIR = os.path.join(
     'jars'
 )
 
+_GLOBAL_JVM_HANDLE = None
 
 @run_once
 def start_jvm() -> None:
-    """Start the JVM. Only the first call to this function will do anything."""
-    jpype.startJVM(
-        jpype.getDefaultJVMPath(),
-        "-Xcheck:jni",
-        classpath=get_files_with_extension(JARS_DIR, '.jar')
-    )
-    print(f"[JPYPE OK] PID={os.getpid()} Thread={threading.current_thread().name} JVM started?"
-          f"{jpype.isJVMStarted()} attached? {jpype.isThreadAttachedToJVM()}")
+    global _GLOBAL_JVM_HANDLE
+    if not jpype.isJVMStarted():
+        jpype.startJVM(
+            jpype.getDefaultJVMPath(),
+            "-Xms256m", "-Xmx1g",
+            classpath=":".join(get_files_with_extension(JARS_DIR, ".jar")),
+        )
+        print(f"[JPYPE OK] PID={os.getpid()} Thread={threading.current_thread().name} JVM started?"
+              f"{jpype.isJVMStarted()} attached? {jpype.isThreadAttachedToJVM()}")
+    _GLOBAL_JVM_HANDLE = True  # pin a global ref
 
 @atexit.register
 def check_jvm_shutdown():

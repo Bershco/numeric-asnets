@@ -272,7 +272,7 @@ class PlannerExtensions(object):
             assert domain_file is not None
             assert problem_file is not None
 
-            LOGGER.debug("Starting JVM...")
+            LOGGER.debug(f"Process {os.getpid()} Starting JVM...")
             start_jvm()
 
             LOGGER.debug("Creating J_PDDLDomain...")
