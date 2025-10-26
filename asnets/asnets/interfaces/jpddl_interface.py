@@ -1,6 +1,5 @@
 """Tools for interfacing with JPDDL using JPype.
 """
-
 # ! Everything in this file that is actually a Java class should have prefix
 # ! 'j_' (objects) or `J_` (classes) to avoid confusion with Python.
 
@@ -9,6 +8,7 @@ import os
 import logging
 from typing import List, Set, Tuple
 from asnets.utils.py_utils import get_files_with_extension, run_once
+import atexit
 
 import jpype
 import jpype.imports
@@ -40,6 +40,10 @@ def start_jvm() -> None:
     print(f"[JPYPE OK] PID={os.getpid()} Thread={threading.current_thread().name} JVM started?"
           f"{jpype.isJVMStarted()} attached? {jpype.isThreadAttachedToJVM()}")
 
+@atexit.register
+def check_jvm_shutdown():
+    print(f"[WORKER AT-EXIT] JVM running? {jpype.isJVMStarted()} PID={os.getpid()}")
+
 
 @jpype.onJVMStart
 def _import_java_classes() -> None:
@@ -52,14 +56,14 @@ def _import_java_classes() -> None:
         .hstairs.ppmajal.pddl.heuristics.advanced.LandmarkGenerator
 
 
-@jpype.onJVMStart
-def _suppress_java_stdout():
-    """Suppress JPDDL logging. This is called automatically upon JVM start-up.
-    """
-    J_System = jpype.JPackage('java').lang.System
-    J_PrintStream = jpype.JPackage('java').io.PrintStream
-    J_File = jpype.JPackage('java').io.File
-    J_System.setOut(J_PrintStream(J_File(os.devnull)))
+# @jpype.onJVMStart
+# def _suppress_java_stdout():
+#     """Suppress JPDDL logging. This is called automatically upon JVM start-up.
+#     """
+#     J_System = jpype.JPackage('java').lang.System
+#     J_PrintStream = jpype.JPackage('java').io.PrintStream
+#     J_File = jpype.JPackage('java').io.File
+#     J_System.setOut(J_PrintStream(J_File(os.devnull)))
 
 
 @dataclass
