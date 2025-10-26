@@ -436,6 +436,7 @@ parser.add_argument(
     help='When value-based mcts runs, this would be the state-value heuristic function.')
 parser.add_argument(
     '--debug-memory',
+    action='store_true',
     default=False,
     help='Enable memory debugging.')
 parser.add_argument(
