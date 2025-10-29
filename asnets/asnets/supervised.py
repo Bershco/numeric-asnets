@@ -362,10 +362,13 @@ class PlannerExtensions(object):
         import jpype, os
         print(f"[DEBUG GC] JVM running at del? {jpype.isJVMStarted()} PID={os.getpid()}")
 
-def tf_and_print(name: str, value):
+tf_logger = logging.getLogger('TF_SUMMARY_SCALAR_LOG')
+
+def tf_and_log(name: str, value):
     tf.summary.scalar(name, value)
     base_name = tf.get_current_name_scope()
-    print(f"[TF_SUMMARY_SCALAR_LOG] {base_name + '/' if base_name is not None else ''}{name} : {value}")
+    # print(f"[TF_SUMMARY_SCALAR_LOG] {base_name + '/' if base_name is not None else ''}{name} : {value}")
+    tf_logger.info(f"[TF_SUMMARY_SCALAR_LOG] {base_name + '/' if base_name is not None else ''}{name} : {value}")
 
 def make_problem_service(config, set_proc_title=False):
     """Construct Service class for a particular problem. Note that we must
@@ -1174,7 +1177,7 @@ class SupervisedTrainer:
 
                     if (self.batches_seen % 10) == 0:
                         # tf.summary.scalar('train-loss', loss)
-                        tf_and_print('train-loss', loss)
+                        tf_and_log('train-loss', loss)
 
 
                     self.batches_seen += 1
@@ -1209,7 +1212,7 @@ class SupervisedTrainer:
             replay_size = sum(replay_sizes)
 
             # tf.summary.scalar('lr', self.optimiser.lr)
-            tf_and_print('lr', self.optimiser.lr)
+            tf_and_log('lr', self.optimiser.lr)
             # update output
             tr.set_postfix(
                 succ_rate=total_succ_rate,
@@ -1217,15 +1220,15 @@ class SupervisedTrainer:
                 states=replay_size,
                 lr=self.optimiser.lr)
             # tf.summary.scalar('succ-rate/mean', total_succ_rate)
-            tf_and_print('succ-rate/mean', total_succ_rate)
+            tf_and_log('succ-rate/mean', total_succ_rate)
 
             for prob, prob_succ_rate in succs_probs:
                 pname = escape_name_tf(prob.name)
                 # tf.summary.scalar('succ-rate/%s' % pname, prob_succ_rate)
-                tf_and_print('succ-rate/%s' % pname, prob_succ_rate)
+                tf_and_log('succ-rate/%s' % pname, prob_succ_rate)
 
             # tf.summary.scalar('replay-size', replay_size)
-            tf_and_print('replay-size', replay_size)
+            tf_and_log('replay-size', replay_size)
             mean_loss = self._optimise(self.opt_batches_per_epoch)
             iter_num += 1
             # update output again
@@ -1448,7 +1451,7 @@ class ManualLoss:
 
         for part_loss_name, part_loss in loss_parts:
             # tf.summary.scalar('loss-%s' % part_loss_name, part_loss)
-            tf_and_print('loss-%s' % part_loss_name, part_loss)
+            tf_and_log('loss-%s' % part_loss_name, part_loss)
         return op_loss
 
     @can_profile
@@ -1504,11 +1507,11 @@ class ManualLoss:
                 act_dist_entropy = -tf.reduce_sum(act_dist * tf.math.log(act_dist + 1e-8), axis=-1)
                 mean_act_dist_entropy = tf.reduce_mean(act_dist_entropy)
                 # tf.summary.scalar("act_dist_entropy", mean_act_dist_entropy)
-                tf_and_print("act_dist_entropy", mean_act_dist_entropy)
+                tf_and_log("act_dist_entropy", mean_act_dist_entropy)
                 pi_targets_entropy = -tf.reduce_sum(pi_targets * tf.math.log(pi_targets + 1e-8), axis=-1)
                 mean_pi_targets_entropy = tf.reduce_mean(pi_targets_entropy)
                 # tf.summary.scalar("pi_entropy", mean_pi_targets_entropy)
-                tf_and_print("pi_entropy", mean_pi_targets_entropy)
+                tf_and_log("pi_entropy", mean_pi_targets_entropy)
 
                 xent = tf.cond(
                     tf.size(pi_targets) > 0,

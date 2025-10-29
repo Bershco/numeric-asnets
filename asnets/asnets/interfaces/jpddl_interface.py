@@ -4,7 +4,7 @@
 # ! 'j_' (objects) or `J_` (classes) to avoid confusion with Python.
 
 from dataclasses import dataclass
-import os
+import os, traceback
 import logging
 from typing import List, Set, Tuple
 from asnets.utils.py_utils import get_files_with_extension, run_once
@@ -69,6 +69,26 @@ def _import_java_classes() -> None:
 #     J_File = jpype.JPackage('java').io.File
 #     J_System.setOut(J_PrintStream(J_File(os.devnull)))
 
+def ensure_jvm():
+    """Restart the JVM if it was closed or crashed."""
+    if not jpype.isJVMStarted():
+        print(f"[RECOVER] Restarting JVM in PID={os.getpid()}")
+        try:
+            jpype.startJVM(
+                jpype.getDefaultJVMPath(),
+                "-Xms256m", "-Xmx1g",
+                classpath=":".join(get_files_with_extension(JARS_DIR, ".jar")),
+            )
+            print(f"[RECOVER] JVM restarted successfully.")
+        except Exception:
+            print("[RECOVER] JVM restart failed:")
+            traceback.print_exc()
+            raise
+    if not jpype.isThreadAttachedToJVM():
+        print(f"[RECOVER] JVM was not attached in PID={os.getpid()} thread={threading.current_thread().name}, attaching.")
+        jpype.attachThreadToJVM()
+
+
 
 @dataclass
 class NumericLandmark:
@@ -113,12 +133,7 @@ class NumericLandmarkGenerator:
         Returns:
             List[NumericLandmark]: A list of landmarks.
         """
-        if not jpype.isJVMStarted():
-            print(f"[JPYPE WARN] JVM not running in PID={os.getpid()} "
-                  f"({self.__class__.__name__}), about to fail.")
-        if not jpype.isThreadAttachedToJVM():
-            print(f"[WARN] Attaching thread {threading.current_thread().name} to JVM in PID={os.getpid()}")
-            jpype.attachThreadToJVM()
+        ensure_jvm()
         if cstate in self._cache:
             return self._cache[cstate]
 
