@@ -1099,12 +1099,15 @@ def make_services(args):
         problem_server = ProblemServer(service_config)
         servers.append(problem_server)
         # must call initialise()
-        init_method = rpyc.async_(problem_server.service.initialise)
-        init_method_2 = rpyc.async_(problem_server.service.initialise_estimator)
+        # init_method = rpyc.async_(problem_server.service.initialise)
+        # init_method_2 = rpyc.async_(problem_server.service.initialise_estimator)
+        init_method = rpyc.async_(problem_server.service._unwrap().initialise)
+        init_method_2 = rpyc.async_(problem_server.service._unwrap().initialise_estimator)
         async_calls.append(init_method())
         async_calls.append(init_method_2(enhsp_config=args.mcts_heuristic))
 
-        init_method_3 = rpyc.async_(problem_server.service.set_policy_only)
+        # init_method_3 = rpyc.async_(problem_server.service.set_policy_only)
+        init_method_3 = rpyc.async_(problem_server.service._unwrap().set_policy_only)
         if args.policy_network_only:
             async_calls.append(init_method_3(True))
         else:

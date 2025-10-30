@@ -244,6 +244,7 @@ class ProblemServer(object):
                 service_conf,
                 self._unix_sock_path,
             ))
+        self._service_conf = service_conf
         self._serve_proc.daemon = False  # ensure child stays attached to parent console
         sys.stdout.flush()
         sys.stderr.flush()  # flush parent before fork
@@ -301,7 +302,7 @@ class ProblemServer(object):
         """Close the RPyC connection and stop the server process. Idempotent."""
         # close client connection
         print("[DEBUG] Closing connection to the server through 'stop'.")
-        print(f"[PARENT] Server process exited with code {self._serve_proc.exitcode if self._serve_proc is not None else 0}")
+        print(f"[PARENT] Server process (PID={self._serve_proc.pid if self._serve_proc is not None else 'None'}) exited with code {self._serve_proc.exitcode if self._serve_proc is not None else 0}")
         print(f"[DEBUG] Process alive? {self._serve_proc.is_alive() if self._serve_proc is not None else False}")
         try:
             if getattr(self, "_conn", None):
@@ -397,6 +398,26 @@ class ProblemServer(object):
 
         return self._conn
 
+    def _reconnect(self):
+        """Restart the worker process and reconnect."""
+        print(f"[WATCHDOG] Restarting worker for PID={self._serve_proc.pid if self._serve_proc else 'N/A'}")
+        # Kill old process cleanly
+        try:
+            self.stop()
+        except Exception as e:
+            print(f"[WATCHDOG] stop() raised during reconnect: {e}")
+
+        # Spawn a fresh process
+        self._serve_proc = Process(target=start_server, args=(self._service_conf, self._unix_sock_path))
+        self._serve_proc.daemon = False
+        self._serve_proc.start()
+        self._start_time = time()
+        wait_exists_polling(self._unix_sock_path, max_wait=self.MAX_WAIT_TIME)
+        self._conn = None
+        self._conn = self._get_rpyc_conn()
+        print(f"[WATCHDOG] Reconnected successfully to new worker PID={self._serve_proc.pid}")
+        return self._conn
+
     # def _get_rpyc_conn(self):
     #     """Get or create the TCP RPyC connection using the addr JSON file."""
     #     if self._conn is not None:
@@ -441,11 +462,47 @@ class ProblemServer(object):
         """
         return self._get_rpyc_conn()
 
+    # @property
+    # def service(self):
+    #     """Return handle on root service for connection, which in this case is a
+    #     ProblemService."""
+    #     return self.conn.root
     @property
     def service(self):
-        """Return handle on root service for connection, which in this case is a
-        ProblemService."""
-        return self.conn.root
+        """Return a resilient handle on the ProblemService with auto-reconnect."""
+        raw_service = self.conn.root
+
+        class ResilientProxy:
+            def __init__(self, outer_server, inner_service):
+                self._outer = outer_server
+                self._inner = inner_service
+
+            def __getattr__(self, name):
+                attr = getattr(self._inner, name)
+                if not callable(attr):
+                    return attr
+
+                def wrapped(*args, **kwargs):
+                    for attempt in range(2):
+                        try:
+                            return getattr(self._inner, name)(*args, **kwargs)
+                        except (EOFError, ConnectionError, rpyc.AsyncResultTimeout) as e:
+                            if attempt == 0:
+                                print(f"[WATCHDOG] Lost worker on '{name}', reconnecting... ({e})")
+                                # Reconnect the worker
+                                new_conn = self._outer._reconnect()
+                                # Update the proxy’s inner handle to the fresh ProblemService
+                                self._inner = new_conn.root
+                            else:
+                                raise
+
+                return wrapped
+
+            def _unwrap(self):
+                """Return the underlying remote ProblemService (Netref)."""
+                return self._inner
+
+        return ResilientProxy(self, raw_service)
 
     def is_conn_alive(self):
         """Return True if RPyC connection still open."""

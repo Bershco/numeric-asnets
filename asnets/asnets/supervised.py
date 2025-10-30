@@ -52,6 +52,16 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.DEBUG)
 
 
+# ---- diagnostics: catch everything that reaches top-level ----
+
+def _global_excepthook(exc_type, exc_value, exc_tb):
+    print(f"[WORKER EXCEPTION PID={os.getpid()}]")
+    traceback.print_exception(exc_type, exc_value, exc_tb)
+    sys.stderr.flush()
+
+sys.excepthook = _global_excepthook
+
+
 @jpype.onJVMStart
 def _import_java_classes() -> None:
     """Import Java classes that will be used by this module. This is called
