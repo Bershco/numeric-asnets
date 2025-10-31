@@ -401,6 +401,9 @@ class ProblemServer(object):
     def set_policy_only(self, value: bool) -> None:
         self.policy_only = value
 
+    def set_enhsp_config(self, config: str) -> None:
+        self.enhsp_config = config
+
     def _reconnect(self):
         """Restart the worker process and reconnect."""
         print(f"[WATCHDOG] Restarting worker for PID={self._serve_proc.pid if self._serve_proc else 'N/A'}")
@@ -424,8 +427,9 @@ class ProblemServer(object):
             print("[WATCHDOG] Initialising new worker service...")
             self.service._unwrap().initialise()
             print("[WATCHDOG] Worker initialised successfully.")
-            self.service._unwrap().initialise_estimator()
-            print("[WATCHDOG] Worker's estimator initialised successfully.")
+            estimator_config = self.enhsp_config if self.enhsp_config is not None else "hadd-gbfs"
+            self.service._unwrap().initialise_estimator(estimator_config)
+            print(f"[WATCHDOG] Worker's estimator initialised successfully with config {estimator_config}.")
             self.service._unwrap().set_policy_only(self.policy_only)
             print(f"[WATCHDOG] Worker's using policy {'only' if self.policy_only else 'and value'} network.")
         except Exception as e:

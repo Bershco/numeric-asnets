@@ -1105,7 +1105,7 @@ def make_services(args):
         init_method_2 = rpyc.async_(problem_server.service._unwrap().initialise_estimator)
         async_calls.append(init_method())
         async_calls.append(init_method_2(enhsp_config=args.mcts_heuristic))
-
+        problem_server.set_enhsp_config(args.mcts_heuristic)
         # init_method_3 = rpyc.async_(problem_server.service.set_policy_only)
         init_method_3 = rpyc.async_(problem_server.service._unwrap().set_policy_only)
         if args.policy_network_only:
