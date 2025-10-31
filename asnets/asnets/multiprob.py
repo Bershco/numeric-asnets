@@ -398,6 +398,9 @@ class ProblemServer(object):
 
         return self._conn
 
+    def set_policy_only(self, value: bool) -> None:
+        self.policy_only = value
+
     def _reconnect(self):
         """Restart the worker process and reconnect."""
         print(f"[WATCHDOG] Restarting worker for PID={self._serve_proc.pid if self._serve_proc else 'N/A'}")
@@ -415,6 +418,19 @@ class ProblemServer(object):
         wait_exists_polling(self._unix_sock_path, max_wait=self.MAX_WAIT_TIME)
         self._conn = None
         self._conn = self._get_rpyc_conn()
+
+        # Initialise the new worker before continuing
+        try:
+            print("[WATCHDOG] Initialising new worker service...")
+            self.service._unwrap().initialise()
+            print("[WATCHDOG] Worker initialised successfully.")
+            self.service._unwrap().initialise_estimator()
+            print("[WATCHDOG] Worker's estimator initialised successfully.")
+            self.service._unwrap().set_policy_only(self.policy_only)
+            print(f"[WATCHDOG] Worker's using policy {'only' if self.policy_only else 'and value'} network.")
+        except Exception as e:
+            print(f"[WATCHDOG] Failed to initialise new worker: {e}")
+
         print(f"[WATCHDOG] Reconnected successfully to new worker PID={self._serve_proc.pid}")
         return self._conn
 

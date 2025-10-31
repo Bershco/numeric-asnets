@@ -1110,8 +1110,10 @@ def make_services(args):
         init_method_3 = rpyc.async_(problem_server.service._unwrap().set_policy_only)
         if args.policy_network_only:
             async_calls.append(init_method_3(True))
+            problem_server.set_policy_only(True)
         else:
             async_calls.append(init_method_3(False))
+            problem_server.set_policy_only(False)
 
     # wait for initialise() calls to finish
     for async_call in async_calls:

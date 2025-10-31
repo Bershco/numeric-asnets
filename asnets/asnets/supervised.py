@@ -762,8 +762,15 @@ def make_problem_service(config, set_proc_title=False):
 
         def internal_explore_from_random_state(self, network: Callable) -> None:
             """Self-play exploration for AlphaZero-style data generation."""
-
-            cstate = self.traj_states.pop_random()
+            try:
+                cstate = self.traj_states.pop_random()
+            except ValueError as e:
+                print(e)
+                print("[WATCHDOG] Attempted popping from an empty traj_states,"
+                      " probably restarted service, collecting a single trajectory to continue.")
+                self.internal_collect_trajectory(network)
+                cstate = self.traj_states.pop_random()
+                # if this fails, it *should* break the whole process
             mcts_tree = TrainingMCTS(
                 network=network,
                 problem_service=self,
