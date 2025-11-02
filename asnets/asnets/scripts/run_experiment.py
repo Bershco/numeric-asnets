@@ -65,15 +65,17 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
         cmdline.extend(['--graceful-timeout', str(timeout - 300)])
     if memory_profiling:
         # If MEMRAY=1 in the environment, wrap run_asnets with memray and save to a stable dir
-        if environ.get("MEMRAY", "0") == "1":
-            logdir = environ.get("MEMRAY_LOGDIR",path.expanduser("~/training_new_domains/alphazero_training/memray_logs"))
-            makedirs(logdir, exist_ok=True)
-            job = environ.get("SLURM_JOB_ID", "noj")
-            task = environ.get("SLURM_PROCID", "0")
-            base = f"runasn-{job}-{task}"
-            outfile = path.join(logdir, f"{base}.bin")
-            cmdline.extend(['python3', '-m', 'memray', 'run', '--follow-fork', '-o', outfile,
-                               '-m', 'asnets.scripts.run_asnets'] + flags)
+        logdir = path.expanduser("~/training_new_domains/alphazero_training/memray_logs")
+        makedirs(logdir, exist_ok=True)
+        job = environ.get("SLURM_JOB_ID", "noj")
+        task = environ.get("SLURM_PROCID", "0")
+        # timestamp helps avoid collisions across retries
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        base = f"runasn-{job}-{task}-{ts}"
+        outfile = path.join(logdir, f"{base}.bin")
+        cmdline.extend(['python3', '-m', 'memray', 'run', '--follow-fork', '-o', outfile,
+                           '-m', 'asnets.scripts.run_asnets'] + flags
+                       + ['--graceful-timeout', str((3 * 60 * 60))])
     else:
         cmdline.extend(['python3', '-u', '-m', 'asnets.scripts.run_asnets'] + flags)
 
