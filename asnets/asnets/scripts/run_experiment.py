@@ -6,7 +6,7 @@ import argparse
 import datetime
 from hashlib import md5
 from importlib import import_module
-from os import path, makedirs, listdir, getcwd
+from os import path, makedirs, listdir, getcwd,environ
 from shutil import copytree
 from subprocess import Popen, PIPE, TimeoutExpired
 import sys
@@ -45,9 +45,10 @@ def get_pin_list():
 
 
 def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
-                     enforce_ncpus, cwd, profiling=False, train_only=False):
+                     enforce_ncpus, cwd, profiling=False, train_only=False, memory_profiling=False):
     """Run ASNets code on current node. May be useful to wrap this in a
     ray.remote()."""
+    assert not profiling or not memory_profiling, "Cannot profile memory and efficiency at the same time."
     cmdline = []
     if enforce_ncpus:
         pin_list = get_pin_list()
@@ -62,7 +63,17 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
                        ] + flags)
         # for graceful timeout of a single trial - this is specifically for profiling, but can obviously be used otherwise
         cmdline.extend(['--graceful-timeout', str(timeout - 300)])
-
+    if memory_profiling:
+        # If MEMRAY=1 in the environment, wrap run_asnets with memray and save to a stable dir
+        if environ.get("MEMRAY", "0") == "1":
+            logdir = environ.get("MEMRAY_LOGDIR",path.expanduser("~/training_new_domains/alphazero_training/memray_logs"))
+            makedirs(logdir, exist_ok=True)
+            job = environ.get("SLURM_JOB_ID", "noj")
+            task = environ.get("SLURM_PROCID", "0")
+            base = f"runasn-{job}-{task}"
+            outfile = path.join(logdir, f"{base}.bin")
+            cmdline.extend(['python3', '-m', 'memray', 'run', '--follow-fork', '-o', outfile,
+                               '-m', 'asnets.scripts.run_asnets'] + flags)
     else:
         cmdline.extend(['python3', '-u', '-m', 'asnets.scripts.run_asnets'] + flags)
 
@@ -357,6 +368,11 @@ parser.add_argument(
     action='store_true',
     help='run cProfile on subprocesses running "run_asnets.py"')
 parser.add_argument(
+    '--memory-profiling',
+    default=False,
+    action='store_true',
+    help='run memray profiling for memory usage across main process and rpyc workers')
+parser.add_argument(
     '--serial-test',
     default=False,
     action='store_true',
@@ -494,6 +510,7 @@ def main():
                serial_test=args.serial_test,
                no_eval=args.no_eval,
                profiling = args.profiling,
+               memory_profiling = args.memory_profiling,
                mcts_iterations= args.mcts_iterations,
                mcts_rollout_horizon= args.mcts_rollout_horizon,
                random_seed=args.random_seed,
@@ -520,6 +537,7 @@ def main_inner(*,
                serial_test=None,
                no_eval=None,
                profiling=False,
+               memory_profiling=False,
                mcts_iterations=None,
                mcts_rollout_horizon=None,
                random_seed=None,
@@ -579,6 +597,7 @@ evaluation = {"off" if no_eval else "on"}
             timeout=arch_mod.TIME_LIMIT_SECONDS,
             train_only=train_only,
             profiling=profiling,
+            memory_profiling=memory_profiling,
         )
         print('Last valid checkpoint is %s' % final_checkpoint)
     else:
