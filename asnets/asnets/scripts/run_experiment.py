@@ -57,14 +57,16 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
         print('Pinning job with "%s"' % ' '.join(ts_cmd))
         cmdline.extend(ts_cmd)
     if profiling:
+        print("[run_experiment_setup] timing profiling is on.")
         cmdline.extend([
                            'python3', '-m', 'cProfile', '-o', 'profile_output.prof',
                            '-m', 'asnets.scripts.run_asnets'
                        ] + flags)
         # for graceful timeout of a single trial - this is specifically for profiling, but can obviously be used otherwise
         cmdline.extend(['--graceful-timeout', str(timeout - 300)])
-    if memory_profiling:
+    elif memory_profiling:
         # If MEMRAY=1 in the environment, wrap run_asnets with memray and save to a stable dir
+        print("[run_experiment_setup] memory profiling is on.")
         logdir = path.expanduser("~/training_new_domains/alphazero_training/memray_logs")
         makedirs(logdir, exist_ok=True)
         job = environ.get("SLURM_JOB_ID", "noj")
