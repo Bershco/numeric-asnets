@@ -1291,6 +1291,7 @@ class SupervisedTrainer:
 
             if self.timeout:
                 keep_going = keep_going and elapsed_time <= self.timeout
+                print(f'[TIMING_TERMINATION] elapsed time: {elapsed_time}, and timeout is set to: {self.timeout}')
 
             if not keep_going:
                 LOGGER.info('Terminating early')
