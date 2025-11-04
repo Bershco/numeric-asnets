@@ -1214,6 +1214,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
             scratch_dir=scratch_dir,
             snapshot_dir=snapshot_dir,
             dk=args.dK,
+            time_out=args.timeout,
         )
         best_rate, elapsed_time, iter_num = sup_trainer.train(
             max_epochs=args.max_opt_epochs)

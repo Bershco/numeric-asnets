@@ -18,6 +18,8 @@ import tqdm.auto as tqdm
 from types import ModuleType
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
+import datetime
+
 from asnets.heur_inputs import ActionCountDataGenerator, \
     HeuristicDataGenerator, LMCutDataGenerator, RelaxedDeadendDetector, \
     NumericLandmarkGenerator
@@ -60,6 +62,12 @@ def _global_excepthook(exc_type, exc_value, exc_tb):
     sys.stderr.flush()
 
 sys.excepthook = _global_excepthook
+
+def format_seconds_as_dhm(seconds_float):
+    # Create a timedelta object
+    timedelta_duration = datetime.timedelta(seconds=seconds_float)
+    # The string representation is close to the desired format
+    return str(timedelta_duration)
 
 
 @jpype.onJVMStart
@@ -1212,7 +1220,7 @@ class SupervisedTrainer:
         solve_thresh = 0.999
         tr = tqdm.trange(max_epochs, desc='epoch', leave=True)
         mean_loss = None
-        elapsed_time = time() - self.start_time
+
 
         # set up tensorboard logging
         epoch = tf.Variable(0, dtype=tf.int64)
@@ -1221,7 +1229,6 @@ class SupervisedTrainer:
         for epoch_num in tr:
             # update the epoch variable
             epoch.assign(epoch_num)
-
             # only extend replay by a bit each time
             succs_probs = self.explorer.extend_replay()
             total_succ_rate = np.mean([s for _, s in succs_probs])
@@ -1288,10 +1295,10 @@ class SupervisedTrainer:
                 fp.write(self.timer.to_json())
 
             tf.summary.flush()
-
+            elapsed_time = time() - self.start_time
             if self.timeout:
                 keep_going = keep_going and elapsed_time <= self.timeout
-                print(f'[TIMING_TERMINATION] elapsed time: {elapsed_time}, and timeout is set to: {self.timeout}')
+                print(f'[TIMING_TERMINATION] elapsed time: {format_seconds_as_dhm(elapsed_time)}, and timeout is set to: {format_seconds_as_dhm(self.timeout)}')
 
             if not keep_going:
                 LOGGER.info('Terminating early')
