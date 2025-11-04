@@ -1055,7 +1055,7 @@ class SupervisedTrainer:
                  save_training_set=None,
                  use_saved_training_set=None,
                  hide_progress=False,
-                 time_out=120,
+                 time_out=40,
                  early_stop=20,
                  save_every=20,
                  dk="dk"
