@@ -114,7 +114,7 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
         timed_out = False
         bad_retcode = False
         try:
-            dfpg_proc.wait(timeout=timeout)
+            dfpg_proc.wait(timeout=max(timeout * 1.25, timeout + 300))
         except TimeoutExpired:
             # uh, oops; better kill everything
             print('Run timed out after %ss!' % timeout)
