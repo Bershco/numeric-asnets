@@ -1297,7 +1297,7 @@ class SupervisedTrainer:
             tf.summary.flush()
             elapsed_time = time() - self.start_time
             if self.timeout:
-                keep_going = keep_going and elapsed_time <= self.timeout
+                keep_going = keep_going and elapsed_time <= self.timeout * 0.95
                 print(f'[TIMING_TERMINATION] elapsed time: {format_seconds_as_dhm(elapsed_time)}, and timeout is set to: {format_seconds_as_dhm(self.timeout)}')
 
             if not keep_going:
