@@ -362,6 +362,10 @@ class PropNetwork(tf.keras.layers.Layer):
 
         self.policy_network_only = policy_network_only
 
+        if not self.policy_network_only:
+            self.value_hidden_layer = tf.keras.layers.Dense(64, activation='relu')
+            self.value_out_layer = tf.keras.layers.Dense(1)
+
         # hidden layers
         for hid_idx, hid_sizes in enumerate(hidden_sizes):
             act_dict = {}
@@ -743,8 +747,10 @@ class PropNetwork(tf.keras.layers.Layer):
         else:
             raise ValueError(f"Unexpected shape for l_pre_softmax: {l_pre_softmax.shape}")
 
-        value_hidden = tf.keras.layers.Dense(64, activation='relu')(state_repr)
-        value_out = tf.keras.layers.Dense(1, activation='tanh')(value_hidden)
+        # value_hidden = tf.keras.layers.Dense(64, activation='relu')(state_repr)
+        # value_out = tf.keras.layers.Dense(1, activation='tanh')(value_hidden)
+        value_hidden = self.value_hidden_layer(state_repr)
+        value_out = self.value_out_layer(value_hidden)
 
         return policy_out, value_out
 
