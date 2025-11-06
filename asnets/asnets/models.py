@@ -348,6 +348,7 @@ class PropNetwork(tf.keras.layers.Layer):
 
         self.dropout = dropout
 
+
         hidden_sizes = self._weight_manager.hidden_sizes
         dom_meta = self._weight_manager.dom_meta
 

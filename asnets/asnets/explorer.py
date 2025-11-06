@@ -28,7 +28,8 @@ class Explorer(ABC):
             hit_goal = []
             for _ in range(num_per_problem):
                 hit_goal.append(
-                    problem.problem_service.collect_trajectory(problem.network))
+                    # problem.problem_service.collect_trajectory(problem.network))
+                    problem.problem_service.collect_trajectory(problem.network.get_weights()))
             
             return problem, hit_goal
         
@@ -110,7 +111,8 @@ class StaticExplorer(Explorer):
     def explore(self) -> None:
         self._collect_trajectories(self.trajs_per_problem)
         for problem in tqdm.tqdm(self.problems, desc='static explore'):
-            problem.problem_service.explore_from_trajectories(problem.network)
+            # problem.problem_service.explore_from_trajectories(problem.network)
+            problem.problem_service.explore_from_trajectories(problem.network.get_weights())
 
 
 class DynamicExplorer(Explorer):
@@ -210,7 +212,8 @@ class DynamicExplorer(Explorer):
                 continue
         
             self.traj_sizes[problem] -= 1
-            problem.problem_service.explore_from_random_state(problem.network)
+            # problem.problem_service.explore_from_random_state(problem.network)
+            problem.problem_service.explore_from_random_state(problem.network.get_weights())
         t.close()
 
         if self.debug_memory:

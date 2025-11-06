@@ -1146,6 +1146,8 @@ def make_services(args):
             weight_manager=weight_manager,
         )
         problems.append(problem)
+        problem.problem_service.make_network(weight_manager, problem.prob_meta, dropout=args.dropout,
+                                             debug=args.net_debug, policy_network_only=args.policy_network_only)
 
     return problems, weight_manager
 

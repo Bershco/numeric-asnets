@@ -23,6 +23,7 @@ import datetime
 from asnets.heur_inputs import ActionCountDataGenerator, \
     HeuristicDataGenerator, LMCutDataGenerator, RelaxedDeadendDetector, \
     NumericLandmarkGenerator
+from asnets.models import PropNetworkWeights, PropNetwork
 from asnets.utils.mdpsim_utils import parse_problem_args
 from asnets.prob_dom_meta import BoundAction, DomainType, get_domain_meta, \
     get_problem_meta
@@ -405,18 +406,20 @@ def make_problem_service(config, set_proc_title=False):
         """Spools up a new Python interpreter and uses it to sandbox SSiPP and
         MDPSim. Can interact with this to train a Q-network."""
 
-        def exposed_collect_trajectory(self, model) -> bool:
+        def exposed_collect_trajectory(self, weights) -> bool:
             """Collect a single trajectory using the given policy (represented
             as a function from flattened observation vectors to action
             numbers)."""
-            return self.internal_collect_trajectory(
-                model)
+            self.internal_set_weights(weights)
+            return self.internal_collect_trajectory(self.network)
         
-        def exposed_explore_from_trajectories(self, network: Callable):
-            self.internal_explore_from_trajectories(network)
+        def exposed_explore_from_trajectories(self, weights):
+            self.internal_set_weights(weights)
+            self.internal_explore_from_trajectories(self.network)
         
-        def exposed_explore_from_random_state(self, network: Callable):
-            self.internal_explore_from_random_state(network)
+        def exposed_explore_from_random_state(self, weights):
+            self.internal_set_weights(weights)
+            self.internal_explore_from_random_state(self.network)
 
         def exposed_dataset_is_empty(self):
             return len(self.replay) == 0
@@ -635,6 +638,7 @@ def make_problem_service(config, set_proc_title=False):
 
             self.stochastic = True
 
+            self.network_initialised = False
             self.initialised = True
             LOGGER.debug("ProblemService finished initialisation.")
 
@@ -926,9 +930,20 @@ def make_problem_service(config, set_proc_title=False):
                 # re-raise to ensure RPyC propagates the error correctly
                 raise
 
-
         def internal_get_applicable_action_mask(self, cstate: CanonicalState):
             return [activated for _, activated in cstate.acts_enabled]
+
+        def exposed_make_network(self, weights_manager: PropNetworkWeights, prob_meta, dropout, debug, policy_network_only):
+            assert self.initialised
+            assert self.estimator_initialised
+            self.network = PropNetwork(weights_manager, prob_meta,
+                                       dropout=dropout, debug=debug, policy_network_only=policy_network_only)
+            self.network_initialised = True
+
+        def internal_set_weights(self, weights):
+            assert self.network_initialised
+            self.network.set_weights(weights)
+
 
     return ProblemService
 
