@@ -318,7 +318,8 @@ class PropLayerModule(NetworkModule):
                 f'{self.name_pfx} is the first layer and somehow has prev_self'
 
         # 3. Run the custom multi-gather-concat operation
-        with tf.name_scope(self.name_pfx + '/mpc'):
+        # with tf.name_scope(self.name_pfx + '/mpc'):
+        with tf.name_scope('testing/mpc'):
             mpc_inputs = []
             mpc_ragged_pools = []
 
