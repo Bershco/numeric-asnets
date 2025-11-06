@@ -37,12 +37,15 @@ class NetworkModule(abc.ABC):
         pass
 
     def compute_output(self, conv_input):
-        with tf.name_scope(self.name_pfx + '/conv'):
+        # with tf.name_scope(self.name_pfx + '/conv'):
+        with tf.name_scope('testing/conv'):
             conv_result = _apply_conv_matmul(conv_input, self.W)
             rv = self.nonlinearity(conv_result + self.b[None, :])
 
         if self.dropout > 0:
-            rv = tf.nn.dropout(rv, self.dropout, name=self.name_pfx + '/drop')
+            rv = tf.nn.dropout(rv, self.dropout,
+                               # name=self.name_pfx + '/drop'
+                               )
 
         return rv
 
@@ -174,7 +177,8 @@ class ActionModule(NetworkModule):
                 f'{self.name_pfx} is the first layer and somehow has prev_act'
 
         # 3. Run the custom multi-gather-concat operation
-        with tf.name_scope(self.name_pfx + '/mgc'):
+        # with tf.name_scope(self.name_pfx + '/mgc'):
+        with tf.name_scope('testing/mgc'):
             mgc_inputs = []
             mgc_elem_indices = []
 
