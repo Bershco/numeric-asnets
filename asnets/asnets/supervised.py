@@ -1227,8 +1227,8 @@ class SupervisedTrainer:
         self.summary_writer.set_as_default(step=epoch)
 
         for epoch_num in tr:
-            if epoch_num%3==0:
-                tf.keras.backend.clear_session()
+            # if epoch_num%3==0:
+            #     tf.keras.backend.clear_session()
             # update the epoch variable
             epoch.assign(epoch_num)
             # only extend replay by a bit each time

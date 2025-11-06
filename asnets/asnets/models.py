@@ -536,6 +536,7 @@ class PropNetwork(tf.keras.layers.Layer):
 
         return out_dict
 
+    @tf.function(reduce_retracing=True)
     def call(self, inputs, *args, **kwargs):
         # input vector spec:
         #
