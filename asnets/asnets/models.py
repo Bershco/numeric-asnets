@@ -489,26 +489,26 @@ class PropNetwork(tf.keras.layers.Layer):
             Tuple[Any, tf.Tensor]: A dictionary mapping unbounded objects to
             their inputs.
         """
-        with tf.init_scope():
-            rv = {}
+        rv = {}
 
-            bounded_to_flat_input_idx = {
-                bounded: idx
-                for idx, bounded in enumerate(boundeds)
-            }
-            for unbounded in unboundeds:
-                sub_boundeds = unbounded_to_bounded(unbounded)
-                gather_inds = []
-                for sub_bounded in sub_boundeds:
-                    to_look_up = bounded_to_flat_input_idx[sub_bounded]
-                    gather_inds.append(to_look_up)
+        bounded_to_flat_input_idx = {
+            bounded: idx
+            for idx, bounded in enumerate(boundeds)
+        }
+        for unbounded in unboundeds:
+            sub_boundeds = unbounded_to_bounded(unbounded)
+            gather_inds = []
+            for sub_bounded in sub_boundeds:
+                to_look_up = bounded_to_flat_input_idx[sub_bounded]
+                gather_inds.append(to_look_up)
 
-                rv[unbounded] = tf.gather(obs,
-                                          gather_inds,
-                                          axis=1,
-                                          name=f'split_input/{unbounded}')
+            rv[unbounded] = tf.gather(obs,
+                                      gather_inds,
+                                      axis=1,
+                                      # name=f'split_input/{unbounded}'
+                                      )
 
-            return rv
+        return rv
 
     def _split_extra(self, extra_data):
         """Sometimes we also have input data which goes straight to the
