@@ -600,40 +600,41 @@ class PropNetwork(tf.keras.layers.Layer):
             [float(prop in prob_meta.goal_props)
              for prop in prob_meta.bound_props_ordered]
         )
-        pred_dict = self._split_input(
-            l_obs_prop,
-            prob_meta.bound_props_ordered,
-            prob_meta.domain.pred_names,
-            prob_meta.pred_to_props)
+        with tf.init_scope():
+            pred_dict = self._split_input(
+                l_obs_prop,
+                prob_meta.bound_props_ordered,
+                prob_meta.domain.pred_names,
+                prob_meta.pred_to_props)
 
-        func_dict = None
-        if self.use_fluents:
-            # [None, num_flnts, 2]
-            l_obs_flnt = merge_with_goal_vec(
-                flnt_values,
-                [float(flnt in prob_meta.goal_flnts)
-                 for flnt in prob_meta.bound_flnts_ordered]
-            )
-            func_dict = self._split_input(
-                l_obs_flnt,
-                prob_meta.bound_flnts_ordered,
-                prob_meta.domain.func_names,
-                prob_meta.func_to_flnts)
+            func_dict = None
+            if self.use_fluents:
+                # [None, num_flnts, 2]
+                l_obs_flnt = merge_with_goal_vec(
+                    flnt_values,
+                    [float(flnt in prob_meta.goal_flnts)
+                     for flnt in prob_meta.bound_flnts_ordered]
+                )
+                func_dict = self._split_input(
+                    l_obs_flnt,
+                    prob_meta.bound_flnts_ordered,
+                    prob_meta.domain.func_names,
+                    prob_meta.func_to_flnts)
 
-        comp_dict = None
-        if self.use_comparisons:
-            # [None, num_comps, 2]
-            # FIXME what does it mean for a comparison to be in the goal,
-            # what about the actual goal comparisons which don't exist
-            l_obs_comp = merge_with_goal_vec(
-                comp_truths,
-                [float(False) for _ in prob_meta.bound_comps_ordered]
-            )
-            comp_dict = self._split_input(
-                l_obs_comp,
-                prob_meta.bound_comps_ordered,
-                prob_meta.domain.unbound_comps,
-                prob_meta.unbound_comp_to_comps)
+            comp_dict = None
+            if self.use_comparisons:
+                # [None, num_comps, 2]
+                # FIXME what does it mean for a comparison to be in the goal,
+                # what about the actual goal comparisons which don't exist
+                l_obs_comp = merge_with_goal_vec(
+                    comp_truths,
+                    [float(False) for _ in prob_meta.bound_comps_ordered]
+                )
+                comp_dict = self._split_input(
+                    l_obs_comp,
+                    prob_meta.bound_comps_ordered,
+                    prob_meta.domain.unbound_comps,
+                    prob_meta.unbound_comp_to_comps)
 
         if extra_data_dim > 0:
             # [None, num_actions, extra_dimension]
