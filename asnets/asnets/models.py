@@ -1,3 +1,4 @@
+from asnets.multiprob import to_local
 from asnets.prob_dom_meta import UnboundAction, UnboundComp, DomainMeta, \
     ProblemMeta
 from asnets.network_modules import ActionModule, CompModule, FlntModule, \
@@ -333,7 +334,7 @@ class PropNetwork(tf.keras.layers.Layer):
                  **kwargs):
         super().__init__(trainable, name, dtype, dynamic, **kwargs)
 
-        self._weight_manager = weight_manager
+        self._weight_manager = to_local(weight_manager)
         self._prob_meta = problem_meta
         self._debug = debug
         # I tried ReLU, tanh, softplus, & leaky ReLU before settling on ELU for
@@ -364,8 +365,8 @@ class PropNetwork(tf.keras.layers.Layer):
         self.policy_network_only = policy_network_only
 
         if not self.policy_network_only:
-            self.value_hidden_layer = tf.keras.layers.Dense(64, activation='relu')
-            self.value_out_layer = tf.keras.layers.Dense(1)
+            self.value_hidden_layer = tf.keras.layers.Dense(64, activation='relu', name='value_hidden')
+            self.value_out_layer = tf.keras.layers.Dense(1, name='value_out')
 
         # hidden layers
         for hid_idx, hid_sizes in enumerate(hidden_sizes):

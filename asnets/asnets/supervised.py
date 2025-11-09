@@ -529,6 +529,9 @@ def make_problem_service(config, set_proc_title=False):
             self.replay.remove_oldest()
 
         def exposed_get_obs_dim(self):
+            return self.internal_get_obs_dim()
+
+        def internal_get_obs_dim(self):
             if not hasattr(self, '_cached_obs_dim'):
                 self._cached_obs_dim = compute_observation_dim(self.p)
             return self._cached_obs_dim
@@ -936,9 +939,22 @@ def make_problem_service(config, set_proc_title=False):
         def exposed_make_network(self, weights_manager: PropNetworkWeights, prob_meta, dropout, debug, policy_network_only):
             assert self.initialised
             assert self.estimator_initialised
-            self.network = PropNetwork(weights_manager, prob_meta,
-                                       dropout=dropout, debug=debug, policy_network_only=policy_network_only)
+            prob_meta = to_local(prob_meta)
+            self.network = PropNetwork(to_local(weights_manager), prob_meta,
+                                       dropout=to_local(dropout), debug=to_local(debug), policy_network_only=to_local(policy_network_only))
+
+            init_cstate_as_network_input = to_local(self.internal_get_init_state().to_network_input())
+            # Run a dummy forward pass with the initial cstate to initialize TensorFlow weight shapes
+            self.network(init_cstate_as_network_input[None], training=False)
+            print(f"Remote weights for problem {prob_meta.name}: {len(self.network.get_weights())}")
+            for i, w in enumerate(self.network.weights):
+                print(i, w.name, w.shape)
+
             self.network_initialised = True
+
+            # this is important to send back as it will be used to pass forward in the local (i.e. not on the service)
+            # network before the beginning of the training/inference
+            return init_cstate_as_network_input
 
         def internal_set_weights(self, weights):
             assert self.network_initialised
