@@ -1,3 +1,4 @@
+import multiprocessing
 import traceback
 from collections import Counter, deque
 from copy import deepcopy
@@ -58,8 +59,21 @@ LOGGER.setLevel(logging.DEBUG)
 # ---- diagnostics: catch everything that reaches top-level ----
 
 def _global_excepthook(exc_type, exc_value, exc_tb):
-    print(f"[WORKER EXCEPTION PID={os.getpid()}]")
-    traceback.print_exception(exc_type, exc_value, exc_tb)
+    import os, sys, traceback, multiprocessing
+
+    # Capture the traceback text
+    tb_text = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+
+    # Detect whether this came from a worker (via RPyC)
+    is_remote = "========= Remote Traceback" in tb_text
+
+    # Determine role
+    proc = multiprocessing.current_process()
+    role = "worker" if is_remote else (proc.name.lower() or "trainer")
+
+    # Print nicely
+    print(f"[{role.upper()} EXCEPTION PID={os.getpid()}]")
+    print(tb_text)
     sys.stderr.flush()
 
 sys.excepthook = _global_excepthook
@@ -941,14 +955,13 @@ def make_problem_service(config, set_proc_title=False):
             assert self.estimator_initialised
             prob_meta = to_local(prob_meta)
             self.network = PropNetwork(to_local(weights_manager), prob_meta,
-                                       dropout=to_local(dropout), debug=to_local(debug), policy_network_only=to_local(policy_network_only))
+                                       dropout=to_local(dropout), debug=to_local(debug), policy_network_only=to_local(policy_network_only),
+                                       trainable=False)
 
             init_cstate_as_network_input = to_local(self.internal_get_init_state().to_network_input())
             # Run a dummy forward pass with the initial cstate to initialize TensorFlow weight shapes
             self.network(init_cstate_as_network_input[None], training=False)
             print(f"Remote weights for problem {prob_meta.name}: {len(self.network.get_weights())}")
-            for i, w in enumerate(self.network.weights):
-                print(i, w.name, w.shape)
 
             self.network_initialised = True
 
@@ -958,6 +971,7 @@ def make_problem_service(config, set_proc_title=False):
 
         def internal_set_weights(self, weights):
             assert self.network_initialised
+            weights = to_local(weights)
             self.network.set_weights(weights)
 
 
@@ -1187,8 +1201,25 @@ class SupervisedTrainer:
             lambda v: v.ref(),
             self.problems[0].network.trainable_weights))
 
-        assert param_set == tf_param_set, \
-            "network has weird variables---debug this"
+        # assert param_set == tf_param_set, \
+        #     "network has weird variables---debug this"
+        if param_set != tf_param_set:
+            print(f'process name: {multiprocessing.current_process().name}')
+            print("\n[DEBUG] 🔍 param_set != tf_param_set")
+            print(
+                f"Weight manager has {len(params)} vars; TF has {len(self.problems[0].network.trainable_weights)} vars.\n")
+            wm_names = {v.name for v in params}
+            tf_names = {v.name for v in self.problems[0].network.trainable_weights}
+            print("---- in weight_manager but not in TF ----")
+            print(sorted(list(wm_names - tf_names)))
+            print("---- in TF but not in weight_manager ----")
+            print(sorted(list(tf_names - wm_names)))
+            print('---- new comparison by tf.ref() ----')
+            for wm, tfw in zip(sorted(params, key=lambda par: par.name), sorted(self.problems[0].network.trainable_weights, key = lambda par: par.name)):
+                if wm.ref() != tfw.ref():
+                    print(f"DIFF: {wm.name:<60}  vs  {tfw.name}")
+                    print(f"  wm.shape={wm.shape}, tf.shape={tfw.shape}")
+            raise AssertionError("network has weird variables---see debug above")
 
         all_batches_iter = self._make_batches(n_batches)
         tr = tqdm.tqdm(all_batches_iter, desc='batch', total=n_batches)
@@ -1258,8 +1289,6 @@ class SupervisedTrainer:
         self.summary_writer.set_as_default(step=epoch)
 
         for epoch_num in tr:
-            # if epoch_num%3==0:
-            #     tf.keras.backend.clear_session()
             # update the epoch variable
             epoch.assign(epoch_num)
             # only extend replay by a bit each time
