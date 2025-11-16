@@ -8,7 +8,7 @@ from asnets.prob_dom_meta import BoundAction, BoundComp, BoundFlnt, BoundProp, \
     UnboundProp
 
 
-class NetworkModule(abc.ABC):
+class NetworkModule(tf.keras.layers.Layer, abc.ABC):
     """ABC for a network module."""
 
     def __init__(self,
@@ -20,7 +20,9 @@ class NetworkModule(abc.ABC):
                  skip: bool,
                  *,
                  nonlinearity: Optional[Callable] = None,
-                 dropout: float = 0.0):
+                 dropout: float = 0.0,
+                 name=None):
+        super().__init__(name=name)
         self.W = weight
         self.b = bias
         self.layer_num = layer_num
@@ -35,6 +37,9 @@ class NetworkModule(abc.ABC):
     @abc.abstractmethod
     def forward(self, *args, **kwargs):
         pass
+
+    def call(self, *args, **kwargs):
+        return self.forward(*args, **kwargs)
 
     def compute_output(self, conv_input):
         # with tf.name_scope(self.name_pfx + '/conv'):
@@ -210,6 +215,79 @@ class ActionModule(NetworkModule):
         return self.compute_output(multi_gather_concat(
             mgc_inputs, mgc_elem_indices))
 
+    def build(self, input_shape=None):
+        """Register the shared variables with Keras."""
+        # weight, bias = self._weight_manager.act_weights[self.layer_num][self.unbound_act]
+        self._trainable_weights = [self.W, self.b]  # tell Keras these are trainable
+        self.built = True
+
+class ValueModule(NetworkModule):
+    """A network module for the secondary head of the network."""
+
+    def __init__(self,
+                 *args,
+                 **kwargs):
+        super().__init__(*args, **kwargs)
+        self.name_pfx = f'val_mod'
+
+    def forward(
+            self,
+            prev_pred: Dict[UnboundProp, tf.Tensor],
+            *,
+            prev_func: Optional[Dict[UnboundFlnt, tf.Tensor]] = None,
+            prev_comp: Optional[Dict[UnboundComp, tf.Tensor]] = None,
+    ) -> tf.Tensor:
+        """
+        Forward pass for the value module. Aggregates all propositions, fluents,
+        and comparisons into a single state representation vector, then applies
+        a linear projection + nonlinearity to produce the value features.
+
+        Args:
+            prev_pred: dict of predicate activations (1, num_groundings, hidden_dim)
+            prev_func: dict of fluent activations (optional)
+            prev_comp: dict of comparison activations (optional)
+
+        Returns:
+            tf.Tensor of shape (batch_size, hidden_dim_out)
+        """
+        # --- 1. Collect inputs ---
+        tensors = []
+
+        if prev_pred:
+            tensors.extend(prev_pred.values())
+        if prev_func:
+            tensors.extend(prev_func.values())
+        if prev_comp:
+            tensors.extend(prev_comp.values())
+
+        # Sanity check: we must have at least one input
+        assert tensors, "[ValueModule] No tensors provided for value computation!"
+
+        # --- 2. Pool each input across groundings ---
+        # Each tensor has shape (batch, num_groundings, hidden_dim)
+        # We reduce across the grounding dimension to get (batch, hidden_dim)
+        pooled_tensors = [tf.reduce_mean(t, axis=1) for t in tensors]
+
+        # --- 3. Concatenate all pooled tensors ---
+        state_repr = tf.concat(pooled_tensors, axis=-1)
+        tf.debugging.assert_rank(state_repr, 2)
+
+        # print(f"[DEBUG] ValueModule: pooled {[t.shape for t in pooled_tensors]}")
+        # print(f"[DEBUG] ValueModule: concatenated state_repr {state_repr.shape}")
+        # print(f"[DEBUG] ValueModule: W={self.W.shape}, b={self.b.shape}")
+
+        # --- 4. Apply linear projection and nonlinearity ---
+        value_raw = tf.matmul(state_repr, self.W) + self.b
+        value_out = self.nonlinearity(value_raw)
+        value_out = tf.nn.dropout(value_out, rate=self.dropout, name="drop")
+
+        return value_out
+
+    def build(self, input_shape=None):
+        """Register the trainable variables with Keras properly."""
+        self._trainable_weights = [self.W, self.b]
+        self.built = True
+
 
 class PropLayerModule(NetworkModule):
     # Terrible name
@@ -372,6 +450,12 @@ class PropModule(PropLayerModule):
             -> List[Tuple[UnboundAction, int, List[BoundAction]]]:
         return self.prob_meta.rel_act_slots_of_prop(ground)
 
+    def build(self, input_shape=None):
+        """Register the shared variables with Keras."""
+        # weight, bias = self._weight_manager.prop_weights[self.layer_num][self.pred_name]
+        self._trainable_weights = [self.W, self.b]  # tell Keras these are trainable
+        self.built = True
+
 
 class FlntModule(PropLayerModule):
     """A network module for a single fluent."""
@@ -395,6 +479,12 @@ class FlntModule(PropLayerModule):
     def rel_act_slots_of_ground(self, ground: BoundFlnt) \
             -> List[Tuple[UnboundAction, int, List[BoundAction]]]:
         return self.prob_meta.rel_act_slots_of_flnt(ground)
+
+    def build(self, input_shape=None):
+        """Register the shared variables with Keras."""
+        # weight, bias = self._weight_manager.flnt_weights[self.layer_num][self.func_name]
+        self._trainable_weights = [self.W, self.b]  # tell Keras these are trainable
+        self.built = True
 
 
 class CompModule(PropLayerModule):
@@ -420,6 +510,12 @@ class CompModule(PropLayerModule):
             -> List[Tuple[UnboundAction, int, List[BoundAction]]]:
         return self.prob_meta.rel_act_slots_of_comp(ground)
 
+    def build(self, input_shape=None):
+        """Register the shared variables with Keras."""
+        # weight, bias = self._weight_manager.comp_weights[self.layer_num][self.unbound_comp]
+        self._trainable_weights = [self.W, self.b]  # tell Keras these are trainable
+        self.built = True
+
 
 def _sort_inputs(input_dict: Dict[Any, tf.Tensor]) \
         -> Tuple[Dict[Any, int], List[tf.Tensor]]:
@@ -443,20 +539,12 @@ def _sort_inputs(input_dict: Dict[Any, tf.Tensor]) \
     return key_to_tensor_idx, input_list
 
 
-def _apply_conv_matmul(conv_input: tf.Tensor, W: tf.Tensor) -> tf.Tensor:
-    reshaped = tf.reshape(conv_input, (-1, conv_input.shape[2]))
-    conv_result_reshaped = tf.matmul(reshaped, W)
-    conv_shape = tf.shape(input=conv_input)
-    batch_size = conv_shape[0]
-    # HACK: if conv_input.shape[1] is not Dimension(None) (i.e. if it's
-    # known) then I want to keep that b/c it will help shape inference;
-    # otherwise I want to use conv_shape[1], which will make the reshape
-    # succeed. It turns out the best way I can see to compare
-    # conv_input.shape[1] to Dimension(None) is to abuse comparison by
-    # checking whether conv_input.shape[1] >= 0 returns None or True (!!).
-    # This is stupid, but I can't see a better way of doing it.
-    width = conv_shape[1] if (conv_input.shape[1] >= 0) is None \
-        else conv_input.shape[1]
-    out_shape = (batch_size, width, W.shape[1])
-    conv_result = tf.reshape(conv_result_reshaped, out_shape)
+def _apply_conv_matmul(conv_input, W):
+    # conv_input: [batch, slots, in_dim]
+    # W: [in_dim, out_dim]
+    in_dim = tf.shape(conv_input)[-1]
+    reshaped = tf.reshape(conv_input, (-1, in_dim))
+    conv_result = tf.matmul(reshaped, W)
+    out_dim = tf.shape(W)[-1]
+    conv_result = tf.reshape(conv_result, (-1, tf.shape(conv_input)[1], out_dim))
     return conv_result
