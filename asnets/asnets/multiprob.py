@@ -13,8 +13,12 @@ import weakref
 import os, json, socket, rpyc, atexit
 import uuid, getpass
 
-from rpyc import OneShotServer
+from rpyc import OneShotServer, BaseNetref
+import types
+import collections
+import dataclasses
 from rpyc.utils.server import ThreadedServer
+import tensorflow as tf
 
 
 rpyc.core.protocol.DEFAULT_CONFIG['allow_getattr'] = True
@@ -63,6 +67,7 @@ def start_server(service_args: 'ProblemServiceConfig',unix_socket_path: str = No
         # socket_path (str): path to the socket to host the problem
         service on.
     """
+
     if service_args.random_seed is not None:
         set_random_seeds(service_args.random_seed)
     # avoid import cycle
@@ -155,8 +160,52 @@ def to_local(obj):
     # TODO: make sure that you're transmitting observations as byte tensors
     # whenever possible (or at most float32s).
     # return deepcopy(obj)
-    return obtain(obj)
+    # return obtain(obj)
+    # === First: RPyC proxy check ===
+    # (must come *before* container checks, because some proxies act iterable)
+    if isinstance(obj, BaseNetref):
+        try:
+            return obtain(obj)
+        except Exception:
+            return obj  # fallback if obtain() fails
 
+    # === Primitive / simple immutable types ===
+    if obj is None or isinstance(obj, (str, bytes, int, float, bool, complex)):
+        return obj
+
+    # === TensorFlow objects: must NOT obtain ===
+    try:
+        if isinstance(obj, (tf.Variable, tf.Tensor, tf.Module, tf.keras.layers.Layer)):
+            return obj
+    except Exception:
+        pass  # don't break if tf isn't loaded yet
+
+    # === Containers ===
+    if isinstance(obj, dict):
+        return {to_local(k): to_local(v) for k, v in obj.items()}
+
+    if isinstance(obj, collections.abc.Mapping):
+        return type(obj)((to_local(k), to_local(v)) for k, v in obj.items())
+
+    if isinstance(obj, (list, tuple, set, frozenset)):
+        seq = (to_local(v) for v in obj)
+        return type(obj)(seq)
+
+    # === Dataclasses ===
+    if dataclasses.is_dataclass(obj):
+        field_values = {f.name: to_local(getattr(obj, f.name)) for f in dataclasses.fields(obj)}
+        return type(obj)(**field_values)
+
+    # === Namedtuples ===
+    if isinstance(obj, tuple) and hasattr(obj, "_fields"):
+        return type(obj)(*(to_local(v) for v in obj))
+
+    # === Modules / functions / types ===
+    if isinstance(obj, (types.ModuleType, types.FunctionType, type)):
+        return obj
+
+    # === Default fallback ===
+    return obj
 
 def wait_exists_polling(file_path: str, 
                         max_wait: float, delta: float=0.05) -> bool:
@@ -238,12 +287,16 @@ class ProblemServer(object):
             os.environ["RPYC_ADDR_FILE"] = addr_file
         else:
             os.makedirs(os.path.dirname(addr_file), exist_ok=True)
-        # Start the server in a separate process
+
         self._serve_proc = Process(
+            name='worker',
             target=start_server, args=(
                 service_conf,
                 self._unix_sock_path,
             ))
+        print(f'[DEBUG] Trainer PID: {os.getpid()}')
+
+
         self._service_conf = service_conf
         self._serve_proc.daemon = False  # ensure child stays attached to parent console
         sys.stdout.flush()
