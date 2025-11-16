@@ -66,60 +66,6 @@ class PropNetworkWeights:
         # Just restore the dict; don't rebuild variables
         self.__dict__.update(state)
 
-    # def __getstate__(self):
-    #     """Pickle weights ourselves, since TF stuff is hard to pickle."""
-    #     # prop_weights_np = self._serialise_weight_list(self.prop_weights)
-    #     # flnt_weights_np = self._serialise_weight_list(self.flnt_weights)
-    #     # act_weights_np = self._serialise_weight_list(self.act_weights)
-    #     # comp_weights_np = self._serialise_weight_list(self.comp_weights)
-    #     # value_weights_np = self._serialise_weight_list(self.value_weights)
-    #     return {
-    #         'dom_meta': self.dom_meta,
-    #         'hidden_sizes': self.hidden_sizes,
-    #         # 'prop_weights_np': prop_weights_np,
-    #         # 'flnt_weights_np': flnt_weights_np,
-    #         # 'act_weights_np': act_weights_np,
-    #         # 'comp_weights_np': comp_weights_np,
-    #         # 'value_weights_np': value_weights_np,
-    #         'prop_weights': self.prop_weights,
-    #         'flnt_weights': self.flnt_weights,
-    #         'act_weights': self.act_weights,
-    #         'comp_weights': self.comp_weights,
-    #         'value_weights': self.value_weights,
-    #         'extra_dim': self.extra_dim,
-    #         'skip': self.skip,
-    #         'use_fluents': self.use_fluents,
-    #         'use_comparisons': self.use_comparisons,
-    #         'policy_network_only': self.policy_network_only,
-    #         'value_head_added': self.value_head_added
-    #     }
-    #
-    # def __setstate__(self, state: dict):
-    #     """Unpickle weights"""
-    #     self.dom_meta: DomainMeta = state['dom_meta']
-    #     self.hidden_sizes: List[Tuple[int, int]] = state['hidden_sizes']
-    #     self.extra_dim: int = state['extra_dim']
-    #     # old network snapshots always had skip connections turned on
-    #     self.skip: bool = state.get('skip', True)
-    #     self.use_fluents: bool = state.get('use_fluents', False)
-    #     self.use_comparisons: bool = state.get('use_comparisons', False)
-    #     self.policy_network_only: bool = state.get('policy_network_only', False)
-    #     self.value_head_added: bool = state.get('value_head_added', False)
-    #     all_exist = True
-    #     state_keys = state.keys()
-    #     for pref in ['prop','act','flnt','comp','value']:
-    #         all_exist = all_exist and f'{pref}_weights' in state_keys
-    #     if all_exist:
-    #         self.load_into_existing_state_dict(state)
-    #     else:
-    #         self._make_weights(
-    #             state['prop_weights_np'],
-    #             state.get('flnt_weights_np', None),
-    #             state['act_weights_np'],
-    #             state.get('comp_weights_np', None),
-    #             state.get('value_weights_np', None)
-    #         )
-
     def load_into_existing_state_dict(self, state):
         # same assign() logic as load_into_existing(), but reads from 'state' instead of a path
         for hid_idx, layer in enumerate(state['prop_weights_np']):
@@ -448,48 +394,6 @@ class PropNetworkWeights:
     def save(self, path):
         """Save a snapshot of the current network weights to the given path."""
         joblib.dump(self, path, compress=True)
-
-    # in PropNetworkWeights
-    def load_into_existing(self, path: str) -> None:
-        state = joblib.load(path)
-
-        # props
-        for hid_idx, layer in enumerate(state['prop_weights_np']):
-            for key, (W_np, b_np) in layer.items():
-                W, b = self.prop_weights[hid_idx][key]
-                W.assign(W_np);
-                b.assign(b_np)
-
-        # flnts (if used)
-        if self.use_fluents and state.get('flnt_weights_np') is not None:
-            for hid_idx, layer in enumerate(state['flnt_weights_np']):
-                for key, (W_np, b_np) in layer.items():
-                    W, b = self.flnt_weights[hid_idx][key]
-                    W.assign(W_np);
-                    b.assign(b_np)
-
-        # comps (if used)
-        if self.use_comparisons and state.get('comp_weights_np') is not None:
-            for hid_idx, layer in enumerate(state['comp_weights_np']):
-                for key, (W_np, b_np) in layer.items():
-                    W, b = self.comp_weights[hid_idx][key]
-                    W.assign(W_np);
-                    b.assign(b_np)
-
-        # acts
-        for hid_idx, layer in enumerate(state['act_weights_np']):
-            for key, (W_np, b_np) in layer.items():
-                W, b = self.act_weights[hid_idx][key]
-                W.assign(W_np);
-                b.assign(b_np)
-
-        # value head (if present)
-        if not self.policy_network_only and state.get('value_weights_np') is not None:
-            for hid_idx, layer in enumerate(state['value_weights_np']):
-                for key, (W_np, b_np) in layer.items():
-                    W, b = self.value_weights[hid_idx][key]
-                    W.assign(W_np);
-                    b.assign(b_np)
 
 
 class PropNetwork(tf.keras.layers.Layer):
