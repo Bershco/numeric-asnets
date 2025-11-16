@@ -27,12 +27,9 @@ class Explorer(ABC):
         def inner(problem):
             hit_goal = []
             for _ in range(num_per_problem):
-                print(f"Local weights for problem {problem.name}: {len(problem.network.get_weights())}")
-                for i, w in enumerate(problem.network.weights):
-                    print(i, w.name, w.shape)
+                network_weights_to_send = problem.network.get_weights()
                 hit_goal.append(
-                    # problem.problem_service.collect_trajectory(problem.network))
-                    problem.problem_service.collect_trajectory(problem.network.get_weights()))
+                    problem.problem_service.collect_trajectory(network_weights_to_send))
             
             return problem, hit_goal
         
