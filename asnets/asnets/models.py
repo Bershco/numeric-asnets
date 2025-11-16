@@ -2,7 +2,7 @@ from asnets.multiprob import to_local
 from asnets.prob_dom_meta import UnboundAction, UnboundComp, DomainMeta, \
     ProblemMeta
 from asnets.network_modules import ActionModule, CompModule, FlntModule, \
-    PropModule
+    PropModule, ValueModule
 from asnets.utils.prof_utils import can_profile
 from asnets.utils.tf_utils import masked_softmax
 
@@ -29,7 +29,9 @@ class PropNetworkWeights:
                  extra_dim: int,
                  skip: bool,
                  use_fluents: bool,
-                 use_comparisons: bool):
+                 use_comparisons: bool,
+                 policy_network_only: bool = False,
+                 value_head_added : bool = False):
         """Initialises weights for a domain-specific problem network.
 
         Args:
@@ -51,41 +53,81 @@ class PropNetworkWeights:
         self.skip: bool = skip
         self.use_fluents: bool = use_fluents
         self.use_comparisons: bool = use_comparisons
+        self.value_head_added = value_head_added
+        self.policy_network_only = policy_network_only
         self._make_weights()
 
     def __getstate__(self):
-        """Pickle weights ourselves, since TF stuff is hard to pickle."""
-        prop_weights_np = self._serialise_weight_list(self.prop_weights)
-        flnt_weights_np = self._serialise_weight_list(self.flnt_weights)
-        act_weights_np = self._serialise_weight_list(self.act_weights)
-        comp_weights_np = self._serialise_weight_list(self.comp_weights)
-        return {
-            'dom_meta': self.dom_meta,
-            'hidden_sizes': self.hidden_sizes,
-            'prop_weights_np': prop_weights_np,
-            'flnt_weights_np': flnt_weights_np,
-            'act_weights_np': act_weights_np,
-            'comp_weights_np': comp_weights_np,
-            'extra_dim': self.extra_dim,
-            'skip': self.skip,
-            'use_fluents': self.use_fluents,
-            'use_comparisons': self.use_comparisons
-        }
+        # Everything you need to persist (TF vars included)
+        state = self.__dict__.copy()
+        return state
 
     def __setstate__(self, state):
-        """Unpickle weights"""
-        self.dom_meta: DomainMeta = state['dom_meta']
-        self.hidden_sizes: List[Tuple[int, int]] = state['hidden_sizes']
-        self.extra_dim: int = state['extra_dim']
-        # old network snapshots always had skip connections turned on
-        self.skip: bool = state.get('skip', True)
-        self.use_fluents: bool = state.get('use_fluents', False)
-        self.use_comparisons: bool = state.get('use_comparisons', False)
-        self._make_weights(
-            state['prop_weights_np'],
-            state.get('flnt_weights_np', None),
-            state['act_weights_np'],
-            state.get('comp_weights_np', None))
+        # Just restore the dict; don't rebuild variables
+        self.__dict__.update(state)
+
+    # def __getstate__(self):
+    #     """Pickle weights ourselves, since TF stuff is hard to pickle."""
+    #     # prop_weights_np = self._serialise_weight_list(self.prop_weights)
+    #     # flnt_weights_np = self._serialise_weight_list(self.flnt_weights)
+    #     # act_weights_np = self._serialise_weight_list(self.act_weights)
+    #     # comp_weights_np = self._serialise_weight_list(self.comp_weights)
+    #     # value_weights_np = self._serialise_weight_list(self.value_weights)
+    #     return {
+    #         'dom_meta': self.dom_meta,
+    #         'hidden_sizes': self.hidden_sizes,
+    #         # 'prop_weights_np': prop_weights_np,
+    #         # 'flnt_weights_np': flnt_weights_np,
+    #         # 'act_weights_np': act_weights_np,
+    #         # 'comp_weights_np': comp_weights_np,
+    #         # 'value_weights_np': value_weights_np,
+    #         'prop_weights': self.prop_weights,
+    #         'flnt_weights': self.flnt_weights,
+    #         'act_weights': self.act_weights,
+    #         'comp_weights': self.comp_weights,
+    #         'value_weights': self.value_weights,
+    #         'extra_dim': self.extra_dim,
+    #         'skip': self.skip,
+    #         'use_fluents': self.use_fluents,
+    #         'use_comparisons': self.use_comparisons,
+    #         'policy_network_only': self.policy_network_only,
+    #         'value_head_added': self.value_head_added
+    #     }
+    #
+    # def __setstate__(self, state: dict):
+    #     """Unpickle weights"""
+    #     self.dom_meta: DomainMeta = state['dom_meta']
+    #     self.hidden_sizes: List[Tuple[int, int]] = state['hidden_sizes']
+    #     self.extra_dim: int = state['extra_dim']
+    #     # old network snapshots always had skip connections turned on
+    #     self.skip: bool = state.get('skip', True)
+    #     self.use_fluents: bool = state.get('use_fluents', False)
+    #     self.use_comparisons: bool = state.get('use_comparisons', False)
+    #     self.policy_network_only: bool = state.get('policy_network_only', False)
+    #     self.value_head_added: bool = state.get('value_head_added', False)
+    #     all_exist = True
+    #     state_keys = state.keys()
+    #     for pref in ['prop','act','flnt','comp','value']:
+    #         all_exist = all_exist and f'{pref}_weights' in state_keys
+    #     if all_exist:
+    #         self.load_into_existing_state_dict(state)
+    #     else:
+    #         self._make_weights(
+    #             state['prop_weights_np'],
+    #             state.get('flnt_weights_np', None),
+    #             state['act_weights_np'],
+    #             state.get('comp_weights_np', None),
+    #             state.get('value_weights_np', None)
+    #         )
+
+    def load_into_existing_state_dict(self, state):
+        # same assign() logic as load_into_existing(), but reads from 'state' instead of a path
+        for hid_idx, layer in enumerate(state['prop_weights_np']):
+            for key, (W_np, b_np) in layer.items():
+                W, b = self.prop_weights[hid_idx][key]
+                W.assign(W_np)
+                b.assign(b_np)
+        # repeat for acts / comps / value / flnts like before
 
     @staticmethod
     def _serialise_weight_list(weight_list):
@@ -104,13 +146,15 @@ class PropNetworkWeights:
                       old_prop_weights=None,
                       old_flnt_weight=None,
                       old_act_weights=None,
-                      old_comp_weights=None):
+                      old_comp_weights=None,
+                      old_value_weights=None):
         # *_weights[i] is a dictionary mapping prop/flnt/act names to weights
         # for modules in the i-th proposition layer
         self.prop_weights = []
         self.flnt_weights = []
         self.act_weights = []
         self.comp_weights = []
+        self.value_weights = []
         self.all_weights = []
 
         # TODO: constructing weights separately like this (and having
@@ -151,9 +195,12 @@ class PropNetworkWeights:
             def act_name_pfx(unbound_act: UnboundAction, hid_idx: int) -> str:
                 return 'hid_%d_act_%s' % (hid_idx, unbound_act.schema_name)
 
-            self.act_weights.append(self._make_modules_weights(
-                hid_idx, act_size, self.dom_meta.unbound_acts,
-                old_act_weights, act_in_size, act_name_pfx))
+            self.act_weights.append(
+                self._make_modules_weights(
+                    hid_idx, act_size, self.dom_meta.unbound_acts,
+                    old_act_weights, act_in_size, act_name_pfx
+                )
+            )
 
             # make hidden proposition layer weights
 
@@ -241,6 +288,7 @@ class PropNetworkWeights:
                        if self.use_comparisons else 0)
                 if self.skip:
                     in_size = in_size + self.hidden_sizes[-1][0]
+
             return in_size
 
         def final_act_name_pfx(unbound_act: UnboundAction, hid_idx: int) -> str:
@@ -249,6 +297,91 @@ class PropNetworkWeights:
         self.act_weights.append(self._make_modules_weights(
             -1, 1, self.dom_meta.unbound_acts, old_act_weights,
             final_act_in_size, final_act_name_pfx))
+
+        # make value module + head weights
+        if not self.policy_network_only:
+            # Estimate input dimension for value module
+            # Based on how ValueModule.forward() aggregates tensors.
+            hidden_dim = self.hidden_sizes[-1][1]
+            num_props = len(self.dom_meta.pred_names)
+            num_flnts = len(self.dom_meta.func_names) if self.use_fluents else 0
+            num_comps = len(self.dom_meta.unbound_comps) if self.use_comparisons else 0
+
+            # Use prob_meta to account for grounding multiplicity
+            num_ground_props = sum(
+                len(self.dom_meta.rel_pred_names(a)) for a in self.dom_meta.unbound_acts) if num_props > 0 else 0
+            num_ground_flnts = sum(
+                len(self.dom_meta.rel_func_names(a)) for a in self.dom_meta.unbound_acts) if num_flnts > 0 else 0
+            num_ground_comps = sum(
+                len(self.dom_meta.rel_comps(a)) for a in self.dom_meta.unbound_acts) if num_comps > 0 else 0
+
+            input_dim = (num_ground_props + num_ground_flnts + num_ground_comps) * hidden_dim
+
+            # print(f"[DEBUG] computed value head input_dim={input_dim} "
+            #       f"({num_ground_props}gP, {num_ground_flnts}gF, {num_ground_comps}gC) "
+            #       f"x hidden={hidden_dim}")
+
+            # hidden_dim = 64
+            # input_dim = ((len(self.dom_meta.pred_names)) +
+            #              (len(self.dom_meta.func_names) if self.use_fluents else 0) +
+            #              (len(self.dom_meta.unbound_comps) if self.use_comparisons else 0))
+
+            # === value_module ===
+            def value_mod_in_size(_: str, hid_idx: int) -> int:
+                # single shared input vector for the whole state
+                return input_dim
+
+            def value_mod_name_pfx(_: str, hid_idx: int) -> str:
+                return f'value_mod_{hid_idx}'
+
+            self.value_weights.append(
+                self._make_modules_weights(
+                    hid_idx=0,
+                    hid_size=hidden_dim,
+                    module_keys=['value_mod'],
+                    old_weights=old_value_weights,
+                    in_size_func=value_mod_in_size,
+                    name_pfx_func=value_mod_name_pfx,
+                )
+            )
+
+            # === value_hidden ===
+            def value_hidden_in_size(_: str, hid_idx: int) -> int:
+                return hidden_dim
+
+            def value_hidden_name_pfx(_: str, hid_idx: int) -> str:
+                return f'value_hidden_{hid_idx}'
+
+            self.value_weights.append(
+                self._make_modules_weights(
+                    hid_idx=1,
+                    hid_size=hidden_dim,
+                    module_keys=['value_hidden'],
+                    old_weights=old_value_weights,
+                    in_size_func=value_hidden_in_size,
+                    name_pfx_func=value_hidden_name_pfx,
+                )
+            )
+
+            # === value_out ===
+            def value_out_in_size(_: str, hid_idx: int) -> int:
+                return hidden_dim
+
+            def value_out_name_pfx(_: str, hid_idx: int) -> str:
+                return f'value_out_{hid_idx}'
+
+            self.value_weights.append(
+                self._make_modules_weights(
+                    hid_idx=2,
+                    hid_size=1,
+                    module_keys=['value_out'],
+                    old_weights=old_value_weights,
+                    in_size_func=value_out_in_size,
+                    name_pfx_func=value_out_name_pfx,
+                )
+            )
+
+            self.value_head_added = True
 
     def _make_modules_weights(self,
                               hid_idx: int,
@@ -316,6 +449,48 @@ class PropNetworkWeights:
         """Save a snapshot of the current network weights to the given path."""
         joblib.dump(self, path, compress=True)
 
+    # in PropNetworkWeights
+    def load_into_existing(self, path: str) -> None:
+        state = joblib.load(path)
+
+        # props
+        for hid_idx, layer in enumerate(state['prop_weights_np']):
+            for key, (W_np, b_np) in layer.items():
+                W, b = self.prop_weights[hid_idx][key]
+                W.assign(W_np);
+                b.assign(b_np)
+
+        # flnts (if used)
+        if self.use_fluents and state.get('flnt_weights_np') is not None:
+            for hid_idx, layer in enumerate(state['flnt_weights_np']):
+                for key, (W_np, b_np) in layer.items():
+                    W, b = self.flnt_weights[hid_idx][key]
+                    W.assign(W_np);
+                    b.assign(b_np)
+
+        # comps (if used)
+        if self.use_comparisons and state.get('comp_weights_np') is not None:
+            for hid_idx, layer in enumerate(state['comp_weights_np']):
+                for key, (W_np, b_np) in layer.items():
+                    W, b = self.comp_weights[hid_idx][key]
+                    W.assign(W_np);
+                    b.assign(b_np)
+
+        # acts
+        for hid_idx, layer in enumerate(state['act_weights_np']):
+            for key, (W_np, b_np) in layer.items():
+                W, b = self.act_weights[hid_idx][key]
+                W.assign(W_np);
+                b.assign(b_np)
+
+        # value head (if present)
+        if not self.policy_network_only and state.get('value_weights_np') is not None:
+            for hid_idx, layer in enumerate(state['value_weights_np']):
+                for key, (W_np, b_np) in layer.items():
+                    W, b = self.value_weights[hid_idx][key]
+                    W.assign(W_np);
+                    b.assign(b_np)
+
 
 class PropNetwork(tf.keras.layers.Layer):
     """ASNet.
@@ -332,7 +507,7 @@ class PropNetwork(tf.keras.layers.Layer):
                  dynamic: bool = False,
                  policy_network_only: bool = False,
                  **kwargs):
-        super().__init__(trainable, name, dtype, dynamic, **kwargs)
+        super().__init__(trainable=trainable, name=name, dtype=dtype, dynamic=dynamic, **kwargs)
 
         self._weight_manager = to_local(weight_manager)
         self._prob_meta = problem_meta
@@ -363,10 +538,6 @@ class PropNetwork(tf.keras.layers.Layer):
         self.bias_collection = []
 
         self.policy_network_only = policy_network_only
-
-        if not self.policy_network_only:
-            self.value_hidden_layer = tf.keras.layers.Dense(64, activation='relu', name='value_hidden')
-            self.value_out_layer = tf.keras.layers.Dense(1, name='value_out')
 
         # hidden layers
         for hid_idx, hid_sizes in enumerate(hidden_sizes):
@@ -473,6 +644,42 @@ class PropNetwork(tf.keras.layers.Layer):
             self.weights_collection.append(weight)
             self.bias_collection.append(bias)
         self.act_layers.append(finals)
+        if not self.policy_network_only:
+            vw = self._weight_manager.value_weights
+
+            # unpack by index: [0]=module, [1]=hidden, [2]=out
+            val_mod_W, val_mod_b = list(vw[0].values())[0]
+            val_hidden_W, val_hidden_b = list(vw[1].values())[0]
+            val_out_W, val_out_b = list(vw[2].values())[0]
+
+            self.value_module = ValueModule(
+                weight=val_mod_W,
+                bias=val_mod_b,
+                layer_num=len(hidden_sizes),
+                dom_meta=dom_meta,
+                prob_meta=self._prob_meta,
+                skip=False,
+                nonlinearity=self.nonlinearity,
+                dropout=self.dropout,
+            )
+
+            # infer hidden dimension directly from loaded weights
+            value_hidden_dim = val_hidden_W.shape[-1]
+            value_input_dim = val_hidden_W.shape[0]
+
+            self.value_hidden_layer = tf.keras.layers.Dense(
+                value_hidden_dim, activation='relu', name='value_hidden'
+            )
+            self.value_hidden_layer.build((None, value_input_dim))
+            self.value_hidden_layer.kernel = val_hidden_W
+            self.value_hidden_layer.bias = val_hidden_b
+
+            self.value_out_layer = tf.keras.layers.Dense(
+                1, name='value_out'
+            )
+            self.value_out_layer.build((None, value_hidden_dim))
+            self.value_out_layer.kernel = val_out_W
+            self.value_out_layer.bias = val_out_b
 
     def _split_input(self,
                      obs: tf.Tensor,
@@ -559,7 +766,7 @@ class PropNetwork(tf.keras.layers.Layer):
         # 5) `comparisons` tells us what comparisons are satisfied, only exists
         #    if args.use_comparisons is True, and only used if
         #    self.use_comparisons is True
-        if len(inputs.shape) == 1:
+        if tf.rank(inputs) == 1:
             inputs = tf.expand_dims(inputs, 0)
         super().call(inputs, *args, **kwargs)
 
@@ -729,31 +936,14 @@ class PropNetwork(tf.keras.layers.Layer):
             return policy_out
 
         # value head
-        # state_repr = tf.reduce_mean(l_pre_softmax, axis=1)  # [batch, hidden_dim]
-        # could also experiment with reduce_sum, reduce_max for better results
 
-        # if len(state_repr) == 1:
-        #     state_repr = tf.reshape(state_repr, (-1, tf.shape(state_repr)[-1]))
-        # elif len(state_repr.shape) > 2:
-        #     state_repr = tf.reshape(state_repr, (tf.shape(state_repr)[0], -1))
+        value_features = self.value_module.forward(
+            prev_pred=pred_dict,
+            prev_func=func_dict if self.use_fluents else None,
+            prev_comp=comp_dict if self.use_comparisons else None)
 
-        if len(l_pre_softmax.shape) == 3:
-            # typical case: (batch, n_props, hidden)
-            state_repr = tf.reduce_mean(l_pre_softmax, axis=1)
-        elif len(l_pre_softmax.shape) == 2:
-            # already (batch, hidden)
-            state_repr = l_pre_softmax
-        elif len(l_pre_softmax.shape) == 1:
-            # single vector, no batch
-            state_repr = tf.expand_dims(l_pre_softmax, axis=0)
-        else:
-            raise ValueError(f"Unexpected shape for l_pre_softmax: {l_pre_softmax.shape}")
-
-        # value_hidden = tf.keras.layers.Dense(64, activation='relu')(state_repr)
-        # value_out = tf.keras.layers.Dense(1, activation='tanh')(value_hidden)
-        value_hidden = self.value_hidden_layer(state_repr)
+        value_hidden = self.value_hidden_layer(value_features)
         value_out = self.value_out_layer(value_hidden)
-
         return policy_out, value_out
 
     def policy_only(self) -> bool:
