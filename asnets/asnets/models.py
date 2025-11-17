@@ -254,12 +254,27 @@ class PropNetworkWeights:
             num_comps = len(self.dom_meta.unbound_comps) if self.use_comparisons else 0
 
             # Use prob_meta to account for grounding multiplicity
-            num_ground_props = sum(
-                len(self.dom_meta.rel_pred_names(a)) for a in self.dom_meta.unbound_acts) if num_props > 0 else 0
-            num_ground_flnts = sum(
-                len(self.dom_meta.rel_func_names(a)) for a in self.dom_meta.unbound_acts) if num_flnts > 0 else 0
-            num_ground_comps = sum(
-                len(self.dom_meta.rel_comps(a)) for a in self.dom_meta.unbound_acts) if num_comps > 0 else 0
+            # num_ground_props = sum(
+            #     len(self.dom_meta.rel_pred_names(a)) for a in self.dom_meta.unbound_acts) if num_props > 0 else 0
+            # num_ground_flnts = sum(
+            #     len(self.dom_meta.rel_func_names(a)) for a in self.dom_meta.unbound_acts) if num_flnts > 0 else 0
+            # num_ground_comps = sum(
+            #     len(self.dom_meta.rel_comps(a)) for a in self.dom_meta.unbound_acts) if num_comps > 0 else 0
+            num_ground_props = len({
+                item
+                for res_list in [self.dom_meta.rel_pred_names(a) for a in self.dom_meta.unbound_acts]
+                for item in res_list
+            }) if num_props > 0 else 0
+            num_ground_flnts = len({
+                item
+                for res_list in [self.dom_meta.rel_func_names(a) for a in self.dom_meta.unbound_acts]
+                for item in res_list
+            }) if num_flnts > 0 else 0
+            num_ground_comps = len({
+                item
+                for res_list in [self.dom_meta.rel_comps(a) for a in self.dom_meta.unbound_acts]
+                for item in res_list
+            }) if num_comps > 0 else 0
 
             input_dim = (num_ground_props + num_ground_flnts + num_ground_comps) * hidden_dim
 
