@@ -288,7 +288,8 @@ class MCTS:
         self.state_id_to_node = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
         # self.act_dist_per_node: dict[MCTSNode,np.ndarray] = {}
         self.problem_service = problem_service
-        self.network = to_local(network)
+        # self.network = to_local(network) TODO: this might break inference somehow
+        self.network = network
         self.policy_only = self.network.policy_only()
 
         self.debug_memory = debug_memory
