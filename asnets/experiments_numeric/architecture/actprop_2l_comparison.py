@@ -30,6 +30,9 @@ DROPOUT = 0.1
 # maximum number of observations allowed for a problem
 LIMIT_TRAIN_OBS_SIZE = 1200
 
+# mse coeff
+MSE=0.00001
+
 
 #### Exploration settings ####
 TEACHER_TIMEOUT_S = 1

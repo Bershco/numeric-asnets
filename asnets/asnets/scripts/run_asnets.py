@@ -773,6 +773,12 @@ parser.add_argument(
     default=0.0,
     help='l1-l2 (group sparse) regulariser weight')
 parser.add_argument(
+    '--mse',
+    type=float,
+    default=1e-3,
+    help='mse coefficient for loss'
+)
+parser.add_argument(
     '--teacher-planner',
     choices=('ssipp', 'fd', 'domain-specific', 'enhsp', 'metricff'),
     default='ssipp',
@@ -1211,6 +1217,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
             l1_reg_coeff=args.l1_reg,
             l2_reg_coeff=args.l2_reg,
             l1_l2_reg_coeff=args.l1_l2_reg,
+            mse_coeff=args.mse,
             opt_batches_per_epoch=args.opt_batch_per_epoch,
             save_training_set=args.save_training_set,
             use_saved_training_set=args.use_saved_training_set,

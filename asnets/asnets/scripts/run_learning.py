@@ -198,12 +198,18 @@ def build_arch_flags(arch_mod, is_train):
         l2_reg = str(arch_mod.L2_REG)
     else:
         l2_reg = '0.0'
+    if arch_mod.MSE:
+        assert isinstance(arch_mod.MSE, (float,int))
+        mse = str(arch_mod.MSE)
+    else:
+        mse = '0.0'
     flags.extend([
         '--num-layers', str(arch_mod.NUM_LAYERS),
         '--hidden-size', str(arch_mod.HIDDEN_SIZE),
         '--target-rollouts-per-epoch', str(arch_mod.TARGET_ROLLOUTS_PER_EPOCH),
         '--l2-reg', l2_reg,
         '--l1-reg', l1_reg,
+        '--mse', mse,
         '-R', str(arch_mod.EVAL_ROUNDS),
         '-L', str(arch_mod.ROUND_TURN_LIMIT),
         '-t', str(arch_mod.TIME_LIMIT_SECONDS),

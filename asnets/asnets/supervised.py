@@ -1105,6 +1105,7 @@ class SupervisedTrainer:
                  l1_reg_coeff,
                  l2_reg_coeff,
                  l1_l2_reg_coeff,
+                 mse_coeff,
                  save_training_set=None,
                  use_saved_training_set=None,
                  hide_progress=False,
@@ -1129,6 +1130,7 @@ class SupervisedTrainer:
         self.lr = lr
         self.l1_reg_coeff = l1_reg_coeff
         self.l2_reg_coeff = l2_reg_coeff
+        self.mse_coeff = mse_coeff
         self.l1_l2_reg_coeff = l1_l2_reg_coeff
         self.timer = TimerContext()
         self.save_training_set = save_training_set
@@ -1181,6 +1183,7 @@ class SupervisedTrainer:
             l1_reg_coeff=self.l1_reg_coeff,
             l2_reg_coeff=self.l2_reg_coeff,
             l1_l2_reg_coeff=self.l1_l2_reg_coeff,
+            mse_coeff=self.mse_coeff,
             name="loss_fn",
             # strategy=SupervisedObjective.ANY_GOOD_ACTION
             strategy=self.strategy,
@@ -1472,6 +1475,7 @@ class ManualLoss:
                  l1_reg_coeff,
                  l2_reg_coeff,
                  l1_l2_reg_coeff,
+                 mse_coeff=1,
                  reduction=tf.keras.losses.Reduction.AUTO,
                  name=None,
                  strategy=SupervisedObjective.ANY_GOOD_ACTION):
@@ -1483,6 +1487,7 @@ class ManualLoss:
         self.l1_reg_coeff = l1_reg_coeff
         self.l2_reg_coeff = l2_reg_coeff
         self.l1_l2_reg_coeff = l1_l2_reg_coeff
+        self.mse_coeff=mse_coeff
         self.strategy = strategy
 
     def __call__(self, act_pred: List[tf.Tensor], q_values: List[tf.Tensor], target_values=None, pred_values=None) \
@@ -1608,6 +1613,7 @@ class ManualLoss:
                 loss_parts.append(('xent', xent))
 
                 mse = tf.reduce_mean(mean_squared_error(pred_values, target_values))
+                mse *= self.mse_coeff
                 loss_parts.append(('mse', mse))
 
             else:

@@ -192,7 +192,7 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
         return final_checkpoint_path
 
 
-def build_arch_flags(arch_mod, is_train, override_enhsp_config=None):
+def build_arch_flags(arch_mod, is_train, override_enhsp_config=None, override_mse_coeff=None):
     """Build flags which control model arch and training strategy."""
     flags = []
     assert arch_mod.SUPERVISED, "only supervised training supported atm"
@@ -222,6 +222,15 @@ def build_arch_flags(arch_mod, is_train, override_enhsp_config=None):
         l2_reg = str(arch_mod.L2_REG)
     else:
         l2_reg = '0.0'
+    if override_mse_coeff:
+        mse = str(override_mse_coeff)
+    else:
+        if arch_mod.MSE:
+            assert isinstance(arch_mod.MSE, (float,int))
+            mse = str(arch_mod.MSE)
+        else:
+            mse = '0.0'
+
 
     # optional flags
     if hasattr(arch_mod, 'MAX_OPT_EPOCHS'):
@@ -284,6 +293,7 @@ def build_arch_flags(arch_mod, is_train, override_enhsp_config=None):
         '--hidden-size', str(arch_mod.HIDDEN_SIZE),
         '--l2-reg', l2_reg,
         '--l1-reg', l1_reg,
+        '--mse', mse,
         '-R', str(arch_mod.EVAL_ROUNDS),
         '-L', str(arch_mod.ROUND_TURN_LIMIT) if is_train else str(arch_mod.EVAL_ROUND_TURN_LIMIT),
         '-t', str(arch_mod.TIME_LIMIT_SECONDS),
@@ -477,6 +487,12 @@ parser.add_argument(
     action='store_true',
     help='Revert to policy network only instead of the new dual-head network (for ablation study)'
 )
+parser.add_argument(
+    '--override-mse-coeff',
+    type=float,
+    default=None,
+    help='Override architecture mse coefficient.'
+)
 
 def main():
     args = parser.parse_args()
@@ -511,6 +527,7 @@ def main():
                enforce_job_ncpus=args.enforce_job_ncpus,
                restrict_test_probs=args.restrict_test_probs,
                override_enhsp_config=args.override_enhsp_config,
+               override_mse_coeff=args.override_mse_coeff,
                serial_test=args.serial_test,
                no_eval=args.no_eval,
                profiling = args.profiling,
@@ -538,6 +555,7 @@ def main_inner(*,
                resume_from=None,
                restrict_test_probs=None,
                override_enhsp_config=None,
+               override_mse_coeff=None,
                serial_test=None,
                no_eval=None,
                profiling=False,
@@ -576,7 +594,9 @@ def main_inner(*,
         ]  # yapf: disable
         train_flags.extend(build_arch_flags(
             arch_mod, is_train=True,
-            override_enhsp_config=override_enhsp_config))
+            override_enhsp_config=override_enhsp_config,
+            override_mse_coeff=override_mse_coeff
+        ))
         train_flags.extend(build_prob_flags_train(prob_mod))
         print(f'''
 ========================================================
