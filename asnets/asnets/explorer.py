@@ -164,13 +164,19 @@ class DynamicExplorer(Explorer):
         # hard termination when we take too long
         if time() - start_time > 3 * self.expl_learn_ratio * \
                 self.recent_learning_time:
+            print('[DYNAMIC_EXPLORE_TERMINATED] Cause: hard termination for taking too long')
             return True
         if total_new_pairs >= self.max_new_pairs:
+            print('[DYNAMIC_EXPLORE_TERMINATED] Cause: total_new_pairs >= max_new_pairs')
             return True
         if total_new_pairs >= self.min_new_pairs:
-            return time() - start_time >= \
-                self.expl_learn_ratio * self.recent_learning_time
-        return t.n > t.total
+            if time() - start_time >= self.expl_learn_ratio * self.recent_learning_time:
+                print('[DYNAMIC_EXPLORE_TERMINATED] Cause: time() - start_time >= self.expl_learn_ratio * self.recent_learning_time ')
+                return True
+        if t.n > t.total:
+            print('[DYNAMIC_EXPLORE_TERMINATED] Cause: t.n > t.total')
+            return True
+        return False
     
     def _sample_problem(self) -> Optional['SingleProblem']:
         """Samples a problem to explore from."""

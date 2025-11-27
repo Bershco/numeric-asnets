@@ -175,6 +175,7 @@ class ProblemServiceConfig(object):
             ssipp_teacher_heuristic: str = 'lm-cut',
             enhsp_config: str = 'hadd-gbfs',
             max_len: int = 50,
+            her_k: int = 0,
             teacher_planner: str,
             random_seed: int = None,
             teacher_timeout_s: int = 1800,
@@ -234,6 +235,7 @@ class ProblemServiceConfig(object):
         self.teacher_timeout_s = teacher_timeout_s
         self.only_one_good_action = only_one_good_action
         self.use_teacher_envelope = use_teacher_envelope
+        self.her_k = her_k
 
 class PlannerExtensions(object):
     """Wrapper to hold references to SSiPP and MDPSim modules, and references
@@ -575,7 +577,8 @@ def make_problem_service(config, set_proc_title=False):
             return len(self.traj_states)
         
         def exposed_get_num_new_pairs(self):
-            return len(self.expl_states)
+            # return len(self.expl_states)
+            return self.expl_triplets
         
         def exposed_finish_explore(self):
             LOGGER.info("[{}] generated {} pairs".format(
@@ -584,6 +587,7 @@ def make_problem_service(config, set_proc_title=False):
             self.traj_states.clear()
             self.model_cache = {}
             self.expl_states.clear()
+            self.expl_triplets = 0
 
         def exposed_initialise(self):
             assert not self.initialised, "Can't double-init"
@@ -605,10 +609,12 @@ def make_problem_service(config, set_proc_title=False):
 
             self.traj_states = RandomPopContainer()
             self.model_cache = {}
-            self.expl_states = set()
+            self.expl_states = []
+            self.expl_triplets = 0
 
             self.id_hash_to_state: dict[tuple[int,int],CanonicalState] = {}
             self.curr_state_id = 0
+            self.her_k = config.her_k
 
             if config.teacher_planner == 'fd':
                 # TODO: consider passing in teacher heuristic here, too; that
@@ -839,18 +845,48 @@ def make_problem_service(config, set_proc_title=False):
                 cstate_id, cstate_hash = mcts_tree.step_forward(action_index)
                 cstate = self.internal_get_state_from_identifiers(cstate_id, cstate_hash)
 
-            # 4. Determine game outcome z
-            if cstate.is_goal:
-                z = 1.0
-            elif cstate.is_terminal:
-                z = -1.0
-            else:
-                z = 0.0 # reached max_len without being terminal
+            if not self.policy_only:
+                # 4. Determine game outcome z
+                if cstate.is_goal:
+                    print('[HER_DEBUG] Reached goal!')
+                    z_true = 1.0
+                elif cstate.is_terminal:
+                    z_true = -1.0
+                else:
+                    z_true = 0.0 # reached max_len without being terminal
 
-            # 5. Add all states from trajectory with same outcome z
-            for cstate, pi in trajectory:
-                pi_key = tuple(np.ravel(pi)) if isinstance(pi, np.ndarray) else pi
-                self.expl_states.add((cstate, (pi_key, z)))
+                # 5. Add all states from trajectory with same outcome z
+                for cstate, pi in trajectory:
+                    pi_key = tuple(np.ravel(pi)) if isinstance(pi, np.ndarray) else pi
+                    self.expl_states.append((cstate, (pi_key, z_true)))
+                self.expl_triplets += len(trajectory)
+
+                # ------ Hindsight Experience Replay ----------
+
+                T = len(trajectory)
+                states_only = [s for (s, _) in trajectory]
+
+                for t in range(T-1):
+                    s_t, pi_t = trajectory[t]
+                    s_tp1, _ = trajectory[t+1]
+                    # 5a. Determine valid future indices
+                    future_idxs = list(range(t + 1, T))
+                    if not future_idxs:
+                        continue
+                    # 5b. Sample future states for HER
+                    chosen_ks = np.random.choice(future_idxs, size=min(self.her_k, len(future_idxs)), replace=False)
+                    for k in chosen_ks:
+                        s_k = states_only[k]  # HER goal state
+                        # HER success if the current state equals the chosen HER goal
+                        if s_tp1 == s_k:
+                            z_her = 1.0
+                            # print('[HER_DEBUG] Found a state that is z_her=1')
+                        else:
+                            z_her = 0.0
+                        # Use same policy target
+                        pi_key = tuple(np.ravel(pi_t)) if isinstance(pi_t, np.ndarray) else pi_t
+                        # Add HER transition
+                        self.expl_states.append((s_t, (pi_key, z_her)))
 
         def flatten_obs_qvs(self, rich_obs_qvs):
             cstates, rich_qvs = zip(*rich_obs_qvs)
@@ -1235,11 +1271,11 @@ class SupervisedTrainer:
 
             with tf.name_scope('grads_opt'):
                 with tf.GradientTape() as tape:
-                    act_preds_by_prob = []
+                    pi_preds_by_prob = []
                     if self.policy_only:
-                        obs_by_prob, qv_by_prob = list(zip(*feed_dict))
+                        obs_by_prob, pi_by_prob = list(zip(*feed_dict))
                     else:
-                        obs_by_prob, qv_by_prob, z_by_prob = list(zip(*feed_dict))
+                        obs_by_prob, pi_by_prob, z_by_prob = list(zip(*feed_dict))
                         value_preds_by_prob = []
 
                     for i, problem in enumerate(self.problems):
@@ -1251,11 +1287,11 @@ class SupervisedTrainer:
                         else:
                             policy, value = problem.network(obs)
                             value_preds_by_prob.append(value)
-                        act_preds_by_prob.append(policy)
+                        pi_preds_by_prob.append(policy)
                     if self.policy_only:
-                        loss = self.loss_fn(act_preds_by_prob, qv_by_prob)
+                        loss = self.loss_fn(pi_preds_by_prob, pi_by_prob)
                     else:
-                        loss = self.loss_fn(act_preds_by_prob, qv_by_prob,
+                        loss = self.loss_fn(pi_preds_by_prob, pi_by_prob,
                                             target_values=z_by_prob, pred_values=value_preds_by_prob)
                     grads = tape.gradient(loss, params)
                     grads_and_vars = zip(grads, params)
@@ -1490,28 +1526,28 @@ class ManualLoss:
         self.mse_coeff=mse_coeff
         self.strategy = strategy
 
-    def __call__(self, act_pred: List[tf.Tensor], q_values: List[tf.Tensor], target_values=None, pred_values=None) \
+    def __call__(self, act_dist_pred: List[tf.Tensor], act_dist: List[tf.Tensor], target_values=None, pred_values=None) \
             -> float:
-        assert len(self.problems) == len(act_pred), \
+        assert len(self.problems) == len(act_dist_pred), \
             "inconsistent input data size with num. problems"
-        assert len(q_values) == len(act_pred), \
+        assert len(act_dist) == len(act_dist_pred), \
             "inconsistent output data sizes"
         losses = []
         batch_sizes = []
         loss_parts = None
         for i, problem in enumerate(self.problems):
             with tf.name_scope(f'Problem-{i}'):
-                act_dist, ph_q_values = act_pred[i], q_values[i]
+                act_dist_pred_prob_i, act_dist_prob_i = act_dist_pred[i], act_dist[i]
                 if target_values is not None and pred_values is not None:
                     z, v = target_values[i], pred_values[i]
                     this_loss, this_loss_parts = self._set_up_losses(
-                        problem, act_dist, ph_q_values,
+                        problem, act_dist_pred_prob_i, act_dist_prob_i,
                         target_values=z,pred_values=v
                     )
                 else:
-                    this_loss, this_loss_parts = self._set_up_losses(problem, act_dist, ph_q_values)
+                    this_loss, this_loss_parts = self._set_up_losses(problem, act_dist_pred_prob_i, act_dist_prob_i)
 
-                this_batch_size = tf.shape(input=act_dist)[0]
+                this_batch_size = tf.shape(input=act_dist_pred_prob_i)[0]
                 losses.append(this_loss)
                 batch_sizes.append(tf.cast(this_batch_size, tf.float32))
                 if loss_parts is None:
@@ -1547,17 +1583,17 @@ class ManualLoss:
         return op_loss
 
     @can_profile
-    def _set_up_losses(self, problem, act_dist, ph_q_values, target_values=0, pred_values=0):
+    def _set_up_losses(self, problem, act_dist_pred, act_dist, target_values=0, pred_values=0):
         loss_parts = []
         # now the loss ops
         with tf.name_scope('loss'):
             if self.strategy == SupervisedObjective.ANY_GOOD_ACTION \
                     or self.strategy == SupervisedObjective.THERE_CAN_ONLY_BE_ONE:
                 best_qv = tf.reduce_min(
-                    input_tensor=ph_q_values, axis=-1, keepdims=True)
+                    input_tensor=act_dist, axis=-1, keepdims=True)
                 # TODO: is 0.01 threshold too big? Hmm.
                 act_labels = tf.cast(
-                    tf.less(tf.abs(ph_q_values - best_qv), 0.01), 'float32')
+                    tf.less(tf.abs(act_dist - best_qv), 0.01), 'float32')
                 label_sum = tf.reduce_sum(
                     input_tensor=act_labels, axis=-1, keepdims=True)
                 act_label_dist = act_labels / tf.math.maximum(label_sum, 1.0)
@@ -1573,41 +1609,38 @@ class ManualLoss:
                 # size is 0 (in which case it returns a loss of 0)
                 xent = tf.cond(pred=tf.size(input=act_label_dist) > 0,
                                true_fn=lambda: tf.reduce_mean(
-                    input_tensor=cross_entropy(act_dist, act_label_dist),
+                    input_tensor=cross_entropy(act_dist_pred, act_label_dist),
                     name='xent_reduce'),
                     false_fn=lambda: tf.constant(
                     0.0, dtype=tf.float32, name='xent_ph'),
                     name='xent_cond')
                 loss_parts.append(('xent', xent))
             elif self.strategy == SupervisedObjective.MAX_ADVANTAGE:
-                state_values = tf.reduce_min(input_tensor=ph_q_values, axis=-1)
-                exp_q = act_dist * ph_q_values
+                state_values = tf.reduce_min(input_tensor=act_dist, axis=-1)
+                exp_q = act_dist_pred * act_dist
                 exp_vs = tf.reduce_sum(input_tensor=exp_q, axis=-1)
                 # state value is irrelevant to objective, but is included
                 # because it ensures that zero loss = optimal policy
                 q_loss = tf.reduce_mean(input_tensor=exp_vs - state_values)
                 loss_parts.append(('qloss', q_loss))
             elif self.strategy == SupervisedObjective.MCTS_POLICY_DIST:
-                pi_targets = tf.convert_to_tensor(ph_q_values, dtype=tf.float32)
+                pi_targets = tf.convert_to_tensor(act_dist, dtype=tf.float32)
                 # pi_targets = tf.maximum(pi_targets, 0.0)
 
                 row_sums = tf.reduce_sum(pi_targets, axis=-1, keepdims=True)
                 row_sums = tf.where(row_sums > 0.0, row_sums, tf.ones_like(row_sums))
-                # pi_targets = pi_targets / row_sums
                 pi_targets = tf.math.divide_no_nan(pi_targets, row_sums)
 
-                act_dist_entropy = -tf.reduce_sum(act_dist * tf.math.log(act_dist + 1e-8), axis=-1)
-                mean_act_dist_entropy = tf.reduce_mean(act_dist_entropy)
-                # tf.summary.scalar("act_dist_entropy", mean_act_dist_entropy)
-                tf_and_log("act_dist_entropy", mean_act_dist_entropy)
+                act_dist_pred_entropy = -tf.reduce_sum(act_dist_pred * tf.math.log(act_dist_pred + 1e-8), axis=-1)
+                mean_act_dist_pred_entropy = tf.reduce_mean(act_dist_pred_entropy)
+                tf_and_log("act_dist_entropy", mean_act_dist_pred_entropy)
                 pi_targets_entropy = -tf.reduce_sum(pi_targets * tf.math.log(pi_targets + 1e-8), axis=-1)
                 mean_pi_targets_entropy = tf.reduce_mean(pi_targets_entropy)
-                # tf.summary.scalar("pi_entropy", mean_pi_targets_entropy)
                 tf_and_log("pi_entropy", mean_pi_targets_entropy)
 
                 xent = tf.cond(
                     tf.size(pi_targets) > 0,
-                    true_fn=lambda: tf.reduce_mean(cross_entropy(act_dist, pi_targets)),
+                    true_fn=lambda: tf.reduce_mean(cross_entropy(act_dist_pred, pi_targets)),
                     false_fn=lambda: tf.constant(0.0, dtype=tf.float32)
                 )
                 loss_parts.append(('xent', xent))

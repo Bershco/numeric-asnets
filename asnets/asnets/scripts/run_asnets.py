@@ -916,6 +916,12 @@ parser.add_argument(
     action='store_true',
     help='Revert to policy network only instead of the new dual-head network (for ablation study)'
 )
+parser.add_argument(
+    '--her-k',
+    type=int,
+    default=4,
+    help='Number of future states to randomly choose as dummy goals'
+)
 
 
 def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
@@ -1101,7 +1107,9 @@ def make_services(args):
             teacher_timeout_s=args.teacher_timeout_s,
             only_one_good_action=only_one_good_action,
             use_teacher_envelope=args.use_teacher_envelope,
-            max_len=args.training_limit_turns)
+            max_len=args.training_limit_turns,
+            her_k=args.her_k
+        )
         problem_server = ProblemServer(service_config)
         servers.append(problem_server)
         # must call initialise()

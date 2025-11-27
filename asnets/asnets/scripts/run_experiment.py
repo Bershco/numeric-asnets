@@ -493,6 +493,12 @@ parser.add_argument(
     default=None,
     help='Override architecture mse coefficient.'
 )
+parser.add_argument(
+    '--her-k',
+    type=int,
+    default=4,
+    help='Number of future states to randomly choose as dummy goals'
+)
 
 def main():
     args = parser.parse_args()
@@ -543,6 +549,7 @@ def main():
                mcts_exploration_weight=args.mcts_exploration_weight,
                mcts_smart_expansions=args.mcts_smart_expansions,
                policy_network_only=args.policy_network_only,
+               her_k=args.her_k,
                )
     print('Fin :-)')
 
@@ -571,6 +578,7 @@ def main_inner(*,
                mcts_exploration_weight=1,
                mcts_smart_expansions=False,
                policy_network_only=False,
+               her_k=4,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -609,6 +617,8 @@ timeout = {arch_mod.TIME_LIMIT_SECONDS}
 evaluation = {"off" if no_eval else "on"}
 ========================================================
         ''',flush=True)
+        if her_k:
+            train_flags.extend(['--her-k', str(her_k)])
         final_checkpoint = run_asnets_local(
             flags=train_flags,
             # we make sure it runs cmd in same dir as us,

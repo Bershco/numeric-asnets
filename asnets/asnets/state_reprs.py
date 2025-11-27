@@ -539,26 +539,30 @@ class CanonicalState(object):
         to_concat = []
 
         # will be 1 for enabled actions, 0 for disabled actions
+        # m vector
         act_mask_conv = np.array([enabled for _, enabled in self.acts_enabled],
                                  dtype='float32')
         to_concat.append(act_mask_conv)
 
         # need this first, should be populated with populate_aux_data before
         # we get here
+        # idk vector
         to_concat.append(self.aux_data)
 
         # will be 1 for true props, 0 for false props
+        # v_p vector
         props_conv = np.array([truth for _, truth in self.props_true],
                               dtype='float32')
         to_concat.append(props_conv)
 
-        # value for each fluent
         if CanonicalState.use_fluents:
+            #v_f vector
             flnts_conv = np.array([value for _, value in self.flnt_values],
                                   dtype='float32')
             to_concat.append(flnts_conv)
 
         if CanonicalState.use_comparisons:
+            #v_c vector
             comps_conv = np.array([truth for _, truth in self.comps_true],
                                   dtype='float32')
             to_concat.append(comps_conv)
