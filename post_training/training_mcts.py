@@ -21,7 +21,6 @@ class TrainingMCTS(MCTS):
 
     def _expand(self, node: MCTSNode):
         """Expand children using policy priors (top-k by prob)."""
-        # if node in self.children:
         if node.children is not None:
             return
 
@@ -31,27 +30,10 @@ class TrainingMCTS(MCTS):
         act_dist = tf.squeeze(act_dist).numpy()
 
         # mask invalid actions
-        # mask = [node.is_applicable_action(i) for i in range(len(act_dist))]
         mask = self.get_applicable_action_mask(node)
         sorted_indices = sorted(range(len(act_dist)), key=lambda i: act_dist[i], reverse=True)
 
         keys, values = [], []
-        # selected = 0
-        # for i in sorted_indices:
-        #     if selected >= self.k:
-        #         break
-        #     if not mask[i] or act_dist[i] == 0.0:
-        #         continue
-        #     next_state, step_cost = node.simulate_step(i, self.problem_service)
-        #     child = wrapInMCTSNode(
-        #         next_state,
-        #         cost_until_now=node.cost_until_now + step_cost,
-        #         previous_action=i
-        #     )
-        #     keys.append(i)
-        #     values.append(child)
-        #     self.state_id_to_node[child.state_id] = child
-        #     selected += 1
         selected_actions = []
         for i in sorted_indices:
             if len(selected_actions) >= self.k:

@@ -809,11 +809,11 @@ def make_problem_service(config, set_proc_title=False):
             mcts_tree = TrainingMCTS(
                 network=network,
                 problem_service=self,
-                iterations=10,
+                iterations=25,
                 # iterations=1,
                 # TODO: implement curriculum training - don't use high iterations at the beginning
                 #  as the network is quite random, and increase towards late phases
-                expansion_k=5,
+                expansion_k=1000,
                 exploration_weight=1,
                 # TODO: optimise hyper-parameter 'exploration_weight' ('c' in puct formula)
             )

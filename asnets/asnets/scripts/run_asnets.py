@@ -234,10 +234,8 @@ class MonteCarloPolicyEvaluator(MCTS):
         return self.state_id_to_node.get(cstate, None)
 
     def _expand(self, node):
-        # if node in self.children:
         if node.children is not None:
             return
-        # self.children[node] = self.find_children(node)
         node.children = self.find_children(node)
         self.state_id_to_node[node.state_id] = node
         if self._probe:
@@ -248,11 +246,9 @@ class MonteCarloPolicyEvaluator(MCTS):
                     act_dim = len(pri) if pri is not None else None
                 except Exception:
                     pass
-                # self._probe.log_expand(act_dim=act_dim, children_created=len(self.children[node]))
                 self._probe.log_expand(act_dim=act_dim, children_created=len(node.children))
             except Exception:
                 pass
-        # for child_node in self.children[node].values():
         for child_node in node.children.values():
             assert isinstance(child_node, MCTSNode)
             self.state_id_to_node[child_node.state_id] = child_node
