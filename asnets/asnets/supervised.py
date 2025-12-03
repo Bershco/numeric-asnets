@@ -439,6 +439,10 @@ def make_problem_service(config, set_proc_title=False):
             self.internal_set_weights(weights)
             self.internal_explore_from_random_state(self.network)
 
+        def exposed_explore_from_init_state(self, weights) -> bool:
+            self.internal_set_weights(weights)
+            return self.internal_explore_from_init_state(self.network)
+
         def exposed_dataset_is_empty(self):
             return len(self.replay) == 0
 
