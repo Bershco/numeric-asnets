@@ -176,6 +176,7 @@ class ProblemServiceConfig(object):
             enhsp_config: str = 'hadd-gbfs',
             max_len: int = 50,
             her_k: int = 0,
+            training_mcts_iterations: int = 10,
             teacher_planner: str,
             random_seed: int = None,
             teacher_timeout_s: int = 1800,
@@ -236,6 +237,7 @@ class ProblemServiceConfig(object):
         self.only_one_good_action = only_one_good_action
         self.use_teacher_envelope = use_teacher_envelope
         self.her_k = her_k
+        self.training_mcts_iterations = training_mcts_iterations
 
 class PlannerExtensions(object):
     """Wrapper to hold references to SSiPP and MDPSim modules, and references
@@ -762,6 +764,7 @@ def make_problem_service(config, set_proc_title=False):
             while len(self.traj_states) > 0:
                 self.internal_explore_from_random_state(network)
 
+
         def internal_get_state_identifiers(self, cstate: CanonicalState):
             state_hash = hash(cstate)
             self.curr_state_id += 1
@@ -926,21 +929,25 @@ def make_problem_service(config, set_proc_title=False):
             self.estimator_initialised = True
             LOGGER.debug("ProblemService finished estimator initialisation.")
 
-        def internal_get_state_h(self, cstate):
+        def internal_get_state_h(self, cstate) -> float:
             assert self.estimator_initialised, "Can't get state h value without estimator initialised"
             return self.estimator.get_cstate_h(cstate)
 
-        def exposed_get_state_h(self, cstate_id: int, cstate_hash: int):
+        def exposed_get_state_h(self, cstate_id: int, cstate_hash: int=0) -> float:
+            if cstate_hash == 0:
+                assert isinstance(cstate_id, tuple)
+                cstate_hash = cstate_id[1]
+                cstate_id = cstate_id[0]
             return self.internal_get_state_h(self.id_hash_to_state.get((cstate_id, cstate_hash), None))
 
-        def internal_get_init_state(self):
+        def internal_get_init_state(self) -> CanonicalState:
             if hasattr(self,"cached_init_state"):
                 return self.cached_init_state
             return get_init_cstate(self.p)
 
         def internal_to_network_input(self, cstate):
             if cstate is None:
-                return self.current_state.to_network_input()
+                return self.current_state.to_network_input() #TODO: there is no 'self.current_state'
             return cstate.to_network_input()
 
         def exposed_to_network_input(self, cstate_id : int, cstate_hash : int):

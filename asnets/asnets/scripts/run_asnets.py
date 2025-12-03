@@ -25,7 +25,7 @@ import tensorflow as tf
 import tqdm.auto as tqdm
 
 
-from asnets.explorer import StaticExplorer, DynamicExplorer
+from asnets.explorer import StaticExplorer, DynamicExplorer, MCTSExplorer
 from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
 from asnets.models import PropNetworkWeights, PropNetwork
 from asnets.supervised import SupervisedTrainer, SupervisedObjective, \
@@ -791,7 +791,7 @@ parser.add_argument(
     help='put in place additional assertions etc. to help debug network')
 parser.add_argument(
     '--exploration-algorithm',
-    choices=('static', 'dynamic'),
+    choices=('static', 'dynamic', 'mcts'),
     default='static',
     help='The exploration algorithm to use. Static exploration is the '
          'original ASNets algorithm. Dynamic exploration is the algorithm '
@@ -917,6 +917,12 @@ parser.add_argument(
     type=int,
     default=4,
     help='Number of future states to randomly choose as dummy goals'
+)
+parser.add_argument(
+    '--training-mcts-iterations',
+    type=int,
+    default=10,
+    help='Number of MCTS iterations done during training'
 )
 
 
@@ -1080,8 +1086,7 @@ def make_services(args):
 
     atexit.register(kill_servers)
 
-    only_one_good_action = args.sup_objective \
-                           == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
+    only_one_good_action = args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE or args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
     async_calls = []
     for prob_id, problem_name in enumerate(problem_names, start=1):
         random_seed = None if args.seed is None \
@@ -1104,7 +1109,8 @@ def make_services(args):
             only_one_good_action=only_one_good_action,
             use_teacher_envelope=args.use_teacher_envelope,
             max_len=args.training_limit_turns,
-            her_k=args.her_k
+            her_k=args.her_k,
+            training_mcts_iterations=args.training_mcts_iterations,
         )
         problem_server = ProblemServer(service_config)
         servers.append(problem_server)
@@ -1196,6 +1202,15 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
             explorer = StaticExplorer(problems, args.rollouts)
         elif args.exploration_algorithm == 'dynamic':
             explorer = DynamicExplorer(
+                problems,
+                init_trajs_per_problem=args.rollouts,
+                min_new_pairs=args.min_explored,
+                max_new_pairs=args.max_explored,
+                expl_learn_ratio=args.exploration_learning_ratio,
+                max_replay_size=args.max_replay_size,
+                debug_memory=args.debug_memory)
+        elif args.exploration_algorithm == 'mcts':
+            explorer = MCTSExplorer(
                 problems,
                 init_trajs_per_problem=args.rollouts,
                 min_new_pairs=args.min_explored,

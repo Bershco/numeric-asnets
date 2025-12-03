@@ -90,7 +90,7 @@ class Explorer(ABC):
             problem.problem_service.finish_explore()
         self._trim_replays()
         return [
-            (problem, sum(self.hit_goal[problem]) / len(self.hit_goal[problem]))
+            (problem, sum(self.hit_goal[problem]) / len(self.hit_goal[problem]) if len(self.hit_goal[problem])>0 else 0)
             for problem in self.problems]
 
     def update_learning_time(self, learning_time: float) -> None:
@@ -228,3 +228,44 @@ class DynamicExplorer(Explorer):
             top = types.most_common(10)
             print("[MEM] top object types:", top)
             print("[MEM] total objects:", len(objs))
+
+
+
+class MCTSExplorer(DynamicExplorer):
+
+    def __init__(self,
+                 problems,
+                 init_trajs_per_problem: int,
+                 min_new_pairs: int,
+                 max_new_pairs: int,
+                 expl_learn_ratio: float,
+                 max_replay_size: int,
+                 debug_memory: bool = False):
+        super().__init__(problems, init_trajs_per_problem, min_new_pairs, max_new_pairs, expl_learn_ratio, max_replay_size, debug_memory)
+        self.exploration_count_by_problem: dict['SingleProblem', int] = {prob: 0 for prob in problems}
+        assert len(self.exploration_count_by_problem) == len(self.problems)
+        self.solved_count_by_problem: dict['SingleProblem', int] = {prob: 0 for prob in problems}
+        self.solved_threshold = 0.1
+        self.init_state_h_by_problem: dict['SingleProblem', float] = {prob: prob.problem_service.get_state_h(prob.problem_service.env_reset()) for prob in problems}
+        # self.planner_plan_length_by_probem: dict['SingleProblem, int] = {prob: TODO: <here goes a method to retrieve planner plan length from initial state per problem> for prob in problems}
+
+    def compute_weight(self, problem: 'SingleProblem'):
+        if self.exploration_count_by_problem[problem] == 0:
+            return 1.0  # unexplored = high weight
+
+        success_rate = self.solved_count_by_problem[problem] / self.exploration_count_by_problem[problem]
+        w = 1 - success_rate
+        return max(w, 0.05)  # keep minimal weight to prevent forgetting
+
+    def _sample_problem(self) -> Optional['SingleProblem']:
+        weights = [self.compute_weight(prob) for prob in self.problems]
+        return random.choices(self.problems, weights=weights, k=1)[0]
+
+    def explore(self) -> None:
+        start_time = time()
+        t = tqdm.tqdm(desc='MCTS explore', total=self.max_new_pairs)
+        self.last_progress_time = time() #not sure what this is used for, trying to keep the status quo
+        while not self._terminate(start_time, t):
+            problem = self._sample_problem()
+            self.hit_goal[problem].append(problem.problem_service.explore_from_init_state(problem.network.get_weights()))
+        t.close()

@@ -499,6 +499,13 @@ parser.add_argument(
     default=4,
     help='Number of future states to randomly choose as dummy goals'
 )
+parser.add_argument(
+    '--training-mcts-iterations',
+    type=int,
+    default=10,
+    help='Number of MCTS iterations done during training'
+)
+
 
 def main():
     args = parser.parse_args()
@@ -550,6 +557,7 @@ def main():
                mcts_smart_expansions=args.mcts_smart_expansions,
                policy_network_only=args.policy_network_only,
                her_k=args.her_k,
+               training_mcts_iterations=args.training_mcts_iterations,
                )
     print('Fin :-)')
 
@@ -579,6 +587,7 @@ def main_inner(*,
                mcts_smart_expansions=False,
                policy_network_only=False,
                her_k=4,
+               training_mcts_iterations=None,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -619,6 +628,8 @@ evaluation = {"off" if no_eval else "on"}
         ''',flush=True)
         if her_k:
             train_flags.extend(['--her-k', str(her_k)])
+        if training_mcts_iterations:
+            train_flags.extend(['--training-mcts-iterations', str(training_mcts_iterations)])
         final_checkpoint = run_asnets_local(
             flags=train_flags,
             # we make sure it runs cmd in same dir as us,

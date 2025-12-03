@@ -21,7 +21,7 @@ class ENHSPEstimator(ENHSPCache):
         self.heuristic_client = None
         self.heuristic_client_initialised = False
 
-    def get_cstate_h(self, cstate):
+    def get_cstate_h(self, cstate) -> float:
         cstate = to_local(cstate)
         if cstate in self.computed_states:
             return self.computed_states[cstate]
@@ -40,7 +40,7 @@ class ENHSPEstimator(ENHSPCache):
         self.heuristic_client_initialised = True
 
     # the problem should already contain the current state as the 'initial' state in order to get its heuristic
-    def get_heuristic(self, problem_pddl_oneliner):
+    def get_heuristic(self, problem_pddl_oneliner) -> float:
         if not self.heuristic_client_initialised:
             self.initialise_heuristic_server(problem_pddl_oneliner)
         heuristic_value = self.heuristic_client.get_heuristic(problem_pddl_oneliner)
