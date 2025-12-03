@@ -621,6 +621,7 @@ def make_problem_service(config, set_proc_title=False):
             self.id_hash_to_state: dict[tuple[int,int],CanonicalState] = {}
             self.curr_state_id = 0
             self.her_k = config.her_k
+            self.planner_bootstrapping = True
 
             if config.teacher_planner == 'fd':
                 # TODO: consider passing in teacher heuristic here, too; that
@@ -803,7 +804,7 @@ def make_problem_service(config, set_proc_title=False):
         #     self.expl_states.update(filtered_envelope)
 
         def internal_explore_from_random_state(self, network: Callable) -> None:
-            """Self-play exploration for AlphaZero-style data generation."""
+            """Self-play exploration for AlphaZero-style data generation beginning with a random state from an existing trajectory."""
             try:
                 cstate = self.traj_states.pop_random()
             except ValueError as e:
@@ -813,10 +814,18 @@ def make_problem_service(config, set_proc_title=False):
                 self.internal_collect_trajectory(network)
                 cstate = self.traj_states.pop_random()
                 # if this fails, it *should* break the whole process
+            self.internal_explore_from_given_state(network, cstate)
+
+        def internal_explore_from_init_state(self, network: Callable) -> bool:
+            """Self-play exploration for AlphaZero-style data generation beginning with the start state of 'this' problem"""
+            cstate = self.internal_get_init_state()
+            return self.internal_explore_from_given_state(network, cstate)
+
+        def internal_explore_from_given_state(self, network: Callable, cstate: CanonicalState) -> bool:
             mcts_tree = TrainingMCTS(
                 network=network,
                 problem_service=self,
-                iterations=10,
+                iterations=config.training_mcts_iterations,
                 # iterations=1,
                 # TODO: implement curriculum training - don't use high iterations at the beginning
                 #  as the network is quite random, and increase towards late phases
@@ -826,7 +835,7 @@ def make_problem_service(config, set_proc_title=False):
             )
             mcts_tree.initialise_tree(cstate)
 
-            trajectory = []  # will store (cstate, pi) along the episode
+            trajectory: List[tuple[CanonicalState,np.ndarray]] = []  # will store (cstate, pi) along the episode
 
             # simulate one full episode
             for _ in range(self.max_len):
@@ -852,6 +861,42 @@ def make_problem_service(config, set_proc_title=False):
                 cstate_id, cstate_hash = mcts_tree.step_forward(action_index)
                 cstate = self.internal_get_state_from_identifiers(cstate_id, cstate_hash)
 
+            if self.planner_bootstrapping:
+                #TODO: insert planner bootstrapping process
+                only_states = [cstate for cstate,_ in trajectory]
+                sampled_states = np.random.choice(only_states, size=3, replace=False)
+                print('[PLANNER_BOOTSTRAPPING] Gathering teacher experience')
+                for state in sampled_states:
+                    teacher_experience = []
+                    state_pi_key_tuple_list = []
+                    try:
+                        teacher_experience = self.opt_pol_experience(state)
+                        state_pi_key_tuple_list = self.internal_extract_pi_key(teacher_experience)
+                    except TeacherException as ex:
+                        LOGGER.warning(f'Teacher error on:\n'
+                                       f'State: {state} \n'
+                                       f'Problem: {self.p.problem_name} ({ex})')
+                    filtered_envelope = []
+                    if any(state.is_goal for state in [state for state,_ in teacher_experience]):
+                        z = 1
+                    else:
+                        z = 0
+                    for state, pi_key in state_pi_key_tuple_list:
+                        nactions = sum(p[1] for p in state.acts_enabled)
+
+                        # pi_key = tuple()
+
+                        if nactions <= 1:
+                            # skip states
+                            continue
+                        filtered_envelope.append((state,(pi_key,z)))
+
+                    self.expl_states.extend(filtered_envelope)
+                print('[PLANNER_BOOTSTRAPPING] Finished gathering teacher experience')
+
+            states_only = [s for (s, _) in trajectory]
+            T = len(trajectory)
+
             if not self.policy_only:
                 # 4. Determine game outcome z
                 if cstate.is_goal:
@@ -866,12 +911,9 @@ def make_problem_service(config, set_proc_title=False):
                 for cstate, pi in trajectory:
                     pi_key = tuple(np.ravel(pi)) if isinstance(pi, np.ndarray) else pi
                     self.expl_states.append((cstate, (pi_key, z_true)))
-                self.expl_triplets += len(trajectory)
+                self.expl_triplets += T
 
                 # ------ Hindsight Experience Replay ----------
-
-                T = len(trajectory)
-                states_only = [s for (s, _) in trajectory]
 
                 for t in range(T-1):
                     s_t, pi_t = trajectory[t]
@@ -894,6 +936,9 @@ def make_problem_service(config, set_proc_title=False):
                         pi_key = tuple(np.ravel(pi_t)) if isinstance(pi_t, np.ndarray) else pi_t
                         # Add HER transition
                         self.expl_states.append((s_t, (pi_key, z_her)))
+            return states_only[-1].is_goal
+
+
 
         def flatten_obs_qvs(self, rich_obs_qvs):
             cstates, rich_qvs = zip(*rich_obs_qvs)
@@ -1020,6 +1065,22 @@ def make_problem_service(config, set_proc_title=False):
             assert self.network_initialised
             weights = to_local(weights)
             self.network.set_weights(weights)
+
+        def exposed_turn_off_planner_bootstrapping(self):
+            self.planner_bootstrapping = False
+
+        def internal_extract_pi_key(self, teacher_experience):
+            states_qv_tuple_list = [(key_value, tuple(item[1] for item in act_qv_tuple)) for key_value, act_qv_tuple in teacher_experience]
+            states_pi_keys = []
+            for state_qv_tuple in states_qv_tuple_list:
+                state, qv = state_qv_tuple
+                eps = 1e-6
+                pi_key = np.array([1/(elem+eps) for elem in qv])
+                pi_sum = np.sum(pi_key)
+                pi_norm = pi_key/pi_sum
+                pi_tuple = tuple(pi_norm)
+                states_pi_keys.append((state, pi_tuple))
+            return states_pi_keys
 
 
     return ProblemService
@@ -1204,6 +1265,8 @@ class SupervisedTrainer:
         self.dk = dk
         self._init_tf()
 
+        self.planner_bootstrapping = True
+
     @can_profile
     def _init_tf(self):
         """Do setup necessary for network (e.g. initialising weights)."""
@@ -1344,6 +1407,10 @@ class SupervisedTrainer:
             # only extend replay by a bit each time
             succs_probs = self.explorer.extend_replay()
             total_succ_rate = np.mean([s for _, s in succs_probs])
+            if total_succ_rate > 0:
+                for problem in self.problems:
+                    problem.problem_service.turn_off_planner_bootstrapping()
+                self.planner_bootstrapping = False
             replay_sizes = self._get_replay_sizes()
             replay_size = sum(replay_sizes)
 
