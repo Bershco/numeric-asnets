@@ -162,8 +162,7 @@ class DynamicExplorer(Explorer):
             t.update(total_new_pairs - t.n)
         
         # hard termination when we take too long
-        if time() - start_time > 3 * self.expl_learn_ratio * \
-                self.recent_learning_time:
+        if time() - start_time > 3 * self.expl_learn_ratio * self.recent_learning_time:
             print('[DYNAMIC_EXPLORE_TERMINATED] Cause: hard termination for taking too long')
             return True
         if total_new_pairs >= self.max_new_pairs:

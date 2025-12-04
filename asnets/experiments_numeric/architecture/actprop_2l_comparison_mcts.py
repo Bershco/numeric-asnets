@@ -2,4 +2,5 @@ from .actprop_2l_comparison import *
 
 EXPLORATION_ALGORITHM = 'mcts'
 ROLLOUTS = 2
+EXPLORATION_LEARNING_RATIO = 10
 # TIME_LIMIT_SECONDS = int(60 * 60 * 8)

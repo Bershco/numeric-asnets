@@ -587,8 +587,8 @@ def make_problem_service(config, set_proc_title=False):
             return self.expl_triplets
         
         def exposed_finish_explore(self):
-            LOGGER.info("[{}] generated {} pairs".format(
-                        self.p.problem_name, len(self.expl_states)))
+            info_text = f"[{self.p.problem_name}] generated {self.expl_triplets} actual (exploration only) new triplets, and {len(self.expl_states)} total (exploration + HER + bootstrapping) triplets"
+            LOGGER.info(info_text)
             self.replay.update(self.expl_states)
             self.traj_states.clear()
             self.model_cache = {}
