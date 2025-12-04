@@ -863,8 +863,11 @@ def make_problem_service(config, set_proc_title=False):
 
             if self.planner_bootstrapping:
                 #TODO: insert planner bootstrapping process
-                only_states = [cstate for cstate,_ in trajectory]
-                sampled_states = np.random.choice(only_states, size=3, replace=False)
+                only_states = np.array([cstate for cstate,_ in trajectory])
+                if len(only_states) >= 3:
+                    sampled_states = np.random.choice(only_states, size=3, replace=False)
+                else:
+                    sampled_states = only_states
                 print('[PLANNER_BOOTSTRAPPING] Gathering teacher experience')
                 for state in sampled_states:
                     teacher_experience = []
