@@ -428,7 +428,7 @@ class PropNetwork(tf.keras.layers.Layer):
                  **kwargs):
         super().__init__(trainable=trainable, name=name, dtype=dtype, dynamic=dynamic, **kwargs)
 
-        self._weight_manager = to_local(weight_manager)
+        self._weight_manager: PropNetworkWeights = to_local(weight_manager)
         self._prob_meta = problem_meta
         self._debug = debug
         # I tried ReLU, tanh, softplus, & leaky ReLU before settling on ELU for
