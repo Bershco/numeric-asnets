@@ -862,7 +862,6 @@ def make_problem_service(config, set_proc_title=False):
                 cstate = self.internal_get_state_from_identifiers(cstate_id, cstate_hash)
 
             if self.planner_bootstrapping:
-                #TODO: insert planner bootstrapping process
                 only_states = np.array([cstate for cstate,_ in trajectory])
                 if len(only_states) >= 3:
                     sampled_states = np.random.choice(only_states, size=3, replace=False)
@@ -895,6 +894,7 @@ def make_problem_service(config, set_proc_title=False):
                         filtered_envelope.append((state,(pi_key,z)))
 
                     self.expl_states.extend(filtered_envelope)
+                    self.planner_trajectories.append((filtered_envelope, z))
                 print('[PLANNER_BOOTSTRAPPING] Finished gathering teacher experience')
 
             states_only = [s for (s, _) in trajectory]
@@ -1084,6 +1084,13 @@ def make_problem_service(config, set_proc_title=False):
                 pi_tuple = tuple(pi_norm)
                 states_pi_keys.append((state, pi_tuple))
             return states_pi_keys
+
+        def exposed_log_planner_trajectories(self):
+            planner_call_count = len(self.planner_trajectories)
+            planner_success_count = sum(z for _,z in self.planner_trajectories)
+            planner_success_rate = planner_success_count/planner_call_count if planner_call_count > 0 else 0
+            LOGGER.info(f"[PLANNER_BOOTSTRAPPING_LOG - {self.p.problem_name}] planner_call_count: {planner_call_count} trajectories, planner_success_count: {planner_success_count}, planner_success_rate: {planner_success_rate}")
+            self.planner_trajectories.clear()
 
 
     return ProblemService

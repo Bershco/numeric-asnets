@@ -239,14 +239,15 @@ class MCTSExplorer(DynamicExplorer):
                  max_new_pairs: int,
                  expl_learn_ratio: float,
                  max_replay_size: int,
-                 debug_memory: bool = False):
+                 debug_memory: bool = False,
+                 planner_bootstrapping = False):
         super().__init__(problems, init_trajs_per_problem, min_new_pairs, max_new_pairs, expl_learn_ratio, max_replay_size, debug_memory)
         self.exploration_count_by_problem: dict['SingleProblem', int] = {prob: 0 for prob in problems}
         assert len(self.exploration_count_by_problem) == len(self.problems)
         self.solved_count_by_problem: dict['SingleProblem', int] = {prob: 0 for prob in problems}
         self.solved_threshold = 0.1
         self.init_state_h_by_problem: dict['SingleProblem', float] = {prob: prob.problem_service.get_state_h(prob.problem_service.env_reset()) for prob in problems}
-        # self.planner_plan_length_by_probem: dict['SingleProblem, int] = {prob: TODO: <here goes a method to retrieve planner plan length from initial state per problem> for prob in problems}
+        self.planner_bootstrapping = planner_bootstrapping
 
     def compute_weight(self, problem: 'SingleProblem'):
         if self.exploration_count_by_problem[problem] == 0:
@@ -268,3 +269,6 @@ class MCTSExplorer(DynamicExplorer):
             problem = self._sample_problem()
             self.hit_goal[problem].append(problem.problem_service.explore_from_init_state(problem.network.get_weights()))
         t.close()
+        if self.planner_bootstrapping:
+            for problem in self.problems:
+                problem.problem_service.log_planner_trajectories()
