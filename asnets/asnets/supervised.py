@@ -17,7 +17,7 @@ from time import time
 # import tqdm
 import tqdm.auto as tqdm
 from types import ModuleType
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Set
 
 import datetime
 
@@ -40,6 +40,7 @@ from asnets.utils.py_utils import RandomPopContainer, TimerContext, \
     strip_parens, weak_ref_to, weighted_batch_iter
 from asnets.utils.tf_utils import cross_entropy, empty_feed_value, \
     escape_name_tf, mean_squared_error
+from post_training.monte_carlo_tree_search import MCTSNode
 from post_training.training_mcts import TrainingMCTS
 
 import jpype
@@ -177,11 +178,14 @@ class ProblemServiceConfig(object):
             max_len: int = 50,
             her_k: int = 0,
             training_mcts_iterations: int = 10,
+            planner_bootstrapping: bool = False,
+            planner_bootstrapping_her: bool = False,
+            mcts_her_strategy: bool = False,
             teacher_planner: str,
             random_seed: int = None,
             teacher_timeout_s: int = 1800,
             only_one_good_action: bool = False,
-            use_teacher_envelope: bool = True):
+            use_teacher_envelope: bool = True,):
         """Initialise a ProblemServiceConfig. This Config will allow
         initialisation of a ProblemService, which involves:
         - Initialising mdpsim and ssipp (requires pddl_files, problem_name)
@@ -238,6 +242,9 @@ class ProblemServiceConfig(object):
         self.use_teacher_envelope = use_teacher_envelope
         self.her_k = her_k
         self.training_mcts_iterations = training_mcts_iterations
+        self.planner_bootstrapping = planner_bootstrapping
+        self.planner_bootstrapping_her = planner_bootstrapping_her
+        self.mcts_her_strategy = mcts_her_strategy
 
 class PlannerExtensions(object):
     """Wrapper to hold references to SSiPP and MDPSim modules, and references
@@ -400,6 +407,44 @@ class PlannerExtensions(object):
         print(f"[DEBUG GC] JVM running at del? {jpype.isJVMStarted()} PID={os.getpid()}")
 
 tf_logger = logging.getLogger('TF_SUMMARY_SCALAR_LOG')
+
+def log_value_preds(value_pred_by_prob):
+    combined_tensor = tf.concat(value_pred_by_prob, axis=0)
+    LOGGER.info(f"[VALUE_PRED_LOG - across problems] mean: {tf.reduce_mean(combined_tensor)}, min: {tf.reduce_min(combined_tensor)}, max: {tf.reduce_max(combined_tensor)}")
+
+def log_grad_norms(grads_and_vars):
+    policy_grads = []
+    value_grads = []
+
+    for grad, var in grads_and_vars:
+        if "final_act" in var.name.lower(): #policy head
+            if grad is not None:
+                policy_grads.append(tf.norm(grad))
+        if "value_out" in var.name.lower(): #value head
+            if grad is not None:
+                value_grads.append(tf.norm(grad))
+        if grad is None:
+            LOGGER.error(f"GRADIENT IS NONE for variable {var.name}")
+        else:
+            LOGGER.warning(
+                f"Grad stats for {var.name}: mean={tf.reduce_mean(tf.abs(grad)).numpy()}, max={tf.reduce_max(tf.abs(grad)).numpy()}")
+
+    policy_grad_norm = tf.reduce_mean(policy_grads)
+    value_grad_norm = tf.reduce_mean(value_grads)
+
+    base_name = tf.get_current_name_scope()
+    tf_logger.info(f"[TF_GRAD_NORMS_LOG] {base_name + '/' if base_name is not None else ''}policy_grad_norm : {policy_grad_norm}")
+    tf_logger.info(f"[TF_GRAD_NORMS_LOG] {base_name + '/' if base_name is not None else ''}value_grad_norm : {value_grad_norm}")
+
+def log_policy_target(pi_target_batch, problem: 'SingleProblem'):
+    sampled_pi_targets_ind = np.random.choice(pi_target_batch.shape[0], size=3, replace=False)
+    for pi_target_ind in sampled_pi_targets_ind:
+        pi_target = pi_target_batch[pi_target_ind]
+        pi_target_first_ten_entries = pi_target[:10]
+        pi_target_sum = np.sum(pi_target)
+        pi_target_argmax = np.argmax(pi_target)
+        pi_target_argmax_name = problem.prob_meta.bound_acts_ordered[pi_target_argmax].__str__()
+        LOGGER.info(f"[POLICY_TARGET_LOG - {problem.name}] pi_target (first 10 entries): {pi_target_first_ten_entries}, sum: {pi_target_sum} argmax: {pi_target_argmax}|{pi_target_argmax_name}")
 
 def tf_and_log(name: str, value):
     tf.summary.scalar(name, value)
@@ -592,6 +637,8 @@ def make_problem_service(config, set_proc_title=False):
             self.replay.update(self.expl_states)
             self.traj_states.clear()
             self.model_cache = {}
+            z_sum = sum([z for (_,(_,z)) in self.expl_states])
+            LOGGER.info(f'[Z_SUM] The sum of all currently placed triplets\' z value in self.expl_states is {z_sum}')
             self.expl_states.clear()
             self.expl_triplets = 0
 
@@ -618,10 +665,15 @@ def make_problem_service(config, set_proc_title=False):
             self.expl_states = []
             self.expl_triplets = 0
 
+            # a list of planner trajectories with the outcome (z=0 for non-terminal trajectory, 1 for successful trajectory)
+            self.planner_trajectories: List[tuple[List[tuple[CanonicalState,tuple[np.ndarray,int]]],int]] = []
+
             self.id_hash_to_state: dict[tuple[int,int],CanonicalState] = {}
             self.curr_state_id = 0
             self.her_k = config.her_k
-            self.planner_bootstrapping = True
+            self.planner_bootstrapping = config.planner_bootstrapping
+            self.planner_bootstrapping_her = config.planner_bootstrapping_her
+            self.mcts_her_strategy = config.mcts_her_strategy
 
             if config.teacher_planner == 'fd':
                 # TODO: consider passing in teacher heuristic here, too; that
@@ -821,6 +873,52 @@ def make_problem_service(config, set_proc_title=False):
             cstate = self.internal_get_init_state()
             return self.internal_explore_from_given_state(network, cstate)
 
+        def internal_sample_k_future_states(self, curr_t, state_list) -> List[CanonicalState]:
+            future_states = state_list[curr_t:]
+            if len(future_states) < self.her_k:
+                return future_states
+            else:
+                return np.random.choice(future_states, size=self.her_k, replace=False)
+
+        def internal_sample_k_states_from_tree(self, mcts_tree: TrainingMCTS) -> List[tuple[CanonicalState,np.ndarray]]:
+            all_nodes = mcts_tree.state_id_to_node.values()
+            all_nodes = np.array(list(all_nodes))
+            sampled_goals = np.random.choice(all_nodes, size=self.her_k, replace=False)
+            good_nodes: Set[MCTSNode] = set()
+            for goal in sampled_goals:
+                curr_node: MCTSNode = goal
+                while curr_node.parent:
+                    good_nodes.add(curr_node)
+                    curr_node = curr_node.parent
+
+            output_states_and_pi: List[tuple[CanonicalState, np.ndarray]] = []
+            act_dim = self.exposed_get_act_dim()
+            for node in good_nodes:
+                pi = np.zeros(act_dim, dtype=np.float32)
+                if not node.children:
+                    mask = mcts_tree.get_applicable_action_mask(node)
+                    valid = np.where(mask)[0]
+                    if len(valid) > 0:
+                        pi[valid] = 1.0 / len(valid)
+                    else:
+                        pi[:] = 1.0 / act_dim
+                    continue
+                for action, child in node.children.items():
+                    pi[action] = mcts_tree.N.get(child,0)
+                if pi.sum() > 0:
+                    pi /= pi.sum()
+                else:
+                    mask = mcts_tree.get_applicable_action_mask(node)
+                    valid = np.where(mask)[0]
+                    if len(valid) > 0:
+                        pi[valid] = 1.0 / len(valid)
+                    else:
+                        pi[:] = 1.0 / act_dim
+
+                output_states_and_pi.append((self.id_hash_to_state[node.state_id,hash(node)], pi))
+
+            return output_states_and_pi
+
         def internal_explore_from_given_state(self, network: Callable, cstate: CanonicalState) -> bool:
             mcts_tree = TrainingMCTS(
                 network=network,
@@ -879,7 +977,7 @@ def make_problem_service(config, set_proc_title=False):
                                        f'State: {state} \n'
                                        f'Problem: {self.p.problem_name} ({ex})')
                     filtered_envelope = []
-                    if any(state.is_goal for state in [state for state,_ in teacher_experience]):
+                    if self.planner_bootstrapping_her or any(state.is_goal for state in [state for state,_ in teacher_experience]):
                         z = 1
                     else:
                         z = 0
@@ -918,29 +1016,32 @@ def make_problem_service(config, set_proc_title=False):
 
                 # ------ Hindsight Experience Replay ----------
 
-                for t in range(T-1):
-                    s_t, pi_t = trajectory[t]
-                    s_tp1, _ = trajectory[t+1]
-                    # 5a. Determine valid future indices
-                    future_idxs = list(range(t + 1, T))
-                    if not future_idxs:
-                        continue
-                    # 5b. Sample future states for HER
-                    chosen_ks = np.random.choice(future_idxs, size=min(self.her_k, len(future_idxs)), replace=False)
-                    for k in chosen_ks:
-                        s_k = states_only[k]  # HER goal state
-                        # HER success if the current state equals the chosen HER goal
-                        if s_tp1 == s_k:
-                            z_her = 1.0
-                            # print('[HER_DEBUG] Found a state that is z_her=1')
-                        else:
-                            z_her = 0.0
-                        # Use same policy target
-                        pi_key = tuple(np.ravel(pi_t)) if isinstance(pi_t, np.ndarray) else pi_t
-                        # Add HER transition
-                        self.expl_states.append((s_t, (pi_key, z_her)))
-            return states_only[-1].is_goal
+                if self.her_k:
+                    if self.mcts_her_strategy:
+                        sampled_states_and_pi = self.internal_sample_k_states_from_tree(mcts_tree)
+                        z_her = 1
+                        for state, pi in sampled_states_and_pi:
+                            pi_key = tuple(np.ravel(pi)) if isinstance(pi, np.ndarray) else pi
+                            self.expl_states.append((state,(pi_key, z_her)))
+                    else:
+                        for t in range(T-1):
+                            s_t, pi_t = trajectory[t]
+                            s_tp1, _ = trajectory[t+1]
 
+                            sampled_states = self.internal_sample_k_future_states(curr_t=t,state_list=states_only)
+
+                            for s_k in sampled_states:
+                                # HER success if the current state equals the chosen HER goal
+                                if s_tp1 == s_k:
+                                    z_her = 1.0
+                                    # print('[HER_DEBUG] Found a state that is z_her=1')
+                                else:
+                                    z_her = 0.0
+                                # Use same policy target
+                                pi_key = tuple(np.ravel(pi_t)) if isinstance(pi_t, np.ndarray) else pi_t
+                                # Add HER transition
+                                self.expl_states.append((s_t, (pi_key, z_her)))
+            return states_only[-1].is_goal
 
 
         def flatten_obs_qvs(self, rich_obs_qvs):
@@ -1347,11 +1448,14 @@ class SupervisedTrainer:
         all_batches_iter = self._make_batches(n_batches)
         tr = tqdm.tqdm(all_batches_iter, desc='batch', total=n_batches)
 
+        sample_indices = np.random.choice(n_batches, size=3, replace=False)
+
         start_time = time()
         losses = []
         for feed_dict in tr:
             # Each feed_dict is a list of batched data sets for each problem.
             # Each data set is a tuple of obs_tensor and q-value tensor.
+
 
             with tf.name_scope('grads_opt'):
                 with tf.GradientTape() as tape:
@@ -1362,7 +1466,10 @@ class SupervisedTrainer:
                         obs_by_prob, pi_by_prob, z_by_prob = list(zip(*feed_dict))
                         value_preds_by_prob = []
 
+
                     for i, problem in enumerate(self.problems):
+                        if tr.n in sample_indices:
+                            log_policy_target(pi_by_prob[i], problem)
                         obs = obs_by_prob[i]
                         if len(obs.shape) == 1:
                             obs = np.expand_dims(obs, axis=0)
@@ -1377,11 +1484,32 @@ class SupervisedTrainer:
                     else:
                         loss = self.loss_fn(pi_preds_by_prob, pi_by_prob,
                                             target_values=z_by_prob, pred_values=value_preds_by_prob)
+                        log_value_preds(value_preds_by_prob)
                     grads = tape.gradient(loss, params)
-                    grads_and_vars = zip(grads, params)
-                    self.optimiser.apply_gradients(
-                        grads_and_vars=grads_and_vars)
+                    # LOGGER.warning("GRAD->VAR MATCH CHECK ---")
+                    # for g, v in zip(grads, params):
+                    #     LOGGER.warning(f"Grad applied to: {v.name} | is tf.Variable? {isinstance(v, tf.Variable)}")
+                    #     if g.shape != v.shape:
+                    #         LOGGER.error(f"SHAPE MISMATCH: grad {g.shape} vs var {v.shape} for {v.name}")
+                    #     print(v.name, type(g))
 
+
+                    log_grad_norms(zip(grads, params))
+                    # w_before_network_trainable = self.problems[0].network.trainable_weights.copy()
+                    # w_before_all_weights = self.weight_manager.all_weights.copy()
+                    self.optimiser.apply_gradients(
+                        grads_and_vars=zip(grads, params))
+                    LOGGER.warning("VAR DIFF CHECK ---")
+                    # for wm_var in self.weight_manager.all_weights:
+                    for wm_var in self.problems[0].network.trainable_weights:
+                        LOGGER.warning(f"Var {wm_var.name}: mean={tf.reduce_mean(tf.abs(wm_var)).numpy()}")
+                    # w_after_network_trainable = self.problems[0].network.trainable_weights.copy()
+                    # w_after_all_weights = self.weight_manager.all_weights.copy()
+                    # for var1_network, var2_network, var1_all, var2_all in zip(w_before_network_trainable, w_after_network_trainable, w_before_all_weights, w_after_all_weights):
+                    #     if np.allclose(var1_network.numpy() if hasattr(var1_network, 'numpy') else var1_network, var2_network.numpy() if hasattr(var2_network, 'numpy') else var2_network):
+                    #         LOGGER.info(f"[WEIGHT_CHANGE_LOG - across problems - network_trainable] There was no difference in weights in the {var1_network.name} variable.")
+                    #     if np.allclose(var1_all.numpy() if hasattr(var1_all, 'numpy') else var1_all, var2_all.numpy() if hasattr(var2_all, 'numpy') else var2_all):
+                    #         LOGGER.info(f"[WEIGHT_CHANGE_LOG - across problems - all_weights] There was no difference in weights in the {var1_all.name} variable.")
                     tr.set_postfix(loss=float(loss))
                     losses.append(loss)
 

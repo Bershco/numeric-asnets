@@ -41,7 +41,7 @@ ROLLOUTS = 1
 MIN_EXPLORED = 10
 MAX_EXPLORED = 1000
 EXPLORATION_LEARNING_RATIO = 1
-MAX_REPLAY_SIZE = 15000
+MAX_REPLAY_SIZE = 150000
 # controls strategy used to teacher the planner; try ANY_GOOD_ACTION if you
 # want the ASNet to choose evenly between all actions that have minimal teacher
 # Q-value, or THERE_CAN_ONLY_BE_ONE to imitate the single action that the

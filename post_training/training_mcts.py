@@ -56,7 +56,9 @@ class TrainingMCTS(MCTS):
                 is_terminal=is_terminal,
                 as_network_input=network_ready_repr, applicable_action_mask=applicable_action_mask,
                 hashed_state=cstate_after_action_i_hash,
+                parent=node,
             )
+            self.state_id_to_node[cstate_after_action_i_id] = wrapped_output_cstate
             keys.append(action_id)
             values.append(wrapped_output_cstate)
 

@@ -496,7 +496,7 @@ parser.add_argument(
 parser.add_argument(
     '--her-k',
     type=int,
-    default=4,
+    default=0,
     help='Number of future states to randomly choose as dummy goals'
 )
 parser.add_argument(
@@ -505,6 +505,24 @@ parser.add_argument(
     default=10,
     help='Number of MCTS iterations done during training'
 )
+parser.add_argument(
+    '--planner-bootstrapping',
+    action='store_true',
+    default=False,
+    help='Enable planner bootstrapping during training.'
+)
+parser.add_argument(
+    '--planner-bootstrapping-her',
+    action='store_true',
+    default=False,
+    help='Enable planner bootstrapping with hindsight experience replay during training.'
+)
+parser.add_argument(
+    '--mcts-her-strategy',
+    action='store_true',
+    help='Enable hindsight experience replay strategy where states are sampled from the training-based mcts tree and trajectories are decalred her goals.'
+)
+
 
 
 def main():
@@ -558,6 +576,9 @@ def main():
                policy_network_only=args.policy_network_only,
                her_k=args.her_k,
                training_mcts_iterations=args.training_mcts_iterations,
+               planner_bootstrapping=args.planner_bootstrapping,
+               planner_bootstrapping_her=args.planner_bootstrapping_her,
+               mcts_her_strategy=args.mcts_her_strategy,
                )
     print('Fin :-)')
 
@@ -586,8 +607,11 @@ def main_inner(*,
                mcts_exploration_weight=1,
                mcts_smart_expansions=False,
                policy_network_only=False,
-               her_k=4,
+               her_k=0,
                training_mcts_iterations=None,
+               planner_bootstrapping=False,
+               planner_bootstrapping_her=False,
+               mcts_her_strategy=False,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -630,6 +654,12 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend(['--her-k', str(her_k)])
         if training_mcts_iterations:
             train_flags.extend(['--training-mcts-iterations', str(training_mcts_iterations)])
+        if planner_bootstrapping:
+            train_flags.append('--planner-bootstrapping')
+        if planner_bootstrapping_her:
+            train_flags.append('--planner-bootstrapping')
+        if mcts_her_strategy:
+            train_flags.append('--mcts-her-strategy')
         final_checkpoint = run_asnets_local(
             flags=train_flags,
             # we make sure it runs cmd in same dir as us,

@@ -157,6 +157,7 @@ class MonteCarloPolicyEvaluator(MCTS):
     def get_action_from_cstate_id_hash(self, cstate_id, cstate_hash, cost): #cstate is non-terminal
         if self.curr_tree_root is None:
             self.curr_tree_root = wrapInMCTSNode(cstate_id=cstate_id,hashed_state=cstate_hash, cost_until_now=0, previous_action=None)
+            self.state_id_to_node[cstate_id] = self.curr_tree_root
             self.debug_orig_root = self.curr_tree_root
             self.visited_cstates_hashes.add(self.curr_tree_root.__hash__())
         if self.use_value_based:
@@ -319,7 +320,9 @@ class MonteCarloPolicyEvaluator(MCTS):
                     is_terminal=is_terminal,
                     as_network_input=network_ready_repr, applicable_action_mask=applicable_action_mask,
                     hashed_state=cstate_after_action_i_hash,
+                    parent=parent_node,
                 )
+                self.state_id_to_node[cstate_after_action_i_id] = wrapped_output_cstate
                 actions.append(action_id)
                 nodes.append(wrapped_output_cstate)
             ids = ",".join([str(i) for i in generated_ids])
@@ -335,10 +338,10 @@ class MonteCarloPolicyEvaluator(MCTS):
                 if self.problem_service is None:
                     raise RuntimeError("problem_service is None — was it shut down?")
                 # Simulate step only now (expensive!)
-                cstate_after_action_i, step_cost, is_goal, is_terminal, network_ready_repr,\
+                cstate_after_action_id, step_cost, is_goal, is_terminal, network_ready_repr,\
                     applicable_action_mask, state_hash = parent_node.simulate_step(i, self.problem_service)
                 wrapped_output_cstate = wrapInMCTSNode(
-                    cstate_after_action_i,
+                    cstate_after_action_id,
                     cost_until_now=parent_node.cost_until_now + step_cost,
                     previous_action=i,
                     is_goal=is_goal,
@@ -346,7 +349,9 @@ class MonteCarloPolicyEvaluator(MCTS):
                     as_network_input=network_ready_repr,
                     applicable_action_mask=applicable_action_mask,
                     hashed_state=state_hash,
+                    parent=parent_node,
                 )
+                self.state_id_to_node[cstate_after_action_id] = wrapped_output_cstate
                 # output[i] = wrapped_output_cstate
                 actions.append(i)
                 nodes.append(wrapped_output_cstate)
@@ -370,7 +375,7 @@ class MonteCarloPolicyEvaluator(MCTS):
             raise RuntimeError("problem_service is None — was it shut down?")
         best_cstate, step_cost = parent_node.simulate_step(next_action_ind, self.problem_service)
         return next_action_ind, wrapInMCTSNode(best_cstate, cost_until_now=parent_node.cost_until_now + step_cost,
-                                               previous_action=next_action_ind)
+                                               previous_action=next_action_ind, parent=parent_node)
 
     def print_exploration_exploitation_comparison(self):
         self._probe.print_exploration_exploitation_comparison()
@@ -910,12 +915,13 @@ parser.add_argument(
 parser.add_argument(
     '--policy-network-only',
     action='store_true',
+    default=False,
     help='Revert to policy network only instead of the new dual-head network (for ablation study)'
 )
 parser.add_argument(
     '--her-k',
     type=int,
-    default=4,
+    default=0,
     help='Number of future states to randomly choose as dummy goals'
 )
 parser.add_argument(
@@ -924,7 +930,24 @@ parser.add_argument(
     default=10,
     help='Number of MCTS iterations done during training'
 )
-
+parser.add_argument(
+    '--planner-bootstrapping',
+    action='store_true',
+    default=False,
+    help='Enable planner bootstrapping during training.'
+)
+parser.add_argument(
+    '--planner-bootstrapping-her',
+    action='store_true',
+    default=False,
+    help='Enable planner bootstrapping with hindsight experience replay during training.'
+)
+parser.add_argument(
+    '--mcts-her-strategy',
+    action='store_true',
+    default=False,
+    help='Enable hindsight experience replay strategy where states are sampled from the training-based mcts tree and trajectories are decalred her goals.'
+)
 
 def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
                 iter_num, weight_manager, scratch_dir):
@@ -1061,7 +1084,6 @@ class SingleProblem(object):
         # will get filled in later
         self.network = None
 
-
 @can_profile
 def make_services(args):
     """Make a ProblemService for each relevant problem."""
@@ -1111,6 +1133,9 @@ def make_services(args):
             max_len=args.training_limit_turns,
             her_k=args.her_k,
             training_mcts_iterations=args.training_mcts_iterations,
+            planner_bootstrapping=args.planner_bootstrapping,
+            planner_bootstrapping_her=args.planner_bootstrapping_her,
+            mcts_her_strategy=args.mcts_her_strategy,
         )
         problem_server = ProblemServer(service_config)
         servers.append(problem_server)
@@ -1217,7 +1242,9 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
                 max_new_pairs=args.max_explored,
                 expl_learn_ratio=args.exploration_learning_ratio,
                 max_replay_size=args.max_replay_size,
-                debug_memory=args.debug_memory)
+                debug_memory=args.debug_memory,
+                planner_bootstrapping=args.planner_bootstrapping,
+            )
         else:
             raise ValueError(
                 f'Unknown exploration algorithm: {args.exploration_algorithm}')

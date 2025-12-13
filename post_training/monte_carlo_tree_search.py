@@ -52,17 +52,19 @@ class Node(ABC):
 class MCTSNode(Node):
     delete_counter = 0
     __slots__ = ("state_id", "cost_until_now", "reward_weight",
-                 "previous_action","_hash","children","goal_state","terminal_state","as_network_input",
+                 "previous_action", "_hash", "children", "parent",
+                 "goal_state", "terminal_state", "as_network_input",
                  "applicable_action_mask")
 
     def __init__(self, state_id, cost_until_now, previous_action, reward_weight = 1000,
         is_goal = False, is_terminal = False, as_network_input = None, applicable_action_mask = None,
-                 hashed_state = -1):
+                 hashed_state = -1, parent = None):
         self.state_id = state_id
         self._hash = hashed_state
         self.cost_until_now = cost_until_now
         self.reward_weight = reward_weight
         self.previous_action = previous_action
+        self.parent = parent
         self.children = None
         self.goal_state = is_goal
         self.terminal_state = is_terminal
@@ -285,7 +287,7 @@ class MCTS:
         # self.children: dict[Node, Any] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
-        self.state_id_to_node = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
+        self.state_id_to_node: dict[int,MCTSNode] = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
         # self.act_dist_per_node: dict[MCTSNode,np.ndarray] = {}
         self.problem_service = problem_service
         # self.network = to_local(network) TODO: this might break inference somehow
@@ -602,7 +604,7 @@ class MCTS:
         return node.applicable_action_mask
 
 def wrapInMCTSNode(cstate_id: int, previous_action, cost_until_now=float('inf'), is_goal=False,
-                   is_terminal=False, as_network_input=None, applicable_action_mask=None, hashed_state = -1):
+                   is_terminal=False, as_network_input=None, applicable_action_mask=None, hashed_state = -1, parent = None):
     return MCTSNode(state_id=cstate_id, cost_until_now=cost_until_now, previous_action=previous_action,is_goal=is_goal,
                     is_terminal=is_terminal, as_network_input=as_network_input,
-                    applicable_action_mask=applicable_action_mask, hashed_state=hashed_state)
+                    applicable_action_mask=applicable_action_mask, hashed_state=hashed_state, parent=parent)
