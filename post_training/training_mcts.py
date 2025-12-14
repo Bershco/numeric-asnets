@@ -98,7 +98,7 @@ class TrainingMCTS(MCTS):
                 node.value = float(value_tensor.numpy().squeeze())
         return tf.squeeze(node.act_dist)
 
-    def run_search(self):
+    def run_search(self) -> np.ndarray:
         """Run N simulations on current root and return π."""
         root = self.curr_tree_root
         for _ in range(self.iterations):
@@ -127,7 +127,7 @@ class TrainingMCTS(MCTS):
         parent = self.curr_tree_root
         # next_node = self.children[parent][action_id]
         next_node = parent.children[action_id]
-        self.prune_children_except(parent, action_id)
+        # self.prune_children_except(parent, action_id)
         self.curr_tree_root = next_node
         return self.curr_tree_root.state_id, hash(self.curr_tree_root)
 
@@ -144,3 +144,6 @@ class TrainingMCTS(MCTS):
             mask[int(action)] = True
 
         return mask
+
+    def get_children_states(self, state_id: int):
+        return self.state_id_to_node[state_id].children

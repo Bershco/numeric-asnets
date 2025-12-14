@@ -180,6 +180,9 @@ class ProblemServiceConfig(object):
             training_mcts_iterations: int = 10,
             planner_bootstrapping: bool = False,
             planner_bootstrapping_her: bool = False,
+            heuristic_bootstrapping: bool = False,
+            estimator_value_conversion_lambda: float = 0.1,
+            bootstrap_k: int = 3,
             mcts_her_strategy: bool = False,
             teacher_planner: str,
             random_seed: int = None,
@@ -244,7 +247,10 @@ class ProblemServiceConfig(object):
         self.training_mcts_iterations = training_mcts_iterations
         self.planner_bootstrapping = planner_bootstrapping
         self.planner_bootstrapping_her = planner_bootstrapping_her
+        self.heuristic_bootstrapping = heuristic_bootstrapping
         self.mcts_her_strategy = mcts_her_strategy
+        self.estimator_value_conversion_lambda = estimator_value_conversion_lambda
+        self.bootstrap_k = bootstrap_k
 
 class PlannerExtensions(object):
     """Wrapper to hold references to SSiPP and MDPSim modules, and references
@@ -405,6 +411,14 @@ class PlannerExtensions(object):
     def __del__(self):
         import jpype, os
         print(f"[DEBUG GC] JVM running at del? {jpype.isJVMStarted()} PID={os.getpid()}")
+
+def cosine_similarity(p, q):
+    # p, q: numpy vectors representing policies
+    dot = np.dot(p, q)
+    norm = np.linalg.norm(p) * np.linalg.norm(q)
+    if norm == 0:
+        return 0.0
+    return dot / norm
 
 tf_logger = logging.getLogger('TF_SUMMARY_SCALAR_LOG')
 
@@ -604,6 +618,9 @@ def make_problem_service(config, set_proc_title=False):
             return self._cached_obs_dim
 
         def exposed_get_act_dim(self):
+            return self.internal_get_act_dim()
+
+        def internal_get_act_dim(self):
             if not hasattr(self, '_cached_act_dim'):
                 self._cached_act_dim = compute_action_dim(self.p)
             return self._cached_act_dim
@@ -639,7 +656,17 @@ def make_problem_service(config, set_proc_title=False):
             self.model_cache = {}
             z_sum = sum([z for (_,(_,z)) in self.expl_states])
             LOGGER.info(f'[Z_SUM] The sum of all currently placed triplets\' z value in self.expl_states is {z_sum}')
+            last_states_mean = np.mean(self.last_states_value_cache)
+            last_states_min = np.min(self.last_states_value_cache)
+            last_states_max = np.max(self.last_states_value_cache)
+            LOGGER.info(f"[LAST_STATES_LOG] '5-last-states' in the latest exploration period information: mean: {last_states_mean}, min: {last_states_min}, max: {last_states_max} ")
+            sampled_indices = np.random.choice(len(self.expl_states), replace=False, size=5)
+            sampled_triplets = [self.expl_states[i] for i in sampled_indices]
+            for state, pi, val in sampled_triplets:
+                pi_pred, val_pred = self.network(state)
+                LOGGER.info(f"[COSINE_SIMILARITY] For the sampled state, the cosine similarity is {cosine_similarity(np.array(pi), np.array(pi_pred))}")
             self.expl_states.clear()
+            self.last_states_value_cache.clear()
             self.expl_triplets = 0
 
         def exposed_initialise(self):
@@ -667,13 +694,18 @@ def make_problem_service(config, set_proc_title=False):
 
             # a list of planner trajectories with the outcome (z=0 for non-terminal trajectory, 1 for successful trajectory)
             self.planner_trajectories: List[tuple[List[tuple[CanonicalState,tuple[np.ndarray,int]]],int]] = []
+            self.state_id_to_value_cache = {}
+            self.last_states_value_cache = []
+            self.estimator_value_conversion_lambda = config.estimator_value_conversion_lambda #default is 0.1
 
             self.id_hash_to_state: dict[tuple[int,int],CanonicalState] = {}
             self.curr_state_id = 0
             self.her_k = config.her_k
+            self.mcts_her_strategy = config.mcts_her_strategy
             self.planner_bootstrapping = config.planner_bootstrapping
             self.planner_bootstrapping_her = config.planner_bootstrapping_her
-            self.mcts_her_strategy = config.mcts_her_strategy
+            self.heuristic_bootstrapping = config.heuristic_bootstrapping
+            self.bootstrap_k = config.bootstrap_k #default is 3
 
             if config.teacher_planner == 'fd':
                 # TODO: consider passing in teacher heuristic here, too; that
@@ -832,6 +864,15 @@ def make_problem_service(config, set_proc_title=False):
         def internal_get_state_from_identifiers(self, cstate_id: int, cstate_hash: int) -> CanonicalState:
             return self.id_hash_to_state.get((cstate_id, cstate_hash), None)
 
+        def internal_get_state_value(self, state_id: int, state: CanonicalState) -> float:
+            state_v = self.state_id_to_value_cache.get(state_id, None)
+            if not state_v:
+                state_h = self.internal_get_state_h(state)
+                state_v = np.exp(-1 * self.estimator_value_conversion_lambda * state_h)
+                self.state_id_to_value_cache[state_id] = state_v
+            return state_v
+
+
         # def internal_explore_from_random_state(self) -> None:
         #     """Explore from a random state."""
         #     cstate = self.traj_states.pop_random()
@@ -934,6 +975,7 @@ def make_problem_service(config, set_proc_title=False):
             mcts_tree.initialise_tree(cstate)
 
             trajectory: List[tuple[CanonicalState,np.ndarray]] = []  # will store (cstate, pi) along the episode
+            id_hash_traj: List[tuple[int,int]] = []
 
             # simulate one full episode
             for _ in range(self.max_len):
@@ -957,16 +999,19 @@ def make_problem_service(config, set_proc_title=False):
                 action_index = np.random.choice(np.arange(len(pi)), p=masked_pi)
 
                 cstate_id, cstate_hash = mcts_tree.step_forward(action_index)
+                id_hash_traj.append((cstate_id, cstate_hash))
                 cstate = self.internal_get_state_from_identifiers(cstate_id, cstate_hash)
 
+            states_only: np.ndarray[CanonicalState] = np.array([s[0] for s in trajectory])
+            T = len(trajectory)
+
             if self.planner_bootstrapping:
-                only_states = np.array([cstate for cstate,_ in trajectory])
-                if len(only_states) >= 3:
-                    sampled_states = np.random.choice(only_states, size=3, replace=False)
+                if len(states_only) >= self.bootstrap_k:
+                    sampled_traj_indices = np.random.choice(states_only, size=self.bootstrap_k, replace=False)
                 else:
-                    sampled_states = only_states
+                    sampled_traj_indices = states_only
                 print('[PLANNER_BOOTSTRAPPING] Gathering teacher experience')
-                for state in sampled_states:
+                for state in sampled_traj_indices:
                     teacher_experience = []
                     state_pi_key_tuple_list = []
                     try:
@@ -995,8 +1040,35 @@ def make_problem_service(config, set_proc_title=False):
                     self.planner_trajectories.append((filtered_envelope, z))
                 print('[PLANNER_BOOTSTRAPPING] Finished gathering teacher experience')
 
-            states_only = [s for (s, _) in trajectory]
-            T = len(trajectory)
+            if self.heuristic_bootstrapping:
+                if T >= self.bootstrap_k:
+                    sampled_traj_indices: List[int] = np.random.choice(T, size=self.bootstrap_k, replace=False)
+                else:
+                    sampled_traj_indices: List[int] = [i for i in range(T)]
+                print('[HEURISTIC_BOOTSTRAPPING] Acquiring sampled states heurstics.')
+                for ind in sampled_traj_indices:
+                    state_id = id_hash_traj[ind][0]
+                    sampled_state = states_only[ind]
+                    sampled_state_v = self.internal_get_state_value(state_id, sampled_state)
+                    children = mcts_tree.get_children_states(state_id)
+                    children_values = []
+                    for action_id, child in children.items():
+                        child_state_id = child.state_id
+                        child_state = self.id_hash_to_state[child_state_id, hash(child)]
+                        child_h = self.internal_get_state_h(child_state)
+                        children_values.append((action_id, child_h))
+                    logits = np.full(self.internal_get_act_dim(), -np.inf, dtype=np.float32)
+                    for act, h_act in children_values:
+                        logits[act] = -1 * self.estimator_value_conversion_lambda * h_act
+
+                    # subtract max for stability (this handles -inf too)
+                    shifted = logits - np.max(logits)
+
+                    exp_vals = np.exp(shifted)
+                    sampled_state_softmax = exp_vals / np.sum(exp_vals)
+                    sampled_state_softmax = tuple(sampled_state_softmax)
+
+                    self.expl_states.append((sampled_state, (sampled_state_softmax, sampled_state_v)))
 
             if not self.policy_only:
                 # 4. Determine game outcome z
@@ -1014,8 +1086,13 @@ def make_problem_service(config, set_proc_title=False):
                     self.expl_states.append((cstate, (pi_key, z_true)))
                 self.expl_triplets += T
 
-                # ------ Hindsight Experience Replay ----------
+                # ------ Last states value cache ----------
+                last_states = states_only[-5:]
+                last_states_id = [state_id for state_id, state_hash in id_hash_traj[-5:]]
+                last_states_values = [self.internal_get_state_value(state_id, state) for state_id, state in zip(last_states_id,last_states)]
+                self.last_states_value_cache.extend(last_states_values)
 
+                # ------ Hindsight Experience Replay ----------
                 if self.her_k:
                     if self.mcts_her_strategy:
                         sampled_states_and_pi = self.internal_sample_k_states_from_tree(mcts_tree)
@@ -1028,9 +1105,9 @@ def make_problem_service(config, set_proc_title=False):
                             s_t, pi_t = trajectory[t]
                             s_tp1, _ = trajectory[t+1]
 
-                            sampled_states = self.internal_sample_k_future_states(curr_t=t,state_list=states_only)
+                            sampled_traj_indices = self.internal_sample_k_future_states(curr_t=t,state_list=states_only)
 
-                            for s_k in sampled_states:
+                            for s_k in sampled_traj_indices:
                                 # HER success if the current state equals the chosen HER goal
                                 if s_tp1 == s_k:
                                     z_her = 1.0
@@ -1494,15 +1571,15 @@ class SupervisedTrainer:
                     #     print(v.name, type(g))
 
 
-                    log_grad_norms(zip(grads, params))
+                    # log_grad_norms(zip(grads, params))
                     # w_before_network_trainable = self.problems[0].network.trainable_weights.copy()
                     # w_before_all_weights = self.weight_manager.all_weights.copy()
                     self.optimiser.apply_gradients(
                         grads_and_vars=zip(grads, params))
-                    LOGGER.warning("VAR DIFF CHECK ---")
-                    # for wm_var in self.weight_manager.all_weights:
-                    for wm_var in self.problems[0].network.trainable_weights:
-                        LOGGER.warning(f"Var {wm_var.name}: mean={tf.reduce_mean(tf.abs(wm_var)).numpy()}")
+                    # LOGGER.warning("VAR DIFF CHECK ---")
+                    # # for wm_var in self.weight_manager.all_weights:
+                    # for wm_var in self.problems[0].network.trainable_weights:
+                    #     LOGGER.warning(f"Var {wm_var.name}: mean={tf.reduce_mean(tf.abs(wm_var)).numpy()}")
                     # w_after_network_trainable = self.problems[0].network.trainable_weights.copy()
                     # w_after_all_weights = self.weight_manager.all_weights.copy()
                     # for var1_network, var2_network, var1_all, var2_all in zip(w_before_network_trainable, w_after_network_trainable, w_before_all_weights, w_after_all_weights):

@@ -943,6 +943,12 @@ parser.add_argument(
     help='Enable planner bootstrapping with hindsight experience replay during training.'
 )
 parser.add_argument(
+    '--heuristic-bootstrapping',
+    action='store_true',
+    default=False,
+    help='Enable heuristic bootstrapping during training.'
+)
+parser.add_argument(
     '--mcts-her-strategy',
     action='store_true',
     default=False,
@@ -1135,6 +1141,7 @@ def make_services(args):
             training_mcts_iterations=args.training_mcts_iterations,
             planner_bootstrapping=args.planner_bootstrapping,
             planner_bootstrapping_her=args.planner_bootstrapping_her,
+            heuristic_bootstrapping=args.heuristic_bootstrapping,
             mcts_her_strategy=args.mcts_her_strategy,
         )
         problem_server = ProblemServer(service_config)

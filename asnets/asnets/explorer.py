@@ -89,8 +89,7 @@ class Explorer(ABC):
         for problem in self.problems:
             problem.problem_service.finish_explore()
         self._trim_replays()
-        return [
-            (problem, sum(self.hit_goal[problem]) / len(self.hit_goal[problem]) if len(self.hit_goal[problem])>0 else 0)
+        return [(problem, sum(self.hit_goal[problem]) / len(self.hit_goal[problem]) if len(self.hit_goal[problem])>0 else 0)
             for problem in self.problems]
 
     def update_learning_time(self, learning_time: float) -> None:

@@ -599,6 +599,7 @@ class PropNetwork(tf.keras.layers.Layer):
             self.value_out_layer.build((None, value_hidden_dim))
             self.value_out_layer.kernel = val_out_W
             self.value_out_layer.bias = val_out_b
+        self._trainable_weights = list(self._weight_manager.all_weights) # Supposedly tells keras these are trainable
 
     def _split_input(self,
                      obs: tf.Tensor,

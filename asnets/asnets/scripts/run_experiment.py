@@ -518,6 +518,12 @@ parser.add_argument(
     help='Enable planner bootstrapping with hindsight experience replay during training.'
 )
 parser.add_argument(
+    '--heuristic-bootstrapping',
+    action='store_true',
+    default=False,
+    help='Enable heuristic bootstrapping during training.'
+)
+parser.add_argument(
     '--mcts-her-strategy',
     action='store_true',
     help='Enable hindsight experience replay strategy where states are sampled from the training-based mcts tree and trajectories are decalred her goals.'
@@ -579,6 +585,7 @@ def main():
                planner_bootstrapping=args.planner_bootstrapping,
                planner_bootstrapping_her=args.planner_bootstrapping_her,
                mcts_her_strategy=args.mcts_her_strategy,
+               heuristic_bootstrapping=args.heuristic_bootstrapping
                )
     print('Fin :-)')
 
@@ -611,6 +618,7 @@ def main_inner(*,
                training_mcts_iterations=None,
                planner_bootstrapping=False,
                planner_bootstrapping_her=False,
+               heuristic_bootstrapping=False,
                mcts_her_strategy=False,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
@@ -658,6 +666,8 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.append('--planner-bootstrapping')
         if planner_bootstrapping_her:
             train_flags.append('--planner-bootstrapping')
+        if heuristic_bootstrapping:
+            train_flags.append('--heuristic-bootstrapping')
         if mcts_her_strategy:
             train_flags.append('--mcts-her-strategy')
         final_checkpoint = run_asnets_local(
