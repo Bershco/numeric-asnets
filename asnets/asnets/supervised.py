@@ -662,9 +662,10 @@ def make_problem_service(config, set_proc_title=False):
             LOGGER.info(f"[LAST_STATES_LOG] '5-last-states' in the latest exploration period information: mean: {last_states_mean}, min: {last_states_min}, max: {last_states_max} ")
             sampled_indices = np.random.choice(len(self.expl_states), replace=False, size=5)
             sampled_triplets = [self.expl_states[i] for i in sampled_indices]
-            for state, pi, val in sampled_triplets:
-                pi_pred, val_pred = self.network(state)
-                LOGGER.info(f"[COSINE_SIMILARITY] For the sampled state, the cosine similarity is {cosine_similarity(np.array(pi), np.array(pi_pred))}")
+            for state, pi_val in sampled_triplets:
+                pi, val = pi_val
+                pi_pred, val_pred = self.network(state.to_network_input())
+                LOGGER.info(f"[COSINE_SIMILARITY] For the sampled state, the cosine similarity is {cosine_similarity(np.array(pi), np.array(pi_pred).T)}")
             self.expl_states.clear()
             self.last_states_value_cache.clear()
             self.expl_triplets = 0
@@ -1473,7 +1474,8 @@ class SupervisedTrainer:
                 learning_rate=lr_scheduler)
         else:
             self.optimiser = tf.keras.optimizers.Adam(learning_rate=self.lr)
-
+        # self.optimiser.build(self.weight_manager.all_weights)
+        # assert len(self.optimiser.variables) > 1, 'optimiser build wasn\'t succesful'
         self.loss_fn = ManualLoss(
             problems=self.problems,
             weight_manager=self.weight_manager,
@@ -1494,6 +1496,10 @@ class SupervisedTrainer:
 
     def _optimise(self, n_batches):
         params = self.weight_manager.all_weights
+        # LOGGER.warning("PARAM ID CHECK ---")
+        # for i, (wm_var, param_var) in enumerate(zip(self.weight_manager.all_weights, params)):
+        #     LOGGER.warning(f"#{i}: equal object? {wm_var is param_var}, equal ref? {wm_var.ref() == param_var.ref()}")
+        # LOGGER.warning(f"total weight_manager vars: {len(self.weight_manager.all_weights)}, params: {len(params)}")
 
         # Do a check that set(params) is the same as what TF thinks it should
         # be. As tf.Variable is unhashable, we have to use ref() to get the key.
@@ -1529,6 +1535,19 @@ class SupervisedTrainer:
 
         start_time = time()
         losses = []
+
+        # # === DEBUG: CHECK VARIABLE IDENTITY ===
+        # # pick a variable from weight_manager
+        # wm_var = self.weight_manager.act_weights[0][list(self.weight_manager.act_weights[0].keys())[0]][0]
+        #
+        # # pick the corresponding module variable from the trainable network
+        # first_act_key = list(self.problems[0].network.act_layers[0].keys())[0]
+        # mod_var = self.problems[0].network.act_layers[0][first_act_key].W
+        #
+        # LOGGER.warning(f"Same object? {wm_var is mod_var}")
+        # LOGGER.warning(f"Same ref()? {wm_var.ref() == mod_var.ref()}")
+        # # === END DEBUG ===
+
         for feed_dict in tr:
             # Each feed_dict is a list of batched data sets for each problem.
             # Each data set is a tuple of obs_tensor and q-value tensor.
