@@ -656,9 +656,9 @@ def make_problem_service(config, set_proc_title=False):
             self.model_cache = {}
             z_sum = sum([z for (_,(_,z)) in self.expl_states])
             LOGGER.info(f'[Z_SUM] The sum of all currently placed triplets\' z value in self.expl_states is {z_sum}')
-            last_states_mean = np.mean(self.last_states_value_cache)
-            last_states_min = np.min(self.last_states_value_cache)
-            last_states_max = np.max(self.last_states_value_cache)
+            last_states_mean = np.mean(self.last_states_value_cache) if len(self.last_states_value_cache) > 0 else "None"
+            last_states_min = np.min(self.last_states_value_cache) if len(self.last_states_value_cache) > 0 else "None"
+            last_states_max = np.max(self.last_states_value_cache) if len(self.last_states_value_cache) > 0 else "None"
             LOGGER.info(f"[LAST_STATES_LOG] '5-last-states' in the latest exploration period information: mean: {last_states_mean}, min: {last_states_min}, max: {last_states_max} ")
             sampled_indices = np.random.choice(len(self.expl_states), replace=False, size=5)
             sampled_triplets = [self.expl_states[i] for i in sampled_indices]
