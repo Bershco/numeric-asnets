@@ -660,7 +660,7 @@ def make_problem_service(config, set_proc_title=False):
             last_states_min = np.min(self.last_states_value_cache) if len(self.last_states_value_cache) > 0 else "None"
             last_states_max = np.max(self.last_states_value_cache) if len(self.last_states_value_cache) > 0 else "None"
             LOGGER.info(f"[LAST_STATES_LOG] '5-last-states' in the latest exploration period information: mean: {last_states_mean}, min: {last_states_min}, max: {last_states_max} ")
-            sampled_indices = np.random.choice(len(self.expl_states), replace=False, size=5)
+            sampled_indices = np.random.choice(len(self.expl_states), replace=False, size=5) if len(self.last_states_value_cache) > 0 else []
             sampled_triplets = [self.expl_states[i] for i in sampled_indices]
             for state, pi_val in sampled_triplets:
                 pi, val = pi_val
