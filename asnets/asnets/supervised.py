@@ -989,10 +989,10 @@ def make_problem_service(config, set_proc_title=False):
                     break
 
                 # 1. Run MCTS from current state to get action distribution pi
-                pi = mcts_tree.run_search()  # np.array [num_actions]
+                pi, z = mcts_tree.run_search()  # np.array [num_actions]
 
                 # 2. Store current state and pi
-                trajectory.append((cstate, pi))
+                trajectory.append((cstate, (pi, z)))
 
 
                 # 3. Sample action from masked pi and re-root tree
@@ -1010,6 +1010,10 @@ def make_problem_service(config, set_proc_title=False):
 
             states_only: np.ndarray[CanonicalState] = np.array([s[0] for s in trajectory])
             T = len(trajectory)
+            self.expl_triplets += T
+            for cstate, (pi, z) in trajectory:
+                pi_key = tuple(np.ravel(pi)) if isinstance(pi, np.ndarray) else pi
+                self.expl_states.append((cstate, (pi_key, z)))
 
             if self.planner_bootstrapping:
                 if len(states_only) >= self.bootstrap_k:
@@ -1077,20 +1081,19 @@ def make_problem_service(config, set_proc_title=False):
                     self.expl_states.append((sampled_state, (sampled_state_softmax, sampled_state_v)))
 
             if not self.policy_only:
-                # 4. Determine game outcome z
-                if cstate.is_goal:
-                    print('[HER_DEBUG] Reached goal!')
-                    z_true = 1.0
-                elif cstate.is_terminal:
-                    z_true = -1.0
-                else:
-                    z_true = 0.0 # reached max_len without being terminal
-
-                # 5. Add all states from trajectory with same outcome z
-                for cstate, pi in trajectory:
-                    pi_key = tuple(np.ravel(pi)) if isinstance(pi, np.ndarray) else pi
-                    self.expl_states.append((cstate, (pi_key, z_true)))
-                self.expl_triplets += T
+                # # 4. Determine game outcome z
+                # if cstate.is_goal:
+                #     print('[HER_DEBUG] Reached goal!')
+                #     z_true = 1.0
+                # elif cstate.is_terminal:
+                #     z_true = -1.0
+                # else:
+                #     z_true = 0.0 # reached max_len without being terminal
+                #
+                # # 5. Add all states from trajectory with same outcome z
+                # for cstate, pi in trajectory:
+                #     pi_key = tuple(np.ravel(pi)) if isinstance(pi, np.ndarray) else pi
+                #     self.expl_states.append((cstate, (pi_key, z_true)))
 
                 # ------ Last states value cache ----------
                 last_states = states_only[-5:]

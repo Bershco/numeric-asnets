@@ -95,10 +95,10 @@ class TrainingMCTS(MCTS):
             else:
                 node.act_dist, value_tensor = to_local(self.network(node.as_network_input))
                 # value_tensor = to_local(value_tensor)
-                node.value = float(value_tensor.numpy().squeeze())
+                node.pred_value = float(value_tensor.numpy().squeeze())
         return tf.squeeze(node.act_dist)
 
-    def run_search(self) -> np.ndarray:
+    def run_search(self) -> tuple[np.ndarray, float]:
         """Run N simulations on current root and return π."""
         root = self.curr_tree_root
         for _ in range(self.iterations):
@@ -106,13 +106,21 @@ class TrainingMCTS(MCTS):
 
         act_dim = self.problem_service.exposed_get_act_dim()
         pi = np.zeros(act_dim, dtype=np.float32)
-        # children = self.children.get(root, {})
+        z_partial = np.zeros(act_dim, dtype=np.float32)
+
         children = root.children
         for action, child in children.items():
-            pi[action] = self.N.get(child, 0)
-        # Normalize visit counts
-        if pi.sum() > 0:
-            pi /= pi.sum()
+            # The following comments say "pretty much" because they're approximate, it's not N(s,a)
+            # but rather N(s_child) - could be child of other states as well
+            pi[action] = self.N.get(child, 0) # N(s,a) (pretty much)
+            z_partial[action] = pi[action] * child.Q_value # N(s,a) * Q(s,a) (again, pretty much)
+
+        # Normalize
+        pi_sum = pi.sum()
+        if pi_sum > 0:
+            pi /= pi_sum
+            z_partial_norm = z_partial/pi_sum
+            z = z_partial_norm.sum()
         else: # Fallback to uniform distribution if stuff broke
             mask = self.get_applicable_action_mask(root)
             valid = np.where(mask)[0]
@@ -120,7 +128,8 @@ class TrainingMCTS(MCTS):
                 pi[valid] = 1.0 / len(valid)
             else:
                 pi[:] = 1.0 / act_dim
-        return pi
+            z = 0
+        return pi, z
 
     def step_forward(self, action_id):
         """Re-root at chosen child and prune irrelevant branches."""

@@ -28,6 +28,7 @@ class Node(ABC):
     MCTS works by constructing a tree of these Nodes.
     Could be e.g. a chess or checkers board state.
     """
+    __slots__ = ()
 
     @abstractmethod
     def is_terminal(self):
@@ -54,7 +55,7 @@ class MCTSNode(Node):
     __slots__ = ("state_id", "cost_until_now", "reward_weight",
                  "previous_action", "_hash", "children", "parent",
                  "goal_state", "terminal_state", "as_network_input",
-                 "applicable_action_mask")
+                 "applicable_action_mask", "act_dist", "pred_value", "Q_value")
 
     def __init__(self, state_id, cost_until_now, previous_action, reward_weight = 1000,
         is_goal = False, is_terminal = False, as_network_input = None, applicable_action_mask = None,
@@ -71,7 +72,7 @@ class MCTSNode(Node):
         self.as_network_input = as_network_input
         self.applicable_action_mask = applicable_action_mask
         self.act_dist = None
-        self.value = None
+        self.pred_value = None
         self.Q_value = 0
 
     def simulate_step(self, action_id, problem_service):
@@ -535,21 +536,23 @@ class MCTS:
                 node.act_dist = self.network(node.as_network_input)
             else:
                 node.act_dist, value_tensor = self.network(node.as_network_input)
-                node.value = float(value_tensor.numpy().squeeze())
+                node.pred_value = float(value_tensor.numpy().squeeze())
         return tf.squeeze(node.act_dist)
 
     def get_value_from_mcts_node(self, node: MCTSNode):
+        if node.goal_state:
+            return 1
         if self.policy_only:
             # Heuristic value (received by get_state_h) would be the distance to goal,
             # reward \ value for a node\state would be 'how good it is' - hence the inverse
             return 1 / (1 + self.problem_service.get_state_h(node.state_id,hash(node)))
         else:
-            if node.value is None:
+            if node.pred_value is None:
                 if node.as_network_input is None:
                     node.as_network_input = self.problem_service.to_network_input(*node.get_identifiers())
                 node.act_dist, value_tensor = self.network(node.as_network_input)
-                node.value = float(value_tensor.numpy().squeeze())
-            return node.value
+                node.pred_value = float(value_tensor.numpy().squeeze())
+            return node.pred_value
 
     def _delete_subtree(self, node, recursive=True):
         # Recursively delete the subtree rooted at this node
