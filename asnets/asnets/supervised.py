@@ -975,12 +975,17 @@ def make_problem_service(config, set_proc_title=False):
             )
             mcts_tree.initialise_tree(cstate)
 
-            trajectory: List[tuple[CanonicalState,np.ndarray]] = []  # will store (cstate, pi) along the episode
+            trajectory: List[tuple[CanonicalState,tuple[np.ndarray,float]]] = []  # will store (cstate, pi) along the episode
             id_hash_traj: List[tuple[int,int]] = []
 
             # simulate one full episode
-            for _ in range(self.max_len):
+            for i in range(self.max_len):
                 if cstate.is_terminal:
+                    if cstate.is_goal:
+                        LOGGER.info(f'[GOAL_ANNOUNCER] Reached goal after {i+1} steps on problem {self.problem_meta.name}')
+                    else:
+                        LOGGER.info(f'[GOAL_ANNOUNCER] Reached non-goal after {i+1} steps on problem {self.problem_meta.name}')
+                    trajectory.append((cstate, (pi, z)))
                     break
 
                 # 1. Run MCTS from current state to get action distribution pi
