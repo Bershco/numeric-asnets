@@ -68,7 +68,7 @@ class TrainingMCTS(MCTS):
         """Use value head for evaluation instead of random rollout."""
         return self.get_value_from_mcts_node(node)
 
-    def initialise_tree(self, cstate):
+    def initialise_tree(self, cstate) -> tuple[int, int]:
         """Start a new tree for a fresh episode."""
         cstate_id, cstate_hash = self.problem_service.internal_get_state_identifiers(cstate)
         self.curr_tree_root = wrapInMCTSNode(cstate_id=cstate_id,
@@ -81,10 +81,8 @@ class TrainingMCTS(MCTS):
                                              applicable_action_mask=self.problem_service.internal_get_applicable_action_mask(cstate),
                                              hashed_state = cstate_hash)
         self.state_id_to_node[self.curr_tree_root.state_id] = self.curr_tree_root
-        # self.children.clear()
         self.N.clear()
-        # self.Q.clear()
-        # self.act_dist_per_node.clear()
+        return cstate_id, cstate_hash
 
     def get_act_dist_from_mcts_node(self, node: MCTSNode):
         if node.act_dist is None:

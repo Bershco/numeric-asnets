@@ -973,7 +973,7 @@ def make_problem_service(config, set_proc_title=False):
                 exploration_weight=1,
                 # TODO: optimise hyper-parameter 'exploration_weight' ('c' in puct formula)
             )
-            mcts_tree.initialise_tree(cstate)
+            cstate_id, cstate_hash = mcts_tree.initialise_tree(cstate)
 
             trajectory: List[tuple[CanonicalState,tuple[np.ndarray,float]]] = []  # will store (cstate, pi) along the episode
             id_hash_traj: List[tuple[int,int]] = []
@@ -985,7 +985,10 @@ def make_problem_service(config, set_proc_title=False):
                         LOGGER.info(f'[GOAL_ANNOUNCER] Reached goal after {i+1} steps on problem {self.problem_meta.name}')
                     else:
                         LOGGER.info(f'[GOAL_ANNOUNCER] Reached non-goal after {i+1} steps on problem {self.problem_meta.name}')
+                    #if pi or z are not assigned that means the initial state was terminal
+                    # which is 100% dumb so exception should be raised
                     trajectory.append((cstate, (pi, z)))
+                    id_hash_traj.append((cstate_id, cstate_hash))
                     break
 
                 # 1. Run MCTS from current state to get action distribution pi
@@ -993,7 +996,7 @@ def make_problem_service(config, set_proc_title=False):
 
                 # 2. Store current state and pi
                 trajectory.append((cstate, (pi, z)))
-
+                id_hash_traj.append((cstate_id, cstate_hash))
 
                 # 3. Sample action from masked pi and re-root tree
                 mask = mcts_tree.get_children_mask(act_dim=self.exposed_get_act_dim())
@@ -1005,7 +1008,6 @@ def make_problem_service(config, set_proc_title=False):
                 action_index = np.random.choice(np.arange(len(pi)), p=masked_pi)
 
                 cstate_id, cstate_hash = mcts_tree.step_forward(action_index)
-                id_hash_traj.append((cstate_id, cstate_hash))
                 cstate = self.internal_get_state_from_identifiers(cstate_id, cstate_hash)
 
             states_only: np.ndarray[CanonicalState] = np.array([s[0] for s in trajectory])
