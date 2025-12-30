@@ -1199,6 +1199,8 @@ def make_services(args):
         init_cstate_as_network_input = (
             p.problem_service.make_network(weight_manager, p.prob_meta, dropout=args.dropout,
                                              debug=args.net_debug, policy_network_only=args.policy_network_only))
+        p.problem_server.register_network(weight_manager, p.prob_meta, dropout=args.dropout,
+                                             debug=args.net_debug, policy_network_only=args.policy_network_only)
         p.network(init_cstate_as_network_input) # this line is for finishing the nn build process
 
     return problems, weight_manager
