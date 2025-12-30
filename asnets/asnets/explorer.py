@@ -6,7 +6,7 @@ import random
 from time import time
 import tqdm.auto as tqdm
 from typing import List, Optional, Tuple
-
+import numpy as np
 from collections import Counter
 import gc
 
@@ -171,8 +171,8 @@ class DynamicExplorer(Explorer):
             if time() - start_time >= self.expl_learn_ratio * self.recent_learning_time:
                 print('[DYNAMIC_EXPLORE_TERMINATED] Cause: time() - start_time >= self.expl_learn_ratio * self.recent_learning_time ')
                 return True
-        if t.n > t.total:
-            print('[DYNAMIC_EXPLORE_TERMINATED] Cause: t.n > t.total')
+        if t.n >= t.total:
+            print('[DYNAMIC_EXPLORE_TERMINATED] Cause: t.n >= t.total')
             return True
         return False
     
@@ -227,8 +227,6 @@ class DynamicExplorer(Explorer):
             print("[MEM] top object types:", top)
             print("[MEM] total objects:", len(objs))
 
-
-
 class MCTSExplorer(DynamicExplorer):
 
     def __init__(self,
@@ -257,8 +255,13 @@ class MCTSExplorer(DynamicExplorer):
         return max(w, 0.05)  # keep minimal weight to prevent forgetting
 
     def _sample_problem(self) -> Optional['SingleProblem']:
-        weights = [self.compute_weight(prob) for prob in self.problems]
-        return random.choices(self.problems, weights=weights, k=1)[0]
+        if self._is_first_explore():
+            next_prob = sum(len(self.hit_goal[problem]) for problem in self.problems)
+            if next_prob < len(self.problems):
+                return self.problems[next_prob]
+        weights = np.array([self.compute_weight(prob) for prob in self.problems])
+        norm_weights = weights / weights.sum()
+        return np.random.choice(self.problems, p=norm_weights)
 
     def explore(self) -> None:
         start_time = time()
