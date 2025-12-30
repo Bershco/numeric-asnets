@@ -457,6 +457,13 @@ class ProblemServer(object):
     def set_enhsp_config(self, config: str) -> None:
         self.enhsp_config = config
 
+    def register_network(self, weights_manager, prob_meta, dropout, debug, policy_network_only):
+        self.weights_manager = weights_manager
+        self.prob_meta = prob_meta
+        self.network_dropout = dropout
+        self.network_debug = debug
+        self.network_policy_only = policy_network_only
+
     def _reconnect(self):
         """Restart the worker process and reconnect."""
         print(f"[WATCHDOG] Restarting worker for PID={self._serve_proc.pid if self._serve_proc else 'N/A'}")
@@ -485,6 +492,7 @@ class ProblemServer(object):
             print(f"[WATCHDOG] Worker's estimator initialised successfully with config {estimator_config}.")
             self.service._unwrap().set_policy_only(self.policy_only)
             print(f"[WATCHDOG] Worker's using policy {'only' if self.policy_only else 'and value'} network.")
+            self.service._unwrap().make_network(self.weights_manager, self.prob_meta, self.network_dropout, self.network_debug, self.network_policy_only)
         except Exception as e:
             print(f"[WATCHDOG] Failed to initialise new worker: {e}")
 
