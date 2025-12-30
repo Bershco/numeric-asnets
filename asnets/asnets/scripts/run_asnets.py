@@ -1143,6 +1143,7 @@ def make_services(args):
             planner_bootstrapping_her=args.planner_bootstrapping_her,
             heuristic_bootstrapping=args.heuristic_bootstrapping,
             mcts_her_strategy=args.mcts_her_strategy,
+            mcts_expansion_k=args.mcts_expansion_size,
         )
         problem_server = ProblemServer(service_config)
         servers.append(problem_server)

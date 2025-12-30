@@ -18,7 +18,7 @@ from time import time
 import tqdm.auto as tqdm
 from types import ModuleType
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Set
-
+import cProfile
 import datetime
 
 from asnets.heur_inputs import ActionCountDataGenerator, \
@@ -183,6 +183,7 @@ class ProblemServiceConfig(object):
             heuristic_bootstrapping: bool = False,
             estimator_value_conversion_lambda: float = 0.1,
             bootstrap_k: int = 3,
+            mcts_expansion_k: int = 10,
             mcts_her_strategy: bool = False,
             teacher_planner: str,
             random_seed: int = None,
@@ -251,6 +252,7 @@ class ProblemServiceConfig(object):
         self.mcts_her_strategy = mcts_her_strategy
         self.estimator_value_conversion_lambda = estimator_value_conversion_lambda
         self.bootstrap_k = bootstrap_k
+        self.expansion_k = mcts_expansion_k
 
 class PlannerExtensions(object):
     """Wrapper to hold references to SSiPP and MDPSim modules, and references
@@ -757,6 +759,13 @@ def make_problem_service(config, set_proc_title=False):
             self.initialised = True
             LOGGER.debug("ProblemService finished initialisation.")
 
+            self._profiler = cProfile.Profile()
+            self._profiler.enable()
+
+        def exposed_flush_profiler(self):
+            self._profiler.disable()
+            self._profiler.dump_stats(f"/IdeaProjects/numeric-asnets/asnets/worker_{os.getpid()}.prof")
+
         def on_disconnect(self, conn):
             print(f"[DEBUG] Connection {conn} closed", file=sys.stderr, flush=True)
 
@@ -969,7 +978,7 @@ def make_problem_service(config, set_proc_title=False):
                 # iterations=1,
                 # TODO: implement curriculum training - don't use high iterations at the beginning
                 #  as the network is quite random, and increase towards late phases
-                expansion_k=1000,
+                expansion_k=config.expansion_k,
                 exploration_weight=1,
                 # TODO: optimise hyper-parameter 'exploration_weight' ('c' in puct formula)
             )
@@ -1726,7 +1735,8 @@ class SupervisedTrainer:
             if not keep_going:
                 LOGGER.info('Terminating early')
                 break
-
+        for problem in self.problems:
+            problem.problem_service.flush_profiler()
         return best_rate, elapsed_time, iter_num
 
     @can_profile
