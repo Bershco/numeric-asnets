@@ -1,6 +1,7 @@
 """Generic tools for use with TensorFlow"""
 
 import re
+
 import numpy as np
 import tensorflow as tf
 
@@ -140,3 +141,5 @@ def empty_feed_value(obs_dim, p_value_dim):
         "None dimension" % shape_obs_prod
 
     return (np.zeros(new_obs_shape, dtype=np.float16), np.zeros(new_p_shape, dtype=np.float16))
+
+
