@@ -20,6 +20,7 @@ from asnets.prob_dom_meta import BoundAction
 from asnets.state_reprs import CanonicalState
 
 LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.INFO)
 
 # Java classes that will be imported automatically upon JVM start-up.
 J_LandmarkGenerator = None
@@ -40,13 +41,13 @@ def start_jvm() -> None:
             "-Xms256m", "-Xmx1g",
             classpath=":".join(get_files_with_extension(JARS_DIR, ".jar")),
         )
-        print(f"[JPYPE OK] PID={os.getpid()} Thread={threading.current_thread().name} JVM started?"
+        LOGGER.debug(f"[JPYPE OK] PID={os.getpid()} Thread={threading.current_thread().name} JVM started?"
               f"{jpype.isJVMStarted()} attached? {jpype.isThreadAttachedToJVM()}")
     _GLOBAL_JVM_HANDLE = True  # pin a global ref
 
 @atexit.register
 def check_jvm_shutdown():
-    print(f"[WORKER AT-EXIT] JVM running? {jpype.isJVMStarted()} PID={os.getpid()}")
+    LOGGER.debug(f"[WORKER AT-EXIT] JVM running? {jpype.isJVMStarted()} PID={os.getpid()}")
 
 
 @jpype.onJVMStart
@@ -60,32 +61,32 @@ def _import_java_classes() -> None:
         .hstairs.ppmajal.pddl.heuristics.advanced.LandmarkGenerator
 
 
-# @jpype.onJVMStart
-# def _suppress_java_stdout():
-#     """Suppress JPDDL logging. This is called automatically upon JVM start-up.
-#     """
-#     J_System = jpype.JPackage('java').lang.System
-#     J_PrintStream = jpype.JPackage('java').io.PrintStream
-#     J_File = jpype.JPackage('java').io.File
-#     J_System.setOut(J_PrintStream(J_File(os.devnull)))
+@jpype.onJVMStart
+def _suppress_java_stdout():
+    """Suppress JPDDL logging. This is called automatically upon JVM start-up.
+    """
+    J_System = jpype.JPackage('java').lang.System
+    J_PrintStream = jpype.JPackage('java').io.PrintStream
+    J_File = jpype.JPackage('java').io.File
+    J_System.setOut(J_PrintStream(J_File(os.devnull)))
 
 def ensure_jvm():
     """Restart the JVM if it was closed or crashed."""
     if not jpype.isJVMStarted():
-        print(f"[RECOVER] Restarting JVM in PID={os.getpid()}")
+        LOGGER.debug(f"[RECOVER] Restarting JVM in PID={os.getpid()}")
         try:
             jpype.startJVM(
                 jpype.getDefaultJVMPath(),
                 "-Xms256m", "-Xmx1g",
                 classpath=":".join(get_files_with_extension(JARS_DIR, ".jar")),
             )
-            print(f"[RECOVER] JVM restarted successfully.")
+            LOGGER.info(f"[RECOVER] JVM restarted successfully.")
         except Exception:
-            print("[RECOVER] JVM restart failed:")
+            LOGGER.error("[RECOVER] JVM restart failed:")
             traceback.print_exc()
             raise
     if not jpype.isThreadAttachedToJVM():
-        print(f"[RECOVER] JVM was not attached in PID={os.getpid()} thread={threading.current_thread().name}, attaching.")
+        LOGGER.debug(f"[RECOVER] JVM was not attached in PID={os.getpid()} thread={threading.current_thread().name}, attaching.")
         jpype.attachThreadToJVM()
 
 
