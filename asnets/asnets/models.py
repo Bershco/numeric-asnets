@@ -1,9 +1,11 @@
-from asnets.multiprob import to_local
+from pathlib import Path
+
 from asnets.prob_dom_meta import UnboundAction, UnboundComp, DomainMeta, \
     ProblemMeta
 from asnets.network_modules import ActionModule, CompModule, FlntModule, \
     PropModule, ValueModule
 from asnets.utils.prof_utils import can_profile
+from asnets.utils.rpyc_utils import to_local, find_netrefs
 from asnets.utils.tf_utils import masked_softmax
 
 import joblib
@@ -47,7 +49,7 @@ class PropNetworkWeights:
             modules will have the same hidden size of prop modules in the same
             layer.
         """
-        self.dom_meta: DomainMeta = dom_meta
+        self.dom_meta: DomainMeta = to_local(dom_meta)
         self.hidden_sizes: List[Tuple[int, int]] = list(hidden_sizes)
         self.extra_dim: int = extra_dim
         self.skip: bool = skip
@@ -405,10 +407,137 @@ class PropNetworkWeights:
 
         return new_layer
 
+    def export_numpy(self):
+        # Return a pure-python/numpy structure.
+        # Example: list[dict[key -> (W_np, b_np)]], etc.
+        def conv_pair(pair):
+            W, b = pair
+            W = W.numpy() if hasattr(W, "numpy") else np.asarray(W)
+            b = b.numpy() if hasattr(b, "numpy") else np.asarray(b)
+            return (W, b)
+
+        def conv_list(weight_list):
+            out = []
+            for d in weight_list:
+                nd = {}
+                for k, v in d.items():
+                    nd[repr(k)] = conv_pair(v)
+                out.append(nd)
+            return out
+
+        return {
+            "hidden_sizes": list(self.hidden_sizes),
+            "extra_dim": int(self.extra_dim),
+            "skip": bool(self.skip),
+            "use_fluents": bool(self.use_fluents),
+            "use_comparisons": bool(self.use_comparisons),
+            "value_head_added": bool(self.value_head_added),
+            "policy_network_only": bool(self.policy_network_only),
+            "act_weights": conv_list(self.act_weights),
+            "prop_weights": conv_list(self.prop_weights),
+            "comp_weights": conv_list(self.comp_weights),
+            "flnt_weights": conv_list(self.flnt_weights),
+            "value_weights": conv_list(self.value_weights),
+        }
+
+    @classmethod
+    def from_numpy(cls, prob_meta, weights_np):
+        """
+        Rebuild a PropNetworkWeights instance *locally* from numpy weights.
+        This is safe under multiprocessing spawn.
+        """
+
+        wm = cls(
+            dom_meta=prob_meta.domain,
+            hidden_sizes=weights_np["hidden_sizes"],
+            extra_dim=weights_np["extra_dim"],
+            skip=weights_np["skip"],
+            use_fluents=weights_np["use_fluents"],
+            use_comparisons=weights_np["use_comparisons"],
+            value_head_added=weights_np["value_head_added"],
+            policy_network_only=weights_np["policy_network_only"],
+        )
+
+        # IMPORTANT: variables exist now — overwrite them
+        wm.restore_weights_from_numpy(weights_np)
+
+        return wm
+
+    def restore_weights_from_numpy(self, weights_np):
+        """
+        Assign numpy arrays into the TF variables of this instance.
+        """
+
+        def assign_block(var_dict, np_dict):
+            local_map = {repr(k): v for k, v in var_dict.items()}  # repr(UnboundAction) -> (W_var, b_var)
+
+            missing = []
+            for k_str, (W_np, b_np) in np_dict.items():
+                pair = local_map.get(k_str)
+                if pair is None:
+                    missing.append(k_str)
+                    continue
+                W, b = pair
+                W.assign(W_np)
+                b.assign(b_np)
+
+            if missing:
+                # print a short diff to debug
+                avail = list(local_map.keys())[:10]
+                raise KeyError(
+                    f"restore_weights_from_numpy: {len(missing)} keys not found. "
+                    f"Example missing: {missing[0]}. Example available: {avail[0] if avail else 'NONE'}"
+                )
+
+        for dst, src in zip(self.act_weights, weights_np["act_weights"]):
+            assign_block(dst, src)
+
+        for dst, src in zip(self.prop_weights, weights_np["prop_weights"]):
+            assign_block(dst, src)
+
+        for dst, src in zip(self.comp_weights, weights_np["comp_weights"]):
+            assign_block(dst, src)
+
+        for dst, src in zip(self.flnt_weights, weights_np["flnt_weights"]):
+            assign_block(dst, src)
+
+        if self.value_head_added:
+            for dst, src in zip(self.value_weights, weights_np["value_weights"]):
+                assign_block(dst, src)
+
     @can_profile
     def save(self, path):
         """Save a snapshot of the current network weights to the given path."""
         joblib.dump(self, path, compress=True)
+
+    def build_network(
+            self,
+            prob_meta: ProblemMeta,
+            dropout: float = 0.0,
+            debug: bool = False,
+            policy_network_only: bool | None = None,
+    ):
+        """
+        Build a PropNetwork view over *this* weight manager.
+
+        IMPORTANT:
+        - Does NOT create new tf.Variables
+        - Reuses self.all_weights
+        - Safe to call multiple times
+        """
+
+        if policy_network_only is None:
+            policy_network_only = self.policy_network_only
+
+        net = PropNetwork(
+            weight_manager=self,
+            problem_meta=prob_meta,
+            dropout=dropout,
+            debug=debug,
+            policy_network_only=policy_network_only,
+        )
+
+        return net
 
 
 class PropNetwork(tf.keras.layers.Layer):
@@ -429,7 +558,7 @@ class PropNetwork(tf.keras.layers.Layer):
         super().__init__(trainable=trainable, name=name, dtype=dtype, dynamic=dynamic, **kwargs)
 
         self._weight_manager: PropNetworkWeights = to_local(weight_manager)
-        self._prob_meta = problem_meta
+        self._prob_meta = to_local(problem_meta)
         self._debug = debug
         # I tried ReLU, tanh, softplus, & leaky ReLU before settling on ELU for
         # best combination of numeric stability + sample efficiency
@@ -464,7 +593,6 @@ class PropNetwork(tf.keras.layers.Layer):
             for unbound_act in dom_meta.unbound_acts:
 
                 weight, bias = self._weight_manager.act_weights[hid_idx][unbound_act]
-
                 act_dict[unbound_act] = ActionModule(
                     unbound_act=unbound_act,
                     weight=weight,
@@ -526,7 +654,6 @@ class PropNetwork(tf.keras.layers.Layer):
                 for unbound_comp in dom_meta.unbound_comps:
                     weight, bias \
                         = self._weight_manager.comp_weights[hid_idx][unbound_comp]
-
                     comp_dict[unbound_comp] = CompModule(
                         unbound_comp=unbound_comp,
                         weight=weight,
@@ -575,8 +702,10 @@ class PropNetwork(tf.keras.layers.Layer):
                 weight=val_mod_W,
                 bias=val_mod_b,
                 layer_num=len(hidden_sizes),
-                dom_meta=dom_meta,
-                prob_meta=self._prob_meta,
+                dom_meta=None,
+                prob_meta=None,
+                # dom_meta=to_local(dom_meta),
+                # prob_meta=to_local(self._prob_meta),
                 skip=False,
                 nonlinearity=self.nonlinearity,
                 dropout=self.dropout,
@@ -909,3 +1038,45 @@ def _merge_finals(prob_meta, final_acts):
                    name='merge_finals/reorder')
 
     return rv
+
+
+@can_profile
+def make_network(args,
+                 dom_meta,
+                 prob_meta,
+                 dg_extra_dim=None,
+                 weight_manager=None):
+    # can make normal FC MLP or an action/proposition network
+    if weight_manager is not None:
+        print('Re-using same weight manager')
+    elif args.resume_from:
+        print('Reloading weight manager (resuming training)')
+        resume_from_str = args.resume_from
+        print(f'\n\n[model-loading] - Resuming from: {args.resume_from}\n\n')
+        resume_from_str = resume_from_str.replace("\\",'/') # for Windows support, do not delete.
+        resume_from_path_obj = Path(resume_from_str)
+        resume_from_path_obj = resume_from_path_obj.resolve(strict=False)
+        weight_manager = joblib.load(resume_from_path_obj)
+    else:
+        print('Creating new weight manager (not resuming)')
+        # TODO: should save all network metadata with the network weights or
+        # within a separate config class, INCLUDING heuristic configuration
+        weight_manager = make_weight_manager(args, dom_meta, dg_extra_dim)
+    custom_network = PropNetwork(
+        weight_manager, prob_meta, dropout=args.dropout, debug=args.net_debug, policy_network_only=args.policy_network_only)
+    hits = find_netrefs(custom_network)
+    assert not hits, f"Netrefs leaked into local model: {hits}"
+
+    # weight_manager will sometimes be None
+    return custom_network, weight_manager
+
+@can_profile
+def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
+    return PropNetworkWeights(
+        dom_meta,
+        hidden_sizes=[(args.hidden_size, args.hidden_size)] * args.num_layers,
+        # extra inputs to each action module from data generators
+        extra_dim=dg_extra_dim,
+        skip=args.skip,
+        use_fluents=args.use_fluents,
+        use_comparisons=args.use_comparisons)
