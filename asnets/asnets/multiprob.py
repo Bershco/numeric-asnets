@@ -4,22 +4,30 @@ of MDPSim and SSiPP."""
 
 import ctypes
 import logging
-from multiprocessing import Process
+import multiprocessing
 import signal
 import sys
+from pathlib import Path
 from time import sleep, time
 import weakref
 
 import os, json, socket, rpyc, atexit
 import uuid, getpass
 
+import joblib
+import numpy as np
 from rpyc import OneShotServer, BaseNetref
 import types
 import collections
 import dataclasses
 from rpyc.utils.server import ThreadedServer
 import tensorflow as tf
+from typing import Callable
 
+import asnets.models
+from asnets.models import PropNetworkWeights, make_network
+from asnets.supervised import WeightedReplayBuffer
+from asnets.utils.rpyc_utils import to_local, _shutdown_proc
 
 rpyc.core.protocol.DEFAULT_CONFIG['allow_getattr'] = True
 rpyc.core.protocol.DEFAULT_CONFIG['allow_setattr'] = True
@@ -27,7 +35,6 @@ rpyc.core.protocol.DEFAULT_CONFIG['allow_delattr'] = True
 rpyc.core.protocol.DEFAULT_CONFIG['safe_attrs'].add("copy")
 rpyc.core.protocol.DEFAULT_CONFIG['safe_attrs'].add("sizeof")
 rpyc.core.protocol.DEFAULT_CONFIG['safe_attrs'].add("__sizeof__")
-
 from asnets.utils.prof_utils import try_save_profile
 from asnets.utils.py_utils import set_random_seeds
 
@@ -76,11 +83,19 @@ def start_server(service_args: 'ProblemServiceConfig',unix_socket_path: str = No
     new_service = make_problem_service(service_args, set_proc_title=True)
 
     protocol_config = {
-        "allow_all_attrs": False,  # Default: False, restricts attributes
+        "allow_all_attrs": True,  # Default: False, restricts attributes
         "allowed_attrs": {"copy"},  # Add 'copy' to the list of allowed attributes
         "allow_setattr": True,  # Allow setting attributes if needed
         "allow_delattr": True,  # Allow deleting attributes if needed
     }
+    rpyc.core.protocol.DEFAULT_CONFIG.update({
+        # this is required for rpyc to allow pickling
+        'allow_pickle': True,
+        # required for some large problems where get_action() (passed as
+        # synchronous callback to child processes) can take a very long time
+        # the first time it is called
+        'sync_request_timeout': 1800,
+    })
 
     # print(f"READY RPyC {host}:{port}", flush=True)
     print(f"READY RPyC {unix_socket_path}", flush=True)
@@ -95,7 +110,6 @@ def start_server(service_args: 'ProblemServiceConfig',unix_socket_path: str = No
 
     socket.socket.close = _debug_close
 
-    import rpyc
     _old_serve_client = rpyc.utils.server.ThreadedServer._serve_client
 
     def _debug_serve_client(self, sock, credentials):
@@ -150,63 +164,6 @@ def start_server(service_args: 'ProblemServiceConfig',unix_socket_path: str = No
     finally:
         print("[SERVER] Shutting down cleanly", flush=True)
 
-
-def to_local(obj):
-    """Convert a NetRef to an object to something that's DEFINITELY local."""
-    # can probably smarter here (e.g. not copying netrefs, using joblib for
-    # efficient Numpy support); oh well
-    # TODO: try using encode/decode with joblib instead! Could be much, much
-    # faster.
-    # TODO: make sure that you're transmitting observations as byte tensors
-    # whenever possible (or at most float32s).
-    # return deepcopy(obj)
-    # return obtain(obj)
-    # === First: RPyC proxy check ===
-    # (must come *before* container checks, because some proxies act iterable)
-    if isinstance(obj, BaseNetref):
-        try:
-            return obtain(obj)
-        except Exception:
-            return obj  # fallback if obtain() fails
-
-    # === Primitive / simple immutable types ===
-    if obj is None or isinstance(obj, (str, bytes, int, float, bool, complex)):
-        return obj
-
-    # === TensorFlow objects: must NOT obtain ===
-    try:
-        if isinstance(obj, (tf.Variable, tf.Tensor, tf.Module, tf.keras.layers.Layer)):
-            return obj
-    except Exception:
-        pass  # don't break if tf isn't loaded yet
-
-    # === Containers ===
-    if isinstance(obj, dict):
-        return {to_local(k): to_local(v) for k, v in obj.items()}
-
-    if isinstance(obj, collections.abc.Mapping):
-        return type(obj)((to_local(k), to_local(v)) for k, v in obj.items())
-
-    if isinstance(obj, (list, tuple, set, frozenset)):
-        seq = (to_local(v) for v in obj)
-        return type(obj)(seq)
-
-    # === Dataclasses ===
-    if dataclasses.is_dataclass(obj):
-        field_values = {f.name: to_local(getattr(obj, f.name)) for f in dataclasses.fields(obj)}
-        return type(obj)(**field_values)
-
-    # === Namedtuples ===
-    if isinstance(obj, tuple) and hasattr(obj, "_fields"):
-        return type(obj)(*(to_local(v) for v in obj))
-
-    # === Modules / functions / types ===
-    if isinstance(obj, (types.ModuleType, types.FunctionType, type)):
-        return obj
-
-    # === Default fallback ===
-    return obj
-
 def wait_exists_polling(file_path: str, 
                         max_wait: float, delta: float=0.05) -> bool:
     """Check if file exists every delta seconds.
@@ -255,7 +212,7 @@ def _connect_via_info(info):
 class ProblemServer(object):
     """Spools up another process to host a ProblemService."""
     # how long we need to wait for the connection to spool up
-    MAX_WAIT_TIME = 30.0
+    MAX_WAIT_TIME = 120.0
 
     def __init__(self, service_conf: 'ProblemServiceConfig') -> None:
         """Create a new ProblemServer. This will start a new process that will
@@ -272,10 +229,7 @@ class ProblemServer(object):
             service_conf (ProblemServiceConfig): configuration for the
             ProblemService to be hosted.
         """
-        sock_dir = os.path.join(os.getcwd(), "asnet-sockets")
-        os.makedirs(sock_dir, exist_ok=True)
-        self._unix_sock_path = os.path.join(sock_dir,
-                                            'socket.' + uuid.uuid4().hex)
+        self.get_socket()
         addr_file = os.environ.get("RPYC_ADDR_FILE")
         # For SLURM batch usage - usage of unix sockets wrecked the runtime of a lot of experiments,
         # changing to TCP instead. If this doesn't already exist, we'll synthesize another.
@@ -287,14 +241,15 @@ class ProblemServer(object):
             os.environ["RPYC_ADDR_FILE"] = addr_file
         else:
             os.makedirs(os.path.dirname(addr_file), exist_ok=True)
-
-        self._serve_proc = Process(
+        print(f"[multiprocessing debug] Process about to start with {multiprocessing.get_start_method()} as the start method.")
+        self._serve_proc = multiprocessing.Process(
             name='worker',
             target=start_server, args=(
                 service_conf,
                 self._unix_sock_path,
             ))
         print(f'[DEBUG] Trainer PID: {os.getpid()}')
+        self.problem_server_slot_id = service_conf.slot_id
 
 
         self._service_conf = service_conf
@@ -302,72 +257,72 @@ class ProblemServer(object):
         sys.stdout.flush()
         sys.stderr.flush()  # flush parent before fork
         self._serve_proc.start()
-        self._start_time = time()
         self._addr_file = addr_file
 
         # info = _wait_for_addr(self._addr_file, proc=self._serve_proc, timeout=self.MAX_WAIT_TIME)
-        # self._conn = _connect_via_info(info=info)
-        wait_exists_polling(self._unix_sock_path, max_wait=self.MAX_WAIT_TIME)
         self._conn = None
+        self._bg_thread = None
+        self._start_time = time()
+        # This makes self._conn the rpyc connection we need.
 
         # this ensures that we always close connection (& thus terminate server
         # on other end) before shutting down, no matter what
         # (basically weakref.finalize(obj, func) ensures that func is called
         # when obj is destroyed---presumably just beforehand)
         # self._finalizer = weakref.finalize(self._serve_proc, self._kill_conn)
-        self._finalizer = weakref.finalize(self._serve_proc, self.stop)
+        # self._finalizer = weakref.finalize(self._serve_proc, self.stop)
+        self.rb = WeightedReplayBuffer()
+        self.curr_prob_name = None
+        self.is_first_instance = True
 
-    def _kill_conn(self) -> None:
-        """Close the connection to the server."""
-        print("[DEBUG] Closing connection to the server through '_kill_conn'.")
+    def connect(self):
+        """
+        Wait for socket + connect + start BgServingThread.
+        Safe to call in parallel from threads.
+        """
         if self._conn is not None:
-            self._conn.close()
-            self._conn = None
+            return
 
-    # def stop(self) -> None:
-    #     """Close the connection to the server and kill the server process."""
-    #     self._kill_conn()
-    #
-    #     try:
-    #         os.unlink(self._unix_sock_path)
-    #     except FileNotFoundError:
-    #         pass
-    #
-    #     if self._serve_proc is None:
-    #         return
-    #
-    #     self._serve_proc.terminate()
-    #
-    #     try:
-    #         self._serve_proc.join(5)
-    #     except Exception:
-    #         print('Process is being difficult.')
-    #         pid = self._serve_proc.pid
-    #
-    #         if pid is not None and self._serve_proc.is_alive():
-    #             print('I know how to handle difficult processes.')
-    #             os.kill(pid, signal.SIGKILL)
-    #             self._serve_proc.join(5)
-    #
-    #     self._serve_proc = None
+        # Wait for socket to appear (this is the part you want parallelized!)
+        # wait_exists_polling(self._unix_sock_path, max_wait=self.MAX_WAIT_TIME)
 
-    def stop(self) -> None:
+        # Now do your existing connection logic
+        self._get_rpyc_conn()
+
+        # Critical for async: keep client side serving
+
+    # def _kill_conn(self) -> None:
+    #     """Close the connection to the server."""
+    #     print("[DEBUG] Closing connection to the server through '_kill_conn'.")
+    #     if self._conn is not None:
+    #         self._conn.close()
+    #         self._conn = None
+
+    def stop(self, extra_msg = None) -> None:
         """Close the RPyC connection and stop the server process. Idempotent."""
         # close client connection
-        print("[DEBUG] Closing connection to the server through 'stop'.")
+        print(f"[DEBUG] {extra_msg if extra_msg is not None else 'Closing connection to the server through stop().'}")
         print(f"[PARENT] Server process (PID={self._serve_proc.pid if self._serve_proc is not None else 'None'}) exited with code {self._serve_proc.exitcode if self._serve_proc is not None else 0}")
         print(f"[DEBUG] Process alive? {self._serve_proc.is_alive() if self._serve_proc is not None else False}")
         try:
+            if getattr(self, "_bg_thread", None):
+                try:
+                    self._bg_thread.stop()
+                except Exception:
+                    pass
+                finally:
+                    self._bg_thread = None
             if getattr(self, "_conn", None):
                 try:
                     self._conn.close()
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"Something happened during the closing of the connection.\n Error:{e}")
                 finally:
                     self._conn = None
         finally:
             # terminate the server process
             proc = getattr(self, "_serve_proc", None)
+            print(f'[DEBUG] Got proc={proc}')
             if proc is not None:
                 try:
                     if proc.is_alive():
@@ -386,6 +341,7 @@ class ProblemServer(object):
                             except Exception:
                                 pass
                 finally:
+                    pass
                     self._serve_proc = None
 
             # remove the addr file (server also tries via atexit; this is belt & suspenders)
@@ -415,7 +371,8 @@ class ProblemServer(object):
             The rpyc connection to the server.
         """
         if self._conn is None:
-            to_wait = max(0.0, self.MAX_WAIT_TIME - (time() - self._start_time))
+            res = self.MAX_WAIT_TIME - (time() - self._start_time)
+            to_wait = max(0.0, res)
             if to_wait > 0:
                 # It actually takes a few seconds for the background worker to
                 # spool up and start accepting connections. Obviously it could
@@ -434,7 +391,7 @@ class ProblemServer(object):
             print(f"Sleeping an extra {sleep_time}s to make sure conn is up")
             sleep(sleep_time)
             protocol_config = {
-                "allow_all_attrs": False,  # Default: False, restricts attributes
+                "allow_all_attrs": True,  # Default: False, restricts attributes
                 "allowed_attrs": {"copy"},  # Add 'copy' to the list of allowed attributes
                 "allow_setattr": True,  # Allow setting attributes if needed
                 "allow_delattr": True,  # Allow deleting attributes if needed
@@ -448,6 +405,7 @@ class ProblemServer(object):
             # we can unlink socket after connecting
             print(f"[DEBUG] Connected socket path exists? {os.path.exists(self._unix_sock_path)} before unlink", flush=True)
             os.unlink(self._unix_sock_path)
+            self._bg_thread = rpyc.utils.helpers.BgServingThread(self._conn)
 
         return self._conn
 
@@ -457,81 +415,29 @@ class ProblemServer(object):
     def set_enhsp_config(self, config: str) -> None:
         self.enhsp_config = config
 
-    def register_network(self, weights_manager, prob_meta, dropout, debug, policy_network_only):
-        self.weights_manager = weights_manager
-        self.prob_meta = prob_meta
-        self.network_dropout = dropout
-        self.network_debug = debug
-        self.network_policy_only = policy_network_only
+
+    def get_problem_data(self):
+        res = self.service.get_problem_data()
+        res_local = (to_local(r) for r in res)
+        self.obs_dim, self.act_dim, self.dom_meta, self.prob_meta, self.dg_extra_dim = res_local
+        return self.obs_dim, self.act_dim, self.dom_meta, self.prob_meta, self.dg_extra_dim
+
+    def get_domain_data(self):
+        self.obs_dim, self.act_dim, self.dom_meta, self.prob_meta, self.dg_extra_dim = self.service.get_problem_data()
+        return self.dom_meta, self.dg_extra_dim
 
     def _reconnect(self):
-        """Restart the worker process and reconnect."""
-        print(f"[WATCHDOG] Restarting worker for PID={self._serve_proc.pid if self._serve_proc else 'N/A'}")
-        # Kill old process cleanly
-        try:
-            self.stop()
-        except Exception as e:
-            print(f"[WATCHDOG] stop() raised during reconnect: {e}")
-
-        # Spawn a fresh process
-        self._serve_proc = Process(target=start_server, args=(self._service_conf, self._unix_sock_path))
-        self._serve_proc.daemon = False
-        self._serve_proc.start()
+        self._start_new_server()
+        # wait_exists_polling(self._unix_sock_path, max_wait=self.MAX_WAIT_TIME)
         self._start_time = time()
-        wait_exists_polling(self._unix_sock_path, max_wait=self.MAX_WAIT_TIME)
-        self._conn = None
-        self._conn = self._get_rpyc_conn()
+        self._get_rpyc_conn()
+        return self._conn.root
 
-        # Initialise the new worker before continuing
-        try:
-            print("[WATCHDOG] Initialising new worker service...")
-            self.service._unwrap().initialise()
-            print("[WATCHDOG] Worker initialised successfully.")
-            estimator_config = self.enhsp_config if self.enhsp_config is not None else "hadd-gbfs"
-            self.service._unwrap().initialise_estimator(estimator_config)
-            print(f"[WATCHDOG] Worker's estimator initialised successfully with config {estimator_config}.")
-            self.service._unwrap().set_policy_only(self.policy_only)
-            print(f"[WATCHDOG] Worker's using policy {'only' if self.policy_only else 'and value'} network.")
-            self.service._unwrap().make_network(self.weights_manager, self.prob_meta, self.network_dropout, self.network_debug, self.network_policy_only)
-        except Exception as e:
-            print(f"[WATCHDOG] Failed to initialise new worker: {e}")
-
-        print(f"[WATCHDOG] Reconnected successfully to new worker PID={self._serve_proc.pid}")
-        return self._conn
-
-    # def _get_rpyc_conn(self):
-    #     """Get or create the TCP RPyC connection using the addr JSON file."""
-    #     if self._conn is not None:
-    #         return self._conn
-    #
-    #     # How long to keep waiting from when the server was spawned
-    #     remaining = max(0.0, self.MAX_WAIT_TIME - (time() - self._start_time))
-    #
-    #     # Where the server published {host, port}; set this in __init__
-    #     addr_path = getattr(self, "_addr_file", None) or os.environ["RPYC_ADDR_FILE"]
-    #
-    #     # Wait for the file to exist and load it
-    #     info = _wait_for_addr(addr_path, timeout=remaining)
-    #
-    #     # Dial with a few retries (handles brief race between publish and bind)
-    #     for _ in range(10):
-    #         try:
-    #             if "host" in info and "port" in info:
-    #                 c = rpyc.connect(info["host"], info["port"], config={"sync_request_timeout": None})
-    #             elif "unix" in info:
-    #                 # fallback if you kept a UDS variant somewhere
-    #                 stream = rpyc.utils.factory.unix_connect(info["unix"])
-    #                 c = rpyc.connect_stream(stream, service=None, config={"sync_request_timeout": None})
-    #             else:
-    #                 raise ValueError(f"Unrecognized addr info: {info}")
-    #
-    #             c.ping()  # sanity check
-    #             self._conn = c
-    #             return self._conn
-    #         except Exception:
-    #             sleep(0.25)
-    #
-    #     raise RuntimeError("Failed to connect to RPyC server")
+    def get_socket(self):
+        sock_dir = os.path.join(os.getcwd(), "asnet-sockets")
+        os.makedirs(sock_dir, exist_ok=True)
+        self._unix_sock_path = os.path.join(sock_dir,
+                                            'socket.' + uuid.uuid4().hex)
 
     @property
     def conn(self):
@@ -543,47 +449,23 @@ class ProblemServer(object):
         """
         return self._get_rpyc_conn()
 
-    # @property
-    # def service(self):
-    #     """Return handle on root service for connection, which in this case is a
-    #     ProblemService."""
-    #     return self.conn.root
+    @property
+    def problem_service(self):
+        return self.service
+
+    @property
+    def name(self):
+        # return self.service.get_current_problem_name()
+        return self.curr_prob_name
+
     @property
     def service(self):
-        """Return a resilient handle on the ProblemService with auto-reconnect."""
-        raw_service = self.conn.root
-
-        class ResilientProxy:
-            def __init__(self, outer_server, inner_service):
-                self._outer = outer_server
-                self._inner = inner_service
-
-            def __getattr__(self, name):
-                attr = getattr(self._inner, name)
-                if not callable(attr):
-                    return attr
-
-                def wrapped(*args, **kwargs):
-                    for attempt in range(2):
-                        try:
-                            return getattr(self._inner, name)(*args, **kwargs)
-                        except (EOFError, ConnectionError, rpyc.AsyncResultTimeout) as e:
-                            if attempt == 0:
-                                print(f"[WATCHDOG] Lost worker on '{name}', reconnecting... ({e})")
-                                # Reconnect the worker
-                                new_conn = self._outer._reconnect()
-                                # Update the proxy’s inner handle to the fresh ProblemService
-                                self._inner = new_conn.root
-                            else:
-                                raise
-
-                return wrapped
-
-            def _unwrap(self):
-                """Return the underlying remote ProblemService (Netref)."""
-                return self._inner
-
-        return ResilientProxy(self, raw_service)
+        if self._conn is None:
+            raise RuntimeError(
+                "Service requested but no active connection. "
+                "Did you forget to start/reconnect the worker?"
+            )
+        return self._conn.root
 
     def is_conn_alive(self):
         """Return True if RPyC connection still open."""
@@ -594,3 +476,171 @@ class ProblemServer(object):
         except Exception as e:
             print(f"[DEBUG] Conn health check failed: {e}")
             return False
+
+    def make_network(self, weight_manager, inner: Callable, args):
+        obs_dim, act_dim, dom_meta, prob_meta, dg_extra_dim = self.get_problem_data()
+        self.network, weight_manager = inner(
+            args,
+            obs_dim,
+            act_dim,
+            dom_meta,
+            prob_meta,
+            dg_extra_dim,
+            weight_manager=weight_manager,
+        )
+        return weight_manager
+
+    def register_network(self, weights_manager, args):
+        weights_manager = to_local(weights_manager)
+        self.network_dropout = to_local(args.dropout)
+        self.network_debug = to_local(args.net_debug)
+        self.network_policy_only = to_local(args.policy_network_only)
+        self.get_problem_data()
+        self.network, self.weights_manager = make_network(args, self.dom_meta, self.prob_meta, self.dg_extra_dim, weights_manager)
+        return self.weights_manager
+
+    def set_weight_manager(self, weight_manager, args):
+        hs = args.hidden_size
+        num_layers = args.num_layers
+        dropout = args.dropout
+        print('hidden_size: %d, num_layers: %d, dropout: %f' % (hs, num_layers,
+                                                                dropout))
+        if weight_manager is not None:
+            print('Re-using same weight manager')
+        elif args.resume_from:
+            print('Reloading weight manager (resuming training)')
+            resume_from_str = args.resume_from
+            print(f'\n\n[model-loading] - Resuming from: {args.resume_from}\n\n')
+            resume_from_str = resume_from_str.replace("\\", '/')  # for Windows support, do not delete.
+            resume_from_path_obj = Path(resume_from_str)
+            resume_from_path_obj = resume_from_path_obj.resolve(strict=False)
+            weight_manager = joblib.load(resume_from_path_obj)
+        else:
+            print('Creating new weight manager (not resuming)')
+            # TODO: should save all network metadata with the network weights or
+            # within a separate config class, INCLUDING heuristic configuration
+            dom_meta, dg_extra_dim = self.get_domain_data()
+            weight_manager = PropNetworkWeights(
+                dom_meta,
+                hidden_sizes=[(hs, hs)] * num_layers,
+                # extra inputs to each action module from data generators
+                extra_dim=dg_extra_dim,
+                skip=args.skip,
+                use_fluents=args.use_fluents,
+                use_comparisons=args.use_comparisons)
+        return weight_manager
+
+    def _start_new_server(self):
+        logging.info(f"[DEBUG] _serve_proc is {self._serve_proc}")
+        self.get_socket()
+        self._serve_proc = multiprocessing.Process(
+            name='worker',
+            target=start_server,
+            args=(
+                self._service_conf,
+                self._unix_sock_path,
+            )
+        )
+        self._serve_proc.daemon = False
+        self._serve_proc.start()
+        logging.info(f"[DEBUG] _serve_proc is {self._serve_proc}")
+
+    def finish_explore(self):
+        if self.service is None:
+            return
+
+        if not self.is_conn_alive():
+            return
+
+        try:
+            svc = self.service  # freeze netref once
+
+            # --- remote phase ---
+            svc.finish_explore(log=True)
+            prob_obs_tensor, prob_pi_tensor, prob_z_tensor, prob_counts = \
+                to_local(svc.weighted_dataset())
+
+        except (EOFError, BrokenPipeError):
+            # worker already dead — don't crash whole run
+            return
+
+        finally:
+            # ALWAYS end the worker for this exploration
+            self.stop("Worker's shift ended.")
+
+        # --- local phase only ---
+        temp = []
+        for obs, pi, z in zip(prob_obs_tensor, prob_pi_tensor, prob_z_tensor):
+            obs = tuple(obs)
+            pi = tuple(pi)
+            z = tuple(z)
+            temp.append((obs, (pi, z)))
+
+        self.rb.update(temp)
+
+    def flatten_obs_pi_z(self, rich_obs_pi_z):
+        cstates, rich_pi_z = zip(*rich_obs_pi_z)  # each entry is (cstate, (pi, z))
+        obs_tensor = np.stack([s for s in cstates], axis=0)
+
+        pi_list = []
+        z_list = []
+        for pi, z in rich_pi_z:
+            pi_list.append(pi)  # already a distribution over actions
+            z_list.append(z)  # scalar outcome
+        pi_tensor = np.array(pi_list, dtype=float)
+        z_tensor = np.array(z_list, dtype=float).reshape(-1, 1)
+
+        return obs_tensor, pi_tensor, z_tensor
+
+    def weighted_dataset(self):
+        rich_obs_qvs_zs, counts = self.rb.get_full_dataset()
+        assert len(rich_obs_qvs_zs) > 0, "Empty replay %s" % (self.rb,)
+        counts = np.asarray(counts, dtype='float32')
+        # obs_tensor, pi_tensor = self.flatten_obs_qvs(rich_obs_qvs_zs)
+        obs_tensor, pi_tensor, z_tensor = self.flatten_obs_pi_z(rich_obs_qvs_zs)
+        return obs_tensor, pi_tensor, z_tensor, counts
+
+    def dataset_is_empty(self):
+        return len(self.rb) == 0
+
+    def get_replay_size(self):
+        return len(self.rb)
+
+    def trim_replay(self):
+        self.rb.remove_oldest()
+
+    def next_instance(self, curr_weights):
+        if not self.is_first_instance:
+            root = self._reconnect()
+        else:
+            root = self.service
+        try:
+            try:
+                self.curr_prob_name = root.initialise()
+            except AssertionError:
+                self.curr_prob_name = root.get_problem_name()
+            estimator_config = self.enhsp_config if self.enhsp_config is not None else "hadd-gbfs"
+            try:
+                root.initialise_estimator(estimator_config)
+            except AssertionError:
+                pass
+            self.prob_meta = to_local(self.prob_meta)
+            root.make_network(
+                self.weights_manager.export_numpy(),
+                self.prob_meta,
+                self.network_dropout,
+                self.network_debug,
+                self.network_policy_only,
+            )
+            print('Made network, starting exploration')
+            output = root.explore_from_init_state(curr_weights)
+
+            # self.stop("Worker's shift ended.") TODO: never ever put this back here, this belongs to "finish_explore"
+            self.is_first_instance=False
+            return output
+        except Exception:
+            self.stop()
+            raise
+
+        #TODO: this method should re-start the worker with the current network weights,
+        # and use problem service's explore_from_init_state
