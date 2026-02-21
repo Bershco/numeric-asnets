@@ -1193,38 +1193,6 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
     )
 
     # ------------------------------------------------------------
-    # Problem specification template (NO servers)
-    # ------------------------------------------------------------
-    service_config = ProblemServiceConfig(
-        args.pddls,
-        args.domain_type,
-        domain=domain,
-        random_seed=args.seed,
-        ssipp_dg_heuristic=args.ssipp_dg_heuristic,
-        use_lm_cuts=args.use_lm_cuts,
-        use_numeric_landmarks=args.use_numeric_landmarks,
-        use_contributions=args.use_contributions,
-        use_act_history=args.use_act_history,
-        fd_heuristic=args.fd_teacher_heuristic,
-        ssipp_teacher_heuristic=args.ssipp_teacher_heuristic,
-        enhsp_config=args.enhsp_config,
-        teacher_planner=args.teacher_planner,
-        teacher_timeout_s=args.teacher_timeout_s,
-        only_one_good_action=only_one_good_action,
-        use_teacher_envelope=args.use_teacher_envelope,
-        max_len=args.training_limit_turns,
-        her_k=args.her_k,
-        training_mcts_iterations=args.training_mcts_iterations,
-        planner_bootstrapping=args.planner_bootstrapping,
-        planner_bootstrapping_her=args.planner_bootstrapping_her,
-        heuristic_bootstrapping=args.heuristic_bootstrapping,
-        mcts_her_strategy=args.mcts_her_strategy,
-        mcts_expansion_k=args.mcts_expansion_size,
-        use_fluents=args.use_fluents,
-        use_comps=args.use_comparisons,
-    )
-
-    # ------------------------------------------------------------
     # Build SpawnExploreSpec list (one per slot)
     # ------------------------------------------------------------
     from asnets.parllel_explore_spawn_grads import SpawnExploreSpec
@@ -1233,35 +1201,34 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
     for slot_id in range(args.num_training_workers):
         specs.append(
             SpawnExploreSpec(
-                pddls=service_config.pddl_files,
-                domain_type=service_config.domain_type,
+                pddls=args.pddls,
+                domain_type=args.domain_type,
                 random_seed=(args.seed + slot_id) if args.seed is not None else None,
-
-                ssipp_dg_heuristic=service_config.ssipp_dg_heuristic,
-                use_lm_cuts=service_config.use_lm_cuts,
-                use_numeric_landmarks=service_config.use_numeric_landmarks,
-                use_contributions=service_config.use_contributions,
-                use_act_history=service_config.use_act_history,
-                fd_heuristic=service_config.fd_heuristic,
-                ssipp_teacher_heuristic=service_config.ssipp_teacher_heuristic,
-                enhsp_config=service_config.enhsp_config,
-                teacher_planner=service_config.teacher_planner,
-                teacher_timeout_s=service_config.teacher_timeout_s,
-                only_one_good_action=service_config.only_one_good_action,
-                use_teacher_envelope=service_config.use_teacher_envelope,
-                max_len=service_config.max_len,
-                her_k=service_config.her_k,
-                training_mcts_iterations=service_config.training_mcts_iterations,
-                planner_bootstrapping=service_config.planner_bootstrapping,
-                planner_bootstrapping_her=service_config.planner_bootstrapping_her,
-                heuristic_bootstrapping=service_config.heuristic_bootstrapping,
-                mcts_her_strategy=service_config.mcts_her_strategy,
-                mcts_expansion_k=service_config.mcts_expansion_k,
-                use_fluents=service_config.use_fluents,
-                use_comps=service_config.use_comps,
+                ssipp_dg_heuristic=args.ssipp_dg_heuristic,
+                use_lm_cuts=args.use_lm_cuts,
+                use_numeric_landmarks=args.use_numeric_landmarks,
+                use_contributions=args.use_contributions,
+                use_act_history=args.use_act_history,
+                fd_heuristic=args.fd_teacher_heuristic,
+                ssipp_teacher_heuristic=args.ssipp_teacher_heuristic,
+                enhsp_config=args.enhsp_config,
+                teacher_planner=args.teacher_planner,
+                teacher_timeout_s=args.teacher_timeout_s,
+                only_one_good_action=only_one_good_action,
+                use_teacher_envelope=args.use_teacher_envelope,
+                max_len=args.training_limit_turns,
+                her_k=args.her_k,
+                training_mcts_iterations=args.training_mcts_iterations,
+                planner_bootstrapping=args.planner_bootstrapping,
+                planner_bootstrapping_her=args.planner_bootstrapping_her,
+                heuristic_bootstrapping=args.heuristic_bootstrapping,
+                mcts_her_strategy=args.mcts_her_strategy,
+                mcts_expansion_k=args.mcts_expansion_size,
+                use_fluents=args.use_fluents,
+                use_comps=args.use_comps,
                 difficulty=InstanceDifficulty.EASY,
                 fixed_instance_pddl=args.fixed_instance,
-                mcts_exploration_weight=args.mcts_exploration_weight
+                mcts_exploration_weight=args.mcts_exploration_weight,
             )
         )
 
