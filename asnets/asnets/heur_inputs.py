@@ -387,8 +387,8 @@ class NumericLandmarkGenerator(ActionDataGenerator):
 
     def get_extra_data_no_memory(self, cstate: CanonicalState) -> np.ndarray:
         out_vec = np.zeros((len(cstate.acts_enabled), self.extra_dim))
-        # landmarks = self.generator.get_landmarks(cstate)
-        landmarks = [] #TODO: this is a bandage to cover java usage for debugging
+        landmarks = self.generator.get_landmarks(cstate)
+        # landmarks = [] #TODO: this is a bandage to cover java usage for debugging
 
         id_to_idx = {
             a.unique_ident: idx
