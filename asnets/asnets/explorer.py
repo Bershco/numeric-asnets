@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import concurrent
 import logging
 import random
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from time import time
 import tqdm.auto as tqdm
 from typing import List, Optional, Tuple
@@ -10,7 +11,7 @@ import numpy as np
 from collections import Counter
 import gc
 
-from asnets.multiprob import to_local
+from asnets.utils.rpyc_utils import to_local
 
 LOGGER = logging.getLogger(__name__)
 
@@ -72,14 +73,16 @@ class Explorer(ABC):
             return
         while True:
             replay_size = sum(
-                to_local(problem.problem_service.get_replay_size())
+                # to_local(problem.problem_service.get_replay_size())
+                problem.get_replay_size()
                 for problem in self.problems)
             
             if replay_size <= self.max_replay_size:
                 break
 
             for problem in self.problems:
-                problem.problem_service.trim_replay()
+                # problem.problem_service.trim_replay()
+                problem.trim_replay()
 
     
     def extend_replay(self) -> List[Tuple['SingleProblem', float]]:
@@ -243,8 +246,12 @@ class MCTSExplorer(DynamicExplorer):
         assert len(self.exploration_count_by_problem) == len(self.problems)
         self.solved_count_by_problem: dict['SingleProblem', int] = {prob: 0 for prob in problems}
         self.solved_threshold = 0.1
-        self.init_state_h_by_problem: dict['SingleProblem', float] = {prob: prob.problem_service.get_state_h(prob.problem_service.env_reset()) for prob in problems}
+        # self.init_state_h_by_problem: dict['SingleProblem', float] = {prob: prob.problem_service.get_state_h(prob.problem_service.env_reset()) for prob in problems}
         self.planner_bootstrapping = planner_bootstrapping
+        self.curr_weights = None
+        self.last_traj_len = 0
+        self.explored = {prob: 0 for prob in problems}
+        self.curr_epoch_explored = {prob: 0 for prob in problems}
 
     def compute_weight(self, problem: 'SingleProblem'):
         if self.exploration_count_by_problem[problem] == 0:
@@ -263,14 +270,75 @@ class MCTSExplorer(DynamicExplorer):
         norm_weights = weights / weights.sum()
         return np.random.choice(self.problems, p=norm_weights)
 
+    def set_weights(self, weights):
+        self.curr_weights = weights
+
     def explore(self) -> None:
         start_time = time()
         t = tqdm.tqdm(desc='MCTS explore', total=self.max_new_pairs)
+        assert self.curr_weights, 'Something happened and weights were not properly loaded to the explorer.'
         self.last_progress_time = time() #not sure what this is used for, trying to keep the status quo
+        for prob, _ in self.curr_epoch_explored.items():
+            self.curr_epoch_explored[prob] = 0
         while not self._terminate(start_time, t):
             problem = self._sample_problem()
-            self.hit_goal[problem].append(problem.problem_service.explore_from_init_state(problem.network.get_weights()))
+            print(f'[DEBUG Problem Sampling Correctness] Sampled problem with slot_id={problem.problem_server_slot_id}')
+            hit_goal, self.last_traj_len = problem.next_instance(self.curr_weights)
+            self.hit_goal[problem].append(hit_goal)
+            self.curr_epoch_explored[problem] += self.last_traj_len
+            self.explored[problem] += 1
         t.close()
+        self.curr_weights = None
         if self.planner_bootstrapping:
             for problem in self.problems:
                 problem.problem_service.log_planner_trajectories()
+
+    def _terminate(self, start_time: float, t: tqdm.tqdm) -> bool:
+        """Whether to terminate the exploration phase."""
+        new_pairs = [traj_len_sum for traj_len_sum in self.curr_epoch_explored.values()]
+        total_new_pairs = sum(new_pairs)
+        if self._is_first_explore():
+            t.update(total_new_pairs - t.n)
+            return total_new_pairs >= self.min_new_pairs and \
+                all(n > 0 for n in new_pairs)
+        # Terminating when there seems to be no progress
+        if total_new_pairs == t.n:
+            if time() - self.last_progress_time > 10:
+                LOGGER.warning(
+                    'No progress in exploration phase for 10s, aborting')
+                return True
+        else:
+            self.last_progress_time = time()
+            t.update(total_new_pairs - t.n)
+        # hard termination when we take too long
+        if time() - start_time > 3 * self.expl_learn_ratio * self.recent_learning_time:
+            print('[MCTS_EXPLORE_TERMINATED] Cause: hard termination for taking too long')
+            return True
+        if total_new_pairs >= self.max_new_pairs:
+            print('[MCTS_EXPLORE_TERMINATED] Cause: total_new_pairs >= max_new_pairs')
+            return True
+        if total_new_pairs >= self.min_new_pairs:
+            if time() - start_time >= self.expl_learn_ratio * self.recent_learning_time:
+                print(
+                    '[MCTS_EXPLORE_TERMINATED] Cause: time() - start_time >= self.expl_learn_ratio * self.recent_learning_time ')
+                return True
+        if t.n >= t.total:
+            print('[DYNAMIC_EXPLORE_TERMINATED] Cause: t.n >= t.total')
+            return True
+        return False
+
+
+    def extend_replay(self) -> List[Tuple['SingleProblem', float]]:
+        self.hit_goal = {problem: [] for problem in self.problems}
+        self.traj_sizes = {problem: 0 for problem in self.problems}
+        self.explore()
+        for problem in self.problems:
+            # problem.problem_service.finish_explore()
+            if self.curr_epoch_explored[problem] > 0:
+                problem.finish_explore()
+            else:
+                problem.stop()
+        self._trim_replays()
+        return [
+            (problem, sum(self.hit_goal[problem]) / len(self.hit_goal[problem]) if len(self.hit_goal[problem]) > 0 else 0)
+            for problem in self.problems]
