@@ -1,7 +1,8 @@
 import multiprocessing
+import queue
+import threading
 import traceback
 from collections import Counter, deque
-from copy import deepcopy
 from enum import Enum
 from functools import lru_cache
 from itertools import repeat
@@ -20,12 +21,13 @@ from types import ModuleType
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Set
 import cProfile
 import datetime
-
 from asnets.heur_inputs import ActionCountDataGenerator, \
     HeuristicDataGenerator, LMCutDataGenerator, RelaxedDeadendDetector, \
     NumericLandmarkGenerator
 from asnets.models import PropNetworkWeights, PropNetwork
+from asnets.utils.generator_utils import InstanceDifficulty, ProgressionLevel, get_problem_names
 from asnets.utils.mdpsim_utils import parse_problem_args
+from asnets.utils.rpyc_utils import to_local, find_netrefs
 from asnets.prob_dom_meta import BoundAction, DomainType, get_domain_meta, \
     get_problem_meta
 from asnets.interfaces.jpddl_interface import start_jvm
@@ -35,18 +37,15 @@ from asnets.state_reprs import compute_observation_dim, compute_action_dim, \
 from asnets.teacher import DomainSpecificTeacher, FDTeacher, MetricFFTeacher, \
     SSiPPTeacher, Teacher, TeacherException, ENHSPTeacher
 from asnets.utils.prof_utils import can_profile
-from asnets.utils.pddl_utils import get_domain_file, get_problem_file
+from asnets.utils.pddl_utils import get_domain_file
 from asnets.utils.py_utils import RandomPopContainer, TimerContext, \
     strip_parens, weak_ref_to, weighted_batch_iter
 from asnets.utils.tf_utils import cross_entropy, empty_feed_value, \
     escape_name_tf, mean_squared_error
 from post_training.monte_carlo_tree_search import MCTSNode
 from post_training.training_mcts import TrainingMCTS
-
 import jpype
 import jpype.imports
-from jpype.types import *
-
 import sys
 
 
@@ -54,8 +53,7 @@ J_PDDLDomain = None
 J_PDDLProblem = None
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
-
+LOGGER.setLevel(logging.INFO)
 
 # ---- diagnostics: catch everything that reaches top-level ----
 
@@ -155,9 +153,10 @@ class ProblemServiceConfig(object):
     def __init__(
             self,
             pddl_files: List[str],
-            init_problem_name: str,
+            # init_problem_name: str,
             domain_type: DomainType,
             *,
+            domain = None,
             ssipp_dg_heuristic: str = None,
             use_lm_cuts: bool = False,
             use_numeric_landmarks: bool = False,
@@ -181,6 +180,7 @@ class ProblemServiceConfig(object):
             planner_bootstrapping: bool = False,
             planner_bootstrapping_her: bool = False,
             heuristic_bootstrapping: bool = False,
+            difficulty: InstanceDifficulty = InstanceDifficulty.EASY,
             estimator_value_conversion_lambda: float = 0.1,
             bootstrap_k: int = 3,
             mcts_expansion_k: int = 10,
@@ -189,7 +189,11 @@ class ProblemServiceConfig(object):
             random_seed: int = None,
             teacher_timeout_s: int = 1800,
             only_one_good_action: bool = False,
-            use_teacher_envelope: bool = True,):
+            use_teacher_envelope: bool = True,
+            use_fluents: bool = False,
+            use_comps: bool = False,
+            slot_id: int = None,
+    ):
         """Initialise a ProblemServiceConfig. This Config will allow
         initialisation of a ProblemService, which involves:
         - Initialising mdpsim and ssipp (requires pddl_files, problem_name)
@@ -228,7 +232,9 @@ class ProblemServiceConfig(object):
             Defaults to True.
         """
         self.pddl_files = pddl_files
-        self.init_problem_name = init_problem_name
+        # self.init_problem_name = init_problem_name
+        self.domain=domain
+        self.difficulty=difficulty
         self.domain_type = domain_type
         self.ssipp_dg_heuristic = ssipp_dg_heuristic
         self.use_lm_cuts = use_lm_cuts
@@ -252,7 +258,11 @@ class ProblemServiceConfig(object):
         self.mcts_her_strategy = mcts_her_strategy
         self.estimator_value_conversion_lambda = estimator_value_conversion_lambda
         self.bootstrap_k = bootstrap_k
-        self.expansion_k = mcts_expansion_k
+        self.mcts_expansion_k = mcts_expansion_k
+        self.use_fluents = use_fluents
+        self.use_comps = use_comps
+        self.slot_id = slot_id
+
 
 class PlannerExtensions(object):
     """Wrapper to hold references to SSiPP and MDPSim modules, and references
@@ -262,14 +272,19 @@ class PlannerExtensions(object):
 
     def __init__(self,
                  pddl_files: List[str],
-                 init_problem_name: str,
+                 domain,
+                 # init_problem_name: str,
+                 # domain_file_path_str: str,
                  domain_type: DomainType,
                  *,
                  dg_ssipp_heuristic_name: str = None,
                  dg_use_lm_cuts: bool = False,
                  dg_use_numeric_landmarks: bool = False,
                  dg_use_contributions: bool = False,
-                 dg_use_act_history: bool = False):
+                 dg_use_act_history: bool = False,
+                 difficulty: InstanceDifficulty = InstanceDifficulty.EASY,
+                 fixed_instance: bool = False,
+                 seed: int = None):
         """Initialise a PlannerExtensions object.
 
         Args:
@@ -286,23 +301,39 @@ class PlannerExtensions(object):
             dg_use_act_history (bool, optional): Whether to use the action count
             data generator. Defaults to False.
         """
-        self.pddl_files = pddl_files
+        # self.pddl_files = pddl_files
+        self.pddl_files = [pddl_files[0]]
         self.domain_type = domain_type
-        LOGGER.info('Parsing %d PDDL files for domain type %s',
-                    len(self.pddl_files), domain_type.name)
+        # LOGGER.info('Parsing %d PDDL files for domain type %s',
+        #             len(self.pddl_files), domain_type.name)
+        self.difficulty = difficulty
+        self.seed = seed
 
         import mdpsim  # noqa: F811
         import ssipp  # noqa: F811
 
+        # self.domain = Domain.from_pddl_name(extract_domain_name_from_file(domain_file_path_str))
 
-        LOGGER.info(f'Starting to parse mdpsim problem...')
+        # self.domain.generate_instances(
+        #     difficulty=self.difficulty,
+        # )
+        self.domain = domain
+        if not fixed_instance:
+            generated_problem_pddl_path = self.domain.get_realtime_instance(self.difficulty, self.seed)
+        else:
+            generated_problem_pddl_path = pddl_files[1]
+        self.generated_problem_name = get_problem_names([generated_problem_pddl_path])[0]
+
+        self.pddl_files += [str(generated_problem_pddl_path)]
+        LOGGER.info(f'Starting to parse mdpsim problem: {self.generated_problem_name}')
         # MDPSim stuff
         self.mdpsim: ModuleType = mdpsim
-        self.mdpsim_problem = parse_problem_args(self.mdpsim, self.pddl_files,
-                                                 init_problem_name)
+        # self.mdpsim_problem = parse_problem_args(self.mdpsim, self.pddl_files,
+        #                                          init_problem_name)
+        self.mdpsim_problem = parse_problem_args(self.mdpsim, self.pddl_files, self.generated_problem_name)
         self.problem_name: str = self.mdpsim_problem.name.strip()
 
-        LOGGER.info(f'Finished parsing mdpsim problem: {self.problem_name}')
+        LOGGER.debug(f'Finished parsing mdpsim problem: {self.problem_name}')
 
         # Maps to PyGroundAction object in MDPSim. Cannot use type hint.
         self.act_ident_to_mdpsim_act: Dict[str, Any] = {
@@ -320,9 +351,7 @@ class PlannerExtensions(object):
         # Either use JPDDL (numeric) or SSiPP (otherwise), ugly!
         if self.domain_type == DomainType.NUMERIC:
             domain_file = get_domain_file(self.pddl_files)
-            problem_file = get_problem_file(self.pddl_files, self.problem_name)
-            assert domain_file is not None
-            assert problem_file is not None
+            # problem_file = get_problem_file(self.pddl_files, self.problem_name)
 
             LOGGER.debug(f"Process {os.getpid()} Starting JVM...")
             start_jvm()
@@ -331,17 +360,16 @@ class PlannerExtensions(object):
             self.j_domain = J_PDDLDomain(domain_file)
 
             LOGGER.debug("Creating J_PDDLProblem...")
-            self.j_problem = J_PDDLProblem(problem_file, self.j_domain)
-
+            # self.j_problem = J_PDDLProblem(problem_file, self.j_domain)
+            self.j_problem = J_PDDLProblem(str(generated_problem_pddl_path), self.j_domain)
             LOGGER.debug("Calling prepareForSearch...")
-            self.j_problem.prepareForSearch(True, False)
-
-            LOGGER.debug("JPDDL init done.")
+            # self.j_problem.prepareForSearch(True, False)
 
             self.j_problem.prepareForSearch(
                 True,  # enable AIBR preprocessing
                 False  # stop after grounding
             )
+            LOGGER.debug("JPDDL init done.")
 
             if dg_use_lm_cuts:
                 # set up SSiPP using numeric relaxed problems
@@ -414,6 +442,62 @@ class PlannerExtensions(object):
         import jpype, os
         print(f"[DEBUG GC] JVM running at del? {jpype.isJVMStarted()} PID={os.getpid()}")
 
+    def update_difficulty(self, difficulty: int):
+        assert 0 <= difficulty <= 2
+        assert type(difficulty) == int
+        self.difficulty = InstanceDifficulty.EASY if difficulty == 0 else InstanceDifficulty.MEDIUM if difficulty == 1 else InstanceDifficulty.HARD
+
+    def next_instance(self):
+        generated_problem_pddl_path = self.domain.get_instance(self.difficulty)
+        self.generated_problem_name = get_problem_names([generated_problem_pddl_path])[0]
+
+        self.pddl_files = [self.pddl_files[0], str(generated_problem_pddl_path)]
+
+        LOGGER.info(f'Starting to parse mdpsim problem...')
+        LOGGER.info(f"Current problem name: {self.generated_problem_name}")
+        # MDPSim stuff
+        # import mdpsim  # noqa: F811
+        # LOGGER.info('imported mdpsim properly')
+        # self.mdpsim: ModuleType = mdpsim
+        # self.mdpsim_problem = parse_problem_args(self.mdpsim, self.pddl_files,
+        #                                          init_problem_name)
+        self.mdpsim_problem = parse_problem_args(self.mdpsim, self.pddl_files, self.generated_problem_name)
+        LOGGER.info('parsed problem properly')
+        self.problem_name: str = self.mdpsim_problem.name.strip()
+
+        LOGGER.info(f'Finished parsing mdpsim problem: {self.problem_name}')
+
+        # Maps to PyGroundAction object in MDPSim. Cannot use type hint.
+        self.act_ident_to_mdpsim_act: Dict[str, Any] = {
+            strip_parens(a.identifier): a
+            for a in self.mdpsim_problem.ground_actions
+        }
+
+        LOGGER.debug(f'Python-side extra data')
+        # Python-side extra data
+        self.domain_meta = get_domain_meta(self.mdpsim_problem.domain)
+        self.problem_meta = get_problem_meta(self.mdpsim_problem,
+                                             self.domain_meta)
+        if self.domain_type == DomainType.NUMERIC:
+            domain_file = get_domain_file(self.pddl_files)
+            # problem_file = get_problem_file(self.pddl_files, self.problem_name)
+
+            LOGGER.debug("Creating J_PDDLDomain...")
+            self.j_domain = J_PDDLDomain(domain_file)
+
+            LOGGER.debug("Creating J_PDDLProblem...")
+            # self.j_problem = J_PDDLProblem(problem_file, self.j_domain)
+            self.j_problem = J_PDDLProblem(str(generated_problem_pddl_path), self.j_domain)
+            LOGGER.debug("Calling prepareForSearch...")
+            # self.j_problem.prepareForSearch(True, False)
+
+            self.j_problem.prepareForSearch(
+                True,  # enable AIBR preprocessing
+                False  # stop after grounding
+            )
+            LOGGER.debug("JPDDL init done.")
+
+
 def cosine_similarity(p, q):
     # p, q: numpy vectors representing policies
     dot = np.dot(p, q)
@@ -480,7 +564,6 @@ def make_problem_service(config, set_proc_title=False):
     environment."""
     assert isinstance(config, ProblemServiceConfig)
     #to avoid circular imports
-    from asnets.multiprob import to_local
     class ProblemService(rpyc.Service):
         """Spools up a new Python interpreter and uses it to sandbox SSiPP and
         MDPSim. Can interact with this to train a Q-network."""
@@ -562,7 +645,11 @@ def make_problem_service(config, set_proc_title=False):
             try:
                 cstate = self.id_hash_to_state.get((cstate_id,cstate_hash), None)
                 if cstate is None:
-                    return None
+                    raise KeyError(
+                        f"Unknown cstate (id={cstate_id}, hash={cstate_hash}). "
+                        f"Known states={len(self.id_hash_to_state)}. "
+                        f"Did the client reuse state IDs across epochs / reconnect?"
+                    )
                 results = []
                 for action_num in action_nums:
                     next_state, step_cost = sample_next_state(cstate, action_num, self.p)
@@ -592,9 +679,6 @@ def make_problem_service(config, set_proc_title=False):
                 # re-raise to ensure RPyC propagates the error correctly
                 raise
 
-        def exposed_current_state(self):
-            return self.current_state
-
         # note to self: RPyC doesn't support @property
 
         def exposed_get_ssipp_dead_end_value(self):
@@ -602,7 +686,7 @@ def make_problem_service(config, set_proc_title=False):
 
         def exposed_get_meta(self):
             """Get name, ProblemMeta and DomainMeta for the current problem."""
-            return self.problem_meta, self.domain_meta
+            return self.p.problem_meta, self.p.domain_meta
 
         def exposed_get_replay_size(self):
             return len(self.replay)
@@ -638,6 +722,7 @@ def make_problem_service(config, set_proc_title=False):
 
         def exposed_get_problem_names(self):
             # fetch a list of all problems loaded by MDPSim
+            print('Service retrieving problem names')
             return sorted(self.p.mdpsim.get_problems().keys())
 
         def exposed_get_current_problem_name(self):
@@ -650,7 +735,7 @@ def make_problem_service(config, set_proc_title=False):
             # return len(self.expl_states)
             return self.expl_triplets
         
-        def exposed_finish_explore(self):
+        def exposed_finish_explore(self, log=False):
             info_text = f"[{self.p.problem_name}] generated {self.expl_triplets} actual (exploration only) new triplets, and {len(self.expl_states)} total (exploration + HER + bootstrapping) triplets"
             LOGGER.info(info_text)
             self.replay.update(self.expl_states)
@@ -658,35 +743,39 @@ def make_problem_service(config, set_proc_title=False):
             self.model_cache = {}
             z_sum = sum([z for (_,(_,z)) in self.expl_states])
             LOGGER.info(f'[Z_SUM] The sum of all currently placed triplets\' z value in self.expl_states is {z_sum}')
-            last_states_mean = np.mean(self.last_states_value_cache) if len(self.last_states_value_cache) > 0 else "None"
-            last_states_min = np.min(self.last_states_value_cache) if len(self.last_states_value_cache) > 0 else "None"
-            last_states_max = np.max(self.last_states_value_cache) if len(self.last_states_value_cache) > 0 else "None"
-            LOGGER.info(f"[LAST_STATES_LOG] '5-last-states' in the latest exploration period information: mean: {last_states_mean}, min: {last_states_min}, max: {last_states_max} ")
-            sampled_indices = np.random.choice(len(self.expl_states), replace=False, size=5) if len(self.last_states_value_cache) > 0 else []
-            sampled_triplets = [self.expl_states[i] for i in sampled_indices]
-            for state, pi_val in sampled_triplets:
-                pi, val = pi_val
-                pi_pred, val_pred = self.network(state.to_network_input())
-                LOGGER.info(f"[COSINE_SIMILARITY] For the sampled state, the cosine similarity is {cosine_similarity(np.array(pi), np.array(pi_pred).T)}")
+            if log:
+                last_states_mean = np.mean(self.last_states_value_cache) if len(self.last_states_value_cache) > 0 else "None"
+                last_states_min = np.min(self.last_states_value_cache) if len(self.last_states_value_cache) > 0 else "None"
+                last_states_max = np.max(self.last_states_value_cache) if len(self.last_states_value_cache) > 0 else "None"
+                LOGGER.info(f"[LAST_STATES_LOG] '5-last-states' in the latest exploration period information: mean: {last_states_mean}, min: {last_states_min}, max: {last_states_max} ")
+                sampled_indices = np.random.choice(len(self.expl_states), replace=False, size=min(5,len(self.expl_states)))\
+                    if len(self.last_states_value_cache) > 0 else []
+                sampled_triplets = [self.expl_states[i] for i in sampled_indices]
+                for state, pi_val in sampled_triplets:
+                    pi, val = pi_val
+                    pi_pred, val_pred = self.network(state.to_network_input())
+                    LOGGER.info(f"[COSINE_SIMILARITY] For the sampled state, the cosine similarity is {cosine_similarity(np.array(pi), np.array(pi_pred).T)}")
             self.expl_states.clear()
             self.last_states_value_cache.clear()
             self.expl_triplets = 0
 
         def exposed_initialise(self):
             assert not self.initialised, "Can't double-init"
-            LOGGER.debug("ProblemService started initialisation.")
+            print("ProblemService started initialisation.")
 
             self.p = PlannerExtensions(
                 config.pddl_files,
-                config.init_problem_name,
+                # config.init_problem_name,
+                config.domain,
                 config.domain_type,
                 dg_ssipp_heuristic_name=config.ssipp_dg_heuristic,
                 dg_use_lm_cuts=config.use_lm_cuts,
                 dg_use_numeric_landmarks=config.use_numeric_landmarks,
                 dg_use_contributions=config.use_contributions,
-                dg_use_act_history=config.use_act_history)
-            self.domain_meta = self.p.domain_meta
-            self.problem_meta = self.p.problem_meta
+                dg_use_act_history=config.use_act_history,
+                difficulty=config.difficulty,
+                seed=config.random_seed,
+            )
             self.only_one_good_action = config.only_one_good_action
             self.use_teacher_envelope = config.use_teacher_envelope
 
@@ -709,6 +798,7 @@ def make_problem_service(config, set_proc_title=False):
             self.planner_bootstrapping_her = config.planner_bootstrapping_her
             self.heuristic_bootstrapping = config.heuristic_bootstrapping
             self.bootstrap_k = config.bootstrap_k #default is 3
+            CanonicalState.network_input_config(use_fluents=config.use_fluents, use_comparisons=config.use_comps)
 
             if config.teacher_planner == 'fd':
                 # TODO: consider passing in teacher heuristic here, too; that
@@ -736,7 +826,6 @@ def make_problem_service(config, set_proc_title=False):
                 self.teacher = MetricFFTeacher(
                     self.p,
                     timeout_s=config.teacher_timeout_s)
-
             # maximum length of a trace to gather
             self.max_len = config.max_len
             # will hold (state, action) pairs to train on
@@ -750,17 +839,47 @@ def make_problem_service(config, set_proc_title=False):
                 # /proc/PID/environ
                 os.environ['SPT_NOENV'] = '1'
                 old_title = setproctitle.getproctitle()
-                new_title = '[%s] %s' % (self.problem_meta.name, old_title)
+                new_title = '[%s] %s' % (self.p.problem_meta.name, old_title)
                 setproctitle.setproctitle(new_title)
 
             self.stochastic = True
 
+            self._tf_queue = queue.Queue()
+            self._tf_thread = threading.Thread(
+                target=self.internal_tf_worker,
+                daemon=True
+            )
+            self._tf_thread.start()
             self.network_initialised = False
             self.initialised = True
-            LOGGER.debug("ProblemService finished initialisation.")
+            print("ProblemService finished initialisation.")
 
             self._profiler = cProfile.Profile()
             self._profiler.enable()
+            return self.p.generated_problem_name
+
+        def exposed_get_problem_name(self):
+            assert self.initialised, "Problem was no initialised"
+            return self.p.generated_problem_name
+
+        def internal_tf_worker(self):
+            while True:
+                fn, args, kwargs, result_q = self._tf_queue.get()
+                try:
+                    print("[TF WORKER] before forward", flush=True)
+                    res = fn(*args, **kwargs)
+                    print("[TF WORKER] after forward", flush=True)
+                    result_q.put((True, res))
+                except Exception as e:
+                    result_q.put((False, e))
+
+        def internal_run_tf(self, fn, *args, **kwargs):
+            result_q = queue.Queue()
+            self._tf_queue.put((fn, args, kwargs, result_q))
+            ok, res = result_q.get()
+            if ok:
+                return res
+            raise res
 
         def exposed_flush_profiler(self):
             self._profiler.disable()
@@ -922,6 +1041,7 @@ def make_problem_service(config, set_proc_title=False):
         def internal_explore_from_init_state(self, network: Callable) -> bool:
             """Self-play exploration for AlphaZero-style data generation beginning with the start state of 'this' problem"""
             cstate = self.internal_get_init_state()
+            print('Starting exploration from the initial state')
             return self.internal_explore_from_given_state(network, cstate)
 
         def internal_sample_k_future_states(self, curr_t, state_list) -> List[CanonicalState]:
@@ -987,13 +1107,19 @@ def make_problem_service(config, set_proc_title=False):
             trajectory: List[tuple[CanonicalState,tuple[np.ndarray,float]]] = []  # will store (cstate, pi) along the episode
             id_hash_traj: List[tuple[int,int]] = []
 
+            #default pi and z values
+            act_dim = self.internal_get_act_dim()
+            assert act_dim>0, f"Somehow the dimension of all actions is {act_dim}, which is illegal"
+            pi = np.full(act_dim, 1/act_dim)
+            z = 0
+
             # simulate one full episode
             for i in range(self.max_len):
                 if cstate.is_terminal:
                     if cstate.is_goal:
-                        LOGGER.info(f'[GOAL_ANNOUNCER] Reached goal after {i+1} steps on problem {self.problem_meta.name}')
+                        LOGGER.info(f'[GOAL_ANNOUNCER] Reached goal after {i+1} steps on problem {self.p.problem_meta.name}')
                     else:
-                        LOGGER.info(f'[GOAL_ANNOUNCER] Reached non-goal after {i+1} steps on problem {self.problem_meta.name}')
+                        LOGGER.info(f'[GOAL_ANNOUNCER] Reached non-goal after {i+1} steps on problem {self.p.problem_meta.name}')
                     #if pi or z are not assigned that means the initial state was terminal
                     # which is 100% dumb so exception should be raised
                     trajectory.append((cstate, (pi, z)))
@@ -1091,7 +1217,7 @@ def make_problem_service(config, set_proc_title=False):
 
                     self.expl_states.append((sampled_state, (sampled_state_softmax, sampled_state_v)))
 
-            if not self.policy_only:
+            if not hasattr(self, "policy_only") or self.policy_only:
                 # # 4. Determine game outcome z
                 # if cstate.is_goal:
                 #     print('[HER_DEBUG] Reached goal!')
@@ -1138,7 +1264,7 @@ def make_problem_service(config, set_proc_title=False):
                                 pi_key = tuple(np.ravel(pi_t)) if isinstance(pi_t, np.ndarray) else pi_t
                                 # Add HER transition
                                 self.expl_states.append((s_t, (pi_key, z_her)))
-            return states_only[-1].is_goal
+            return states_only[-1].is_goal, len(states_only)
 
 
         def flatten_obs_qvs(self, rich_obs_qvs):
@@ -1149,7 +1275,7 @@ def make_problem_service(config, set_proc_title=False):
             for qv_pairs in rich_qvs:
                 qv_dict = dict(qv_pairs)
                 qv_list = [
-                    qv_dict[ba] for ba in self.problem_meta.bound_acts_ordered
+                    qv_dict[ba] for ba in self.p.problem_meta.bound_acts_ordered
                 ]
                 qv_lists.append(qv_list)
             qv_tensor = np.array(qv_lists, dtype=float)
@@ -1191,8 +1317,6 @@ def make_problem_service(config, set_proc_title=False):
             return self.internal_get_state_h(self.id_hash_to_state.get((cstate_id, cstate_hash), None))
 
         def internal_get_init_state(self) -> CanonicalState:
-            if hasattr(self,"cached_init_state"):
-                return self.cached_init_state
             return get_init_cstate(self.p)
 
         def internal_to_network_input(self, cstate):
@@ -1243,17 +1367,51 @@ def make_problem_service(config, set_proc_title=False):
         def internal_get_applicable_action_mask(self, cstate: CanonicalState):
             return [activated for _, activated in cstate.acts_enabled]
 
-        def exposed_make_network(self, weights_manager: PropNetworkWeights, prob_meta, dropout, debug, policy_network_only):
+        # def exposed_make_network(self, weights_manager: PropNetworkWeights, prob_meta, dropout, debug, policy_network_only):
+        def exposed_make_network(self, weights_np, prob_meta, dropout, debug, policy_network_only):
             assert self.initialised
             assert self.estimator_initialised
+            weights_np = to_local(weights_np)
             prob_meta = to_local(prob_meta)
-            self.network = PropNetwork(to_local(weights_manager), prob_meta,
-                                       dropout=to_local(dropout), debug=to_local(debug), policy_network_only=to_local(policy_network_only),
-                                       trainable=False)
-
+            dropout = to_local(dropout)
+            debug = to_local(debug)
+            policy_network_only = to_local(policy_network_only)
+            print("starting to create network")
+            weights_manager = PropNetworkWeights.from_numpy(prob_meta, weights_np)
+            self.network = PropNetwork(weights_manager, prob_meta, dropout=dropout, debug=debug,
+                                       policy_network_only=policy_network_only, trainable=False)
+            hits = find_netrefs(self.network)
+            assert not hits, f"Netrefs leaked into local model: {hits}"
+            print("network created")
             init_cstate_as_network_input = to_local(self.internal_get_init_state().to_network_input())
+            print("initial state achieved properly")
             # Run a dummy forward pass with the initial cstate to initialize TensorFlow weight shapes
+            print("[TF WORKER] before forward", flush=True)
+            print("num_props:", prob_meta.num_props, "len(bound_props_ordered):", len(prob_meta.bound_props_ordered),
+                  flush=True)
+            print("num_flnts:", getattr(prob_meta, "num_flnts", None), "len(bound_flnts_ordered):",
+                  len(getattr(prob_meta, "bound_flnts_ordered", [])), flush=True)
+            print("num_comps:", getattr(prob_meta, "num_comps", None), "len(bound_comps_ordered):",
+                  len(getattr(prob_meta, "bound_comps_ordered", [])), flush=True)
+            print("num_acts:", getattr(prob_meta, "num_acts", None), "len(bound_acts_ordered):",
+                  len(getattr(prob_meta, "bound_acts_ordered", [])), flush=True)
+            print("len(goal_props):", len(getattr(prob_meta, "goal_props", None)), flush=True)
+            print("len(goal_flnts):", len(getattr(prob_meta, "goal_flnts", None)), flush=True)
+
+            assert prob_meta.num_props == len(prob_meta.bound_props_ordered), (prob_meta.num_props,
+                                                                               len(prob_meta.bound_props_ordered))
+            if hasattr(prob_meta, "use_fluents") or hasattr(prob_meta, "num_flnts"):
+                assert prob_meta.num_flnts == len(prob_meta.bound_flnts_ordered)
+            if hasattr(prob_meta, "num_comps"):
+                assert prob_meta.num_comps == len(prob_meta.bound_comps_ordered)
+
             self.network(init_cstate_as_network_input[None], training=False)
+            print("[TF WORKER] after forward", flush=True)
+            # self.internal_run_tf(
+            #     self.network,
+            #     init_cstate_as_network_input[None],
+            #     training=False
+            # )
             print(f"Remote weights for problem {prob_meta.name}: {len(self.network.get_weights())}")
 
             self.network_initialised = True
@@ -1261,6 +1419,11 @@ def make_problem_service(config, set_proc_title=False):
             # this is important to send back as it will be used to pass forward in the local (i.e. not on the service)
             # network before the beginning of the training/inference
             return init_cstate_as_network_input
+
+        # def exposed_make_network(self, *args):
+        #     print("make_network called")
+        #     self.network_initialised = True
+        #     return None
 
         def internal_set_weights(self, weights):
             assert self.network_initialised
@@ -1289,6 +1452,15 @@ def make_problem_service(config, set_proc_title=False):
             planner_success_rate = planner_success_count/planner_call_count if planner_call_count > 0 else 0
             LOGGER.info(f"[PLANNER_BOOTSTRAPPING_LOG - {self.p.problem_name}] planner_call_count: {planner_call_count} trajectories, planner_success_count: {planner_success_count}, planner_success_rate: {planner_success_rate}")
             self.planner_trajectories.clear()
+
+        def exposed_get_problem_data(self):
+            return self.internal_get_obs_dim(), self.internal_get_act_dim(), self.p.domain_meta, self.p.problem_meta, self.exposed_get_dg_extra_dim()
+
+        def exposed_update_difficulty(self, difficulty: int):
+            """
+            Update instance difficulty, 0 being easy, 1 being medium, 2 being hard.
+            """
+            self.p.update_difficulty(difficulty)
 
 
     return ProblemService
@@ -1405,7 +1577,7 @@ class SupervisedObjective(Enum):
 class SupervisedTrainer:
     @can_profile
     def __init__(self,
-                 problems,
+                 # problems,
                  weight_manager,
                  summary_writer,
                  explorer,
@@ -1425,20 +1597,23 @@ class SupervisedTrainer:
                  save_training_set=None,
                  use_saved_training_set=None,
                  hide_progress=False,
+                 use_fluents=False,
+                 use_comps=False,
                  time_out=40,
                  early_stop=20,
                  save_every=20,
-                 dk="dk"
+                 dk="dk",
+                 policy_only=False,
                  ):
         # gets incremented to deal with TF
         self.batches_seen = 0
-        self.problems = problems
-        self.policy_only = self.problems[0].network.policy_only()
+        # self.problems = problems
+        self.policy_only = policy_only
         self.weight_manager = weight_manager
         # may be None if no summaries tuple()should be written
         self.summary_writer = summary_writer
         self.explorer = explorer
-        self.batch_size_per_problem = max(batch_size // len(problems), 1)
+        self.batch_size_per_problem = max(batch_size // self.explorer.num_slots(), 1)
         self.opt_batches_per_epoch = opt_batches_per_epoch
         self.hide_progress = hide_progress
         self.strategy = strategy
@@ -1471,9 +1646,23 @@ class SupervisedTrainer:
         self.scratch_dir = scratch_dir
         self.snapshot_dir = snapshot_dir
         self.dk = dk
+        self.use_fluents = use_fluents
+        self.use_comps = use_comps
         self._init_tf()
 
-        self.planner_bootstrapping = True
+        # self.planner_bootstrapping = self.explorer.planner_bootstrapping
+        # Quick sanity checks
+        # assert hasattr(self, "network")
+        # assert self.network is not None
+        # assert self.network.trainable_weights is self.weight_manager.all_weights
+        # # --- CHECK 10: single source of truth for weights ---
+        # net_refs = {v.ref() for v in self.network.trainable_weights}
+        # wm_refs = {v.ref() for v in self.weight_manager.all_weights}
+        #
+        # assert net_refs == wm_refs, (
+        #     "Network trainable weights do not match weight_manager weights.\n"
+        #     "This means gradients will NOT update the intended variables."
+        # )
 
     @can_profile
     def _init_tf(self):
@@ -1495,18 +1684,18 @@ class SupervisedTrainer:
             self.optimiser = tf.keras.optimizers.Adam(learning_rate=self.lr)
         # self.optimiser.build(self.weight_manager.all_weights)
         # assert len(self.optimiser.variables) > 1, 'optimiser build wasn\'t succesful'
-        self.loss_fn = ManualLoss(
-            problems=self.problems,
-            weight_manager=self.weight_manager,
-            summary_writer=self.summary_writer,
-            l1_reg_coeff=self.l1_reg_coeff,
-            l2_reg_coeff=self.l2_reg_coeff,
-            l1_l2_reg_coeff=self.l1_l2_reg_coeff,
-            mse_coeff=self.mse_coeff,
-            name="loss_fn",
-            # strategy=SupervisedObjective.ANY_GOOD_ACTION
-            strategy=self.strategy,
-        )
+        # self.loss_fn = ManualLoss(
+        #     problems=self.problems,
+        #     weight_manager=self.weight_manager,
+        #     summary_writer=self.summary_writer,
+        #     l1_reg_coeff=self.l1_reg_coeff,
+        #     l2_reg_coeff=self.l2_reg_coeff,
+        #     l1_l2_reg_coeff=self.l1_l2_reg_coeff,
+        #     mse_coeff=self.mse_coeff,
+        #     name="loss_fn",
+        #     # strategy=SupervisedObjective.ANY_GOOD_ACTION
+        #     strategy=self.strategy,
+        # )
         # tensorboard ops
         self._log_ops = {}
 
@@ -1515,323 +1704,323 @@ class SupervisedTrainer:
 
     def _optimise(self, n_batches):
         params = self.weight_manager.all_weights
-        # LOGGER.warning("PARAM ID CHECK ---")
-        # for i, (wm_var, param_var) in enumerate(zip(self.weight_manager.all_weights, params)):
-        #     LOGGER.warning(f"#{i}: equal object? {wm_var is param_var}, equal ref? {wm_var.ref() == param_var.ref()}")
-        # LOGGER.warning(f"total weight_manager vars: {len(self.weight_manager.all_weights)}, params: {len(params)}")
-
-        # Do a check that set(params) is the same as what TF thinks it should
-        # be. As tf.Variable is unhashable, we have to use ref() to get the key.
-        param_set = set(map(lambda v: v.ref(), params))
-        tf_param_set = set(map(
-            lambda v: v.ref(),
-            self.problems[0].network.trainable_weights))
-
-        # assert param_set == tf_param_set, \
-        #     "network has weird variables---debug this"
-        if param_set != tf_param_set:
-            print(f'process name: {multiprocessing.current_process().name}')
-            print("\n[DEBUG] 🔍 param_set != tf_param_set")
-            print(
-                f"Weight manager has {len(params)} vars; TF has {len(self.problems[0].network.trainable_weights)} vars.\n")
-            wm_names = {v.name for v in params}
-            tf_names = {v.name for v in self.problems[0].network.trainable_weights}
-            print("---- in weight_manager but not in TF ----")
-            print(sorted(list(wm_names - tf_names)))
-            print("---- in TF but not in weight_manager ----")
-            print(sorted(list(tf_names - wm_names)))
-            print('---- new comparison by tf.ref() ----')
-            for wm, tfw in zip(sorted(params, key=lambda par: par.name), sorted(self.problems[0].network.trainable_weights, key = lambda par: par.name)):
-                if wm.ref() != tfw.ref():
-                    print(f"DIFF: {wm.name:<60}  vs  {tfw.name}")
-                    print(f"  wm.shape={wm.shape}, tf.shape={tfw.shape}")
-            raise AssertionError("network has weird variables---see debug above")
 
         all_batches_iter = self._make_batches(n_batches)
         tr = tqdm.tqdm(all_batches_iter, desc='batch', total=n_batches)
 
-        sample_indices = np.random.choice(n_batches, size=3, replace=False)
+        sample_indices = np.random.choice(n_batches, size=min(3, n_batches), replace=False)
 
         start_time = time()
         losses = []
 
-        # # === DEBUG: CHECK VARIABLE IDENTITY ===
-        # # pick a variable from weight_manager
-        # wm_var = self.weight_manager.act_weights[0][list(self.weight_manager.act_weights[0].keys())[0]][0]
-        #
-        # # pick the corresponding module variable from the trainable network
-        # first_act_key = list(self.problems[0].network.act_layers[0].keys())[0]
-        # mod_var = self.problems[0].network.act_layers[0][first_act_key].W
-        #
-        # LOGGER.warning(f"Same object? {wm_var is mod_var}")
-        # LOGGER.warning(f"Same ref()? {wm_var.ref() == mod_var.ref()}")
-        # # === END DEBUG ===
-
         for feed_dict in tr:
-            # Each feed_dict is a list of batched data sets for each problem.
-            # Each data set is a tuple of obs_tensor and q-value tensor.
-
-
             with tf.name_scope('grads_opt'):
                 with tf.GradientTape() as tape:
-                    pi_preds_by_prob = []
-                    if self.policy_only:
-                        obs_by_prob, pi_by_prob = list(zip(*feed_dict))
-                    else:
-                        obs_by_prob, pi_by_prob, z_by_prob = list(zip(*feed_dict))
-                        value_preds_by_prob = []
-
+                    per_prob_losses = []
+                    per_prob_weights = []
 
                     for i, problem in enumerate(self.problems):
-                        if tr.n in sample_indices:
-                            log_policy_target(pi_by_prob[i], problem)
-                        obs = obs_by_prob[i]
-                        if len(obs.shape) == 1:
-                            obs = np.expand_dims(obs, axis=0)
+                        batch = feed_dict[i]
+
+                        # empty_feed_value(...) should return arrays with correct shapes
+                        # but may represent "no real data". Detect and skip.
+                        if batch is None:
+                            continue
+
                         if self.policy_only:
-                            policy = problem.network(obs)
+                            obs, pi_target = batch
                         else:
-                            policy, value = problem.network(obs)
-                            value_preds_by_prob.append(value)
-                        pi_preds_by_prob.append(policy)
-                    if self.policy_only:
-                        loss = self.loss_fn(pi_preds_by_prob, pi_by_prob)
-                    else:
-                        loss = self.loss_fn(pi_preds_by_prob, pi_by_prob,
-                                            target_values=z_by_prob, pred_values=value_preds_by_prob)
-                        log_value_preds(value_preds_by_prob)
-                    grads = tape.gradient(loss, params)
-                    # LOGGER.warning("GRAD->VAR MATCH CHECK ---")
-                    # for g, v in zip(grads, params):
-                    #     LOGGER.warning(f"Grad applied to: {v.name} | is tf.Variable? {isinstance(v, tf.Variable)}")
-                    #     if g.shape != v.shape:
-                    #         LOGGER.error(f"SHAPE MISMATCH: grad {g.shape} vs var {v.shape} for {v.name}")
-                    #     print(v.name, type(g))
+                            obs, pi_target, z_target = batch
 
+                        # Detect “empty” batch (your empty_feed_value likely returns zeros)
+                        # If you have a cleaner sentinel, use that instead.
+                        if obs is None or len(obs) == 0:
+                            continue
 
-                    # log_grad_norms(zip(grads, params))
-                    # w_before_network_trainable = self.problems[0].network.trainable_weights.copy()
-                    # w_before_all_weights = self.weight_manager.all_weights.copy()
-                    self.optimiser.apply_gradients(
-                        grads_and_vars=zip(grads, params))
-                    # LOGGER.warning("VAR DIFF CHECK ---")
-                    # # for wm_var in self.weight_manager.all_weights:
-                    # for wm_var in self.problems[0].network.trainable_weights:
-                    #     LOGGER.warning(f"Var {wm_var.name}: mean={tf.reduce_mean(tf.abs(wm_var)).numpy()}")
-                    # w_after_network_trainable = self.problems[0].network.trainable_weights.copy()
-                    # w_after_all_weights = self.weight_manager.all_weights.copy()
-                    # for var1_network, var2_network, var1_all, var2_all in zip(w_before_network_trainable, w_after_network_trainable, w_before_all_weights, w_after_all_weights):
-                    #     if np.allclose(var1_network.numpy() if hasattr(var1_network, 'numpy') else var1_network, var2_network.numpy() if hasattr(var2_network, 'numpy') else var2_network):
-                    #         LOGGER.info(f"[WEIGHT_CHANGE_LOG - across problems - network_trainable] There was no difference in weights in the {var1_network.name} variable.")
-                    #     if np.allclose(var1_all.numpy() if hasattr(var1_all, 'numpy') else var1_all, var2_all.numpy() if hasattr(var2_all, 'numpy') else var2_all):
-                    #         LOGGER.info(f"[WEIGHT_CHANGE_LOG - across problems - all_weights] There was no difference in weights in the {var1_all.name} variable.")
-                    tr.set_postfix(loss=float(loss))
-                    losses.append(loss)
+                        # Ensure batch dims
+                        obs = np.asarray(obs)
+                        if obs.ndim == 1:
+                            obs = np.expand_dims(obs, axis=0)
 
-                    if (self.batches_seen % 10) == 0:
-                        # tf.summary.scalar('train-loss', loss)
-                        tf_and_log('train-loss', loss)
+                        if tr.n in sample_indices:
+                            # optional debug hook
+                            try:
+                                log_policy_target(pi_target, problem)
+                            except Exception:
+                                pass
 
+                        if self.policy_only:
+                            pi_pred = problem.network(obs)
+                            loss_i = self.loss_fn([pi_pred], [pi_target])
+                        else:
+                            pi_pred, v_pred = problem.network(obs)
+                            loss_i = self.loss_fn(
+                                [pi_pred], [pi_target],
+                                target_values=[z_target],
+                                pred_values=[v_pred],
+                            )
 
-                    self.batches_seen += 1
+                        # Weight by how many samples contributed in this slot-batch
+                        bs_i = int(obs.shape[0])
+                        per_prob_losses.append(loss_i * bs_i)
+                        per_prob_weights.append(bs_i)
+
+                    # Pool across slots (epoch-pooled)
+                    assert len(per_prob_weights) > 0, "No non-empty batches — epoch_data had nothing usable."
+                    total_w = tf.cast(tf.add_n([tf.constant(w, dtype=tf.float32) for w in per_prob_weights]),
+                                      tf.float32)
+                    loss = tf.add_n(per_prob_losses) / total_w
+
+                grads = tape.gradient(loss, params)
+                self.optimiser.apply_gradients(zip(grads, params))
+
+            tr.set_postfix(loss=float(loss))
+            losses.append(float(loss))
+            if (self.batches_seen % 10) == 0:
+                tf_and_log('train-loss', loss)
+            self.batches_seen += 1
 
         self.explorer.update_learning_time(time() - start_time)
-        return np.mean(losses)
+        return float(np.mean(losses))
 
     def train(self, max_epochs):
         best_rate = None
-        keep_going = True
         iter_num = 0
         time_since_best = 0
-        # fraction of rollouts that have to reach goal in order for problem
-        # to be considered "solved"
         solve_thresh = 0.999
+
         tr = tqdm.trange(max_epochs, desc='epoch', leave=True)
-        mean_loss = None
 
-
-        # set up tensorboard logging
         epoch = tf.Variable(0, dtype=tf.int64)
         self.summary_writer.set_as_default(step=epoch)
 
         for epoch_num in tr:
-            # update the epoch variable
             epoch.assign(epoch_num)
-            # only extend replay by a bit each time
-            succs_probs = self.explorer.extend_replay()
-            total_succ_rate = np.mean([s for _, s in succs_probs])
-            if total_succ_rate > 0:
-                for problem in self.problems:
-                    problem.problem_service.turn_off_planner_bootstrapping()
-                self.planner_bootstrapping = False
-            replay_sizes = self._get_replay_sizes()
-            replay_size = sum(replay_sizes)
 
-            # tf.summary.scalar('lr', self.optimiser.lr)
-            tf_and_log('lr', self.optimiser.lr)
-            # update output
-            tr.set_postfix(
-                succ_rate=total_succ_rate,
-                net_loss=mean_loss,
-                states=replay_size,
-                lr=self.optimiser.lr)
-            # tf.summary.scalar('succ-rate/mean', total_succ_rate)
+            # --------------------------------------------------
+            # 1. EXPLORE (spawn workers, compute grads there)
+            # --------------------------------------------------
+            weights_np = self.weight_manager.export_numpy()
+
+            worker_outs = self.explorer.explore(weights_np)
+
+            if not worker_outs:
+                LOGGER.warning("No worker outputs this epoch")
+                continue
+
+            # --------------------------------------------------
+            # 1.1. LOGGING (output logs from trajectories)
+            # --------------------------------------------------
+            if getattr(self.explorer, "log", False):
+                target_entropies = [
+                    w.root_target_entropy for w in worker_outs
+                    if w.root_target_entropy is not None
+                ]
+
+                pred_entropies = [
+                    w.root_pred_entropy for w in worker_outs
+                    if w.root_pred_entropy is not None
+                ]
+
+                kls = [
+                    w.root_kl for w in worker_outs
+                    if w.root_kl is not None
+                ]
+
+                if target_entropies:
+                    mean_entropy = float(np.mean(target_entropies))
+                    tf_and_log("mcts/root_target_entropy", mean_entropy)
+
+                if pred_entropies:
+                    mean_entropy = float(np.mean(pred_entropies))
+                    tf_and_log("mcts/root_pred_entropy", mean_entropy)
+
+                if kls:
+                    mean_kl = float(np.mean(kls))
+                    tf_and_log("mcts/root_kl", mean_kl)
+
+            # --------------------------------------------------
+            # 2. APPLY GRADIENTS (MAIN PROCESS ONLY)
+            # --------------------------------------------------
+            W0 = [w.numpy().copy() for w in self.weight_manager.all_weights]
+            mean_loss, total_succ_rate, n_states = self.apply_worker_grads(worker_outs)
+            if getattr(self.explorer, "log", False):
+                w = self.weight_manager.all_weights[0]
+                print("MAIN after update:", float(tf.reduce_mean(w)), float(tf.math.reduce_std(w)),
+                      float(tf.linalg.norm(w)))
+            W1 = self.weight_manager.all_weights
+            deltas = [np.mean(np.abs(w1.numpy() - w0)) for w0, w1 in zip(W0, W1)]
+            tf_and_log("weight-delta/mean", np.mean(deltas))
+            tf_and_log("weight-delta/max", np.max(deltas))
+            tf_and_log('train-loss', mean_loss)
             tf_and_log('succ-rate/mean', total_succ_rate)
+            tf_and_log('states', n_states)
+            tf_and_log('lr', self.optimiser.lr)
 
-            for prob, prob_succ_rate in succs_probs:
-                pname = escape_name_tf(prob.name)
-                # tf.summary.scalar('succ-rate/%s' % pname, prob_succ_rate)
-                tf_and_log('succ-rate/%s' % pname, prob_succ_rate)
-
-            # tf.summary.scalar('replay-size', replay_size)
-            tf_and_log('replay-size', replay_size)
-            mean_loss = self._optimise(self.opt_batches_per_epoch)
             iter_num += 1
-            # update output again
+
             tr.set_postfix(
                 succ_rate=total_succ_rate,
                 net_loss=mean_loss,
-                states=replay_size,
-                lr=self.optimiser.lr)
-            # caller might want us to terminate
+                states=n_states,
+                lr=self.optimiser.lr,
+            )
+
+            # --------------------------------------------------
+            # 3. EARLY STOP / SNAPSHOT LOGIC (unchanged)
+            # --------------------------------------------------
             if best_rate is None or total_succ_rate > best_rate + 1e-4:
-                time_since_best = 0
-            elif total_succ_rate < best_rate and total_succ_rate < solve_thresh:
-                # also reset to 0 if our success rate goes back down again
                 time_since_best = 0
             else:
                 time_since_best += 1
-                if self.early_stop \
-                        and time_since_best >= self.early_stop \
-                        and best_rate >= solve_thresh:
-                    LOGGER.info('Terminating (early stopping condition met with'
-                                '%d epochs since loss %f)',
-                                time_since_best, best_rate)
-                    keep_going = False
 
-            should_save = best_rate is None or total_succ_rate >= best_rate \
-                or (self.save_every and iter_num % self.save_every == 0) \
-                or iter_num == 1  # always save on first iter
+            should_save = (
+                    best_rate is None
+                    or total_succ_rate >= best_rate
+                    or (self.save_every and iter_num % self.save_every == 0)
+                    or iter_num == 1
+            )
+
             if should_save:
                 best_rate = total_succ_rate
-                # snapshot!
-                # TODO: add snapshot pruning support so that old snapshots
-                # can be deleted if desired
                 snapshot_path = os.path.join(
                     self.snapshot_dir,
-                    'snapshot_%d_%f.pkl' % (iter_num, total_succ_rate))
+                    f'snapshot_{iter_num}_{total_succ_rate:.4f}.pkl'
+                )
                 self.weight_manager.save(snapshot_path)
                 shutil.copy(snapshot_path, self.dk)
-            # also, always save timing data
-            with open(os.path.join(self.scratch_dir, 'timing.json'), 'w') as fp:
-                fp.write(self.timer.to_json())
 
             tf.summary.flush()
-            elapsed_time = time() - self.start_time
-            if self.timeout:
-                keep_going = keep_going and elapsed_time <= self.timeout * 0.95
-                print(f'[TIMING_TERMINATION] elapsed time: {format_seconds_as_dhm(elapsed_time)}, and timeout is set to: {format_seconds_as_dhm(self.timeout)}')
 
-            if not keep_going:
-                LOGGER.info('Terminating early')
+            elapsed_time = time() - self.start_time
+            if self.timeout and elapsed_time > self.timeout * 0.95:
+                LOGGER.info('[TIMING_TERMINATION] Timeout reached')
                 break
-        for problem in self.problems:
-            problem.problem_service.flush_profiler()
+
+            if (
+                    self.early_stop
+                    and time_since_best >= self.early_stop
+                    and best_rate >= solve_thresh
+            ):
+                LOGGER.info('Terminating early (early stop condition met)')
+                break
+
         return best_rate, elapsed_time, iter_num
+
+    def apply_worker_grads(self, worker_outs):
+        params = self.weight_manager.all_weights
+        if not worker_outs:
+            raise RuntimeError("No worker outputs.")
+
+        # init accumulators
+        import numpy as np
+        grads_sum = [np.zeros(v.shape, dtype=np.float32) for v in params]
+        total = 0
+        losses = []
+        succs = []
+
+        for out in worker_outs:
+            losses.append(out.loss_mean)
+            succs.append(out.hit_goal_mean)
+            if out.n_samples <= 0:
+                continue
+            total += out.n_samples
+            for i, g in enumerate(out.grads_np):
+                grads_sum[i] += g * out.n_samples
+
+        if total == 0:
+            # no samples => skip update
+            return 0.0, float(sum(succs) / max(1, len(succs))), 0
+
+        mean_grads = [g / total for g in grads_sum]
+        mean_grads_tf = [tf.convert_to_tensor(g, dtype=v.dtype) for g, v in zip(mean_grads, params)]
+        self.optimiser.apply_gradients(zip(mean_grads_tf, params))
+
+        return float(sum(losses) / len(losses)), float(sum(succs) / len(succs)), int(total)
 
     @can_profile
     def _make_batches(self, n_batches: int):
-        # to avoid circular imports
-        from asnets.multiprob import to_local
-        """A generator yielding batches of data for training.
-
-        Args:
-            n_batches: Number of batches to yield.
-
-        Yields:
-            A batch of data as a list, where each element is a batch of data for
-            a single problem of the form (obs_tensor, qvs_tensor). The batches
-            are order in the same order as the problems in self.problems.
         """
+        Epoch-pooled batching:
+        - Consumes ONLY the current epoch's exploration data (self._epoch_data).
+        - No replay buffer.
+        - Supports variable obs/act dims by batching PER problem slot (network instance),
+          then pooling at the loss level in _optimise.
+        """
+        assert hasattr(self, "_epoch_data") and self._epoch_data is not None, \
+            "self._epoch_data missing. In train(): succs_probs, epoch_data = explorer.extend_replay(); self._epoch_data = epoch_data"
+
+        cached_shapes = {p.name: (p.obs_dim, p.act_dim) for p in self.problems}
+
+        # Build per-problem iterators that sample from that problem's epoch data
         batch_iters = []
-
-        if self.save_training_set:
-            to_save = {}
-        cached_shapes = {}
         for problem in self.problems:
-            service = problem.problem_service
+            obs_dim, act_dim = cached_shapes[problem.name]
 
-            if self.use_saved_training_set:
-                assert not self.save_training_set, \
-                    "saving training set & using a saved set are mutually " \
-                    "exclusive options (doesn't make sense to write same " \
-                    "dataset back out to disk!)"
-                prob_obs_tensor, prob_qv_tensor, prob_counts \
-                    = self.loaded_training_set[problem.name]
-                it = weighted_batch_iter(
-                    (prob_obs_tensor, prob_qv_tensor),
-                    prob_counts,
-                    self.batch_size_per_problem,
-                    n_batches,
-                )
-                batch_iters.append(it)
+            if problem not in self._epoch_data or self._epoch_data[problem] is None:
+                # no samples this epoch for this slot
+                batch_iters.append(repeat(None))
                 continue
 
-            if service.dataset_is_empty():
-                LOGGER.warning("No data for problem '%s' yet (teacher time-out?)",
-                            service.get_current_problem_name())
+            prob_obs, prob_pi, prob_z = self._epoch_data[problem]
+
+            # Safety: allow z to be (N,1)
+            prob_z = np.asarray(prob_z)
+            if prob_z.ndim == 2 and prob_z.shape[1] == 1:
+                prob_z = prob_z[:, 0]
+
+            # If the explorer returned python lists, normalize to arrays
+            prob_obs = np.asarray(prob_obs)
+            prob_pi = np.asarray(prob_pi)
+            prob_z = np.asarray(prob_z)
+
+            # Basic sanity
+            if len(prob_obs) == 0:
                 batch_iters.append(repeat(None))
-                if self.save_training_set:
-                    to_save[problem.name] = None
-            else:
-                prob_obs_tensor, prob_pi_tensor, prob_z_tensor, prob_counts \
-                    = to_local(service.weighted_dataset())
-                it = weighted_batch_iter(
-                    (prob_obs_tensor, prob_pi_tensor, prob_z_tensor),
-                    prob_counts,
-                    self.batch_size_per_problem,
-                    n_batches,
-                )
-                batch_iters.append(it)
-                if self.save_training_set:
-                    to_save[problem.name] \
-                        = (prob_obs_tensor, prob_pi_tensor, prob_counts)
-            cached_shapes[problem.name] = (
-                service.get_obs_dim(), service.get_act_dim())
+                continue
 
-        if self.save_training_set:
-            LOGGER.info("Saving training set to disk'%s'",
-                        self.save_training_set)
-            dirname = os.path.dirname(self.save_training_set)
-            if dirname:
-                os.makedirs(dirname, exist_ok=True)
-            joblib.dump(to_save, self.save_training_set)
+            N = len(prob_obs)
+            bs = self.batch_size_per_problem
 
+            def epoch_sampler():
+                for _ in range(n_batches):
+                    if N <= bs:
+                        idx = np.arange(N)
+                    else:
+                        idx = np.random.choice(N, size=bs, replace=False)
+
+                    obs_b = prob_obs[idx]
+                    pi_b = prob_pi[idx]
+                    if self.policy_only:
+                        yield (obs_b, pi_b)
+                    else:
+                        z_b = prob_z[idx]
+                        yield (obs_b, pi_b, z_b)
+
+            batch_iters.append(epoch_sampler())
+
+        # Combine into aligned per-problem “feed_dict”
         combined = zip(*batch_iters)
-
-        # yield a complete feed dict
         for combined_batch in combined:
-            assert len(combined_batch) == len(self.problems)
             yield_val = []
-            have_batch = False
+            have_any = False
+
             for problem, batch in zip(self.problems, combined_batch):
-                if batch is None:
-                    yield_val.append(empty_feed_value(
-                        *cached_shapes[problem.name]))
-                else:
-                    yield_val.append(batch)
-                    have_batch = True
-            assert have_batch, \
-                "don't have any batches at all for training problems"
+                yield_val.append(batch)
+                have_any = True
+
+            assert have_any, "No epoch data at all for any problem — exploration produced nothing."
             yield yield_val
 
     def _get_replay_sizes(self):
         """Get the sizes of replay buffers for each problem."""
         # to avoid circular imports
-        from asnets.multiprob import to_local
         rv = []
         for problem in self.problems:
-            rv.append(to_local(problem.problem_service.get_replay_size()))
+            rv.append(
+                # to_local(problem.problem_service.get_replay_size())
+                problem.get_replay_size()
+            )
         return rv
 
 
@@ -1931,7 +2120,6 @@ class ManualLoss:
                 act_label_dist = act_labels / tf.math.maximum(label_sum, 1.0)
 
                 # zero out disabled or dead-end actions!
-                from asnets.multiprob import to_local
                 problem_service = problem.problem_service
                 dead_end_value = to_local(
                     problem_service.get_ssipp_dead_end_value())
