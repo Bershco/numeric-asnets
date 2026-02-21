@@ -181,16 +181,16 @@ def set_c_seeds(seed):
 
 def set_random_seeds(seed):
     """Set random seeds that are relevant for main process."""
-    print(f"Setting C/Python/Numpy seeds to {seed}")
-    set_c_seeds(seed)
-    random.seed(seed)
-    np.random.seed(seed)
     if "tf" in globals() or "tensorflow" in sys.modules:
-        print(f"Setting TF seed to {seed}")
+        print(f"Setting C/Python/Numpy/TF seeds to {seed}")
         tf = sys.modules["tensorflow"]
         tf.random.set_seed(seed)
     else:
-        print(f"Skipping TF RNG seeding")
+        print(f"Setting C/Python/Numpy seeds to {seed} and skipping TF RNG seeding")
+    set_c_seeds(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+
 
 
 def find_tail_cycle(item_list, max_cycle_len=3):
