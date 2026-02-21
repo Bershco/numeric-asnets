@@ -6,6 +6,7 @@ from asnets.ops.asnet_ops import multi_gather_concat, multi_pool_concat
 from asnets.prob_dom_meta import BoundAction, BoundComp, BoundFlnt, BoundProp, \
     DomainMeta, ProblemMeta, UnboundAction, UnboundComp, UnboundFlnt, \
     UnboundProp
+from asnets.utils.rpyc_utils import to_local
 
 
 class NetworkModule(tf.keras.layers.Layer, abc.ABC):
@@ -26,8 +27,8 @@ class NetworkModule(tf.keras.layers.Layer, abc.ABC):
         self.W = weight
         self.b = bias
         self.layer_num = layer_num
-        self.dom_meta = dom_meta
-        self.prob_meta = prob_meta
+        self.dom_meta = to_local(dom_meta)
+        self.prob_meta = to_local(prob_meta)
         self.skip = skip
         self.nonlinearity = nonlinearity
         self.dropout = dropout
@@ -53,6 +54,9 @@ class NetworkModule(tf.keras.layers.Layer, abc.ABC):
                                )
 
         return rv
+
+    def __repr__(self):
+        return self.name_pfx
 
 
 class ActionModule(NetworkModule):
@@ -544,6 +548,12 @@ def _apply_conv_matmul(conv_input, W):
     # W: [in_dim, out_dim]
     in_dim = tf.shape(conv_input)[-1]
     reshaped = tf.reshape(conv_input, (-1, in_dim))
+    # try:
+    #     _ = W.numpy() if hasattr(W, "numpy") else W
+    #     print("W.numpy() OK", type(_), getattr(_, "dtype", None), flush=True)
+    # except Exception as e:
+    #     print("W.numpy() FAILED:", repr(e), type(W), flush=True)
+    #     raise
     conv_result = tf.matmul(reshaped, W)
     out_dim = tf.shape(W)[-1]
     conv_result = tf.reshape(conv_result, (-1, tf.shape(conv_input)[1], out_dim))
