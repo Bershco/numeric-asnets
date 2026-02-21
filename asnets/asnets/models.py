@@ -723,7 +723,7 @@ class PropNetwork(tf.keras.layers.Layer):
             self.value_hidden_layer.bias = val_hidden_b
 
             self.value_out_layer = tf.keras.layers.Dense(
-                1, name='value_out'
+                1, name='value_out', activation='sigmoid'
             )
             self.value_out_layer.build((None, value_hidden_dim))
             self.value_out_layer.kernel = val_out_W
