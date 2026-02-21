@@ -471,8 +471,8 @@ parser.add_argument(
     help='Enable memory debugging.')
 parser.add_argument(
     '--mcts-exploration-weight',
-    type=int,
-    default=1,
+    type=float,
+    default=1.0,
     help='PUCT exploration weight (c value).'
 )
 parser.add_argument(
@@ -528,7 +528,36 @@ parser.add_argument(
     action='store_true',
     help='Enable hindsight experience replay strategy where states are sampled from the training-based mcts tree and trajectories are decalred her goals.'
 )
-
+parser.add_argument(
+    '--worker-logs',
+    action='store_true',
+    default=False,
+    help='Enable hindsight experience replay strategy where states are sampled from the training-based mcts tree and trajectories are decalred her goals.'
+)
+parser.add_argument(
+    '--corrupt-pi',
+    choices=('shuffle', 'random'),
+    default=None,
+    help='Enable pi (target policy) corruption during training for corruption sanity test'
+)
+parser.add_argument(
+    '--corrupt-z',
+    choices=('shuffle', 'random', 'zero'),
+    default=None,
+    help='Enable z (target value) corruption during training for corruption sanity test'
+)
+parser.add_argument(
+    '--fixed-instance',
+    action='store_true',
+    default=False,
+    help='Single instance overfit test.'
+)
+parser.add_argument(
+    '--num-training-workers',
+    type=int,
+    default=4,
+    help='Number of MCTS iterations done during training'
+)
 
 
 def main():
@@ -585,7 +614,12 @@ def main():
                planner_bootstrapping=args.planner_bootstrapping,
                planner_bootstrapping_her=args.planner_bootstrapping_her,
                mcts_her_strategy=args.mcts_her_strategy,
-               heuristic_bootstrapping=args.heuristic_bootstrapping
+               heuristic_bootstrapping=args.heuristic_bootstrapping,
+               corrupt_pi=args.corrupt_pi,
+               corrupt_z=args.corrupt_z,
+               worker_logs=args.worker_logs,
+               fixed_instance=args.fixed_instance,
+               num_training_workers=args.num_training_workers,
                )
     print('Fin :-)')
 
@@ -620,6 +654,11 @@ def main_inner(*,
                planner_bootstrapping_her=False,
                heuristic_bootstrapping=False,
                mcts_her_strategy=False,
+               corrupt_pi=None,
+               corrupt_z=None,
+               worker_logs=None,
+               fixed_instance=False,
+               num_training_workers=None,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -670,6 +709,18 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.append('--heuristic-bootstrapping')
         if mcts_her_strategy:
             train_flags.append('--mcts-her-strategy')
+        if mcts_exploration_weight:
+            train_flags.extend(['--mcts-exploration-weight', str(mcts_exploration_weight)])
+        if corrupt_pi:
+            train_flags.extend(['--corrupt-pi', str(corrupt_pi)])
+        if corrupt_z:
+            train_flags.extend(['--corrupt-z', str(corrupt_z)])
+        if worker_logs:
+            train_flags.append('--worker-logs')
+        if fixed_instance:
+            train_flags.append('--fixed-instance')
+        if num_training_workers:
+            train_flags.extend(['--num-training-workers', str(num_training_workers)])
         final_checkpoint = run_asnets_local(
             flags=train_flags,
             # we make sure it runs cmd in same dir as us,
