@@ -3,7 +3,7 @@ import os
 import subprocess
 import tempfile
 
-from asnets.multiprob import to_local
+from asnets.utils.rpyc_utils import to_local
 from asnets.state_reprs import CanonicalState
 from asnets.interfaces.enhsp_interface import ENHSPCache, ENHSP_CONFIGS
 from asnets.utils.pddl_utils import replace_init_state, hlist_to_sexprs

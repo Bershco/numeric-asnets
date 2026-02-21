@@ -19,7 +19,7 @@ from rpyc import BaseNetref
 from typing_extensions import Self
 import tensorflow as tf
 
-from asnets.multiprob import to_local
+from asnets.utils.rpyc_utils import to_local
 
 
 class Node(ABC):
@@ -345,28 +345,6 @@ class MCTS:
                     self.after_selection_times.append(time())
                 return path
 
-            # # Prefer an unexplored child if any (child not yet in children keys)
-            # # Using uniform reservoir sampling over unexplored edges
-            # chosen_pair = None
-            # count = 0
-            # for a, c in childmap.items():
-            #     # if c not in children:
-            #     if c.children is None:
-            #         count += 1
-            #         # Each unexplored edge has 1/count chance to replace current choice
-            #         if np.random.randint(count) == 0:
-            #             # First pair is definite chosen, possibly be replaced later
-            #             # But it's impossible for chosen_pair to stay None if there's at least a single unexplored edge
-            #             chosen_pair = (a, c)
-            #
-            # if chosen_pair is not None:
-            #     a, n = chosen_pair
-            #     self.Nsa[(node, a)] += 1
-            #     path.append(n)
-            #     if self.debug_time_mcts_iterations:
-            #         self.after_selection_times.append(time())
-            #     return path
-
             # Otherwise pick via PUCT (with no-cycle)
             a_next, n_next = self._puct_select_no_cycle(node, set(path))
             # count traversed edge
@@ -439,26 +417,9 @@ class MCTS:
         )
         Q_child = np.array(
             # [self.Q.get(c, 0.0) for c in child_list],
-            [node.Q_value for node in child_list],
+            [child.Q_value for child in child_list],
             dtype=np.float32
         )
-
-        # # 5) Forced first visits: if any edge is unvisited and not a cycle, pick among them
-        # unvisited = (edge_visits == 0) & (~cycle)
-        # if np.any(unvisited):
-        #     cand = np.flatnonzero(unvisited)
-        #     # bias by prior if it has any mass, else uniform among unvisited
-        #     w = prior[cand].astype(np.float64)
-        #     s = float(w.sum())
-        #     if np.isfinite(s) and s > 0.0:
-        #         w /= s
-        #         idx = int(np.random.choice(cand, p=w))
-        #     else:
-        #         idx = int(np.random.choice(cand))
-        #     a, child = actions[int(idx)], child_list[int(idx)]
-        #     if self._probe:
-        #         self._probe.log_select_unvisited()
-        #     return a, child
 
         # 6) Compute U and score = Q + U (vectorized)
         N_parent = float(self.N.get(node, 0))
