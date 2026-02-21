@@ -2,38 +2,42 @@
 
 import argparse
 import atexit
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from json import dump
 import logging
 from os import makedirs, path
-from pathlib import Path
 import random
 import signal
 import sys
 from time import time
+
+import mdpsim
 from pympler import muppy, summary, asizeof
 from typing import Set, Any
 from pympler.asizeof import asized
 
-from asnets.prob_dom_meta import DomainType
+from asnets.explorer_spawn_grads import ParallelMCTSExplorerGrads
+from asnets.models import make_network, make_weight_manager
+from asnets.prob_dom_meta import DomainType, get_domain_meta
 from asnets.state_reprs import CanonicalState
 
-import joblib
 import numpy as np
 import rpyc, gc
 import tensorflow as tf
+import multiprocessing
 import tqdm.auto as tqdm
 
 
-from asnets.explorer import StaticExplorer, DynamicExplorer, MCTSExplorer
+from asnets.explorer import StaticExplorer, DynamicExplorer
 from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
-from asnets.models import PropNetworkWeights, PropNetwork
 from asnets.supervised import SupervisedTrainer, SupervisedObjective, \
-    ProblemServiceConfig
+    ProblemServiceConfig, PlannerExtensions
 from asnets.multiprob import ProblemServer, to_local, parent_death_pact
+from asnets.utils.generator_utils import Domain, extract_domain_name_from_file, get_problem_names, InstanceDifficulty
+from asnets.utils.mdpsim_utils import parse_problem_args
 from asnets.utils.prof_utils import can_profile
 from asnets.utils.py_utils import set_random_seeds
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -901,8 +905,8 @@ parser.add_argument(
     help='Enable memory debugging.')
 parser.add_argument(
     '--mcts-exploration-weight',
-    type=int,
-    default=1,
+    type=float,
+    default=1.0,
     help='PUCT exploration weight (c value).'
 )
 parser.add_argument(
@@ -954,6 +958,42 @@ parser.add_argument(
     default=False,
     help='Enable hindsight experience replay strategy where states are sampled from the training-based mcts tree and trajectories are decalred her goals.'
 )
+parser.add_argument(
+    '--num-training-workers',
+    type=int,
+    default=4,
+    help='Set the number of problem slots for the trainer'
+)
+parser.add_argument(
+    '--slurm-job-id',
+    type=int,
+    default=0,
+    help='Set the slurm job id for inner logic'
+)
+parser.add_argument(
+    '--worker-logs',
+    action='store_true',
+    default=False,
+    help='Enable hindsight experience replay strategy where states are sampled from the training-based mcts tree and trajectories are decalred her goals.'
+)
+parser.add_argument(
+    '--corrupt-pi',
+    choices=('shuffle', 'random'),
+    default=None,
+    help='Enable pi (target policy) corruption during training for corruption sanity test'
+)
+parser.add_argument(
+    '--corrupt-z',
+    choices=('shuffle', 'random', 'zero'),
+    default=None,
+    help='Enable z (target value) corruption during training for corruption sanity test'
+)
+parser.add_argument(
+    '--fixed-instance',
+    action='store_true',
+    default=False,
+    help='Single instance overfit test.'
+)
 
 def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
                 iter_num, weight_manager, scratch_dir):
@@ -975,9 +1015,7 @@ def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
         mcts_smart_expansions=args.mcts_smart_expansions,
     )
 
-    # print('Trial results:')
     LOGGER.info('Trial results')
-    # print('\n'.join('%s: %s' % (k, v) for k, v in trial_results.items()))
     LOGGER.info('\n'.join('%s: %s' % (k, v) for k, v in trial_results.items()))
     out_dict = {
         'no_train': args.no_train,
@@ -1007,73 +1045,11 @@ def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
                 fp.write(')')
 
 
-@can_profile
-def make_network(args,
-                 obs_dim,
-                 act_dim,
-                 dom_meta,
-                 prob_meta,
-                 dg_extra_dim=None,
-                 weight_manager=None):
-    # size of input and output
-    obs_dim = int(obs_dim)
-    act_dim = int(act_dim)
-
-    # can make normal FC MLP or an action/proposition network
-    hs = args.hidden_size
-    num_layers = args.num_layers
-    dropout = args.dropout
-    print('hidden_size: %d, num_layers: %d, dropout: %f' % (hs, num_layers,
-                                                            dropout))
-    if weight_manager is not None:
-        print('Re-using same weight manager')
-    elif args.resume_from:
-        print('Reloading weight manager (resuming training)')
-        resume_from_str = args.resume_from
-        print(f'\n\n[model-loading] - Resuming from: {args.resume_from}\n\n')
-        resume_from_str = resume_from_str.replace("\\",'/') # for Windows support, do not delete.
-        resume_from_path_obj = Path(resume_from_str)
-        resume_from_path_obj = resume_from_path_obj.resolve(strict=False)
-        weight_manager = joblib.load(resume_from_path_obj)
-    else:
-        print('Creating new weight manager (not resuming)')
-        # TODO: should save all network metadata with the network weights or
-        # within a separate config class, INCLUDING heuristic configuration
-        weight_manager = PropNetworkWeights(
-            dom_meta,
-            hidden_sizes=[(hs, hs)] * num_layers,
-            # extra inputs to each action module from data generators
-            extra_dim=dg_extra_dim,
-            skip=args.skip,
-            use_fluents=args.use_fluents,
-            use_comparisons=args.use_comparisons)
-    custom_network = PropNetwork(
-        weight_manager, prob_meta, dropout=dropout, debug=args.net_debug, policy_network_only=args.policy_network_only)
-
-    # weight_manager will sometimes be None
-    return custom_network, weight_manager
-
-
-def get_problem_names(pddl_files, domain_type, teacher_planner):
-    """Return a list of problem names from some PDDL files by spooling up
-    background process."""
-    config = ProblemServiceConfig(
-        pddl_files, None, domain_type=domain_type,
-        teacher_planner=teacher_planner, random_seed=None)
-    server = ProblemServer(config)
-    try:
-        server.service.initialise()
-        names = to_local(server.service.get_problem_names())
-        assert isinstance(names, list)
-        assert all(isinstance(name, str) for name in names)
-        names = [name.strip() for name in names]
-    finally:
-        server.stop()
-    return names
-
 
 class SingleProblem(object):
     """Wrapper to store all information relevant to training on a single
+
+
     problem."""
 
     def __init__(self, name, problem_server):
@@ -1088,21 +1064,18 @@ class SingleProblem(object):
         self.act_dim = to_local(self.problem_service.get_act_dim())
         self.dg_extra_dim = to_local(self.problem_service.get_dg_extra_dim())
         # will get filled in later
-        self.network = None
+
+    @property
+    def network(self):
+        return self.problem_server.network
+
+    @network.setter
+    def network(self, network):
+        self.problem_server.network = network
 
 @can_profile
 def make_services(args):
     """Make a ProblemService for each relevant problem."""
-    # first get names
-    if not args.problems:
-        print("No problem name given, will use all discovered problems")
-        problem_names = get_problem_names(args.pddls, args.domain_type,
-                                          args.teacher_planner)
-    else:
-        problem_names = args.problems
-    print("Loading problems %s" % ', '.join(problem_names))
-
-    # now get contexts for each problem and a manager for their weights
     servers = []
 
     def kill_servers():
@@ -1115,14 +1088,16 @@ def make_services(args):
     atexit.register(kill_servers)
 
     only_one_good_action = args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE or args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
-    async_calls = []
-    for prob_id, problem_name in enumerate(problem_names, start=1):
+
+    domain = Domain.from_pddl_name(extract_domain_name_from_file(args.pddls[0]))
+    LOGGER.info(f"Starting to initialize {args.num_training_workers} problem servers")
+    for slot_id in range(args.num_training_workers):
         random_seed = None if args.seed is None \
-            else args.seed + prob_id
+            else args.seed + slot_id
         service_config = ProblemServiceConfig(
             args.pddls,
-            problem_name,
             args.domain_type,
+            domain=domain,
             random_seed=random_seed,
             ssipp_dg_heuristic=args.ssipp_dg_heuristic,
             use_lm_cuts=args.use_lm_cuts,
@@ -1144,71 +1119,271 @@ def make_services(args):
             heuristic_bootstrapping=args.heuristic_bootstrapping,
             mcts_her_strategy=args.mcts_her_strategy,
             mcts_expansion_k=args.mcts_expansion_size,
+            use_fluents=args.use_fluents,
+            use_comps=args.use_comparisons,
+            slot_id=slot_id,
         )
-        problem_server = ProblemServer(service_config)
-        servers.append(problem_server)
-        # must call initialise()
-        # init_method = rpyc.async_(problem_server.service.initialise)
-        # init_method_2 = rpyc.async_(problem_server.service.initialise_estimator)
-        init_method = rpyc.async_(problem_server.service._unwrap().initialise)
-        init_method_2 = rpyc.async_(problem_server.service._unwrap().initialise_estimator)
-        async_calls.append(init_method())
-        async_calls.append(init_method_2(enhsp_config=args.mcts_heuristic))
-        problem_server.set_enhsp_config(args.mcts_heuristic)
-        # init_method_3 = rpyc.async_(problem_server.service.set_policy_only)
-        init_method_3 = rpyc.async_(problem_server.service._unwrap().set_policy_only)
-        if args.policy_network_only:
-            async_calls.append(init_method_3(True))
-            problem_server.set_policy_only(True)
-        else:
-            async_calls.append(init_method_3(False))
-            problem_server.set_policy_only(False)
+        servers.append(ProblemServer(service_config))
+    with ThreadPoolExecutor(max_workers=min(32, len(servers))) as ex:
+        futs = [ex.submit(s.connect) for s in servers]
+        for f in as_completed(futs):
+            f.result()  # raises immediately on connect failure
 
-    # wait for initialise() calls to finish
-    for async_call in async_calls:
-        async_call.wait()
-        # this property lookup is necessary to trigger any exceptions that
-        # might have occurred during init (.wait() will not throw exceptions
-        # from the child process; it only throws an exception on timeout)
-        async_call.value
+    # Dispatch initialise() for ALL servers
+    init_results = []
+    for s in servers:
+        init_async = rpyc.async_(s.service.initialise)  # netref lookup happens once here
+        init_results.append(init_async())
 
+    # Ensure initialise() completed everywhere (and surface remote exceptions)
+    for ar in init_results:
+        _ = ar.value
+
+    step2_results = []
+    step3_results = []
+
+    for s in servers:
+        # estimator init after initialise barrier
+        init_est_async = rpyc.async_(s.service.initialise_estimator)
+        step2_results.append(init_est_async(enhsp_config=args.mcts_heuristic))
+
+        # local setter ok (not RPyC)
+        s.set_enhsp_config(args.mcts_heuristic)
+
+        set_pol_async = rpyc.async_(s.service.set_policy_only)
+        step3_results.append(set_pol_async(bool(args.policy_network_only)))
+
+        # local setter ok
+        s.set_policy_only(bool(args.policy_network_only))
+
+    # Barrier 2: wait + surface remote exceptions
+    for ar in step2_results:
+        _ = ar.value
+    for ar in step3_results:
+        _ = ar.value
+    LOGGER.info("Finished initializing problem servers")
     # do this as a separate loop so that we can wait for services to spool
     # up in background
-    problems = []
     weight_manager = None
-    for problem_name, problem_server in zip(problem_names, servers):
-        problem = SingleProblem(problem_name, problem_server)
+    for problem_server in servers:
+        weight_manager = problem_server.register_network(weight_manager, args)
+    return servers, weight_manager
 
-        if not args.no_train and \
-                problem.obs_dim > int(args.limit_train_obs_size):
-            print(
-                f'Skipping {problem_name} for training because it has obs_dim {problem.obs_dim} > {args.limit_train_obs_size}')
+@can_profile
+def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, scratch_dir):
+    print('Training supervised on random instances (SPAWN, NO RPyC, NO REPLAY BUFFER)')
 
-        print('Setting up policy and weight manager for %s' % problem_name)
-        problem.network, weight_manager = make_network(
-            args,
-            problem.obs_dim,
-            problem.act_dim,
-            problem.dom_meta,
-            problem.prob_meta,
-            problem.dg_extra_dim,
-            weight_manager=weight_manager,
+    start_time = time()
+
+    # ------------------------------------------------------------
+    # Configure network input
+    # ------------------------------------------------------------
+    CanonicalState.network_input_config(
+        use_fluents=args.use_fluents,
+        use_comparisons=args.use_comparisons
+    )
+
+    domain = Domain.from_pddl_name(
+        extract_domain_name_from_file(args.pddls[0])
+    )
+
+    only_one_good_action = (
+        args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
+        or args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
+    )
+
+    # ------------------------------------------------------------
+    # Problem specification template (NO servers)
+    # ------------------------------------------------------------
+    service_config = ProblemServiceConfig(
+        args.pddls,
+        args.domain_type,
+        domain=domain,
+        random_seed=args.seed,
+        ssipp_dg_heuristic=args.ssipp_dg_heuristic,
+        use_lm_cuts=args.use_lm_cuts,
+        use_numeric_landmarks=args.use_numeric_landmarks,
+        use_contributions=args.use_contributions,
+        use_act_history=args.use_act_history,
+        fd_heuristic=args.fd_teacher_heuristic,
+        ssipp_teacher_heuristic=args.ssipp_teacher_heuristic,
+        enhsp_config=args.enhsp_config,
+        teacher_planner=args.teacher_planner,
+        teacher_timeout_s=args.teacher_timeout_s,
+        only_one_good_action=only_one_good_action,
+        use_teacher_envelope=args.use_teacher_envelope,
+        max_len=args.training_limit_turns,
+        her_k=args.her_k,
+        training_mcts_iterations=args.training_mcts_iterations,
+        planner_bootstrapping=args.planner_bootstrapping,
+        planner_bootstrapping_her=args.planner_bootstrapping_her,
+        heuristic_bootstrapping=args.heuristic_bootstrapping,
+        mcts_her_strategy=args.mcts_her_strategy,
+        mcts_expansion_k=args.mcts_expansion_size,
+        use_fluents=args.use_fluents,
+        use_comps=args.use_comparisons,
+    )
+
+    # ------------------------------------------------------------
+    # Build SpawnExploreSpec list (one per slot)
+    # ------------------------------------------------------------
+    from asnets.parllel_explore_spawn_grads import SpawnExploreSpec
+
+    specs = []
+    for slot_id in range(args.num_training_workers):
+        specs.append(
+            SpawnExploreSpec(
+                pddls=service_config.pddl_files,
+                domain_type=service_config.domain_type,
+                random_seed=(args.seed + slot_id) if args.seed is not None else None,
+
+                ssipp_dg_heuristic=service_config.ssipp_dg_heuristic,
+                use_lm_cuts=service_config.use_lm_cuts,
+                use_numeric_landmarks=service_config.use_numeric_landmarks,
+                use_contributions=service_config.use_contributions,
+                use_act_history=service_config.use_act_history,
+                fd_heuristic=service_config.fd_heuristic,
+                ssipp_teacher_heuristic=service_config.ssipp_teacher_heuristic,
+                enhsp_config=service_config.enhsp_config,
+                teacher_planner=service_config.teacher_planner,
+                teacher_timeout_s=service_config.teacher_timeout_s,
+                only_one_good_action=service_config.only_one_good_action,
+                use_teacher_envelope=service_config.use_teacher_envelope,
+                max_len=service_config.max_len,
+                her_k=service_config.her_k,
+                training_mcts_iterations=service_config.training_mcts_iterations,
+                planner_bootstrapping=service_config.planner_bootstrapping,
+                planner_bootstrapping_her=service_config.planner_bootstrapping_her,
+                heuristic_bootstrapping=service_config.heuristic_bootstrapping,
+                mcts_her_strategy=service_config.mcts_her_strategy,
+                mcts_expansion_k=service_config.mcts_expansion_k,
+                use_fluents=service_config.use_fluents,
+                use_comps=service_config.use_comps,
+                difficulty=InstanceDifficulty.EASY,
+                fixed_instance_pddl=args.fixed_instance,
+                mcts_exploration_weight=args.mcts_exploration_weight
+            )
         )
-        problems.append(problem)
 
-    for p in problems:
-        init_cstate_as_network_input = (
-            p.problem_service.make_network(weight_manager, p.prob_meta, dropout=args.dropout,
-                                             debug=args.net_debug, policy_network_only=args.policy_network_only))
-        p.problem_server.register_network(weight_manager, p.prob_meta, dropout=args.dropout,
-                                             debug=args.net_debug, policy_network_only=args.policy_network_only)
-        p.network(init_cstate_as_network_input) # this line is for finishing the nn build process
+    # ------------------------------------------------------------
+    # Build planner ONCE (for shapes / network construction)
+    # ------------------------------------------------------------
+    p = PlannerExtensions(
+        args.pddls,
+        domain,
+        args.domain_type,
+        dg_ssipp_heuristic_name=args.ssipp_dg_heuristic,
+        dg_use_lm_cuts=args.use_lm_cuts,
+        dg_use_numeric_landmarks=args.use_numeric_landmarks,
+        dg_use_contributions=args.use_contributions,
+        dg_use_act_history=args.use_act_history,
+        difficulty=InstanceDifficulty.EASY,
+        seed=args.seed,
+    )
 
-    return problems, weight_manager
+    dg_extra_dim = sum(g.extra_dim for g in p.data_gens)
+
+    # ------------------------------------------------------------
+    # Weight manager + network (MAIN PROCESS ONLY)
+    # ------------------------------------------------------------
+    weight_manager = make_weight_manager(
+        args, p.domain_meta, dg_extra_dim
+    )
+
+    summary_path = path.join(scratch_dir, 'tensorboard')
+    LOGGER.info(f'Tensorboard summary path: {summary_path}')
+
+    if args.minimal_file_saves:
+        sample_writer = None
+    else:
+        sample_writer = tf.summary.create_file_writer(summary_path)
+
+    # ------------------------------------------------------------
+    # Explorer (SPAWN-BASED, SERVERLESS)
+    # ------------------------------------------------------------
+
+    if args.corrupt_pi:
+        LOGGER.info(f'Set corrupt_pi to {args.corrupt_pi}')
+    if args.corrupt_z:
+        LOGGER.info(f'Set corrupt_z to {args.corrupt_z}')
+    explorer = ParallelMCTSExplorerGrads(
+        specs=specs,
+        dropout=args.dropout,
+        debug=args.debug_memory,
+        policy_only=args.policy_network_only,
+        log=args.worker_logs,
+        corrupt_pi=args.corrupt_pi,
+        corrupt_z=args.corrupt_z,
+        mse_coeff=args.mse,
+        l2_reg_coeff=args.l2_reg,
+        l1_reg_coeff=args.l1_reg,
+        l1_l2_reg_coeff=args.l1_l2_reg,
+        max_workers=args.num_training_workers,
+    )
+    # ------------------------------------------------------------
+    # Trainer
+    # ------------------------------------------------------------
+    if not args.no_train:
+        strategy = (
+            SupervisedObjective.ANY_GOOD_ACTION
+            if args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
+            and args.policy_network_only
+            else args.sup_objective
+        )
+
+        sup_trainer = SupervisedTrainer(
+            weight_manager=weight_manager,
+            summary_writer=sample_writer,
+            explorer=explorer,
+            strategy=strategy,
+            batch_size=args.supervised_bs,
+            lr=args.supervised_lr,
+            lr_steps=args.lr_steps,
+            l1_reg_coeff=args.l1_reg,
+            l2_reg_coeff=args.l2_reg,
+            l1_l2_reg_coeff=args.l1_l2_reg,
+            mse_coeff=args.mse,
+            opt_batches_per_epoch=args.opt_batch_per_epoch,
+            start_time=start_time,
+            early_stop=args.supervised_early_stop,
+            save_every=args.save_every,
+            scratch_dir=scratch_dir,
+            snapshot_dir=snapshot_dir,
+            dk=args.dK,
+            time_out=args.timeout,
+            use_fluents=args.use_fluents,
+            use_comps=args.use_comparisons,
+            policy_only=args.policy_network_only,
+        )
+
+        best_rate, elapsed_time, iter_num = sup_trainer.train(
+            max_epochs=args.max_opt_epochs
+        )
+    else:
+        elapsed_time = iter_num = None
+
+    # ------------------------------------------------------------
+    # Evaluation (optional / unchanged semantics)
+    # ------------------------------------------------------------
+    if args.no_eval:
+        return
+
+    if weight_manager is not None and not args.minimal_file_saves:
+        weight_manager.save(
+            path.join(snapshot_dir, 'snapshot_final.pkl')
+        )
+
+    print(
+        'Evaluation skipped: spawn-based, serverless exploration '
+        'does not support eval_single yet'
+    )
 
 
 @can_profile
 def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
+    if args.exploration_algorithm == 'mcts':
+        main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, scratch_dir)
+        return
     print('Training supervised')
 
     start_time = time()
@@ -1245,16 +1420,8 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
                 max_replay_size=args.max_replay_size,
                 debug_memory=args.debug_memory)
         elif args.exploration_algorithm == 'mcts':
-            explorer = MCTSExplorer(
-                problems,
-                init_trajs_per_problem=args.rollouts,
-                min_new_pairs=args.min_explored,
-                max_new_pairs=args.max_explored,
-                expl_learn_ratio=args.exploration_learning_ratio,
-                max_replay_size=args.max_replay_size,
-                debug_memory=args.debug_memory,
-                planner_bootstrapping=args.planner_bootstrapping,
-            )
+            # explorer = MCTSExplorer(
+            raise NotImplementedError("This is weird, should have arrived in a different code location.")
         else:
             raise ValueError(
                 f'Unknown exploration algorithm: {args.exploration_algorithm}')
@@ -1284,6 +1451,8 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
             snapshot_dir=snapshot_dir,
             dk=args.dK,
             time_out=args.timeout,
+            use_fluents=args.use_fluents,
+            use_comps=args.use_comparisons,
         )
         best_rate, elapsed_time, iter_num = sup_trainer.train(
             max_epochs=args.max_opt_epochs)
@@ -1331,7 +1500,8 @@ def main():
         # if seed was not set, we will create a universal seed through time
         SEED = int(time() * 1000) % (2 ** 32)
         set_random_seeds(SEED)
-        LOGGER.info(f'Seed set to {SEED}')
+        args.seed = SEED
+        LOGGER.info(f'Seed was not manually set, so it was automatically set to {SEED}')
 
     unique_prefix = unique_name(args)
     print('Unique prefix:', unique_prefix)
@@ -1369,4 +1539,5 @@ def _main():
 
 
 if __name__ == '__main__':
+    multiprocessing.set_start_method('spawn', force=True)
     _main()
