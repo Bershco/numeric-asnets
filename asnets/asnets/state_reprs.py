@@ -5,6 +5,7 @@ import logging
 import numpy as np
 from typing import Dict, Iterable, List, Optional, Tuple
 from typing_extensions import Self
+import hashlib
 
 from asnets.prob_dom_meta import BoundProp, BoundAction, BoundComp, BoundFlnt
 from asnets.utils.jpddl_utils import flnt_to_jpddl_id, prop_to_jpddl_id
@@ -568,6 +569,39 @@ class CanonicalState(object):
             to_concat.append(comps_conv)
 
         return np.concatenate(to_concat)
+
+    def get_applicable_action_mask(self):
+        return np.array([enabled for _, enabled in self.acts_enabled], dtype=bool)
+
+
+    def env_state_key(self) -> bytes:
+        h = hashlib.blake2b(digest_size=16)
+
+        # props_true is tuple[(BoundProp, bool)] in stable order
+        for bp, t in self.props_true:
+            if t:
+                h.update(bp.unique_ident.encode("utf-8"))
+                h.update(b"\0")
+
+        # fluents in stable order
+        for bf, v in self.flnt_values:
+            if bf.func_name in SPECIAL_FUNCTIONS:
+                continue
+            # round to avoid 1e-12 float noise; tune precision if needed
+            vr = f"{v:.6f}".encode("ascii")
+            h.update(bf.unique_ident.encode("utf-8"))
+            h.update(b"=")
+            h.update(vr)
+            h.update(b"\0")
+
+        # comps_true if you want them
+        for bc, t in self.comps_true:
+            if t:
+                # bc.unique_ident exists per your validation code
+                h.update(bc.unique_ident.encode("utf-8"))
+                h.update(b"\0")
+
+        return h.digest()
 
 
 def get_init_cstate(planner_exts):

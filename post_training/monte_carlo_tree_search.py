@@ -19,8 +19,12 @@ from rpyc import BaseNetref
 from typing_extensions import Self
 import tensorflow as tf
 
+from asnets.state_reprs import CanonicalState
 from asnets.utils.rpyc_utils import to_local
 
+
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.DEBUG)
 
 class Node(ABC):
     """
@@ -52,16 +56,25 @@ class Node(ABC):
 
 class MCTSNode(Node):
     delete_counter = 0
-    __slots__ = ("state_id", "cost_until_now", "reward_weight",
-                 "previous_action", "_hash", "children", "parent",
-                 "goal_state", "terminal_state", "as_network_input",
-                 "applicable_action_mask", "act_dist", "pred_value", "Q_value")
+    __slots__ = (
+        # "state_id", "_hash",
+        "state",
+        "cost_until_now", "reward_weight",
+        "previous_action",  "children", "parent",
+        "goal_state", "terminal_state", "as_network_input",
+        "applicable_action_mask", "act_dist", "pred_value", "Q_value"
+    )
 
-    def __init__(self, state_id, cost_until_now, previous_action, reward_weight = 1000,
+    def __init__(self,
+                 # state_id,
+                 state,
+                 cost_until_now, previous_action, reward_weight = 1000,
         is_goal = False, is_terminal = False, as_network_input = None, applicable_action_mask = None,
-                 hashed_state = -1, parent = None):
-        self.state_id = state_id
-        self._hash = hashed_state
+                 # hashed_state = -1,
+                 parent = None):
+        # self.state_id = state_id
+        # self._hash = hashed_state
+        self.state = state
         self.cost_until_now = cost_until_now
         self.reward_weight = reward_weight
         self.previous_action = previous_action
@@ -100,7 +113,7 @@ class MCTSNode(Node):
 
     def __hash__(self):
         """Nodes must be hashable"""
-        return self._hash
+        return hash(self.state)
 
     def __eq__(self, node2: Self) -> bool:
         """
@@ -108,11 +121,14 @@ class MCTSNode(Node):
         That being said, employing rpyc interception, pickling, serialization etc. just for equality seems redundant.
         At least if their hashes already don't fit.
         """
-        return hash(self) == hash(node2) and self.state_id == node2.state_id
+        return hash(self) == hash(node2) and self.state == node2.state
 
     def get_identifiers(self) -> tuple[int,int]:
-        return self.state_id, self._hash
+        # return self.state_id, self._hash
+        raise NotImplementedError("Changed to using states in nodes instead of identifiers")
 
+    def env_state_key(self) -> bytes:
+        return self.state.env_state_key()
 
 class FixedChildMap:
     def __init__(self, keys: List[int], values: List[Any]):
@@ -288,10 +304,9 @@ class MCTS:
         # self.children: dict[Node, Any] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
-        self.state_id_to_node: dict[int,MCTSNode] = {}     #This might benefit memory-wise from being 'state_hash_to_node' dict instead
+        self.state_to_node: dict[CanonicalState,MCTSNode] = {}
         # self.act_dist_per_node: dict[MCTSNode,np.ndarray] = {}
         self.problem_service = problem_service
-        # self.network = to_local(network) TODO: this might break inference somehow
         self.network = network
         self.policy_only = self.network.policy_only()
 
@@ -332,9 +347,9 @@ class MCTS:
         """Find an unexplored descendent of `node` (returns path including final leaf or frontier child)."""
         if self.debug_time_mcts_iterations:
             self.start_times.append(time())
-        path = []
+        node_path = []
         while True:
-            path.append(node)
+            node_path.append(node)
 
             childmap: FixedChildMap | None = node.children
 
@@ -343,10 +358,10 @@ class MCTS:
             if childmap is None or childmap.is_empty():
                 if self.debug_time_mcts_iterations:
                     self.after_selection_times.append(time())
-                return path
+                return node_path
 
             # Otherwise pick via PUCT (with no-cycle)
-            a_next, n_next = self._puct_select_no_cycle(node, set(path))
+            a_next, n_next = self._puct_select_no_cycle(node, set(node_path))
             # count traversed edge
             self.Nsa[(node, a_next)] += 1
             node = n_next
@@ -401,8 +416,14 @@ class MCTS:
         # 2) Masks (vectorized)
         #   - cycle mask: child already on current path => invalidate
         actions = np.frombuffer(np.array(actions, dtype=np.int32), dtype=np.int32)
-        cycle = np.array([c in path_set for c in child_list], dtype=bool)
-
+        path_keys = {n.env_state_key() for n in path_set}
+        cycle = np.array([child.env_state_key() in path_keys for child in child_list])
+        if cycle.any():
+            child_arr = np.array(child_list)
+            culprits = child_arr[cycle]
+            culprit_nodes = [child for child in culprits]
+            for node in culprit_nodes:
+                LOGGER.debug(f"Cycle found, {node} is present in {path_set}")
         # 3) Prior lookup (vectorized, with bounds check)
         prior = np.zeros(n_children, dtype=np.float32)
         if np.ndim(priors) == 1 and priors.size > 0:
@@ -526,7 +547,8 @@ class MCTS:
         node.children = None
         self.N.pop(node, None)
         # self.Q.pop(node, None)
-        self.state_id_to_node.pop(node.state_id, None)
+        # self.state_to_node.pop(node.state_id, None)
+        self.state_to_node.pop(node.state)
         # self.act_dist_per_node.pop(node, None)
 
     def log_node_count(self, label=""):
@@ -567,8 +589,14 @@ class MCTS:
             node.applicable_action_mask = self.problem_service.get_applicable_action_mask(*node.get_identifiers())
         return node.applicable_action_mask
 
-def wrapInMCTSNode(cstate_id: int, previous_action, cost_until_now=float('inf'), is_goal=False,
-                   is_terminal=False, as_network_input=None, applicable_action_mask=None, hashed_state = -1, parent = None):
-    return MCTSNode(state_id=cstate_id, cost_until_now=cost_until_now, previous_action=previous_action,is_goal=is_goal,
-                    is_terminal=is_terminal, as_network_input=as_network_input,
-                    applicable_action_mask=applicable_action_mask, hashed_state=hashed_state, parent=parent)
+# def wrapInMCTSNode(cstate_id: int, previous_action, cost_until_now=float('inf'), is_goal=False,
+#                    is_terminal=False, as_network_input=None, applicable_action_mask=None, hashed_state = -1, parent = None):
+#     return MCTSNode(state_id=cstate_id, cost_until_now=cost_until_now, previous_action=previous_action,is_goal=is_goal,
+#                     is_terminal=is_terminal, as_network_input=as_network_input,
+#                     applicable_action_mask=applicable_action_mask, hashed_state=hashed_state, parent=parent)
+
+def wrapInMCTSNode(state: CanonicalState, previous_action, cost_until_now=float('inf'),
+                   as_network_input=None, applicable_action_mask=None, parent=None):
+    return MCTSNode(state=state, previous_action=previous_action, cost_until_now=cost_until_now, is_goal=state.is_goal,
+                    is_terminal=state.is_terminal, as_network_input=state.to_network_input(),
+                    applicable_action_mask=state.get_applicable_action_mask(), parent=parent,)

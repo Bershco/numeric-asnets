@@ -7,7 +7,7 @@ from typing import Any, Optional, List
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from asnets.spawn_train_worker import WorkerInput, WorkerOutput, run_worker
+from asnets.spawn_train_worker import WorkerInput, WorkerOutput, run_worker_opt_profile
 
 
 def run_epoch_spawn_grads(
@@ -21,12 +21,13 @@ def run_epoch_spawn_grads(
     l1_reg_coeff: float,
     l1_l2_reg_coeff: float,
     log: bool,
+    PROFILE_DIR: Optional[str] = None,
     corrupt_pi: Optional[str] = None,
     corrupt_z: Optional[str] = None,
     max_workers: Optional[int] = None,
 ) -> list[WorkerOutput]:
 
-    ctx = mp.get_context("spawn")
+    ctx = mp.get_context('forkserver')
 
     outs: list[WorkerOutput] = []
     with ProcessPoolExecutor(max_workers=max_workers or len(specs), mp_context=ctx) as ex:
@@ -42,6 +43,7 @@ def run_epoch_spawn_grads(
                 debug=debug,
                 policy_only=policy_only,
                 log=log,
+                PROFILE_DIR=PROFILE_DIR,
                 corrupt_pi=corrupt_pi,
                 corrupt_z=corrupt_z,
                 mse_coeff=mse_coeff,
@@ -49,7 +51,7 @@ def run_epoch_spawn_grads(
                 l1_reg_coeff=l1_reg_coeff,
                 l1_l2_reg_coeff=l1_l2_reg_coeff,
             )
-            futs.append(ex.submit(run_worker, inp))
+            futs.append(ex.submit(run_worker_opt_profile, inp))
 
         for f in as_completed(futs):
             outs.append(f.result())
@@ -73,6 +75,7 @@ class SpawnExploreSpec:
     fd_heuristic: Optional[str]
     ssipp_teacher_heuristic: Optional[str]
     enhsp_config: Optional[str]
+    estimator_value_conversion_lambda: float
     teacher_planner: str
     teacher_timeout_s: int
     only_one_good_action: bool
@@ -90,3 +93,4 @@ class SpawnExploreSpec:
     difficulty: Any  # InstanceDifficulty enum
     fixed_instance_pddl: bool = False
     mcts_exploration_weight: float = 1.0
+    sample_k_additional_states: int = 5

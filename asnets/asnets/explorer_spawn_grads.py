@@ -23,6 +23,8 @@ class ParallelMCTSExplorerGrads:
     l1_reg_coeff: float
     l1_l2_reg_coeff: float
 
+    PROFILE_DIR: Optional[str] = None
+
     max_workers: Optional[int] = None
 
     #corruption testing settings
@@ -38,6 +40,7 @@ class ParallelMCTSExplorerGrads:
             debug=self.debug,
             policy_only=self.policy_only,
             log=self.log,
+            PROFILE_DIR=self.PROFILE_DIR,
             corrupt_pi=self.corrupt_pi,
             corrupt_z=self.corrupt_z,
             mse_coeff=self.mse_coeff,

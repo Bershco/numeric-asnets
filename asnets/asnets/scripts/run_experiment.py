@@ -558,6 +558,18 @@ parser.add_argument(
     default=4,
     help='Number of MCTS iterations done during training'
 )
+parser.add_argument(
+    '--sample-k-additional-states',
+    type=int,
+    default=0,
+    help='Set the amount of additional states sampled during training'
+)
+parser.add_argument(
+    '--profile-dir',
+    default=None,
+    help='Path to profile directory, default is not profiling at all.'
+)
+
 
 
 def main():
@@ -620,6 +632,8 @@ def main():
                worker_logs=args.worker_logs,
                fixed_instance=args.fixed_instance,
                num_training_workers=args.num_training_workers,
+               sample_k_additional_states=args.sample_k_additional_states,
+               profile_dir=args.profile_dir,
                )
     print('Fin :-)')
 
@@ -659,6 +673,8 @@ def main_inner(*,
                worker_logs=None,
                fixed_instance=False,
                num_training_workers=None,
+               sample_k_additional_states=0,
+               profile_dir=None,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -711,6 +727,8 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.append('--mcts-her-strategy')
         if mcts_exploration_weight:
             train_flags.extend(['--mcts-exploration-weight', str(mcts_exploration_weight)])
+        if mcts_expansion_size:
+            train_flags.extend(['--mcts-expansion-size', str(mcts_expansion_size)])
         if corrupt_pi:
             train_flags.extend(['--corrupt-pi', str(corrupt_pi)])
         if corrupt_z:
@@ -721,6 +739,10 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.append('--fixed-instance')
         if num_training_workers:
             train_flags.extend(['--num-training-workers', str(num_training_workers)])
+        if sample_k_additional_states:
+            train_flags.extend(['--sample-k-additional-states', str(sample_k_additional_states)])
+        if profile_dir:
+            train_flags.extend(['--profile-dir', str(profile_dir)])
         final_checkpoint = run_asnets_local(
             flags=train_flags,
             # we make sure it runs cmd in same dir as us,

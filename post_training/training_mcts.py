@@ -48,7 +48,6 @@ class TrainingMCTS(MCTS):
 
         # get priors from network
         act_dist = self.get_act_dist_from_mcts_node(node)
-        act_dist = act_dist
         act_dist = tf.squeeze(act_dist).numpy()
 
         # mask invalid actions
@@ -65,22 +64,30 @@ class TrainingMCTS(MCTS):
             selected_actions.append(i)
 
         # results = self.problem_service.exposed_env_simulate_batch_steps(node.state_id, hash(node), selected_actions)
-        results = self.ctx.env_simulate_batch_steps(node.state_id, hash(node), selected_actions)
-        for (action_id, cstate_after_action_i_id, cstate_after_action_i_hash,
+        # results = self.ctx.env_simulate_batch_steps(node.state_id, hash(node), selected_actions)
+        results = self.ctx.env_simulate_batch_steps(node.state, selected_actions)
+        for (action_id,
+             # cstate_after_action_i_id, cstate_after_action_i_hash,
+             cstate,
              step_cost, is_goal, is_terminal,
              network_ready_repr, applicable_action_mask
              ) in results:
-            wrapped_output_cstate = wrapInMCTSNode(
-                cstate_id=cstate_after_action_i_id,
-                cost_until_now=node.cost_until_now + step_cost,
-                previous_action=action_id,
-                is_goal=is_goal,
-                is_terminal=is_terminal,
-                as_network_input=network_ready_repr, applicable_action_mask=applicable_action_mask,
-                hashed_state=cstate_after_action_i_hash,
-                parent=node,
-            )
-            self.state_id_to_node[cstate_after_action_i_id] = wrapped_output_cstate
+            # wrapped_output_cstate = wrapInMCTSNode(
+            #     cstate_id=cstate_after_action_i_id,
+            #     cost_until_now=node.cost_until_now + step_cost,
+            #     previous_action=action_id,
+            #     is_goal=is_goal,
+            #     is_terminal=is_terminal,
+            #     as_network_input=network_ready_repr, applicable_action_mask=applicable_action_mask,
+            #     hashed_state=cstate_after_action_i_hash,
+            #     parent=node,
+            # )
+            if cstate not in self.state_to_node.keys():
+                wrapped_output_cstate = wrapInMCTSNode(state=cstate, cost_until_now=node.cost_until_now + step_cost,
+                                                       previous_action=action_id, parent=node)
+                self.state_to_node[cstate] = wrapped_output_cstate
+            else:
+                wrapped_output_cstate = self.state_to_node[cstate]
             keys.append(action_id)
             values.append(wrapped_output_cstate)
 
@@ -100,30 +107,31 @@ class TrainingMCTS(MCTS):
         if self.debug_time_mcts_iterations:
             self.end_times.append(time())
 
-    def initialise_tree(self, cstate) -> tuple[int, int]:
+    def initialise_tree(self, cstate) -> None:
         """Start a new tree for a fresh episode."""
         # cstate_id, cstate_hash = self.problem_service.internal_get_state_identifiers(cstate)
-        cstate_id, cstate_hash = self.ctx.get_state_identifiers(cstate)
-        self.curr_tree_root = wrapInMCTSNode(cstate_id=cstate_id,
-                                             previous_action=None,
-                                             cost_until_now=0,
-                                             is_goal=cstate.is_goal,
-                                             is_terminal=cstate.is_terminal,
-                                             # These next method calls are possible because TrainingMCTS is inside the service
-                                             # as_network_input=self.problem_service.internal_to_network_input(cstate),
-                                             # applicable_action_mask=self.problem_service.internal_get_applicable_action_mask(cstate),
-                                             as_network_input=self.ctx.to_network_input(cstate_id, cstate_hash),
-                                             applicable_action_mask=self.ctx.get_applicable_action_mask(cstate_id, cstate_hash),
-                                             hashed_state = cstate_hash)
-        self.state_id_to_node[self.curr_tree_root.state_id] = self.curr_tree_root
+        # cstate_id, cstate_hash = self.ctx.get_state_identifiers(cstate)
+        # self.curr_tree_root = wrapInMCTSNode(cstate_id=cstate_id,
+        #                                      previous_action=None,
+        #                                      cost_until_now=0,
+        #                                      is_goal=cstate.is_goal,
+        #                                      is_terminal=cstate.is_terminal,
+        #                                      # These next method calls are possible because TrainingMCTS is inside the service
+        #                                      # as_network_input=self.problem_service.internal_to_network_input(cstate),
+        #                                      # applicable_action_mask=self.problem_service.internal_get_applicable_action_mask(cstate),
+        #                                      as_network_input=self.ctx.to_network_input(cstate_id, cstate_hash),
+        #                                      applicable_action_mask=self.ctx.get_applicable_action_mask(cstate_id, cstate_hash),
+        #                                      hashed_state = cstate_hash)
+        self.curr_tree_root = wrapInMCTSNode(state=cstate, previous_action=None, cost_until_now=0)
+        self.state_to_node[self.curr_tree_root.state] = self.curr_tree_root
         self.N.clear()
-        return cstate_id, cstate_hash
 
     def get_act_dist_from_mcts_node(self, node: MCTSNode):
         if node.act_dist is None:
             if node.as_network_input is None:
                 # node.as_network_input = self.problem_service.exposed_to_network_input(*node.get_identifiers())
-                node.as_network_input = self.ctx.to_network_input(*node.get_identifiers())
+                # node.as_network_input = self.ctx.to_network_input(*node.get_identifiers())
+                node.as_network_input = self.ctx.to_network_input(node.state)
             if self.policy_only:
                 node.act_dist = self.network(node.as_network_input)
             else:
@@ -181,15 +189,19 @@ class TrainingMCTS(MCTS):
         next_node = parent.children[action_id]
         # self.prune_children_except(parent, action_id)
         self.curr_tree_root = next_node
-        return self.curr_tree_root.state_id, hash(self.curr_tree_root)
+        return self.curr_tree_root.state
+        # return self.curr_tree_root.state_id, hash(self.curr_tree_root)
 
-    def get_children_mask(self, act_dim=None, node=None, cstate_id=None):
+    def get_children_mask(self, act_dim=None, node=None,
+                          # cstate_id=None
+                          cstate=None,
+                          ):
         assert act_dim is not None, "Can't get a mask without a size!"
         if node is None:
-            if cstate_id is None:
+            if cstate is None:
                 node=self.curr_tree_root
             else:
-                node=self.state_id_to_node[cstate_id]
+                node=self.state_to_node[cstate]
         # assert node in self.children, "No children, no mask!"
         assert node.children is not None, "No children, no mask!"
         mask = np.zeros(act_dim, dtype=bool)
@@ -200,5 +212,58 @@ class TrainingMCTS(MCTS):
 
         return mask
 
-    def get_children_states(self, state_id: int):
-        return self.state_id_to_node[state_id].children
+    def sample_k_sufficient_nodes(self, k, min_visitations=5) -> list:
+        # 1. Filter eligible nodes
+        eligible = [(node, self.N[node]) for node, count in self.N.items() if count > min_visitations]
+
+        if not eligible:
+            return []
+
+        nodes, counts = zip(*eligible)
+        counts_array = np.array(counts, dtype=np.float32)
+        probs = counts_array / counts_array.sum()
+
+        # 2. Sample nodes
+        num_to_sample = min(k, len(nodes))
+        sampled_nodes = np.random.choice(nodes, size=num_to_sample, replace=False, p=probs)
+
+        act_dim = self.ctx.get_act_dim()
+        results = []
+
+        # 3. Calculate pi and z for each sampled node
+        for node in sampled_nodes:
+            pi = np.zeros(act_dim, dtype=np.float32)
+            z_partial = np.zeros(act_dim, dtype=np.float32)
+
+            children = node.children  # Assuming node has a .children dict
+            for action, child in children.items():
+                # Get visit count for the edge (node -> child)
+                # Using self.N.get(child, 0) as per your run_search logic
+                visits = self.N.get(child, 0)
+                pi[action] = visits
+                z_partial[action] = visits * child.Q_value
+
+            pi_sum = pi.sum()
+            if pi_sum > 0:
+                pi /= pi_sum
+                z = (z_partial / pi_sum).sum()
+            else:
+                # Fallback logic
+                mask = self.get_applicable_action_mask(node)
+                valid = np.where(mask)[0]
+                if len(valid) > 0:
+                    pi[valid] = 1.0 / len(valid)
+                else:
+                    pi[:] = 1.0 / act_dim
+                z = 0.0
+
+            if self.sharpen_pi_T is not None:
+                pi = self.sharpen_pi(pi)
+
+            results.append({
+                'node': node,
+                'pi': pi,
+                'z': z
+            })
+
+        return results
