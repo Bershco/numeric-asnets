@@ -59,7 +59,7 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
     if profiling:
         print("[run_experiment_setup] timing profiling is on.")
         cmdline.extend([
-                           'python3', '-m', 'cProfile', '-o', 'profile_output.prof',
+                           sys.executable, '-m', 'cProfile', '-o', 'profile_output.prof',
                            '-m', 'asnets.scripts.run_asnets'
                        ] + flags)
         # for graceful timeout of a single trial - this is specifically for profiling, but can obviously be used otherwise
@@ -75,11 +75,11 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         base = f"runasn-{job}-{task}-{ts}"
         outfile = path.join(logdir, f"{base}.bin")
-        cmdline.extend(['python3', '-m', 'memray', 'run', '--follow-fork', '-o', outfile,
+        cmdline.extend([sys.executable, '-m', 'memray', 'run', '--follow-fork', '-o', outfile,
                            '-m', 'asnets.scripts.run_asnets'] + flags
                        + ['--graceful-timeout', str((3 * 60 * 60))])
     else:
-        cmdline.extend(['python3', '-u', '-m', 'asnets.scripts.run_asnets'] + flags)
+        cmdline.extend([sys.executable, '-u', '-m', 'asnets.scripts.run_asnets'] + flags)
 
     if train_only:
         cmdline.append('--no-eval')

@@ -1528,7 +1528,7 @@ if __name__ == '__main__':
     multiprocessing.set_start_method('forkserver', force=True)
     # preload heavy stuff into the forkserver *once*
     multiprocessing.set_forkserver_preload([
-        "tensorflow",
-        "asnets.models",  # adjust to your actual import
+        "asnets.tf_cpu_preload",
+        "asnets.models",
     ])
     _main()

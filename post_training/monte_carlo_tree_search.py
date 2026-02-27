@@ -24,7 +24,7 @@ from asnets.utils.rpyc_utils import to_local
 
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
+LOGGER.setLevel(logging.INFO)
 
 class Node(ABC):
     """
