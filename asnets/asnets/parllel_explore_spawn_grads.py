@@ -94,3 +94,7 @@ class SpawnExploreSpec:
     fixed_instance_pddl: bool = False
     mcts_exploration_weight: float = 1.0
     sample_k_additional_states: int = 5
+    freeze_explore: bool = True
+    freeze_workers: int = 1
+    freeze_train_steps: int = 50
+    freeze_batch_size: int = 32

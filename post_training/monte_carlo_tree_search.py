@@ -297,15 +297,12 @@ class MCTS:
                  debug_memory = False,
                  debug_time_mcts_iterations = False,
                  debug_comparison_exploration_exploitation = False):
-        self.curr_tree_root: MCTSNode = None
-        self.Q = defaultdict(int)  # total reward of each node
+        self.curr_tree_root: Optional[MCTSNode] = None
         self.N = defaultdict(int)  # total visit count for each node
         self.Nsa = defaultdict(int)
-        # self.children: dict[Node, Any] = dict()  # actions and children output of each node. structure is (action,result_state)
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
         self.state_to_node: dict[CanonicalState,MCTSNode] = {}
-        # self.act_dist_per_node: dict[MCTSNode,np.ndarray] = {}
         self.problem_service = problem_service
         self.network = network
         self.policy_only = self.network.policy_only()
@@ -539,17 +536,13 @@ class MCTS:
     def _delete_subtree(self, node, recursive=True):
         # Recursively delete the subtree rooted at this node
         if recursive:
-            # for _, child in self.children.get(node, {}).items():
             if node.children is not None:
                 for _, child in node.children.items():
                     self._delete_subtree(child)
         # self.children.pop(node, None)
         node.children = None
         self.N.pop(node, None)
-        # self.Q.pop(node, None)
-        # self.state_to_node.pop(node.state_id, None)
-        self.state_to_node.pop(node.state)
-        # self.act_dist_per_node.pop(node, None)
+        # self.state_to_node.pop(node.state, None)
 
     def log_node_count(self, label=""):
         gc.collect()
@@ -565,7 +558,6 @@ class MCTS:
         print(f"{label} - Live MCTSNode instances: {count}")
 
     def prune_children_except(self, parent_node, keep_action):
-        # children_dict = self.children.get(parent_node)
         children_dict = parent_node.children
         if children_dict is None:
             return
@@ -573,7 +565,7 @@ class MCTS:
         if self.debug_memory:
             self.log_node_count("Before deleting old root's irrelevant children")
         for action, child_node in list(children_dict.items()):
-            if action == keep_action:
+            if keep_child is None and action == keep_action:
                 keep_child = child_node
                 continue
             self._delete_subtree(child_node)

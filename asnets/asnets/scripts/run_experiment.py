@@ -569,8 +569,12 @@ parser.add_argument(
     default=None,
     help='Path to profile directory, default is not profiling at all.'
 )
-
-
+parser.add_argument(
+    '--freeze-train',
+    action='store_true',
+    default=False,
+    help='Freeze training on one single exploration to make sure network is learning SOMETHING.'
+)
 
 def main():
     args = parser.parse_args()
@@ -631,6 +635,7 @@ def main():
                corrupt_z=args.corrupt_z,
                worker_logs=args.worker_logs,
                fixed_instance=args.fixed_instance,
+               freeze_train=args.freeze_train,
                num_training_workers=args.num_training_workers,
                sample_k_additional_states=args.sample_k_additional_states,
                profile_dir=args.profile_dir,
@@ -672,6 +677,7 @@ def main_inner(*,
                corrupt_z=None,
                worker_logs=None,
                fixed_instance=False,
+               freeze_train=False,
                num_training_workers=None,
                sample_k_additional_states=0,
                profile_dir=None,
@@ -737,6 +743,8 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.append('--worker-logs')
         if fixed_instance:
             train_flags.append('--fixed-instance')
+        if freeze_train:
+            train_flags.append('--freeze-train')
         if num_training_workers:
             train_flags.extend(['--num-training-workers', str(num_training_workers)])
         if sample_k_additional_states:

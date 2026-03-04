@@ -687,46 +687,6 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         m_s = f"{m:.4f}" if m is not None else "None"
         r_s = f"{r:.4f}" if r is not None else "None"
         log_lines.append(f"Loss: xent={x_s}  mse={m_s}  reg={r_s}")
-    # with tf.GradientTape() as tape:
-    #     mse_loss = tf.constant(0.0)
-    #     if inp.policy_only:
-    #         pi_pred = net(obs_batch, training=True)
-    #         xent_loss = _policy_xent_loss(pi_pred, tf.convert_to_tensor(pi_tgt, dtype=pi_pred.dtype))
-    #     else:
-    #         pi_pred, v_pred = net(obs_batch, training=True)
-    #         xent_loss = _policy_xent_loss(pi_pred, tf.convert_to_tensor(pi_tgt, dtype=pi_pred.dtype))
-    #         mse_loss = tf.cast(inp.mse_coeff, xent_loss.dtype) * _value_mse_loss(v_pred, tf.convert_to_tensor(z_tgt, dtype=v_pred.dtype))
-    #
-    #     # reg on the SAME variables
-    #     reg_loss = _reg_terms(vars_, inp.l2_reg_coeff, inp.l1_reg_coeff, inp.l1_l2_reg_coeff)
-    #     loss = xent_loss + mse_loss + reg_loss
-    #
-    # grads = tape.gradient(loss, vars_)
-    # if inp.log:
-    #     LOGGER.info(f"Xent loss: {xent_loss}, MSE loss: {mse_loss}, Reg loss: {reg_loss}")
-    # grads_np = []
-    # grad_stats = []
-    # for g, v in zip(grads, vars_):
-    #     assert g is not None, f"Gradient is None for variable {v.name}"
-    #     # assert tf.reduce_any(tf.math.not_equal(g, 0.0))
-    #     assert not tf.reduce_any(tf.math.is_nan(g)), f"NaN gradient in {v.name}"
-    #     assert not tf.reduce_any(tf.math.is_inf(g)), f"Inf gradient in {v.name}"
-    #     # print(f"Absolute gradient mean: {tf.reduce_mean(tf.abs(g))}")
-    #     if inp.log:
-    #         grad_stats.append({
-    #             "mean": tf.reduce_mean(tf.abs(g)),
-    #             "max": tf.reduce_max(tf.abs(g)),
-    #             "nnz": tf.reduce_mean(tf.cast(g != 0.0, tf.float32))
-    #         })
-    #     if g is None:
-    #         # replace None grads with zeros (keeps apply_gradients happy)
-    #         grads_np.append(np.zeros(v.shape, dtype=np.float32))
-    #     else:
-    #         grads_np.append(g.numpy().astype(np.float32))
-    # if inp.log:
-    #     mean_grad = np.mean([s["mean"] for s in grad_stats])
-    #     mean_nnz = np.mean([s["nnz"] for s in grad_stats])
-    #     LOGGER.info(f"Worker.{inp.seed}: mean_grad:{mean_grad}, mean_nnz:{mean_nnz}")
     root_summary = collector.root_summary() if inp.log else {}
     if inp.log:
         print(

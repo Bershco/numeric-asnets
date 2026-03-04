@@ -1,4 +1,3 @@
-import multiprocessing
 import queue
 import threading
 import traceback
@@ -15,7 +14,6 @@ import setproctitle
 import shutil
 import tensorflow as tf
 from time import time
-# import tqdm
 import tqdm.auto as tqdm
 from types import ModuleType
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Set
@@ -25,7 +23,7 @@ from asnets.heur_inputs import ActionCountDataGenerator, \
     HeuristicDataGenerator, LMCutDataGenerator, RelaxedDeadendDetector, \
     NumericLandmarkGenerator
 from asnets.models import PropNetworkWeights, PropNetwork
-from asnets.utils.generator_utils import InstanceDifficulty, ProgressionLevel, get_problem_names
+from asnets.utils.generator_utils import InstanceDifficulty, get_problem_names
 from asnets.utils.mdpsim_utils import parse_problem_args
 from asnets.utils.rpyc_utils import to_local, find_netrefs
 from asnets.prob_dom_meta import BoundAction, DomainType, get_domain_meta, \
@@ -39,9 +37,8 @@ from asnets.teacher import DomainSpecificTeacher, FDTeacher, MetricFFTeacher, \
 from asnets.utils.prof_utils import can_profile
 from asnets.utils.pddl_utils import get_domain_file
 from asnets.utils.py_utils import RandomPopContainer, TimerContext, \
-    strip_parens, weak_ref_to, weighted_batch_iter
-from asnets.utils.tf_utils import cross_entropy, empty_feed_value, \
-    escape_name_tf, mean_squared_error
+    strip_parens, weak_ref_to
+from asnets.utils.tf_utils import cross_entropy, mean_squared_error
 from post_training.monte_carlo_tree_search import MCTSNode
 from post_training.training_mcts import TrainingMCTS
 import jpype
@@ -333,7 +330,7 @@ class PlannerExtensions(object):
         self.mdpsim_problem = parse_problem_args(self.mdpsim, self.pddl_files, self.generated_problem_name)
         self.problem_name: str = self.mdpsim_problem.name.strip()
 
-        LOGGER.debug(f'Finished parsing mdpsim problem: {self.problem_name}')
+        LOGGER.info(f'Finished parsing mdpsim problem: {self.problem_name}')
 
         # Maps to PyGroundAction object in MDPSim. Cannot use type hint.
         self.act_ident_to_mdpsim_act: Dict[str, Any] = {
@@ -1683,7 +1680,7 @@ class SupervisedTrainer:
         else:
             self.optimiser = tf.keras.optimizers.Adam(learning_rate=self.lr)
         # self.optimiser.build(self.weight_manager.all_weights)
-        # assert len(self.optimiser.variables) > 1, 'optimiser build wasn\'t succesful'
+        # assert len(self.optimiser.variables) > 1, 'optimiser build wasn\'t successful'
         # self.loss_fn = ManualLoss(
         #     problems=self.problems,
         #     weight_manager=self.weight_manager,
@@ -1790,7 +1787,6 @@ class SupervisedTrainer:
         solve_thresh = 0.999
 
         tr = tqdm.trange(max_epochs, desc='epoch', leave=True)
-
         epoch = tf.Variable(0, dtype=tf.int64)
         self.summary_writer.set_as_default(step=epoch)
 
@@ -1802,7 +1798,6 @@ class SupervisedTrainer:
             # --------------------------------------------------
             t_explore=time()
             weights_np = self.weight_manager.export_numpy()
-
             worker_outs = self.explorer.explore(weights_np)
             print(f"[EXPLORE TIMING] pid={os.getpid()} total={time() - t_explore:.2f}s", flush=True)
 
@@ -1915,7 +1910,6 @@ class SupervisedTrainer:
             raise RuntimeError("No worker outputs.")
 
         # init accumulators
-        import numpy as np
         grads_sum = [np.zeros(v.shape, dtype=np.float32) for v in params]
         total = 0
         losses = []
@@ -2024,7 +2018,6 @@ class SupervisedTrainer:
                 problem.get_replay_size()
             )
         return rv
-
 
 class ManualLoss:
     def __init__(self,

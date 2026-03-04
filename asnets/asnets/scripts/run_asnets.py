@@ -2,7 +2,6 @@
 
 import argparse
 import atexit
-import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from json import dump
@@ -13,14 +12,14 @@ import signal
 import sys
 from time import time
 
-import mdpsim
 from pympler import muppy, summary, asizeof
 from typing import Set, Any
 from pympler.asizeof import asized
 
 from asnets.explorer_spawn_grads import ParallelMCTSExplorerGrads
-from asnets.models import make_network, make_weight_manager
-from asnets.prob_dom_meta import DomainType, get_domain_meta
+from asnets.freeze_overfit_test import FrozenSupervisedTrainer
+from asnets.models import make_weight_manager
+from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import CanonicalState
 
 import numpy as np
@@ -35,8 +34,7 @@ from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
 from asnets.supervised import SupervisedTrainer, SupervisedObjective, \
     ProblemServiceConfig, PlannerExtensions
 from asnets.multiprob import ProblemServer, to_local, parent_death_pact
-from asnets.utils.generator_utils import Domain, extract_domain_name_from_file, get_problem_names, InstanceDifficulty
-from asnets.utils.mdpsim_utils import parse_problem_args
+from asnets.utils.generator_utils import Domain, extract_domain_name_from_file, InstanceDifficulty
 from asnets.utils.prof_utils import can_profile
 from asnets.utils.py_utils import set_random_seeds
 
@@ -1012,6 +1010,13 @@ parser.add_argument(
     default=0.1,
     help='Estimator coefficient for heuristic bootstrapping'
 )
+parser.add_argument(
+    '--freeze-train',
+    action='store_true',
+    default=False,
+    help='Freeze training on one single exploration to make sure network is learning SOMETHING.'
+)
+
 
 def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
                 iter_num, weight_manager, scratch_dir):
@@ -1269,7 +1274,7 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
     dg_extra_dim = sum(g.extra_dim for g in p.data_gens)
 
     # ------------------------------------------------------------
-    # Weight manager + network (MAIN PROCESS ONLY)
+    # Weight manager ONLY
     # ------------------------------------------------------------
     weight_manager = make_weight_manager(
         args, p.domain_meta, dg_extra_dim
@@ -1317,30 +1322,59 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
             else args.sup_objective
         )
 
-        sup_trainer = SupervisedTrainer(
-            weight_manager=weight_manager,
-            summary_writer=sample_writer,
-            explorer=explorer,
-            strategy=strategy,
-            batch_size=args.supervised_bs,
-            lr=args.supervised_lr,
-            lr_steps=args.lr_steps,
-            l1_reg_coeff=args.l1_reg,
-            l2_reg_coeff=args.l2_reg,
-            l1_l2_reg_coeff=args.l1_l2_reg,
-            mse_coeff=args.mse,
-            opt_batches_per_epoch=args.opt_batch_per_epoch,
-            start_time=start_time,
-            early_stop=args.supervised_early_stop,
-            save_every=args.save_every,
-            scratch_dir=scratch_dir,
-            snapshot_dir=snapshot_dir,
-            dk=args.dK,
-            time_out=args.timeout,
-            use_fluents=args.use_fluents,
-            use_comps=args.use_comparisons,
-            policy_only=args.policy_network_only,
-        )
+
+        if not args.freeze_train:
+            sup_trainer = SupervisedTrainer(
+                weight_manager=weight_manager,
+                summary_writer=sample_writer,
+                explorer=explorer,
+                strategy=strategy,
+                batch_size=args.supervised_bs,
+                lr=args.supervised_lr,
+                lr_steps=args.lr_steps,
+                l1_reg_coeff=args.l1_reg,
+                l2_reg_coeff=args.l2_reg,
+                l1_l2_reg_coeff=args.l1_l2_reg,
+                mse_coeff=args.mse,
+                opt_batches_per_epoch=args.opt_batch_per_epoch,
+                start_time=start_time,
+                early_stop=args.supervised_early_stop,
+                save_every=args.save_every,
+                scratch_dir=scratch_dir,
+                snapshot_dir=snapshot_dir,
+                dk=args.dK,
+                time_out=args.timeout,
+                use_fluents=args.use_fluents,
+                use_comps=args.use_comparisons,
+                policy_only=args.policy_network_only,
+            )
+        else:
+            sup_trainer = FrozenSupervisedTrainer(
+                weight_manager=weight_manager,
+                summary_writer=sample_writer,
+                explorer=explorer,
+                strategy=strategy,
+                batch_size=args.supervised_bs,
+                lr=args.supervised_lr,
+                lr_steps=args.lr_steps,
+                l1_reg_coeff=args.l1_reg,
+                l2_reg_coeff=args.l2_reg,
+                l1_l2_reg_coeff=args.l1_l2_reg,
+                mse_coeff=args.mse,
+                opt_batches_per_epoch=args.opt_batch_per_epoch,
+                start_time=start_time,
+                early_stop=args.supervised_early_stop,
+                save_every=args.save_every,
+                scratch_dir=scratch_dir,
+                snapshot_dir=snapshot_dir,
+                dk=args.dK,
+                time_out=args.timeout,
+                use_fluents=args.use_fluents,
+                use_comps=args.use_comparisons,
+                policy_only=args.policy_network_only,
+                planner_exts=p,
+            )
+
 
         best_rate, elapsed_time, iter_num = sup_trainer.train(
             max_epochs=args.max_opt_epochs

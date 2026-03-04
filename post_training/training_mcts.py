@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 
 from asnets.spawn_context import LocalExploreContext
+from asnets.state_reprs import CanonicalState
 from .monte_carlo_tree_search import MCTS, wrapInMCTSNode, FixedChildMap, MCTSNode
 
 
@@ -15,9 +16,10 @@ class TrainingMCTS(MCTS):
 
     def __init__(self, network, ctx: LocalExploreContext, #problem_service,
                  iterations=10, expansion_k=5,
-                 exploration_weight=1.0, sharpen_pi=1.0, log_visitations=False):
+                 exploration_weight=1.0, sharpen_pi=1.0, use_batched_inference=True, log_visitations=False):
         super().__init__(exploration_weight, network=network)
         # self.problem_service = problem_service
+        self.use_batched_inference = use_batched_inference
         self.ctx=ctx
         self.iterations = iterations
         self.k = expansion_k
@@ -54,7 +56,8 @@ class TrainingMCTS(MCTS):
         mask = self.get_applicable_action_mask(node)
         sorted_indices = sorted(range(len(act_dist)), key=lambda i: act_dist[i], reverse=True)
 
-        keys, values = [], []
+        actions, children_nodes = [], []
+        children_network_repr = []
         selected_actions = []
         for i in sorted_indices:
             if len(selected_actions) >= self.k:
@@ -88,10 +91,19 @@ class TrainingMCTS(MCTS):
                 self.state_to_node[cstate] = wrapped_output_cstate
             else:
                 wrapped_output_cstate = self.state_to_node[cstate]
-            keys.append(action_id)
-            values.append(wrapped_output_cstate)
+            actions.append(action_id)
+            children_nodes.append(wrapped_output_cstate)
+            children_network_repr.append(wrapped_output_cstate.as_network_input)
 
-        node.children = FixedChildMap(keys,values)
+        if self.use_batched_inference and len(children_network_repr) > 0:
+            batch_tensor = tf.stack(children_network_repr)  # or tf.convert_to_tensor
+            pred_pi_batch, pred_v_batch = self.network(batch_tensor, training=False)
+            pred_pi_batch = pred_pi_batch.numpy()
+            pred_v_batch = pred_v_batch.numpy()
+            for i, child in enumerate(children_nodes):
+                child.act_dist = pred_pi_batch[i]
+                child.pred_value = pred_v_batch[i][0]
+        node.children = FixedChildMap(actions,children_nodes)
 
     def _rollout(self, node, horizon=0):
         """Use value head for evaluation instead of random rollout."""
@@ -185,12 +197,11 @@ class TrainingMCTS(MCTS):
     def step_forward(self, action_id):
         """Re-root at chosen child and prune irrelevant branches."""
         parent = self.curr_tree_root
-        # next_node = self.children[parent][action_id]
+        self.current_trajectory.append(parent)
         next_node = parent.children[action_id]
-        # self.prune_children_except(parent, action_id)
+        self.prune_children_except(parent, action_id)
         self.curr_tree_root = next_node
         return self.curr_tree_root.state
-        # return self.curr_tree_root.state_id, hash(self.curr_tree_root)
 
     def get_children_mask(self, act_dim=None, node=None,
                           # cstate_id=None
@@ -267,3 +278,6 @@ class TrainingMCTS(MCTS):
             })
 
         return results
+
+    def get_children_of(self, cstate: CanonicalState) -> list:
+        return [(act, child_node.state) for act, child_node in self.state_to_node[cstate].children.items()]

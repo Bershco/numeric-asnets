@@ -32,7 +32,7 @@ class ParallelMCTSExplorerGrads:
     corrupt_z: Optional[str] = None
 
 
-    def explore(self, weights_np: dict) -> list[WorkerOutput]:
+    def explore(self, weights_np: dict, limit_workers=None) -> list[WorkerOutput]:
         return run_epoch_spawn_grads(
             specs=self.specs,
             weights_np=weights_np,
@@ -47,7 +47,7 @@ class ParallelMCTSExplorerGrads:
             l2_reg_coeff=self.l2_reg_coeff,
             l1_reg_coeff=self.l1_reg_coeff,
             l1_l2_reg_coeff=self.l1_l2_reg_coeff,
-            max_workers=self.max_workers,
+            max_workers=self.max_workers if limit_workers is None else min(limit_workers,self.max_workers),
         )
 
     def num_slots(self):

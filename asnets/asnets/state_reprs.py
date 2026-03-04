@@ -60,7 +60,7 @@ class CanonicalState(object):
                  data_gens: Iterable['ActionDataGenerator'] = None,
                  prev_cstate: Optional[Self] = None,
                  prev_act: Optional[BoundAction] = None,
-                 is_init_cstate: Optional[bool] = None):
+                 is_init_cstate: Optional[bool] = None,):
         # note: props and acts should always use the same order! I don't want
         # to be passing around extra data to store "real" order for
         # propositions and actions all the time :(
