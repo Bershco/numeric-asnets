@@ -98,10 +98,6 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
             mean_loss, acc, mean_kl, n_states = self._train_on_frozen_dataset_one_epoch()
 
             tf_and_log("train-loss", mean_loss)
-            tf_and_log("frozen/accuracy", acc)
-            tf_and_log("frozen/kl", mean_kl)
-            tf_and_log("states", n_states)
-
             tr.set_postfix(net_loss=mean_loss, acc=acc, kl=mean_kl, states=n_states, lr=self.optimiser.lr)
 
             elapsed_time = time() - self.start_time
