@@ -83,6 +83,7 @@ class DataSource(Enum):
 class WorkerCollector:
     # --- core dataset ---
     cstates: List[Any] = field(default_factory=list)
+    children: List[Any] = field(default_factory=list)
     actions: List[Optional[int]] = field(default_factory=list)
     pi_tgt: List[np.ndarray] = field(default_factory=list)
     z_tgt: List[float] = field(default_factory=list)
@@ -95,12 +96,14 @@ class WorkerCollector:
     def add_sample(
         self,
         cstate,
+        children,
         action,
         pi,
         z,
         source: DataSource,
     ):
         self.cstates.append(cstate)
+        self.children.append(children)
         self.actions.append(action)
         self.pi_tgt.append(pi.astype(np.float32))
         self.z_tgt.append(float(z))
@@ -115,7 +118,7 @@ class WorkerCollector:
         return obs_batch, pi_tgt, z_tgt
 
     def get_trajectory_info_as_list(self):
-        return [{'state': self.cstates[i], 'pi': self.pi_tgt[i], 'z': self.z_tgt[i]} for i in range(len(self.sources)) if self.sources[i]==DataSource.TRAJECTORY]
+        return [{'state': self.cstates[i],'children': self.children[i], 'pi': self.pi_tgt[i], 'z': self.z_tgt[i]} for i in range(len(self.sources)) if self.sources[i]==DataSource.TRAJECTORY]
 
 @dataclass
 class WorkerCollectorWithLogging(WorkerCollector):
@@ -316,8 +319,9 @@ def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalE
         sampled_state = trajectory_info[ind]['state']
         sampled_state_v = ctx.get_state_h(sampled_state)
         logits = np.full(ctx.get_act_dim(), -np.inf, dtype=np.float32)
-        for act, child_node in mcts_tree.state_to_node[sampled_state].children.items():
-            logits[act] = -1 * ctx.estimator_value_conversion_lambda * ctx.get_state_h(child_node.state)
+        # for act, child_node in mcts_tree.state_to_node[sampled_state].children.items():
+        for act, child_state in trajectory_info[ind]['children']:
+            logits[act] = -1 * ctx.estimator_value_conversion_lambda * ctx.get_state_h(child_state)
 
         # subtract max for stability (this handles -inf too)
         shifted = logits - np.max(logits)
@@ -325,7 +329,7 @@ def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalE
         exp_vals = np.exp(shifted)
         sampled_state_softmax = exp_vals / np.sum(exp_vals)
 
-        result.append({'state': sampled_state, 'pi': sampled_state_softmax, 'z': sampled_state_v})
+        result.append({'state': sampled_state, 'children': trajectory_info[ind]['children'] ,'pi': sampled_state_softmax, 'z': sampled_state_v})
 
     return result
 
@@ -415,6 +419,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         pi, z = mcts.run_search()  # pi: (act_dim,), z: scalar
         collector.add_sample(
             cstate=cstate,
+            children=mcts.get_children_of(cstate),
             action=a,
             pi=pi,
             z=z,
@@ -461,6 +466,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
                 # item['node'].state is the actual state representation (cstate)
                 collector.add_sample(
                     cstate=item['node'].state,
+                    children=None,
                     action=None,
                     pi=item['pi'],
                     z=item['z'],
@@ -497,6 +503,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         for item in sampled_data:
             collector.add_sample(
                 cstate=item['state'],
+                children=item['children'],
                 action=None,
                 pi=item['pi'],
                 z=item['z'],
