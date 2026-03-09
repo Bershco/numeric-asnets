@@ -202,3 +202,17 @@ plots/
 # relaxed PDDL files
 *_relaxed.pddl
 tmp*
+
+# profiling files
+*.prof
+
+# generated instances
+problem_generator/block-grouping/instances
+problem_generator/counters/instances
+problem_generator/delivery/instances
+problem_generator/drone/instances
+problem_generator/fo-counters/instances
+problem_generator/mprime/instances
+problem_generator/rover/instances
+problem_generator/tpp/instances
+problem_generator/zenotravel/instances
