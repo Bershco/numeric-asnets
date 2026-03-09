@@ -195,17 +195,15 @@ class TrainingMCTS(MCTS):
                 node=self.curr_tree_root
             else:
                 node=self.state_to_node[cstate]
-        # assert node in self.children, "No children, no mask!"
         assert node.children is not None, "No children, no mask!"
         mask = np.zeros(act_dim, dtype=bool)
 
-        # for action in self.children.get(node):
         for action in node.children.keys():
             mask[int(action)] = True
 
         return mask
 
-    def sample_k_sufficient_nodes(self, k, min_visitations=5) -> list:
+    def sample_k_sufficient_nodes(self, k, min_visitations : int = 5, power_law_weight : float = 2.0) -> list:
         # 1. Filter eligible nodes
         eligible = [(node, self.N[node]) for node, count in self.N.items() if count > min_visitations]
 
@@ -214,6 +212,7 @@ class TrainingMCTS(MCTS):
 
         nodes, counts = zip(*eligible)
         counts_array = np.array(counts, dtype=np.float32)
+        counts_array **= power_law_weight
         probs = counts_array / counts_array.sum()
 
         # 2. Sample nodes
