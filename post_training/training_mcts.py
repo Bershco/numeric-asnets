@@ -2,6 +2,7 @@ from time import time
 
 import numpy as np
 import tensorflow as tf
+from typing import Optional, Any
 
 from asnets.spawn_context import LocalExploreContext
 from asnets.state_reprs import CanonicalState
@@ -109,16 +110,6 @@ class TrainingMCTS(MCTS):
         """Use value head for evaluation instead of random rollout."""
         return self.get_value_from_mcts_node(node)
 
-    def _backpropagate(self, path, reward):
-        for node in reversed(path):
-            n = self.N[node] + 1
-            self.N[node] = n
-
-            q_old = node.Q_value
-            node.Q_value = q_old + (reward - q_old) / n
-        if self.debug_time_mcts_iterations:
-            self.end_times.append(time())
-
     def initialise_tree(self, cstate) -> None:
         """Start a new tree for a fresh episode."""
         # cstate_id, cstate_hash = self.problem_service.internal_get_state_identifiers(cstate)
@@ -151,47 +142,38 @@ class TrainingMCTS(MCTS):
                 node.pred_value = float(value_tensor.numpy().squeeze())
         return tf.squeeze(node.act_dist)
 
+    def compute_pi_z_for_node(self, node: MCTSNode, act_dim) -> tuple[np.ndarray, float]:
+        assert node.children is not None
+        pi = np.zeros(act_dim, dtype=np.float32)
+        z_partial = np.zeros(act_dim, dtype=np.float32)
+        for action, child in node.children.items():
+            visits = self.N.get(child, 0)
+            pi[action] = visits
+            z_partial[action] = visits * child.Q_value
+        pi_sum = pi.sum()
+        if pi_sum > 0:
+            pi /= pi_sum
+            z = z_partial.sum() / pi_sum
+        else:
+            mask = self.get_applicable_action_mask(node)
+            valid = np.where(mask)[0]
+            if len(valid) > 0:
+                pi[valid] = 1.0 / len(valid)
+            else:
+                pi[:] = 1.0 / act_dim
+            z = 0.0
+        if self.sharpen_pi_T is not None:
+            pi = self.sharpen_pi(pi)
+        return pi, z
+
     def run_search(self) -> tuple[np.ndarray, float]:
         """Run N simulations on current root and return π."""
         root = self.curr_tree_root
         for _ in range(self.iterations):
             self.mcts_iteration_value_based(root)
 
-        # act_dim = self.problem_service.exposed_get_act_dim()
         act_dim = self.ctx.get_act_dim()
-        pi = np.zeros(act_dim, dtype=np.float32)
-        z_partial = np.zeros(act_dim, dtype=np.float32)
-
-        children = root.children
-        for action, child in children.items():
-            # The following comments say "pretty much" because they're approximate, it's not N(s,a)
-            # but rather N(s_child) - could be child of other states as well
-            pi[action] = self.N.get(child, 0) # N(s,a) (pretty much)
-            z_partial[action] = pi[action] * child.Q_value # N(s,a) * Q(s,a) (again, pretty much)
-
-        if self.log_visitations:
-            max_visits_action = np.argmax(pi)
-            max_visits = int(np.max(pi))
-            sum_visits = int(pi.sum())
-            print(f"[INSIDE_WORKER: run_search] Max visits: action no.{max_visits_action} with {max_visits} visitations. Sum visits: {sum_visits}. Ratio: {max_visits/sum_visits if sum_visits>0 else None}, Random ratio: {1/np.count_nonzero(pi) if np.count_nonzero(pi)>0 else None}")
-
-        # Normalize
-        pi_sum = pi.sum()
-        if pi_sum > 0:
-            pi /= pi_sum
-            z_partial_norm = z_partial/pi_sum
-            z = z_partial_norm.sum()
-        else: # Fallback to uniform distribution if stuff broke
-            mask = self.get_applicable_action_mask(root)
-            valid = np.where(mask)[0]
-            if len(valid) > 0:
-                pi[valid] = 1.0 / len(valid)
-            else:
-                pi[:] = 1.0 / act_dim
-            z = 0
-        if self.sharpen_pi_T is not None:
-            pi = self.sharpen_pi(pi)
-        return pi, z
+        return self.compute_pi_z_for_node(root, act_dim)
 
 
     def step_forward(self, action_id):
@@ -199,7 +181,7 @@ class TrainingMCTS(MCTS):
         parent = self.curr_tree_root
         self.current_trajectory.append(parent)
         next_node = parent.children[action_id]
-        self.prune_children_except(parent, action_id)
+        # self.prune_children_except(parent, action_id)
         self.curr_tree_root = next_node
         return self.curr_tree_root.state
 
@@ -243,33 +225,7 @@ class TrainingMCTS(MCTS):
 
         # 3. Calculate pi and z for each sampled node
         for node in sampled_nodes:
-            pi = np.zeros(act_dim, dtype=np.float32)
-            z_partial = np.zeros(act_dim, dtype=np.float32)
-
-            children = node.children  # Assuming node has a .children dict
-            for action, child in children.items():
-                # Get visit count for the edge (node -> child)
-                # Using self.N.get(child, 0) as per your run_search logic
-                visits = self.N.get(child, 0)
-                pi[action] = visits
-                z_partial[action] = visits * child.Q_value
-
-            pi_sum = pi.sum()
-            if pi_sum > 0:
-                pi /= pi_sum
-                z = (z_partial / pi_sum).sum()
-            else:
-                # Fallback logic
-                mask = self.get_applicable_action_mask(node)
-                valid = np.where(mask)[0]
-                if len(valid) > 0:
-                    pi[valid] = 1.0 / len(valid)
-                else:
-                    pi[:] = 1.0 / act_dim
-                z = 0.0
-
-            if self.sharpen_pi_T is not None:
-                pi = self.sharpen_pi(pi)
+            pi, z = self.compute_pi_z_for_node(node, act_dim)
 
             results.append({
                 'node': node,
@@ -281,3 +237,43 @@ class TrainingMCTS(MCTS):
 
     def get_children_of(self, cstate: CanonicalState) -> list:
         return [(act, child_node.state) for act, child_node in self.state_to_node[cstate].children.items()]
+
+    def count_subtrees_with_goal(self):
+        return sum(1 for node in self.state_to_node.values() if node.known_distance_to_goal)
+
+    def reconstruct_goal_path_if_applicable(self, trajectory_info) -> list[dict[str,Any]]:
+        closest = None
+        for item in trajectory_info:
+            node = self.state_to_node[item['state']]
+            if node.known_distance_to_goal < np.inf:
+                if closest is None or node.known_distance_to_goal < closest.known_distance_to_goal:
+                    closest = node
+        if closest is None:
+            return []
+        return self.reconstruct_goal_path(closest)
+
+    def reconstruct_goal_path(self, start_node: MCTSNode) -> list[dict[str, Any]]:
+        assert start_node.known_distance_to_goal < np.inf
+        path = []
+        node = start_node
+        act_dim = self.ctx.get_act_dim()
+        while node.known_distance_to_goal > 0:
+            best_child = node.best_goal_child
+
+            assert best_child is not None, (
+                "Goal path reconstruction failed: best_goal_child is None\n"
+                f"Node distance: {node.known_distance_to_goal}\n"
+                f"Children distances: "
+                f"{[child.known_distance_to_goal if child is not None else None for child in node.children.values()]}"
+            )
+
+            best_child_pi, best_child_z = self.compute_pi_z_for_node(best_child, act_dim)
+
+            path.append({
+                'state': best_child.state,
+                'children': [grandchild.state for grandchild in best_child.children.values()],
+                'pi': best_child_pi,
+                'z': best_child_z,
+            })
+            node = best_child
+        return path
