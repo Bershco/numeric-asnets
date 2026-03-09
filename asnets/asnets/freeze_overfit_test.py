@@ -193,11 +193,15 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
         obs_batch, pi_tgt, z_tgt = collector.as_batches()
         assert obs_batch.shape[0] > 0, "Frozen dataset ended up empty"
 
+        # obs_batch = obs_batch[0:1]
+        # pi_tgt = pi_tgt[0:1]
+        # z_tgt = z_tgt[0:1]
+
         self._frozen_dataset = {
             "obs": obs_batch.astype(np.float32, copy=False),
             "pi_tgt": pi_tgt.astype(np.float32, copy=False),
             "z_tgt": (z_tgt.astype(np.float32, copy=False) if z_tgt is not None else None),
-            "prob_meta": B.planner_exts.problem_meta,  # <-- REQUIRED
+            "prob_meta": B.planner_exts.problem_meta,
         }
 
         print(
@@ -349,6 +353,9 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
         tf_and_log("freeze/max_pi_tgt", max_pi_tgt)
         tf_and_log("freeze/max_pi_pred", max_pi_pred)
         tf_and_log("freeze/states", int(n))
+        print("weight norm:",
+              float(tf.linalg.global_norm(self.weight_manager.all_weights)))
+        print("grad norm:", float(tf.linalg.global_norm(grads)))
 
         return mean_loss, acc, kl_mean, int(n)
 
@@ -386,90 +393,6 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
         )
 
         self._frozen_bundle = FrozenInstanceBundle(planner_exts, estimator, ctx, net, act_dim)
-
-    def train_on_frozen_dataset(self, frozen_dataset):
-        obs_batch, pi_tgt, z_tgt = frozen_dataset
-        n_states = int(obs_batch.shape[0])
-
-        # convert once
-        obs_tf = tf.convert_to_tensor(obs_batch, dtype=tf.float32)
-        pi_tf = tf.convert_to_tensor(pi_tgt, dtype=tf.float32)
-        z_tf = tf.convert_to_tensor(z_tgt, dtype=tf.float32) if (z_tgt is not None) else None
-
-        vars_ = self.weight_manager.all_weights
-
-        # ---- Diagnostics on "root" = just take first sample as proxy
-        # (If you want true root-only, store root states separately; this is fine for overfit debug.)
-        pi_pred0 = None
-        v_pred0 = None
-        with tf.device("/GPU:0"):  # if trainer holds GPU
-            if self.policy_only:
-                pi_pred0 = self._freeze_net(tf.expand_dims(obs_tf[0], 0), training=False)[0]
-            else:
-                pi_pred0, v_pred0 = self._freeze_net(tf.expand_dims(obs_tf[0], 0), training=False)
-                pi_pred0 = pi_pred0[0]
-
-        pi_t0 = pi_tf[0]
-        eps = 1e-8
-        H_t = float((-tf.reduce_sum(pi_t0 * tf.math.log(tf.clip_by_value(pi_t0, eps, 1.0)))).numpy())
-        H_p = float((-tf.reduce_sum(pi_pred0 * tf.math.log(tf.clip_by_value(pi_pred0, eps, 1.0)))).numpy())
-        KL = float((tf.reduce_sum(pi_t0 * (tf.math.log(tf.clip_by_value(pi_t0, eps, 1.0)) -
-                                           tf.math.log(tf.clip_by_value(pi_pred0, eps, 1.0)))).numpy()))
-
-        spec = self.explorer.specs[0]
-        # ---- Train steps
-        K = int(getattr(spec, "freeze_train_steps", 50))
-        bs = int(getattr(spec, "freeze_batch_size", 32))
-
-        losses = []
-        for step in range(K):
-            # minibatch indices
-            idx = np.random.choice(n_states, size=min(bs, n_states), replace=False)
-            obs_mb = tf.gather(obs_tf, idx, axis=0)
-            pi_mb = tf.gather(pi_tf, idx, axis=0)
-            z_mb = tf.gather(z_tf, idx, axis=0) if z_tf is not None else None
-
-            with tf.GradientTape() as tape:
-                if self.policy_only:
-                    pi_pred = self._freeze_net(obs_mb, training=True)
-                    xent_loss = _policy_xent_loss(pi_pred, pi_mb)
-                    mse_loss = tf.constant(0.0, dtype=xent_loss.dtype)
-                else:
-                    pi_pred, v_pred = self._freeze_net(obs_mb, training=True)
-                    xent_loss = _policy_xent_loss(pi_pred, pi_mb)
-                    mse_loss = tf.cast(self.mse_coeff, xent_loss.dtype) * _value_mse_loss(v_pred, z_mb)
-
-                reg_loss = _reg_terms(vars_, self.explorer.l2_reg_coeff, self.l1_reg_coeff, self.l1_l2_reg_coeff)
-                loss = xent_loss + mse_loss + reg_loss
-
-            grads = tape.gradient(loss, vars_)
-            self.optimiser.apply_gradients(zip(grads, vars_))
-            losses.append(float(loss.numpy()))
-
-        mean_loss = float(np.mean(losses))
-
-        # "succ_rate" has no meaning in frozen mode; return 1.0 to avoid early-stop logic issues,
-        # or compute a proxy metric (accuracy).
-        # Better: compute argmax match on full dataset:
-        with tf.device("/GPU:0"):
-            if self.policy_only:
-                pi_pred_all = self._freeze_net(obs_tf, training=False)
-            else:
-                pi_pred_all, _ = self._freeze_net(obs_tf, training=False)
-
-        arg_tgt = np.argmax(pi_tgt, axis=1)
-        arg_pred = np.argmax(pi_pred_all.numpy(), axis=1)
-        acc = float(np.mean(arg_tgt == arg_pred))
-
-        diag = {
-            "root_target_entropy": H_t,
-            "root_pred_entropy": H_p,
-            "root_kl": KL,
-            "accuracy": acc,
-        }
-
-        return mean_loss, 1.0, n_states, diag
-
 
 class FrozenInstanceBundle:
     def __init__(self, planner_exts, estimator, ctx, net, act_dim):
