@@ -57,12 +57,11 @@ class Node(ABC):
 class MCTSNode(Node):
     delete_counter = 0
     __slots__ = (
-        # "state_id", "_hash",
         "state",
         "cost_until_now", "reward_weight",
         "previous_action",  "children", "parent",
         "goal_state", "terminal_state", "as_network_input",
-        "applicable_action_mask", "act_dist", "pred_value", "Q_value"
+        "applicable_action_mask", "act_dist", "pred_value", "Q_value", "known_distance_to_goal", "best_goal_child"
     )
 
     def __init__(self,
@@ -87,6 +86,8 @@ class MCTSNode(Node):
         self.act_dist = None
         self.pred_value = None
         self.Q_value = 0
+        self.known_distance_to_goal = 0 if is_goal else np.inf
+        self.best_goal_child = None
 
     def simulate_step(self, action_id, problem_service):
         if hasattr(problem_service, "env_simulate_step"):
@@ -326,7 +327,7 @@ class MCTS:
         leaf = path[-1]
         self._expand(leaf)
         reward = self._rollout(leaf, horizon=horizon)
-        self._backpropagate(path, reward)
+        self._backpropagate(path, reward, leaf.goal_state)
         if self.path_until_goal is not None:
             self.path_until_goal = self.reconstructSelectionPath(path) + self.path_until_goal
 
@@ -338,7 +339,7 @@ class MCTS:
         reward = self._evaluate_node(leaf)
         # numbers might be too low or insignificant?? I think it would be okay...
         # theoretically and practically it SHOULD not be lower than 1/10001 which isn't that low.
-        self._backpropagate(path,reward)
+        self._backpropagate(path, reward, leaf.goal_state)
 
     def _select(self, node: "MCTSNode"):
         """Find an unexplored descendent of `node` (returns path including final leaf or frontier child)."""
@@ -371,17 +372,37 @@ class MCTS:
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
         raise NotImplemented
 
-    def _backpropagate(self, path, reward):
-        """Backpropagate the reward through the visited nodes in reverse."""
-        N_local = self.N  # local refs to cut attribute lookups
-        # Q_local = self.Q
+    def _backpropagate(self, path: list[MCTSNode], reward: float, subtree_contains_goal: bool):
+        distance_from_goal = 0 if subtree_contains_goal else None
+        child_toward_goal = None
         for node in reversed(path):
-            n = N_local[node] + 1
-            N_local[node] = n
-            # q = Q_local.get(node, 0.0)
-            q = self.get_value_from_mcts_node(node)
-            # Q_local[node] = q + (reward - q) / n  # running average
-            node.Q_value = q + (reward - q) / n # running average
+            n = self.N[node] + 1
+            self.N[node] = n
+            q_old = node.Q_value
+            node.Q_value = q_old + (reward - q_old) / n
+            if distance_from_goal is not None:
+                old_dist = node.known_distance_to_goal
+                update = False
+                if distance_from_goal < old_dist:
+                    # print(f"[DIST_TO_GOAL] Updating distance to goal due to better distance.")
+                    update = True
+                elif distance_from_goal == old_dist and node.best_goal_child is not None:
+                    # tie-breaking
+                    prev_child = node.best_goal_child
+                    new_child = child_toward_goal
+                    prev_visits = self.N.get(prev_child, 0)
+                    new_visits = self.N.get(new_child, 0)
+                    if new_visits > prev_visits:
+                        # print(f"[DIST_TO_GOAL] Updating distance to goal due to same distance + more visits.")
+                        update = True
+                    elif new_visits == prev_visits and new_child.Q_value > prev_child.Q_value:
+                        # print(f"[DIST_TO_GOAL] Updating distance to goal due to same distance + same visits + better q_value.")
+                        update = True
+                if update:
+                    node.known_distance_to_goal = distance_from_goal
+                    node.best_goal_child = child_toward_goal
+                distance_from_goal += 1
+                child_toward_goal = node
         if self.debug_time_mcts_iterations:
             self.end_times.append(time())
 
@@ -518,9 +539,9 @@ class MCTS:
                 node.pred_value = float(value_tensor.numpy().squeeze())
         return tf.squeeze(node.act_dist)
 
-    def get_value_from_mcts_node(self, node: MCTSNode):
+    def get_value_from_mcts_node(self, node: MCTSNode) -> float:
         if node.goal_state:
-            return 1
+            return 1.0
         if self.policy_only:
             # Heuristic value (received by get_state_h) would be the distance to goal,
             # reward \ value for a node\state would be 'how good it is' - hence the inverse

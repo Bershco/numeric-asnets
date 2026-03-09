@@ -77,7 +77,7 @@ class DataSource(Enum):
     TRAJECTORY = auto()
     TREE_SAMPLE = auto()
     HEURISTIC_BOOTSTRAP = auto()
-    PLANNER_BOOTSTRAP = auto()
+    GOAL_PATH = auto()
 
 @dataclass
 class WorkerCollector:
@@ -307,7 +307,7 @@ def _corrupt_targets(inp, pi_tgt, z_tgt):
 
     return pi_tgt, z_tgt
 
-def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalExploreContext, mcts_tree: TrainingMCTS) -> list:
+def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalExploreContext) -> list:
     result = []
     traj_len = len(trajectory_info)
     if traj_len >= bootstrap_k:
@@ -499,7 +499,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         collector.hit_goal = 1.0 if cstate.is_goal else 0.0
     if inp.spec.heuristic_bootstrapping:
         trajectory_info = collector.get_trajectory_info_as_list()
-        sampled_data = heuristic_bootstrapping(bootstrap_k=5, trajectory_info=trajectory_info, ctx=ctx, mcts_tree=mcts)
+        sampled_data = heuristic_bootstrapping(bootstrap_k=5, trajectory_info=trajectory_info, ctx=ctx)
         for item in sampled_data:
             collector.add_sample(
                 cstate=item['state'],
@@ -509,6 +509,20 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
                 z=item['z'],
                 source=DataSource.HEURISTIC_BOOTSTRAP,
             )
+    if inp.spec.goal_path_reconstruction:
+        trajectory_info = collector.get_trajectory_info_as_list()
+        if not any(item['state'].is_goal for item in trajectory_info):
+
+            target_list = mcts.reconstruct_goal_path_if_applicable(trajectory_info)
+            for item in target_list:
+                collector.add_sample(
+                    cstate=item['state'],
+                    children=item['children'],
+                    action=None,
+                    pi=item['pi'],
+                    z=item['z'],
+                    source=DataSource.GOAL_PATH,
+                )
 
     if len(collector.cstates) == 0:
         zeros = [np.zeros(v.shape, dtype=np.float32) for v in wm_local.all_weights]
@@ -533,7 +547,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
             DataSource.TRAJECTORY,
             DataSource.TREE_SAMPLE,
             DataSource.HEURISTIC_BOOTSTRAP,
-            DataSource.PLANNER_BOOTSTRAP,
+            DataSource.GOAL_PATH,
         ]
         masks = {ds: np.asarray([s == ds for s in src_list], dtype=bool) for ds in all_sources}
 
