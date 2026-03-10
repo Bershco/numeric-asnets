@@ -17,14 +17,16 @@ class TrainingMCTS(MCTS):
 
     def __init__(self, network, ctx: LocalExploreContext,
                  iterations=10, expansion_k=5,
-                 exploration_weight=1.0, sharpen_pi=1.0, use_batched_inference=True, log_visitations=False):
+                 exploration_weight=1.0, sharpen_pi=1.0, one_hot_distance_gamma=0.999, use_batched_inference=True,
+                 log_visitations=False):
         super().__init__(exploration_weight, network=network)
         self.use_batched_inference = use_batched_inference
         self.ctx = ctx
         self.iterations = iterations
         self.k = expansion_k
-        self.sharpen_pi_T=sharpen_pi
-        self.log_visitations=log_visitations
+        self.sharpen_pi_T = sharpen_pi
+        self.one_hot_distance_gamma = one_hot_distance_gamma
+        self.log_visitations = log_visitations
 
     def sharpen_pi(self, pi):
         T = self.sharpen_pi_T
@@ -139,6 +141,27 @@ class TrainingMCTS(MCTS):
             pi = self.sharpen_pi(pi)
         return pi, z
 
+    def compute_pi_z_one_hot(self, node: MCTSNode, act_dim: int) -> tuple[np.ndarray, float]:
+        assert node.children is not None
+        assert node.best_goal_child is not None
+        assert node.known_distance_to_goal < np.inf
+        pi = np.zeros(act_dim, dtype=np.float32)
+        # find the action leading to best_goal_child
+        best_action = None
+        for action, child in node.children.items():
+            if child is node.best_goal_child:
+                best_action = action
+                break
+        assert best_action is not None, "best_goal_child not found among node.children"
+        # one-hot policy target
+        pi[best_action] = 1.0
+        # value target based on distance to goal
+        # subtract 1 because we supervise the action that moves to the child
+        distance = node.known_distance_to_goal - 1
+        z = float(self.one_hot_distance_gamma ** distance)
+
+        return pi, z
+
     def run_search(self) -> tuple[np.ndarray, float]:
         """Run N simulations on current root and return π."""
         root = self.curr_tree_root
@@ -212,23 +235,17 @@ class TrainingMCTS(MCTS):
     def count_subtrees_with_goal(self):
         return sum(1 for node in self.state_to_node.values() if node.known_distance_to_goal)
 
-    def reconstruct_goal_path_if_applicable(self, trajectory_info) -> list[dict[str,Any]]:
-        closest = None
-        for item in trajectory_info:
-            node = self.state_to_node[item['state']]
-            if node.known_distance_to_goal < np.inf:
-                if closest is None or node.known_distance_to_goal < closest.known_distance_to_goal:
-                    closest = node
-        if closest is None:
-            return []
-        return self.reconstruct_goal_path(closest)
-
-    def reconstruct_goal_path(self, start_node: MCTSNode) -> list[dict[str, Any]]:
+    def reconstruct_goal_path(
+            self,
+            start_node: MCTSNode,
+            seen_states: Optional[set[CanonicalState]] = None,
+            one_hot_pi_z: bool = False,
+    ) -> list[dict[str, Any]]:
         assert start_node.known_distance_to_goal < np.inf
         path = []
         node = start_node
         act_dim = self.ctx.get_act_dim()
-        while node.known_distance_to_goal > 0:
+        while node.known_distance_to_goal > 1:
             best_child = node.best_goal_child
             assert best_child is not None, (
                 "Goal path reconstruction failed: best_goal_child is None\n"
@@ -236,9 +253,12 @@ class TrainingMCTS(MCTS):
                 f"Children distances: "
                 f"{[child.known_distance_to_goal if child is not None else None for child in node.children.values()]}"
             )
-
-            best_child_pi, best_child_z = self.compute_pi_z_for_node(best_child, act_dim)
-
+            if seen_states is not None and best_child.state in seen_states:
+                break
+            if one_hot_pi_z:
+                best_child_pi, best_child_z = self.compute_pi_z_one_hot(best_child, act_dim)
+            else:
+                best_child_pi, best_child_z = self.compute_pi_z_for_node(best_child, act_dim)
             path.append({
                 'state': best_child.state,
                 'children': [g.state for g in best_child.children.values()],
@@ -247,3 +267,33 @@ class TrainingMCTS(MCTS):
             })
             node = best_child
         return path
+
+    def reconstruct_goal_path_closest(self, trajectory_info, one_hot_pi_z: bool = False) -> list[dict[str, Any]]:
+        closest: Optional[MCTSNode] = None
+        closest_ind: int = -1
+        for i, item in enumerate(trajectory_info):
+            node = self.state_to_node[item['state']]
+            if node.known_distance_to_goal < np.inf:
+                if closest is None or node.known_distance_to_goal < closest.known_distance_to_goal:
+                    closest = node
+                    closest_ind = i
+        if closest is None:
+            return []
+        print(f"[DEBUG_RECONSTRUCT_GOAL_PATH] The closest node to goal was on step {closest_ind}")
+        return self.reconstruct_goal_path(closest, one_hot_pi_z=one_hot_pi_z)
+
+    def reconstruct_goal_paths_from_trajectory(self, trajectory_info, one_hot_pi_z: bool = False) -> list[dict[str, Any]]:
+        seen_states: set[CanonicalState] = set()
+        all_paths = []
+        for i, item in enumerate(trajectory_info):
+            node = self.state_to_node[item['state']]
+            if node.known_distance_to_goal == np.inf:
+                continue
+            path = self.reconstruct_goal_path(node, seen_states, one_hot_pi_z=one_hot_pi_z)
+            for step in path:
+                state = step['state']
+                if state in seen_states:
+                    continue
+                seen_states.add(state)
+                all_paths.append(step)
+        return all_paths

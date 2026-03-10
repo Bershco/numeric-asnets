@@ -93,4 +93,11 @@ class SpawnExploreSpec:
     sample_k_additional_states: int = 5
     freeze_train_steps: int = 50
     freeze_batch_size: int = 32
-    goal_path_reconstruction: bool = True
+    goal_path_reconstruction: Optional[str] = None
+
+    # action policy attributes
+    action_policy: str = "argmax"
+    action_policy_goal_chase_distance_threshold: int = -1
+    action_policy_epsilon: float = None
+    action_policy_temperature: float = None
+    action_policy_decay_rate: float = None

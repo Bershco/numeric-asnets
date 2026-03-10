@@ -283,7 +283,27 @@ def build_arch_flags(arch_mod, is_train, override_enhsp_config=None, override_ms
         assert isinstance(arch_mod.TRAINING_LIMIT_TURNS, int)
         flags.extend(['--training-limit-turns',
                       str(arch_mod.TRAINING_LIMIT_TURNS)])
-    
+
+    # mcts flags
+    if hasattr(arch_mod, 'ACTION_POLICY'):
+        assert isinstance(arch_mod.ACTION_POLICY, str) and arch_mod.ACTION_POLICY in ( "argmax", "sample", "visit")
+        flags.extend(['--action-policy', arch_mod.ACTION_POLICY])
+    if hasattr(arch_mod, 'ACTION_POLICY_GOAL_CHASE_DISTANCE_THRESHOLD'):
+        assert isinstance(arch_mod.ACTION_POLICY_GOAL_CHASE_DISTANCE_THRESHOLD, int)
+        flags.extend(['--action-policy-goal-chase-distance-threshold', str(arch_mod.ACTION_POLICY_GOAL_CHASE_DISTANCE_THRESHOLD)])
+    if hasattr(arch_mod, 'ACTION_POLICY_EPSILON'):
+        assert isinstance(arch_mod.ACTION_POLICY_EPSILON, float|None)
+        if arch_mod.ACTION_POLICY_EPSILON is not None:
+            flags.extend(['--action-policy-epsilon', str(arch_mod.ACTION_POLICY_EPSILON)])
+    if hasattr(arch_mod, 'ACTION_POLICY_TEMPERATURE'):
+        assert isinstance(arch_mod.ACTION_POLICY_TEMPERATURE, float|None)
+        if arch_mod.ACTION_POLICY_TEMPERATURE is not None:
+            flags.extend(['--action-policy-temperature', str(arch_mod.ACTION_POLICY_TEMPERATURE)])
+    if hasattr(arch_mod, 'ACTION_POLICY_DECAY_RATE'):
+        assert isinstance(arch_mod.ACTION_POLICY_DECAY_RATE, float|None)
+        if arch_mod.ACTION_POLICY_DECAY_RATE is not None:
+            flags.extend(['--action-policy-decay-rate', str(arch_mod.ACTION_POLICY_DECAY_RATE)])
+
 
     # compulsory flags
     flags.extend([
@@ -545,6 +565,12 @@ parser.add_argument(
     action='store_true',
     default=False,
     help='Freeze training on one single exploration to make sure network is learning SOMETHING.'
+)
+parser.add_argument(
+    '--goal-path-reconstruction',
+    choices=('all', 'closest'),
+    default=None,
+    help='Enable goal path reconstruction during training.'
 )
 
 def main():

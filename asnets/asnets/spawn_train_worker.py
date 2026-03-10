@@ -11,6 +11,8 @@ from typing import Any, Optional, List
 
 import numpy as np
 
+from post_training.action_selection_policy import build_action_policy
+
 _T0 = time.time()
 print(f"[WORKER_IMPORT] pid={os.getpid()} module start", flush=True)
 t = time.time()
@@ -385,7 +387,14 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     CanonicalState.network_input_config(use_fluents=inp.spec.use_fluents, use_comparisons=inp.spec.use_comps)
     planner_exts = _build_planner_exts_from_spec(inp.spec, inp.seed)
     estimator = _build_estimator(planner_exts, inp.spec)
-
+    action_policy = build_action_policy(
+        base_policy=inp.spec.action_policy,
+        worker_tag=worker_tag,
+        distance_threshold=np.inf if inp.spec.action_policy_goal_chase_distance_threshold == -1 else inp.spec.action_policy_goal_chase_distance_threshold,
+        epsilon=inp.spec.action_policy_epsilon,
+        temperature=inp.spec.action_policy_temperature,
+        decay_rate=inp.spec.action_policy_decay_rate,
+    )
     act_dim = planner_exts.problem_meta.num_acts
 
     # local weight vars
@@ -506,13 +515,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
                 break
             masked_pi = np.zeros_like(pi)
             masked_pi[valid] = 1.0 / len(valid)
-        else:
-            masked_pi = masked_pi / s
-
-        # a = np.random.choice(np.arange(act_dim), p=masked_pi)
-
-        a = np.argmax(masked_pi)
-
+        a = action_policy.select_action(mcts=mcts, pi=masked_pi)
         cstate = mcts.step_forward(a)
 
     # If ended due to max_len without terminal
@@ -531,20 +534,24 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
                 z=item['z'],
                 source=DataSource.HEURISTIC_BOOTSTRAP,
             )
-    if inp.spec.goal_path_reconstruction:
+    reconstruct_goal_path = inp.spec.goal_path_reconstruction
+    if reconstruct_goal_path:
         trajectory_info = collector.get_trajectory_info_as_list()
-        if not any(item['state'].is_goal for item in trajectory_info):
-
-            target_list = mcts.reconstruct_goal_path_if_applicable(trajectory_info)
-            for item in target_list:
-                collector.add_sample(
-                    cstate=item['state'],
-                    children=item['children'],
-                    action=None,
-                    pi=item['pi'],
-                    z=item['z'],
-                    source=DataSource.GOAL_PATH,
-                )
+        if reconstruct_goal_path == "closest":
+            target_list = mcts.reconstruct_goal_path_closest(trajectory_info)
+        elif reconstruct_goal_path == "all":
+            target_list = mcts.reconstruct_goal_paths_from_trajectory(trajectory_info)
+        else:
+            raise NotImplementedError("Only implemented 'all' and 'closest' reconstruction options")
+        for item in target_list:
+            collector.add_sample(
+                cstate=item['state'],
+                children=item['children'],
+                action=None,
+                pi=item['pi'],
+                z=item['z'],
+                source=DataSource.GOAL_PATH,
+            )
 
     if len(collector) == 0:
         zeros = [np.zeros(v.shape, dtype=np.float32) for v in wm_local.all_weights]

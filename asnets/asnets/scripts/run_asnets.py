@@ -992,6 +992,45 @@ parser.add_argument(
     default=False,
     help='Freeze training on one single exploration to make sure network is learning SOMETHING.'
 )
+parser.add_argument(
+    '--goal-path-reconstruction',
+    choices=('all', 'closest'),
+    default=None,
+    help='Enable goal path reconstruction during training.'
+)
+parser.add_argument(
+    '--action-policy',
+    choices=('argmax', 'sample', 'visit'),
+    default=None,
+    help='Set action policy to use during MCTS action decision.'
+)
+parser.add_argument(
+    '--action-policy-goal-chase-distance-threshold',
+    type=int,
+    default=None,
+    help='Set goal chase distance threshold in MCTS action decision, if goal is closer than the threshold,'
+         ' MCTS decision-making process will exploit consistently.'
+         'default is None - do not goal chase.'
+         '-1 is infinite - i.e. if goal is visible - run for it.'
+)
+parser.add_argument(
+    '--action-policy-epsilon',
+    type=float,
+    default=None,
+    help='Set epsilon greedy mixin for MCTS action policy.'
+)
+parser.add_argument(
+    '--action-policy-temperature',
+    type=float,
+    default=None,
+    help='Set temperature mixin for MCTS action policy.'
+)
+parser.add_argument(
+    '--action-policy-decay-rate',
+    type=float,
+    default=None,
+    help='Set decay rate mixin for MCTS action policy.'
+)
 
 
 def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
@@ -1221,6 +1260,12 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
                 fixed_instance_pddl=args.fixed_instance,
                 mcts_exploration_weight=args.mcts_exploration_weight,
                 sample_k_additional_states=args.sample_k_additional_states,
+                goal_path_reconstruction=args.goal_path_reconstruction,
+                action_policy=args.action_policy,
+                action_policy_goal_chase_distance_threshold=args.action_policy_goal_chase_distance_threshold,
+                action_policy_epsilon=args.action_policy_epsilon,
+                action_policy_temperature=args.action_policy_temperature,
+                action_policy_decay_rate=args.action_policy_decay_rate,
             )
         )
 
