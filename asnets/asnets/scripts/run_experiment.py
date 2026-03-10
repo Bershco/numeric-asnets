@@ -6,7 +6,7 @@ import argparse
 import datetime
 from hashlib import md5
 from importlib import import_module
-from os import path, makedirs, listdir, getcwd,environ
+from os import path, makedirs, listdir, getcwd, environ
 from shutil import copytree
 from subprocess import Popen, PIPE, TimeoutExpired
 import sys
@@ -76,7 +76,7 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
         base = f"runasn-{job}-{task}-{ts}"
         outfile = path.join(logdir, f"{base}.bin")
         cmdline.extend([sys.executable, '-m', 'memray', 'run', '--follow-fork', '-o', outfile,
-                           '-m', 'asnets.scripts.run_asnets'] + flags
+                        '-m', 'asnets.scripts.run_asnets'] + flags
                        + ['--graceful-timeout', str((3 * 60 * 60))])
     else:
         cmdline.extend([sys.executable, '-u', '-m', 'asnets.scripts.run_asnets'] + flags)
@@ -226,11 +226,10 @@ def build_arch_flags(arch_mod, is_train, override_enhsp_config=None, override_ms
         mse = str(override_mse_coeff)
     else:
         if arch_mod.MSE:
-            assert isinstance(arch_mod.MSE, (float,int))
+            assert isinstance(arch_mod.MSE, (float, int))
             mse = str(arch_mod.MSE)
         else:
             mse = '0.0'
-
 
     # optional flags
     if hasattr(arch_mod, 'MAX_OPT_EPOCHS'):
@@ -255,7 +254,7 @@ def build_arch_flags(arch_mod, is_train, override_enhsp_config=None, override_ms
                       arch_mod.FD_TEACHER_HEURISTIC])
     if hasattr(arch_mod, 'ENHSP_CONFIG') or override_enhsp_config:
         flags.extend(['--enhsp-config', override_enhsp_config
-                     if override_enhsp_config else arch_mod.ENHSP_CONFIG])
+        if override_enhsp_config else arch_mod.ENHSP_CONFIG])
     if hasattr(arch_mod, 'LIMIT_TRAIN_OBS_SIZE'):
         assert isinstance(arch_mod.LIMIT_TRAIN_OBS_SIZE, int)
         flags.extend(['--limit-train-obs-size',
@@ -263,7 +262,7 @@ def build_arch_flags(arch_mod, is_train, override_enhsp_config=None, override_ms
     if hasattr(arch_mod, 'EXPLORATION_ALGORITHM'):
         assert isinstance(arch_mod.EXPLORATION_ALGORITHM, str)
         flags.extend(['--exploration-algorithm',
-                        arch_mod.EXPLORATION_ALGORITHM])
+                      arch_mod.EXPLORATION_ALGORITHM])
     if hasattr(arch_mod, 'ROLLOUTS'):
         assert isinstance(arch_mod.ROLLOUTS, int)
         flags.extend(['--rollouts', str(arch_mod.ROLLOUTS)])
@@ -391,8 +390,8 @@ parser.add_argument(
     default=False,
     action='store_true',
     help='run test problems serially (default is to run them in parallel) '
-    'subject to hardware limitations. These hardware limitations might not work'
-    'correctly on all systems.')
+         'subject to hardware limitations. These hardware limitations might not work'
+         'correctly on all systems.')
 parser.add_argument(
     '--restrict-test-probs',
     default=None,
@@ -408,7 +407,7 @@ parser.add_argument(
     default=False,
     action='store_true',
     help='enforce --job-ncpus usage by using taskset/sched_setaffinity to '
-    'pin jobs to unique cores')
+         'pin jobs to unique cores')
 parser.add_argument(
     '--ray-connect',
     default=None,
@@ -418,32 +417,27 @@ parser.add_argument(
     default=None,
     type=int,
     help='restrict Ray pool to use this many CPUs *in total* (only valid if '
-    'spinning up new Ray cluster)')
+         'spinning up new Ray cluster)')
 parser.add_argument(
     '--override-enhsp-config',
     default=None,
     help='override the ENHSP config file with this one (useful for '
-    'changing ENHSP heuristic/search algorithm for different domains')
+         'changing ENHSP heuristic/search algorithm for different domains')
 parser.add_argument(
     'arch_module',
     metavar='arch-module',
     help='import path for Python file with architecture config (e.g. '
-    '"experiments.actprop_1l")')
+         '"experiments.actprop_1l")')
 parser.add_argument(
     'prob_module',
     metavar='prob-module',
     help='import path for Python file with problem config (e.g. '
-    '"experiments.ex_blocksworld")')
+         '"experiments.ex_blocksworld")')
 parser.add_argument(
     '--mcts-iterations',
     type=int,
     default=3,
-    help='Number of nodes to select->expand->rollout->backpropagate.')
-parser.add_argument(
-    '--mcts-rollout-horizon',
-    type=int,
-    default=3,
-    help='How far should the mcts rollout go for.')
+    help='Number of nodes to select->expand->evaluate->backpropagate.')
 parser.add_argument(
     '--random-seed',
     type=int,
@@ -494,28 +488,10 @@ parser.add_argument(
     help='Override architecture mse coefficient.'
 )
 parser.add_argument(
-    '--her-k',
-    type=int,
-    default=0,
-    help='Number of future states to randomly choose as dummy goals'
-)
-parser.add_argument(
     '--training-mcts-iterations',
     type=int,
     default=10,
     help='Number of MCTS iterations done during training'
-)
-parser.add_argument(
-    '--planner-bootstrapping',
-    action='store_true',
-    default=False,
-    help='Enable planner bootstrapping during training.'
-)
-parser.add_argument(
-    '--planner-bootstrapping-her',
-    action='store_true',
-    default=False,
-    help='Enable planner bootstrapping with hindsight experience replay during training.'
 )
 parser.add_argument(
     '--heuristic-bootstrapping',
@@ -524,15 +500,10 @@ parser.add_argument(
     help='Enable heuristic bootstrapping during training.'
 )
 parser.add_argument(
-    '--mcts-her-strategy',
-    action='store_true',
-    help='Enable hindsight experience replay strategy where states are sampled from the training-based mcts tree and trajectories are decalred her goals.'
-)
-parser.add_argument(
     '--worker-logs',
     action='store_true',
     default=False,
-    help='Enable hindsight experience replay strategy where states are sampled from the training-based mcts tree and trajectories are decalred her goals.'
+    help='Enable worker logging.'
 )
 parser.add_argument(
     '--corrupt-pi',
@@ -596,7 +567,7 @@ def main():
         else:
             if args.ray_ncpus is not None:
                 assert args.job_ncpus is None \
-                    or args.job_ncpus <= args.ray_ncpus, \
+                       or args.job_ncpus <= args.ray_ncpus, \
                     "must have --job-ncpus <= --ray-ncpus if both given"
                 ray_kwargs["num_cpus"] = args.ray_ncpus
         print("[DEBUG_RAY] - ray.init() called with:", ray_kwargs)
@@ -612,24 +583,18 @@ def main():
                override_mse_coeff=args.override_mse_coeff,
                serial_test=args.serial_test,
                no_eval=args.no_eval,
-               profiling = args.profiling,
-               memory_profiling = args.memory_profiling,
-               mcts_iterations= args.mcts_iterations,
-               mcts_rollout_horizon= args.mcts_rollout_horizon,
+               profiling=args.profiling,
+               memory_profiling=args.memory_profiling,
+               mcts_iterations=args.mcts_iterations,
                random_seed=args.random_seed,
                mcts_expansion_size=args.mcts_expansion_size,
                train_only=args.no_eval,
-               mcts_value_based=args.mcts_value_based,
                mcts_heuristic=args.mcts_heuristic,
                debug_memory=args.debug_memory,
                mcts_exploration_weight=args.mcts_exploration_weight,
                mcts_smart_expansions=args.mcts_smart_expansions,
                policy_network_only=args.policy_network_only,
-               her_k=args.her_k,
                training_mcts_iterations=args.training_mcts_iterations,
-               planner_bootstrapping=args.planner_bootstrapping,
-               planner_bootstrapping_her=args.planner_bootstrapping_her,
-               mcts_her_strategy=args.mcts_her_strategy,
                heuristic_bootstrapping=args.heuristic_bootstrapping,
                corrupt_pi=args.corrupt_pi,
                corrupt_z=args.corrupt_z,
@@ -657,22 +622,16 @@ def main_inner(*,
                profiling=False,
                memory_profiling=False,
                mcts_iterations=None,
-               mcts_rollout_horizon=None,
                random_seed=None,
                mcts_expansion_size=None,
                train_only=False,
-               mcts_value_based=False,
                mcts_heuristic=None,
                debug_memory=False,
                mcts_exploration_weight=1,
                mcts_smart_expansions=False,
                policy_network_only=False,
-               her_k=0,
                training_mcts_iterations=None,
-               planner_bootstrapping=False,
-               planner_bootstrapping_her=False,
                heuristic_bootstrapping=False,
-               mcts_her_strategy=False,
                corrupt_pi=None,
                corrupt_z=None,
                worker_logs=None,
@@ -718,19 +677,11 @@ root_dir = {prefix_dir}
 timeout = {arch_mod.TIME_LIMIT_SECONDS}
 evaluation = {"off" if no_eval else "on"}
 ========================================================
-        ''',flush=True)
-        if her_k:
-            train_flags.extend(['--her-k', str(her_k)])
+        ''', flush=True)
         if training_mcts_iterations:
             train_flags.extend(['--training-mcts-iterations', str(training_mcts_iterations)])
-        if planner_bootstrapping:
-            train_flags.append('--planner-bootstrapping')
-        if planner_bootstrapping_her:
-            train_flags.append('--planner-bootstrapping')
         if heuristic_bootstrapping:
             train_flags.append('--heuristic-bootstrapping')
-        if mcts_her_strategy:
-            train_flags.append('--mcts-her-strategy')
         if mcts_exploration_weight:
             train_flags.extend(['--mcts-exploration-weight', str(mcts_exploration_weight)])
         if mcts_expansion_size:
@@ -771,7 +722,7 @@ evaluation = {"off" if no_eval else "on"}
         prefix_dir = get_prefix_dir(final_checkpoint)
         print('Resuming from checkpoint "%s"' % final_checkpoint)
         print('Using experiment dir "%s"' % prefix_dir)
-    
+
     if no_eval:
         assert not resume_from, \
             'cannot use --no-eval with --resume-from'
@@ -793,20 +744,16 @@ evaluation = {"off" if no_eval else "on"}
 
     if mcts_iterations is not None:
         main_test_flags.extend(['--mcts-iterations', str(mcts_iterations)])
-    if mcts_rollout_horizon is not None:
-        main_test_flags.extend(['--mcts-rollout-horizon', str(mcts_rollout_horizon)])
     if random_seed is not None:
         main_test_flags.extend(['--seed', str(random_seed)])
     if mcts_expansion_size is not None:
         main_test_flags.extend(['--mcts-expansion-size', str(mcts_expansion_size)])
-    if mcts_value_based:
-        main_test_flags.append('--mcts-value-based')
     if mcts_heuristic is not None:
-        main_test_flags.extend(['--mcts-heuristic',str(mcts_heuristic)])
+        main_test_flags.extend(['--mcts-heuristic', str(mcts_heuristic)])
     if debug_memory:
         main_test_flags.append('--debug-memory')
     if mcts_exploration_weight != 1:
-        main_test_flags.extend(['--mcts-exploration-weight',str(mcts_exploration_weight)])
+        main_test_flags.extend(['--mcts-exploration-weight', str(mcts_exploration_weight)])
     if mcts_smart_expansions:
         main_test_flags.append('--mcts-smart-expansions')
     if policy_network_only:
@@ -815,11 +762,11 @@ evaluation = {"off" if no_eval else "on"}
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:
         print('Starting serial test loop')
-        
+
         for prob_idx, test_prob_flags in prob_flag_list:
             print('Launching test on problem %d' % (prob_idx + 1))
             full_flags = main_test_flags + test_prob_flags
-            
+
             # do not place a memory limit on the serial test
             run_asnets_local(
                 flags=full_flags,
@@ -831,7 +778,7 @@ evaluation = {"off" if no_eval else "on"}
                 # run_asnets.py has its own timeout which it should obey, so
                 # give it some slack
                 timeout=arch_mod.EVAL_TIME_LIMIT_SECONDS + 30,
-                profiling = profiling,
+                profiling=profiling,
             )
     else:
         print('Starting parallel test loop')
@@ -855,7 +802,7 @@ evaluation = {"off" if no_eval else "on"}
         print("Waiting for jobs to finish")
         remaining = list(job_infos)
         while remaining:
-            (ready, ), remaining = ray.wait(remaining, num_returns=1)
+            (ready,), remaining = ray.wait(remaining, num_returns=1)
             prob_idx, test_prob_flags = job_infos[ready]
             print("Finished job %d (flags: %s)" % (prob_idx, test_prob_flags))
 

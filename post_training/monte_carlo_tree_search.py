@@ -14,14 +14,11 @@ import math
 from typing import Any, List, Optional, Iterator, Tuple
 from time import time
 import numpy as np
-import rpyc
 from rpyc import BaseNetref
 from typing_extensions import Self
 import tensorflow as tf
 
 from asnets.state_reprs import CanonicalState
-from asnets.utils.rpyc_utils import to_local
-
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)

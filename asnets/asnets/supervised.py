@@ -322,7 +322,7 @@ class PlannerExtensions(object):
         self.generated_problem_name = get_problem_names([generated_problem_pddl_path])[0]
 
         self.pddl_files += [str(generated_problem_pddl_path)]
-        LOGGER.info(f'Starting to parse mdpsim problem: {self.generated_problem_name}')
+        print(f'Starting to parse mdpsim problem: {self.generated_problem_name}')
         # MDPSim stuff
         self.mdpsim: ModuleType = mdpsim
         # self.mdpsim_problem = parse_problem_args(self.mdpsim, self.pddl_files,
@@ -330,7 +330,7 @@ class PlannerExtensions(object):
         self.mdpsim_problem = parse_problem_args(self.mdpsim, self.pddl_files, self.generated_problem_name)
         self.problem_name: str = self.mdpsim_problem.name.strip()
 
-        LOGGER.info(f'Finished parsing mdpsim problem: {self.problem_name}')
+        print(f'Finished parsing mdpsim problem: {self.problem_name}')
 
         # Maps to PyGroundAction object in MDPSim. Cannot use type hint.
         self.act_ident_to_mdpsim_act: Dict[str, Any] = {

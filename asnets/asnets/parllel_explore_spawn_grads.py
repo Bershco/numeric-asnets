@@ -81,10 +81,7 @@ class SpawnExploreSpec:
     only_one_good_action: bool
     use_teacher_envelope: bool
     max_len: int
-    her_k: int
     training_mcts_iterations: int
-    planner_bootstrapping: bool
-    planner_bootstrapping_her: bool
     heuristic_bootstrapping: bool
     mcts_her_strategy: bool
     mcts_expansion_k: int
@@ -94,8 +91,6 @@ class SpawnExploreSpec:
     fixed_instance_pddl: bool = False
     mcts_exploration_weight: float = 1.0
     sample_k_additional_states: int = 5
-    freeze_explore: bool = False
-    freeze_workers: int = 1
     freeze_train_steps: int = 50
     freeze_batch_size: int = 32
     goal_path_reconstruction: bool = True

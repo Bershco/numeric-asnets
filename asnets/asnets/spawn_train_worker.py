@@ -15,11 +15,18 @@ _T0 = time.time()
 print(f"[WORKER_IMPORT] pid={os.getpid()} module start", flush=True)
 t = time.time()
 import tensorflow as tf
-print(f"[WORKER_IMPORT] pid={os.getpid()} import tensorflow: {time.time()-t:.2f}s (since module start {time.time()-_T0:.2f}s)", flush=True)
+
+print(
+    f"[WORKER_IMPORT] pid={os.getpid()} import tensorflow: {time.time() - t:.2f}s (since module start {time.time() - _T0:.2f}s)",
+    flush=True)
 import logging
+
 t = time.time()
 from asnets.models import PropNetworkWeights, PropNetwork
-print(f"[WORKER_IMPORT] pid={os.getpid()} import asnets models: {time.time()-t:.2f}s (since module start {time.time()-_T0:.2f}s)", flush=True)
+
+print(
+    f"[WORKER_IMPORT] pid={os.getpid()} import asnets models: {time.time() - t:.2f}s (since module start {time.time() - _T0:.2f}s)",
+    flush=True)
 from asnets.spawn_context import LocalExploreContext
 from asnets.state_reprs import CanonicalState
 from asnets.supervised import PlannerExtensions
@@ -30,8 +37,8 @@ from post_training.training_mcts import TrainingMCTS
 
 from enum import Enum, auto
 
-
 LOGGER = logging.getLogger(__name__)
+
 
 # -----------------------------
 # Data structures
@@ -39,8 +46,8 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class WorkerInput:
-    spec: Any                      # SpawnExploreSpec
-    weights_np: dict               # PropNetworkWeights.export_numpy() result
+    spec: Any  # SpawnExploreSpec
+    weights_np: dict  # PropNetworkWeights.export_numpy() result
     seed: Optional[int]
     dropout: float
     debug: bool
@@ -59,8 +66,8 @@ class WorkerInput:
     PROFILE_DIR: Optional[str] = None
 
     # run corruption settings for corruption testing
-    corrupt_pi: Optional[str] = None   # "shuffle" | "random" | "zero" | None
-    corrupt_z: Optional[str] = None    # "shuffle" | "random" | "zero" | None
+    corrupt_pi: Optional[str] = None  # "shuffle" | "random" | "zero" | None
+    corrupt_z: Optional[str] = None  # "shuffle" | "random" | "zero" | None
 
 
 @dataclass
@@ -73,11 +80,13 @@ class WorkerOutput:
     root_pred_entropy: Optional[np.float64] = None
     root_kl: Optional[np.float64] = None
 
+
 class DataSource(Enum):
     TRAJECTORY = auto()
     TREE_SAMPLE = auto()
     HEURISTIC_BOOTSTRAP = auto()
     GOAL_PATH = auto()
+
 
 @dataclass
 class WorkerCollector:
@@ -94,13 +103,13 @@ class WorkerCollector:
     # --------- data accumulation ---------
 
     def add_sample(
-        self,
-        cstate,
-        children,
-        action,
-        pi,
-        z,
-        source: DataSource,
+            self,
+            cstate,
+            children,
+            action,
+            pi,
+            z,
+            source: DataSource,
     ):
         self.cstates.append(cstate)
         self.children.append(children)
@@ -118,11 +127,15 @@ class WorkerCollector:
         return obs_batch, pi_tgt, z_tgt
 
     def get_trajectory_info_as_list(self):
-        return [{'state': self.cstates[i],'children': self.children[i], 'pi': self.pi_tgt[i], 'z': self.z_tgt[i]} for i in range(len(self.sources)) if self.sources[i]==DataSource.TRAJECTORY]
+        return [{'state': self.cstates[i], 'children': self.children[i], 'pi': self.pi_tgt[i], 'z': self.z_tgt[i]} for i
+                in range(len(self.sources)) if self.sources[i] == DataSource.TRAJECTORY]
+
+    def __len__(self):
+        return len(self.cstates)
+
 
 @dataclass
 class WorkerCollectorWithLogging(WorkerCollector):
-
     # --- root diagnostics ---
     root_target_entropies: List[float] = field(default_factory=list)
     root_pred_entropies: List[float] = field(default_factory=list)
@@ -171,6 +184,7 @@ class WorkerCollectorWithLogging(WorkerCollector):
             "mse_loss": np.mean(self.mse_losses) if self.mse_losses else None,
             "reg_loss": np.mean(self.reg_losses) if self.reg_losses else None,
         }
+
 
 # -----------------------------
 # Hook functions you must connect
@@ -266,9 +280,9 @@ def _reg_terms(vars_, l2, l1, l1_l2):
     if l1:
         reg += tf.add_n([tf.reduce_sum(tf.abs(v)) for v in vars_]) * tf.cast(l1, reg.dtype)
     if l1_l2:
-        reg += tf.add_n([tf.reduce_sum(tf.abs(v)) + tf.reduce_sum(tf.square(v)) for v in vars_]) * tf.cast(l1_l2, reg.dtype)
+        reg += tf.add_n([tf.reduce_sum(tf.abs(v)) + tf.reduce_sum(tf.square(v)) for v in vars_]) * tf.cast(l1_l2,
+                                                                                                           reg.dtype)
     return reg
-
 
 
 def _corrupt_targets(inp, pi_tgt, z_tgt):
@@ -307,6 +321,7 @@ def _corrupt_targets(inp, pi_tgt, z_tgt):
 
     return pi_tgt, z_tgt
 
+
 def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalExploreContext) -> list:
     result = []
     traj_len = len(trajectory_info)
@@ -329,9 +344,12 @@ def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalE
         exp_vals = np.exp(shifted)
         sampled_state_softmax = exp_vals / np.sum(exp_vals)
 
-        result.append({'state': sampled_state, 'children': trajectory_info[ind]['children'] ,'pi': sampled_state_softmax, 'z': sampled_state_v})
+        result.append(
+            {'state': sampled_state, 'children': trajectory_info[ind]['children'], 'pi': sampled_state_softmax,
+             'z': sampled_state_v})
 
     return result
+
 
 def _dbg_tf_threads(tag=""):
     # TF-configured thread pools (may be 0/None meaning “default” depending on TF build)
@@ -350,6 +368,7 @@ def _dbg_tf_threads(tag=""):
         f"env(TF_INTRA={tfi}, TF_INTER={tfe}, OMP={omp}, MKL={mkl})",
         flush=True
     )
+
 
 # -----------------------------
 # Worker main
@@ -373,7 +392,8 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     wm_local = _rebuild_weight_manager_local(planner_exts.problem_meta, inp.weights_np)
     if inp.log:
         w = wm_local.all_weights[0]
-        print(f"{worker_tag} after rebuild:", float(tf.reduce_mean(w)), float(tf.math.reduce_std(w)), float(tf.linalg.norm(w)))
+        print(f"{worker_tag} after rebuild:", float(tf.reduce_mean(w)), float(tf.math.reduce_std(w)),
+              float(tf.linalg.norm(w)))
     # local network for THIS instance
     net = _build_network_local(wm_local, planner_exts.problem_meta, inp.dropout, inp.debug, inp.policy_only)
 
@@ -477,8 +497,10 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         mask = mcts.get_children_mask(act_dim=act_dim)
         masked_pi = pi * mask
         s = masked_pi.sum()
-        if s <= 0:
-            # fallback uniform over valid
+        if s > 0:
+            masked_pi = masked_pi / s
+        else:
+            # fallback uniform over valid actions
             valid = np.where(mask)[0]
             if len(valid) == 0:
                 break
@@ -494,7 +516,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         cstate = mcts.step_forward(a)
 
     # If ended due to max_len without terminal
-    #TODO: make sure I don't miss successes if goal reached after max_len moves
+    # TODO: make sure I don't miss successes if goal reached after max_len moves
     if not cstate.is_terminal:
         collector.hit_goal = 1.0 if cstate.is_goal else 0.0
     if inp.spec.heuristic_bootstrapping:
@@ -524,7 +546,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
                     source=DataSource.GOAL_PATH,
                 )
 
-    if len(collector.cstates) == 0:
+    if len(collector) == 0:
         zeros = [np.zeros(v.shape, dtype=np.float32) for v in wm_local.all_weights]
         return WorkerOutput(
             hit_goal_mean=collector.hit_goal,
@@ -660,7 +682,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     # --- compute grads locally ---
     vars_ = wm_local.all_weights
 
-    K_train_steps = 10 #TODO: later put this inside the WorkerInput so it can be changed throughout the run if needed, like LR steps
+    K_train_steps = 10  # TODO: later put this inside the WorkerInput so it can be changed throughout the run if needed, like LR steps
 
     accum_grads = [np.zeros(v.shape, dtype=np.float32) for v in vars_]
 
@@ -681,7 +703,8 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
             else:
                 pi_pred, v_pred = net(obs_mb, training=True)
                 xent_loss = _policy_xent_loss(pi_pred, tf.convert_to_tensor(pi_mb, dtype=pi_pred.dtype))
-                mse_loss = tf.cast(inp.mse_coeff, xent_loss.dtype) * _value_mse_loss(v_pred, tf.convert_to_tensor(z_mb, dtype=v_pred.dtype))
+                mse_loss = tf.cast(inp.mse_coeff, xent_loss.dtype) * _value_mse_loss(v_pred, tf.convert_to_tensor(z_mb,
+                                                                                                                  dtype=v_pred.dtype))
 
             reg_loss = _reg_terms(vars_, inp.l2_reg_coeff, inp.l1_reg_coeff, inp.l1_l2_reg_coeff)
             loss = xent_loss + mse_loss + reg_loss
@@ -725,6 +748,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         root_kl=root_summary.get("root_kl"),
     )
 
+
 def run_worker_opt_profile(inp: WorkerInput) -> WorkerOutput:
     # Make sure this directory exists (spawn safe)
     prof = None
@@ -755,4 +779,4 @@ def run_worker_opt_profile(inp: WorkerInput) -> WorkerOutput:
                 ps.print_stats(30)
 
         # Optional: coarse phase timings even without pstats
-        print(f"[WORKER TIMING] pid={os.getpid()} total={time.time()-t0:.2f}s", flush=True)
+        print(f"[WORKER TIMING] pid={os.getpid()} total={time.time() - t0:.2f}s", flush=True)

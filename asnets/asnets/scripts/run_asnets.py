@@ -90,7 +90,7 @@ from post_training.monte_carlo_tree_search import MCTSNode, wrapInMCTSNode, MCTS
 class MonteCarloPolicyEvaluator(MCTS):
 
     def __init__(self, network, problem_service, horizon = 0, exploration_weight = 1, iterations = 10,
-                 use_value_based = False, num_cstates_to_generate_per_expansion = 5, batch_expansion_call = True,
+                 num_cstates_to_generate_per_expansion = 5, batch_expansion_call = True,
                  progressive_widening = False, problem_server = None,
                  debug_memory = False, debug_time_mcts_iterations = False,
                  debug_comparison_exploration_exploitation = False,):
@@ -106,7 +106,6 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.debug_orig_root = None
         self.visited_cstates_hashes: Set[int] = set()
         self.revisit_counter = 0
-        self.use_value_based=use_value_based
         self.debug_memory = debug_memory
         self.progressive_widening = progressive_widening
         self.batch_expansion_call=batch_expansion_call
@@ -433,7 +432,7 @@ def move_to_next_state(problem_service, policy_evaluator, action, cost, current_
 
 
 def run_trials(network, problem_server, trials, iterations, horizon=None, limit=1000, det_sample=False,
-               single_trial_graceful_timeout_sec=300, num_cstates_to_expand=5, use_value_based=False,
+               single_trial_graceful_timeout_sec=300, num_cstates_to_expand=5,
                debug_memory=False, mcts_exploration_weight=1, mcts_smart_expansions=False):
     # policy_evaluator = CachingPolicyEvaluator(policy=network, det_sample=det_sample)
     k = min(iterations - 1, num_cstates_to_expand)
@@ -441,7 +440,7 @@ def run_trials(network, problem_server, trials, iterations, horizon=None, limit=
                                                  problem_server=problem_server,
                                                  iterations=iterations, horizon=horizon,
                                                  num_cstates_to_generate_per_expansion=k,
-                                                 use_value_based=use_value_based, debug_memory=debug_memory,
+                                                 debug_memory=debug_memory,
                                                  exploration_weight=mcts_exploration_weight,
                                                  progressive_widening=mcts_smart_expansions,
                                                  )
@@ -889,11 +888,6 @@ parser.add_argument(
     default=False,
     help='Disable evaluation after training.')
 parser.add_argument(
-    '--mcts-value-based',
-    action='store_true',
-    default=False,
-    help='Use value-based mcts instead of rollout-based mcts.')
-parser.add_argument(
     '--mcts-heuristic',
     choices=list(ENHSP_CONFIGS.keys()),
     default='hadd-gbfs',
@@ -922,28 +916,10 @@ parser.add_argument(
     help='Revert to policy network only instead of the new dual-head network (for ablation study)'
 )
 parser.add_argument(
-    '--her-k',
-    type=int,
-    default=0,
-    help='Number of future states to randomly choose as dummy goals'
-)
-parser.add_argument(
     '--training-mcts-iterations',
     type=int,
     default=10,
     help='Number of MCTS iterations done during training'
-)
-parser.add_argument(
-    '--planner-bootstrapping',
-    action='store_true',
-    default=False,
-    help='Enable planner bootstrapping during training.'
-)
-parser.add_argument(
-    '--planner-bootstrapping-her',
-    action='store_true',
-    default=False,
-    help='Enable planner bootstrapping with hindsight experience replay during training.'
 )
 parser.add_argument(
     '--heuristic-bootstrapping',
@@ -973,7 +949,7 @@ parser.add_argument(
     '--worker-logs',
     action='store_true',
     default=False,
-    help='Enable hindsight experience replay strategy where states are sampled from the training-based mcts tree and trajectories are decalred her goals.'
+    help='Enable worker logging.'
 )
 parser.add_argument(
     '--corrupt-pi',
@@ -1032,7 +1008,6 @@ def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
         horizon=args.mcts_rollout_horizon,
         single_trial_graceful_timeout_sec=args.graceful_timeout,
         num_cstates_to_expand=args.mcts_expansion_size,
-        use_value_based=args.mcts_value_based,
         debug_memory=args.debug_memory,
         mcts_exploration_weight=args.mcts_exploration_weight,
         mcts_smart_expansions=args.mcts_smart_expansions,
@@ -1133,10 +1108,7 @@ def make_services(args):
             only_one_good_action=only_one_good_action,
             use_teacher_envelope=args.use_teacher_envelope,
             max_len=args.training_limit_turns,
-            her_k=args.her_k,
             training_mcts_iterations=args.training_mcts_iterations,
-            planner_bootstrapping=args.planner_bootstrapping,
-            planner_bootstrapping_her=args.planner_bootstrapping_her,
             heuristic_bootstrapping=args.heuristic_bootstrapping,
             mcts_her_strategy=args.mcts_her_strategy,
             mcts_expansion_k=args.mcts_expansion_size,
@@ -1239,10 +1211,7 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
                 only_one_good_action=only_one_good_action,
                 use_teacher_envelope=args.use_teacher_envelope,
                 max_len=args.training_limit_turns,
-                her_k=args.her_k,
                 training_mcts_iterations=args.training_mcts_iterations,
-                planner_bootstrapping=args.planner_bootstrapping,
-                planner_bootstrapping_her=args.planner_bootstrapping_her,
                 heuristic_bootstrapping=args.heuristic_bootstrapping,
                 mcts_her_strategy=args.mcts_her_strategy,
                 mcts_expansion_k=args.mcts_expansion_size,

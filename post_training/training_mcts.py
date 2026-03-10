@@ -15,13 +15,12 @@ class TrainingMCTS(MCTS):
     Used inside rpyc.Service rather than controlling it.
     """
 
-    def __init__(self, network, ctx: LocalExploreContext, #problem_service,
+    def __init__(self, network, ctx: LocalExploreContext,
                  iterations=10, expansion_k=5,
                  exploration_weight=1.0, sharpen_pi=1.0, use_batched_inference=True, log_visitations=False):
         super().__init__(exploration_weight, network=network)
-        # self.problem_service = problem_service
         self.use_batched_inference = use_batched_inference
-        self.ctx=ctx
+        self.ctx = ctx
         self.iterations = iterations
         self.k = expansion_k
         self.sharpen_pi_T=sharpen_pi
@@ -35,7 +34,7 @@ class TrainingMCTS(MCTS):
 
         eps = 1e-8
         pi = np.clip(pi, eps, 1.0)
-        pi_pow = np.power(pi, 1.0 / (T+eps))
+        pi_pow = np.power(pi, 1.0 / (T + eps))
         pi_pow_sum = pi_pow.sum()
         if pi_pow_sum <= 0:
             # fallback safeguard, also works when T = 0
@@ -67,25 +66,12 @@ class TrainingMCTS(MCTS):
                 continue
             selected_actions.append(i)
 
-        # results = self.problem_service.exposed_env_simulate_batch_steps(node.state_id, hash(node), selected_actions)
-        # results = self.ctx.env_simulate_batch_steps(node.state_id, hash(node), selected_actions)
         results = self.ctx.env_simulate_batch_steps(node.state, selected_actions)
         for (action_id,
-             # cstate_after_action_i_id, cstate_after_action_i_hash,
              cstate,
              step_cost, is_goal, is_terminal,
              network_ready_repr, applicable_action_mask
              ) in results:
-            # wrapped_output_cstate = wrapInMCTSNode(
-            #     cstate_id=cstate_after_action_i_id,
-            #     cost_until_now=node.cost_until_now + step_cost,
-            #     previous_action=action_id,
-            #     is_goal=is_goal,
-            #     is_terminal=is_terminal,
-            #     as_network_input=network_ready_repr, applicable_action_mask=applicable_action_mask,
-            #     hashed_state=cstate_after_action_i_hash,
-            #     parent=node,
-            # )
             if cstate not in self.state_to_node.keys():
                 wrapped_output_cstate = wrapInMCTSNode(state=cstate, cost_until_now=node.cost_until_now + step_cost,
                                                        previous_action=action_id, parent=node)
@@ -104,7 +90,7 @@ class TrainingMCTS(MCTS):
             for i, child in enumerate(children_nodes):
                 child.act_dist = pred_pi_batch[i]
                 child.pred_value = pred_v_batch[i][0]
-        node.children = FixedChildMap(actions,children_nodes)
+        node.children = FixedChildMap(actions, children_nodes)
 
     def _rollout(self, node, horizon=0):
         """Use value head for evaluation instead of random rollout."""
@@ -112,19 +98,6 @@ class TrainingMCTS(MCTS):
 
     def initialise_tree(self, cstate) -> None:
         """Start a new tree for a fresh episode."""
-        # cstate_id, cstate_hash = self.problem_service.internal_get_state_identifiers(cstate)
-        # cstate_id, cstate_hash = self.ctx.get_state_identifiers(cstate)
-        # self.curr_tree_root = wrapInMCTSNode(cstate_id=cstate_id,
-        #                                      previous_action=None,
-        #                                      cost_until_now=0,
-        #                                      is_goal=cstate.is_goal,
-        #                                      is_terminal=cstate.is_terminal,
-        #                                      # These next method calls are possible because TrainingMCTS is inside the service
-        #                                      # as_network_input=self.problem_service.internal_to_network_input(cstate),
-        #                                      # applicable_action_mask=self.problem_service.internal_get_applicable_action_mask(cstate),
-        #                                      as_network_input=self.ctx.to_network_input(cstate_id, cstate_hash),
-        #                                      applicable_action_mask=self.ctx.get_applicable_action_mask(cstate_id, cstate_hash),
-        #                                      hashed_state = cstate_hash)
         self.curr_tree_root = wrapInMCTSNode(state=cstate, previous_action=None, cost_until_now=0)
         self.state_to_node[self.curr_tree_root.state] = self.curr_tree_root
         self.N.clear()
@@ -175,7 +148,6 @@ class TrainingMCTS(MCTS):
         act_dim = self.ctx.get_act_dim()
         return self.compute_pi_z_for_node(root, act_dim)
 
-
     def step_forward(self, action_id):
         """Re-root at chosen child and prune irrelevant branches."""
         parent = self.curr_tree_root
@@ -192,9 +164,9 @@ class TrainingMCTS(MCTS):
         assert act_dim is not None, "Can't get a mask without a size!"
         if node is None:
             if cstate is None:
-                node=self.curr_tree_root
+                node = self.curr_tree_root
             else:
-                node=self.state_to_node[cstate]
+                node = self.state_to_node[cstate]
         assert node.children is not None, "No children, no mask!"
         mask = np.zeros(act_dim, dtype=bool)
 
@@ -203,7 +175,7 @@ class TrainingMCTS(MCTS):
 
         return mask
 
-    def sample_k_sufficient_nodes(self, k, min_visitations : int = 5, power_law_weight : float = 2.0) -> list:
+    def sample_k_sufficient_nodes(self, k, min_visitations: int = 5, power_law_weight: float = 2.0) -> list:
         # 1. Filter eligible nodes
         eligible = [(node, self.N[node]) for node, count in self.N.items() if count > min_visitations]
 
@@ -258,7 +230,6 @@ class TrainingMCTS(MCTS):
         act_dim = self.ctx.get_act_dim()
         while node.known_distance_to_goal > 0:
             best_child = node.best_goal_child
-
             assert best_child is not None, (
                 "Goal path reconstruction failed: best_goal_child is None\n"
                 f"Node distance: {node.known_distance_to_goal}\n"
@@ -270,7 +241,7 @@ class TrainingMCTS(MCTS):
 
             path.append({
                 'state': best_child.state,
-                'children': [grandchild.state for grandchild in best_child.children.values()],
+                'children': [g.state for g in best_child.children.values()],
                 'pi': best_child_pi,
                 'z': best_child_z,
             })
