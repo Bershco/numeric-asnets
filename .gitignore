@@ -216,3 +216,8 @@ problem_generator/mprime/instances
 problem_generator/rover/instances
 problem_generator/tpp/instances
 problem_generator/zenotravel/instances
+
+
+# socket information
+asnets/asnet-sockets
+asnets/asnets/scripts/asnet-sockets
