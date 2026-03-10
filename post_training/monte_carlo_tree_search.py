@@ -23,6 +23,7 @@ from asnets.state_reprs import CanonicalState
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
+
 class Node(ABC):
     """
     A representation of a single board state.
@@ -51,12 +52,13 @@ class Node(ABC):
         """Nodes must be comparable"""
         return True
 
+
 class MCTSNode(Node):
     delete_counter = 0
     __slots__ = (
         "state",
         "cost_until_now", "reward_weight",
-        "previous_action",  "children", "parent",
+        "previous_action", "children", "parent",
         "goal_state", "terminal_state", "as_network_input",
         "applicable_action_mask", "act_dist", "pred_value", "Q_value", "known_distance_to_goal", "best_goal_child"
     )
@@ -64,10 +66,10 @@ class MCTSNode(Node):
     def __init__(self,
                  # state_id,
                  state,
-                 cost_until_now, previous_action, reward_weight = 1000,
-        is_goal = False, is_terminal = False, as_network_input = None, applicable_action_mask = None,
+                 cost_until_now, previous_action, reward_weight=1000,
+                 is_goal=False, is_terminal=False, as_network_input=None, applicable_action_mask=None,
                  # hashed_state = -1,
-                 parent = None):
+                 parent=None):
         # self.state_id = state_id
         # self._hash = hashed_state
         self.state = state
@@ -121,18 +123,19 @@ class MCTSNode(Node):
         """
         return hash(self) == hash(node2) and self.state == node2.state
 
-    def get_identifiers(self) -> tuple[int,int]:
+    def get_identifiers(self) -> tuple[int, int]:
         # return self.state_id, self._hash
         raise NotImplementedError("Changed to using states in nodes instead of identifiers")
 
     def env_state_key(self) -> bytes:
         return self.state.env_state_key()
 
+
 class FixedChildMap:
     def __init__(self, keys: List[int], values: List[Any]):
         assert len(keys) == len(values), "Keys and values must match in length"
         sorted_pairs = sorted(zip(keys, values))
-        self._keys = array('H', (k for k, _ in sorted_pairs))   # unsigned short
+        self._keys = array('H', (k for k, _ in sorted_pairs))  # unsigned short
         self._values = [v for _, v in sorted_pairs]
 
     def get(self, key: int, default: Optional[Any] = None) -> Optional[Any]:
@@ -171,6 +174,7 @@ class FixedChildMap:
 
     def is_empty(self) -> bool:
         return len(self._keys) == 0
+
 
 class SelectProbe:
     """Lightweight, backward-compatible probe.
@@ -213,7 +217,7 @@ class SelectProbe:
     def log(self, q_list, u_list, chosen_idx):
         scores = [q + u for q, u in zip(q_list, u_list)]
         idx_score = int(np.argmax(scores))
-        idx_q     = int(np.argmax(q_list))
+        idx_q = int(np.argmax(q_list))
         Qc, Uc = q_list[chosen_idx], u_list[chosen_idx]
         share = Uc / (abs(Qc) + abs(Uc) + self.EPS)
         self.events += 1
@@ -263,10 +267,12 @@ class SelectProbe:
         else:
             avg_share = self.exploration_share_sum / max(1, self.events)
             flip_pct = 100.0 * self.flip / max(1, self.events)
-            self.logger.debug(f"events={self.events}  avg_U_share_on_chosen={avg_share:.3f}  pct_argmax_flipped_by_U={flip_pct:.1f}%")
+            self.logger.debug(
+                f"events={self.events}  avg_U_share_on_chosen={avg_share:.3f}  pct_argmax_flipped_by_U={flip_pct:.1f}%")
 
         self.logger.debug("=== Selection counters ===")
-        self.logger.debug(f"forced_first_visit={self.sel_forced_unvisited}  softmax={self.sel_softmax}  cycles_present={self.sel_cycle_present}")
+        self.logger.debug(
+            f"forced_first_visit={self.sel_forced_unvisited}  softmax={self.sel_softmax}  cycles_present={self.sel_cycle_present}")
         if self.sel_softmax > 0:
             avg_ent = self.sel_prior_entropy_sum / max(1, self.sel_softmax)
             self.logger.debug(f"avg_prior_entropy(softmax)={avg_ent:.3f}")
@@ -279,28 +285,32 @@ class SelectProbe:
 
         self.logger.debug("=== Expand/Eval/Backprop ===")
         if self.expand_calls > 0:
-            self.logger.debug(f"expand_calls={self.expand_calls}  avg_children_created={self.expand_children_sum/self.expand_calls:.2f}  "
-                  f"avg_act_dim≈{self.expand_actdim_sum/self.expand_calls:.1f}")
+            self.logger.debug(
+                f"expand_calls={self.expand_calls}  avg_children_created={self.expand_children_sum / self.expand_calls:.2f}  "
+                f"avg_act_dim≈{self.expand_actdim_sum / self.expand_calls:.1f}")
         if self.eval_calls > 0:
-            self.logger.debug(f"eval_calls={self.eval_calls}  cold_starts={self.eval_cold}  avg_eval_ms={self.eval_ms_sum/self.eval_calls:.2f}")
+            self.logger.debug(
+                f"eval_calls={self.eval_calls}  cold_starts={self.eval_cold}  avg_eval_ms={self.eval_ms_sum / self.eval_calls:.2f}")
         if self.backprop_calls > 0:
-            self.logger.debug(f"backprop_calls={self.backprop_calls}  avg_path_len={self.backprop_pathlen_sum/self.backprop_calls:.2f}")
+            self.logger.debug(
+                f"backprop_calls={self.backprop_calls}  avg_path_len={self.backprop_pathlen_sum / self.backprop_calls:.2f}")
+
 
 class MCTS:
     """Monte Carlo tree searcher. First rollout the tree then choose a move."""
 
     def __init__(self, exploration_weight=1,
-                 network = None,
-                 problem_service = None,
-                 debug_memory = False,
-                 debug_time_mcts_iterations = False,
-                 debug_comparison_exploration_exploitation = False):
+                 network=None,
+                 problem_service=None,
+                 debug_memory=False,
+                 debug_time_mcts_iterations=False,
+                 debug_comparison_exploration_exploitation=False):
         self.curr_tree_root: Optional[MCTSNode] = None
         self.N = defaultdict(int)  # total visit count for each node
         self.Nsa = defaultdict(int)
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
-        self.state_to_node: dict[CanonicalState,MCTSNode] = {}
+        self.state_to_node: dict[CanonicalState, MCTSNode] = {}
         self.problem_service = problem_service
         self.network = network
         self.policy_only = self.network.policy_only()
@@ -542,7 +552,7 @@ class MCTS:
         if self.policy_only:
             # Heuristic value (received by get_state_h) would be the distance to goal,
             # reward \ value for a node\state would be 'how good it is' - hence the inverse
-            return 1 / (1 + self.problem_service.get_state_h(node.state_id,hash(node)))
+            return 1 / (1 + self.problem_service.get_state_h(node.state_id, hash(node)))
         else:
             if node.pred_value is None:
                 if node.as_network_input is None:
@@ -592,21 +602,16 @@ class MCTS:
         assert keep_child is not None
         # Replace children dict with just the one we kept
         # self.children[parent_node] = FixedChildMap([keep_action], [keep_child])
-        parent_node.children = FixedChildMap([keep_action],[keep_child])
+        parent_node.children = FixedChildMap([keep_action], [keep_child])
 
     def get_applicable_action_mask(self, node: MCTSNode):
         if node.applicable_action_mask is None:  # Fallback
             node.applicable_action_mask = self.problem_service.get_applicable_action_mask(*node.get_identifiers())
         return node.applicable_action_mask
 
-# def wrapInMCTSNode(cstate_id: int, previous_action, cost_until_now=float('inf'), is_goal=False,
-#                    is_terminal=False, as_network_input=None, applicable_action_mask=None, hashed_state = -1, parent = None):
-#     return MCTSNode(state_id=cstate_id, cost_until_now=cost_until_now, previous_action=previous_action,is_goal=is_goal,
-#                     is_terminal=is_terminal, as_network_input=as_network_input,
-#                     applicable_action_mask=applicable_action_mask, hashed_state=hashed_state, parent=parent)
 
 def wrapInMCTSNode(state: CanonicalState, previous_action, cost_until_now=float('inf'),
                    as_network_input=None, applicable_action_mask=None, parent=None):
     return MCTSNode(state=state, previous_action=previous_action, cost_until_now=cost_until_now, is_goal=state.is_goal,
                     is_terminal=state.is_terminal, as_network_input=state.to_network_input(),
-                    applicable_action_mask=state.get_applicable_action_mask(), parent=parent,)
+                    applicable_action_mask=state.get_applicable_action_mask(), parent=parent, )
