@@ -364,7 +364,7 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
             return
 
         spec = self.explorer.specs[0]
-        assert spec.fixed_instance_pddl, "freeze_explore only supported with fixed_instance for now"
+        assert spec.fixed_instance_pddl, "freeze_train only supported with fixed_instance for now"
 
         # IMPORTANT: build exactly like the worker, but in MAIN PROCESS
         CanonicalState.network_input_config(use_fluents=spec.use_fluents, use_comparisons=spec.use_comps)
