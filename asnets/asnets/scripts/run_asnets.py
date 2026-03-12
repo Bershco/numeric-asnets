@@ -126,7 +126,7 @@ class MonteCarloPolicyEvaluator(MCTS):
 
     def profile_state_id_to_node(self):
         total = 0
-        for i, node in enumerate(self.state_to_node.values()):
+        for i, node in enumerate(self.state_key_to_node.values()):
             try:
                 node_copy = deepcopy(node)
                 node_copy.state._aux_data = None
@@ -135,7 +135,7 @@ class MonteCarloPolicyEvaluator(MCTS):
                 continue
             if i >= 20:
                 break
-        estimated_total = total * len(self.state_to_node) / 20
+        estimated_total = total * len(self.state_key_to_node) / 20
         print(f"Estimated total memory for all nodes in state_to_node dictionary: {estimated_total / 1024 ** 2:.2f} MB")
 
     def print_memory_summary(self):
@@ -159,7 +159,7 @@ class MonteCarloPolicyEvaluator(MCTS):
     def get_action_from_cstate_id_hash(self, cstate_id, cstate_hash, cost): #cstate is non-terminal
         if self.curr_tree_root is None:
             self.curr_tree_root = wrapInMCTSNode(cstate_id=cstate_id,hashed_state=cstate_hash, cost_until_now=0, previous_action=None)
-            self.state_to_node[cstate_id] = self.curr_tree_root
+            self.state_key_to_node[cstate_id] = self.curr_tree_root
             self.debug_orig_root = self.curr_tree_root
             self.visited_cstates_hashes.add(self.curr_tree_root.__hash__())
         if self.use_value_based:
@@ -177,8 +177,8 @@ class MonteCarloPolicyEvaluator(MCTS):
                 # if self.state_to_node[cstate] not in self.children:
                 #     self.children[self.state_to_node[cstate]] = dict()
                 # self.children[self.state_to_node[cstate]][next_action] = next_mcts_node
-                self.state_to_node[cstate_id].children = FixedChildMap([next_action], [next_mcts_node])
-                self.state_to_node[next_mcts_node.state_id] = next_mcts_node
+                self.state_key_to_node[cstate_id].children = FixedChildMap([next_action], [next_mcts_node])
+                self.state_key_to_node[next_mcts_node.state_id] = next_mcts_node
                 return next_action
 
         def node_priority_by_n(node):
@@ -234,13 +234,13 @@ class MonteCarloPolicyEvaluator(MCTS):
         return self.curr_tree_root.state_id, hash(self.curr_tree_root), 1, self.curr_tree_root.goal_state, self.curr_tree_root.terminal_state
 
     def get_corresponding_mcts_node(self, cstate):
-        return self.state_to_node.get(cstate, None)
+        return self.state_key_to_node.get(cstate, None)
 
     def _expand(self, node):
         if node.children is not None:
             return
         node.children = self.find_children(node)
-        self.state_to_node[node.state_id] = node
+        self.state_key_to_node[node.state_id] = node
         if self._probe:
             try:
                 act_dim = None
@@ -254,7 +254,7 @@ class MonteCarloPolicyEvaluator(MCTS):
                 pass
         for child_node in node.children.values():
             assert isinstance(child_node, MCTSNode)
-            self.state_to_node[child_node.state_id] = child_node
+            self.state_key_to_node[child_node.state_id] = child_node
         if self.debug_time_mcts_iterations:
             self.after_expansion_times.append(time())
 
@@ -274,7 +274,7 @@ class MonteCarloPolicyEvaluator(MCTS):
                         # curr_mcts_node.children = None
                     # self.children[curr_mcts_node][action_from_path] = mcts_node_from_path
                     curr_mcts_node.children = FixedChildMap([action_from_path],[mcts_node_from_path])
-                    self.state_to_node[curr_mcts_node.state_id] = curr_mcts_node
+                    self.state_key_to_node[curr_mcts_node.state_id] = curr_mcts_node
                     curr_mcts_node = mcts_node_from_path
                     action_path.append(action_from_path)
                 print(f"Next actions are: {action_path}")
@@ -324,7 +324,7 @@ class MonteCarloPolicyEvaluator(MCTS):
                     hashed_state=cstate_after_action_i_hash,
                     parent=parent_node,
                 )
-                self.state_to_node[cstate_after_action_i_id] = wrapped_output_cstate
+                self.state_key_to_node[cstate_after_action_i_id] = wrapped_output_cstate
                 actions.append(action_id)
                 nodes.append(wrapped_output_cstate)
             ids = ",".join([str(i) for i in generated_ids])
@@ -353,7 +353,7 @@ class MonteCarloPolicyEvaluator(MCTS):
                     hashed_state=state_hash,
                     parent=parent_node,
                 )
-                self.state_to_node[cstate_after_action_id] = wrapped_output_cstate
+                self.state_key_to_node[cstate_after_action_id] = wrapped_output_cstate
                 # output[i] = wrapped_output_cstate
                 actions.append(i)
                 nodes.append(wrapped_output_cstate)
