@@ -150,22 +150,22 @@ class Domain(Enum):
             InstanceDifficulty.EASY: GeneratorParams(
                 kwargs=dict(
                     min_counters=3,
-                    max_counters=5,
+                    max_counters=4,
                     max_int=20,
                 )
             ),
             InstanceDifficulty.MEDIUM: GeneratorParams(
                 kwargs=dict(
                     min_counters=5,
-                    max_counters=10,
-                    max_int=100,
+                    max_counters=6,
+                    max_int=40,
                 )
             ),
             InstanceDifficulty.HARD: GeneratorParams(
                 kwargs=dict(
-                    min_counters=10,
-                    max_counters=50,
-                    max_int=2000,
+                    min_counters=7,
+                    max_counters=10,
+                    max_int=800,
                 )
             ),
         },
