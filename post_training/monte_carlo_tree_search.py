@@ -50,27 +50,20 @@ class Node(ABC):
 class MCTSNode(Node):
     delete_counter = 0
     __slots__ = (
-        "state",
+        "state", "env_state_key",
         "cost_until_now", "reward_weight",
-        "previous_action", "children", "parent",
+        "children",
         "goal_state", "terminal_state", "as_network_input",
         "applicable_action_mask", "act_dist", "pred_value", "Q_value", "known_distance_to_goal", "best_goal_child"
     )
 
     def __init__(self,
-                 # state_id,
                  state,
-                 cost_until_now, previous_action, reward_weight=1000,
-                 is_goal=False, is_terminal=False, as_network_input=None, applicable_action_mask=None,
-                 # hashed_state = -1,
-                 parent=None):
-        # self.state_id = state_id
-        # self._hash = hashed_state
+                 cost_until_now, reward_weight=1000,
+                 is_goal=False, is_terminal=False, as_network_input=None, applicable_action_mask=None):
         self.state = state
         self.cost_until_now = cost_until_now
         self.reward_weight = reward_weight
-        self.previous_action = previous_action
-        self.parent = parent
         self.children = None
         self.goal_state = is_goal
         self.terminal_state = is_terminal
@@ -81,6 +74,7 @@ class MCTSNode(Node):
         self.Q_value = 0
         self.known_distance_to_goal = 0 if is_goal else np.inf
         self.best_goal_child = None
+        self.env_state_key = self.state.env_state_key()
 
     def simulate_step(self, action_id, problem_service):
         if hasattr(problem_service, "env_simulate_step"):
@@ -96,7 +90,6 @@ class MCTSNode(Node):
         return self.goal_state
 
     def reward(self):
-        # return 1 if self.is_terminal() else 0
         if self.is_goal():
             return self.reward_weight / self.cost_until_now
         return 0
@@ -121,16 +114,30 @@ class MCTSNode(Node):
         # return self.state_id, self._hash
         raise NotImplementedError("Changed to using states in nodes instead of identifiers")
 
-    def env_state_key(self) -> bytes:
-        return self.state.env_state_key()
+    def state_key(self) -> bytes:
+        return self.env_state_key
 
 
 class FixedChildMap:
+    __slots__ = ("_keys", "_values", "_visits", "_actions_np")
+
     def __init__(self, keys: List[int], values: List[Any]):
         assert len(keys) == len(values), "Keys and values must match in length"
+
         sorted_pairs = sorted(zip(keys, values))
-        self._keys = array('H', (k for k, _ in sorted_pairs))  # unsigned short
+        self._keys = array('H', (k for k, _ in sorted_pairs))
         self._values = [v for _, v in sorted_pairs]
+        self._visits = np.zeros(len(self._keys), dtype=np.int32)
+
+        # cached numpy version
+        self._actions_np = np.asarray(self._keys, dtype=np.int32)
+
+    def _index_of(self, key: int) -> int:
+        """Return the index of the action key."""
+        idx = bisect.bisect_left(self._keys, key)
+        if idx < len(self._keys) and self._keys[idx] == key:
+            return idx
+        raise KeyError(key)
 
     def get(self, key: int, default: Optional[Any] = None) -> Optional[Any]:
         idx = bisect.bisect_left(self._keys, key)
@@ -139,13 +146,12 @@ class FixedChildMap:
         return default
 
     def __getitem__(self, key: int) -> Any:
-        result = self.get(key)
-        if result is None:
-            raise KeyError(key)
-        return result
+        idx = self._index_of(key)
+        return self._values[idx]
 
     def __contains__(self, key: int) -> bool:
-        return self.get(key) is not None
+        idx = bisect.bisect_left(self._keys, key)
+        return idx < len(self._keys) and self._keys[idx] == key
 
     def items(self) -> Iterator[Tuple[int, Any]]:
         return zip(self._keys, self._values)
@@ -155,6 +161,22 @@ class FixedChildMap:
 
     def values(self) -> Iterator[Any]:
         return iter(self._values)
+
+    @property
+    def visits(self):
+        return self._visits
+
+    @property
+    def actions_np(self):
+        return self._actions_np
+
+    def visit_count(self, key: int) -> int:
+        return int(self._visits[self._index_of(key)])
+
+    def increment_visit(self, key: int):
+        """Increment visit count for the given action key."""
+        idx = self._index_of(key)
+        self._visits[idx] += 1
 
     def __len__(self) -> int:
         return len(self._keys)
@@ -301,7 +323,6 @@ class MCTS:
                  debug_comparison_exploration_exploitation=False):
         self.curr_tree_root: Optional[MCTSNode] = None
         self.N = defaultdict(int)  # total visit count for each node
-        self.Nsa = defaultdict(int)
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
         self.state_to_node: dict[CanonicalState, MCTSNode] = {}
@@ -342,28 +363,24 @@ class MCTS:
         # theoretically and practically it SHOULD not be lower than 1/10001 which isn't that low.
         self._backpropagate(path, reward, leaf.goal_state)
 
-    def _select(self, node: "MCTSNode"):
-        """Find an unexplored descendent of `node` (returns path including final leaf or frontier child)."""
+    def _select(self, node: MCTSNode):
+        """Find an unexplored descendant of `node`."""
         if self.debug_time_mcts_iterations:
             self.start_times.append(time())
         node_path = []
+        path_keys = set()
         while True:
             node_path.append(node)
-
-            childmap: FixedChildMap | None = node.children
-
-            # If node has no generated children (i.e. node not in children dict, or is in dict with None value) -
-            # it's unexplored or terminal.
+            path_keys.add(node.env_state_key)
+            childmap = node.children
             if childmap is None or childmap.is_empty():
                 if self.debug_time_mcts_iterations:
                     self.after_selection_times.append(time())
                 return node_path
-
-            # Otherwise pick via PUCT (with no-cycle)
-            a_next, n_next = self._puct_select_no_cycle(node, set(node_path))
-            # count traversed edge
-            self.Nsa[(node, a_next)] += 1
-            node = n_next
+            action, child = self._puct_select_no_cycle(node, path_keys)
+            # increment edge visit by ACTION KEY
+            childmap.increment_visit(action)
+            node = child
 
     def _expand(self, node):
         """Update the `children` dict with the children of `node`"""
@@ -385,7 +402,6 @@ class MCTS:
                 old_dist = node.known_distance_to_goal
                 update = False
                 if distance_from_goal < old_dist:
-                    # print(f"[DIST_TO_GOAL] Updating distance to goal due to better distance.")
                     update = True
                 elif distance_from_goal == old_dist and node.best_goal_child is not None:
                     # tie-breaking
@@ -394,10 +410,8 @@ class MCTS:
                     prev_visits = self.N.get(prev_child, 0)
                     new_visits = self.N.get(new_child, 0)
                     if new_visits > prev_visits:
-                        # print(f"[DIST_TO_GOAL] Updating distance to goal due to same distance + more visits.")
                         update = True
                     elif new_visits == prev_visits and new_child.Q_value > prev_child.Q_value:
-                        # print(f"[DIST_TO_GOAL] Updating distance to goal due to same distance + same visits + better q_value.")
                         update = True
                 if update:
                     node.known_distance_to_goal = distance_from_goal
@@ -415,105 +429,125 @@ class MCTS:
             self.after_eval_times.append(time())
         return value
 
-    def _puct_select_no_cycle(self, node, path_set):
-        """Sample a child of `node` using PUCT scores as softmax logits while avoiding cycles.
-           Returns (action, child_node).  Vectorized over children to reduce Python overhead."""
+    def _puct_select_no_cycle(self, node, path_keys):
+        children = node.children
 
-        # 0) Sanity: children should already be generated for this node
-        children_map = node.children
-        actions_nodes = list(children_map.items())  # [(a, child), ...]
-        n_children = len(actions_nodes)
-        assert n_children > 0, "PUCT select called on a node with no children"
+        # _keys are the REAL action IDs, not compact positions in the global action space
+        # actions = np.asarray(children._keys, dtype=np.int32)
+        actions = children.actions_np
+        child_list = children._values
+        edge_visits = children.visits
 
-        # 1) Priors from policy (vector over action indices)
+        n_children = len(actions)
+        assert n_children > 0, "PUCT select called on node with no children"
+
+        # --- priors ---
         priors = self.get_act_dist_from_mcts_node(node)
         priors = priors.numpy() if hasattr(priors, "numpy") else priors
+        priors = np.asarray(priors, dtype=np.float32)
 
-        # Build parallel arrays once
-        actions, child_list = zip(*actions_nodes)
-
-        # 2) Masks (vectorized)
-        #   - cycle mask: child already on current path => invalidate
-        actions = np.frombuffer(np.array(actions, dtype=np.int32), dtype=np.int32)
-        path_keys = {n.env_state_key() for n in path_set}
-        cycle = np.array([child.env_state_key() in path_keys for child in child_list])
-        if cycle.any():
-            child_arr = np.array(child_list)
-            culprits = child_arr[cycle]
-            culprit_nodes = [child for child in culprits]
-            for node in culprit_nodes:
-                LOGGER.debug(f"Cycle found, {node} is present in {path_set}")
-        # 3) Prior lookup (vectorized, with bounds check)
         prior = np.zeros(n_children, dtype=np.float32)
-        if np.ndim(priors) == 1 and priors.size > 0:
-            valid = (actions >= 0) & (actions < priors.size)
-            if valid.any():
-                prior[valid] = np.asarray(priors, dtype=np.float32)[actions[valid]]
+        valid_prior = (actions >= 0) & (actions < priors.size)
+        if valid_prior.any():
+            prior[valid_prior] = priors[actions[valid_prior]]
 
-        # 4) Edge visits Nsa(s,a) and child Q(s') in one sweep
-        edge_visits = np.array(
-            [self.Nsa.get((node, int(a)), 0) for a in actions],
-            dtype=np.int32
-        )
-        Q_child = np.array(
-            # [self.Q.get(c, 0.0) for c in child_list],
-            [child.Q_value for child in child_list],
-            dtype=np.float32
+        # --- child Q values ---
+        Q_child = np.fromiter(
+            (child.Q_value for child in child_list),
+            dtype=np.float32,
+            count=n_children
         )
 
-        # 6) Compute U and score = Q + U (vectorized)
+        # --- cycle mask ---
+        cycle = np.fromiter(
+            (child.env_state_key in path_keys for child in child_list),
+            dtype=bool,
+            count=n_children
+        )
+
+        if cycle.any():
+            for i in np.flatnonzero(cycle):
+                LOGGER.debug(f"Cycle found, {child_list[i]} is present in path")
+
+        # --- PUCT ---
         N_parent = float(self.N.get(node, 0))
         sqrtN = math.sqrt(max(1.0, N_parent))
-        U = self.exploration_weight * prior * (sqrtN / (1.0 + edge_visits.astype(np.float32)))
 
-        # Invalidate cycles
-        U[cycle] = 0.0
+        U = self.exploration_weight * prior * (
+                sqrtN / (1.0 + edge_visits)
+        )
         score = Q_child + U
-        score[cycle] = -np.inf
 
-        # 7) Sample by softmax over (Q+U) with numerical stability
-        x = score.astype(np.float64)
-        x -= np.max(x)
+        valid_mask = ~cycle
+
+        # fallback if all children are cycles
+        if not valid_mask.any():
+            idx = int(np.argmax(Q_child))
+            action = int(actions[idx])
+            child = child_list[idx]
+
+            cycle_present = True
+            prior_entropy = None
+            chosen_p = None
+            edge_visits_chosen = int(edge_visits[idx])
+
+            if self._probe:
+                self._probe.log_select_softmax(
+                    prior_entropy=prior_entropy,
+                    chosen_p=chosen_p,
+                    edge_visits_chosen=edge_visits_chosen,
+                    cycle_present=cycle_present
+                )
+                try:
+                    self._probe.log(Q_child.tolist(), U.tolist(), idx)
+                except Exception:
+                    pass
+
+            return action, child
+
+        valid_indices = np.flatnonzero(valid_mask)
+        score_valid = score[valid_mask]
+
+        # --- stable softmax on valid children only ---
+        x = score_valid.astype(np.float64)
+        x -= x.max()
         w = np.exp(x)
-        w[~np.isfinite(w)] = 0.0
         s = float(w.sum())
+
         if (not np.isfinite(s)) or s <= 0.0:
-            idx = int(np.argmax(score))  # fallback if all weights underflow
+            idx_local = int(np.argmax(score_valid))
+            p = None
         else:
             p = w / s
-            idx = int(np.random.choice(n_children, p=p))
+            idx_local = int(np.random.choice(len(valid_indices), p=p))
 
-        a, child = actions[int(idx)], child_list[int(idx)]
+        idx = int(valid_indices[idx_local])
+        action = int(actions[idx])
+        child = child_list[idx]
 
-        # small O(n) helpers
-        cycle_present = bool(cycle.any())
-        valid = ~cycle
-        pv = prior[valid]
-        pv_sum = float(pv.sum())
-        prior_entropy = None
-        if pv_sum > 0 and np.isfinite(pv_sum):
-            pv = pv / pv_sum
-            prior_entropy = float(-(pv * np.log(pv + 1e-12)).sum())
-
-        chosen_p = float(p[idx]) if 'p' in locals() else None
-        edge_visits_chosen = int(edge_visits[idx])
-
-        # minimal event
         if self._probe:
+            cycle_present = bool(cycle.any())
+            pv = prior[valid_mask]
+            pv_sum = float(pv.sum())
+            prior_entropy = None
+            if pv_sum > 0.0 and np.isfinite(pv_sum):
+                pv = pv / pv_sum
+                prior_entropy = float(-(pv * np.log(pv + 1e-12)).sum())
+            chosen_p = float(p[idx_local]) if p is not None else None
+            edge_visits_chosen = int(edge_visits[idx])
+
             self._probe.log_select_softmax(
                 prior_entropy=prior_entropy,
                 chosen_p=chosen_p,
                 edge_visits_chosen=edge_visits_chosen,
                 cycle_present=cycle_present
             )
-
-        if self._probe:
             try:
                 self._probe.log(Q_child.tolist(), U.tolist(), idx)
             except Exception:
                 pass
 
-        return a, child
+        return action, child
 
     def reconstructSelectionPath(self, path):
         output_path = [(None, self.curr_tree_root)]
@@ -595,7 +629,6 @@ class MCTS:
             self.log_node_count("After deleting old root's irrelevant children")
         assert keep_child is not None
         # Replace children dict with just the one we kept
-        # self.children[parent_node] = FixedChildMap([keep_action], [keep_child])
         parent_node.children = FixedChildMap([keep_action], [keep_child])
 
     def get_applicable_action_mask(self, node: MCTSNode):
@@ -604,8 +637,7 @@ class MCTS:
         return node.applicable_action_mask
 
 
-def wrapInMCTSNode(state: CanonicalState, previous_action, cost_until_now=float('inf'),
-                   as_network_input=None, applicable_action_mask=None, parent=None):
-    return MCTSNode(state=state, previous_action=previous_action, cost_until_now=cost_until_now, is_goal=state.is_goal,
+def wrapInMCTSNode(state: CanonicalState, cost_until_now=float('inf')):
+    return MCTSNode(state=state, cost_until_now=cost_until_now, is_goal=state.is_goal,
                     is_terminal=state.is_terminal, as_network_input=state.to_network_input(),
-                    applicable_action_mask=state.get_applicable_action_mask(), parent=parent, )
+                    applicable_action_mask=state.get_applicable_action_mask(), )

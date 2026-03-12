@@ -56,30 +56,40 @@ class TrainingMCTS(MCTS):
 
         # mask invalid actions
         mask = self.get_applicable_action_mask(node)
-        sorted_indices = sorted(range(len(act_dist)), key=lambda i: act_dist[i], reverse=True)
 
-        actions, children_nodes = [], []
-        children_network_repr = []
-        selected_actions = []
-        for i in sorted_indices:
-            if len(selected_actions) >= self.k:
-                break
-            if not mask[i] or act_dist[i] == 0.0:
-                continue
-            selected_actions.append(i)
+        # sorted_indices = sorted(range(len(act_dist)), key=lambda i: act_dist[i], reverse=True)
+        #
+        # actions, children_nodes = [], []
+        # children_network_repr = []
+        # selected_actions = []
+        # for i in sorted_indices:
+        #     if len(selected_actions) >= self.k:
+        #         break
+        #     if not mask[i] or act_dist[i] == 0.0:
+        #         continue
+        #     selected_actions.append(i)
+        valid = np.where(mask & (act_dist > 0.0))[0]
 
+        if len(valid) > self.k:
+            topk = np.argpartition(-act_dist[valid], self.k)[:self.k]
+            selected_actions = valid[topk]
+        else:
+            selected_actions = valid
         results = self.ctx.env_simulate_batch_steps(node.state, selected_actions)
         for (action_id,
              cstate,
              step_cost, is_goal, is_terminal,
              network_ready_repr, applicable_action_mask
              ) in results:
-            if cstate not in self.state_to_node.keys():
-                wrapped_output_cstate = wrapInMCTSNode(state=cstate, cost_until_now=node.cost_until_now + step_cost,
-                                                       previous_action=action_id, parent=node)
+            node_entry = self.state_to_node.get(cstate)
+            if node_entry is None:
+                wrapped_output_cstate = wrapInMCTSNode(
+                    state=cstate,
+                    cost_until_now=node.cost_until_now + step_cost
+                )
                 self.state_to_node[cstate] = wrapped_output_cstate
             else:
-                wrapped_output_cstate = self.state_to_node[cstate]
+                wrapped_output_cstate = node_entry
             actions.append(action_id)
             children_nodes.append(wrapped_output_cstate)
             children_network_repr.append(wrapped_output_cstate.as_network_input)
@@ -100,7 +110,7 @@ class TrainingMCTS(MCTS):
 
     def initialise_tree(self, cstate) -> None:
         """Start a new tree for a fresh episode."""
-        self.curr_tree_root = wrapInMCTSNode(state=cstate, previous_action=None, cost_until_now=0)
+        self.curr_tree_root = wrapInMCTSNode(state=cstate, cost_until_now=0)
         self.state_to_node[self.curr_tree_root.state] = self.curr_tree_root
         self.N.clear()
 
@@ -174,7 +184,6 @@ class TrainingMCTS(MCTS):
     def step_forward(self, action_id):
         """Re-root at chosen child and prune irrelevant branches."""
         parent = self.curr_tree_root
-        self.current_trajectory.append(parent)
         next_node = parent.children[action_id]
         # self.prune_children_except(parent, action_id)
         self.curr_tree_root = next_node
