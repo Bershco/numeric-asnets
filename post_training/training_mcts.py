@@ -59,8 +59,8 @@ class TrainingMCTS(MCTS):
 
         # sorted_indices = sorted(range(len(act_dist)), key=lambda i: act_dist[i], reverse=True)
         #
-        # actions, children_nodes = [], []
-        # children_network_repr = []
+        actions, children_nodes = [], []
+        children_network_repr = []
         # selected_actions = []
         # for i in sorted_indices:
         #     if len(selected_actions) >= self.k:
@@ -81,13 +81,14 @@ class TrainingMCTS(MCTS):
              step_cost, is_goal, is_terminal,
              network_ready_repr, applicable_action_mask
              ) in results:
-            node_entry = self.state_to_node.get(cstate)
+            state_key = cstate.state_key
+            node_entry = self.state_key_to_node.get(state_key)
             if node_entry is None:
                 wrapped_output_cstate = wrapInMCTSNode(
                     state=cstate,
                     cost_until_now=node.cost_until_now + step_cost
                 )
-                self.state_to_node[cstate] = wrapped_output_cstate
+                self.state_key_to_node[state_key] = wrapped_output_cstate
             else:
                 wrapped_output_cstate = node_entry
             actions.append(action_id)
@@ -111,7 +112,7 @@ class TrainingMCTS(MCTS):
     def initialise_tree(self, cstate) -> None:
         """Start a new tree for a fresh episode."""
         self.curr_tree_root = wrapInMCTSNode(state=cstate, cost_until_now=0)
-        self.state_to_node[self.curr_tree_root.state] = self.curr_tree_root
+        self.state_key_to_node[cstate.state_key] = self.curr_tree_root
         self.N.clear()
 
     def get_act_dist_from_mcts_node(self, node: MCTSNode):
@@ -198,7 +199,7 @@ class TrainingMCTS(MCTS):
             if cstate is None:
                 node = self.curr_tree_root
             else:
-                node = self.state_to_node[cstate]
+                node = self.state_key_to_node[cstate.state_key]
         assert node.children is not None, "No children, no mask!"
         mask = np.zeros(act_dim, dtype=bool)
 
@@ -239,10 +240,10 @@ class TrainingMCTS(MCTS):
         return results
 
     def get_children_of(self, cstate: CanonicalState) -> list:
-        return [(act, child_node.state) for act, child_node in self.state_to_node[cstate].children.items()]
+        return [(act, child_node.state) for act, child_node in self.state_key_to_node[cstate.state_key].children.items()]
 
     def count_subtrees_with_goal(self):
-        return sum(1 for node in self.state_to_node.values() if node.known_distance_to_goal)
+        return sum(1 for node in self.state_key_to_node.values() if node.known_distance_to_goal)
 
     def reconstruct_goal_path(
             self,
@@ -281,7 +282,7 @@ class TrainingMCTS(MCTS):
         closest: Optional[MCTSNode] = None
         closest_ind: int = -1
         for i, item in enumerate(trajectory_info):
-            node = self.state_to_node[item['state']]
+            node = self.state_key_to_node[item['state'].state_key]
             if node.known_distance_to_goal < np.inf:
                 if closest is None or node.known_distance_to_goal < closest.known_distance_to_goal:
                     closest = node
@@ -295,7 +296,7 @@ class TrainingMCTS(MCTS):
         seen_states: set[CanonicalState] = set()
         all_paths = []
         for i, item in enumerate(trajectory_info):
-            node = self.state_to_node[item['state']]
+            node = self.state_key_to_node[item['state'].state_key]
             if node.known_distance_to_goal == np.inf:
                 continue
             path = self.reconstruct_goal_path(node, seen_states, one_hot_pi_z=one_hot_pi_z)

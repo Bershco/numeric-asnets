@@ -50,10 +50,7 @@ class Node(ABC):
 class MCTSNode(Node):
     delete_counter = 0
     __slots__ = (
-        "state", "env_state_key",
-        "cost_until_now", "reward_weight",
-        "children",
-        "goal_state", "terminal_state", "as_network_input",
+        "state", "cost_until_now", "reward_weight", "children", "goal_state", "terminal_state", "as_network_input",
         "applicable_action_mask", "act_dist", "pred_value", "Q_value", "known_distance_to_goal", "best_goal_child"
     )
 
@@ -74,7 +71,6 @@ class MCTSNode(Node):
         self.Q_value = 0
         self.known_distance_to_goal = 0 if is_goal else np.inf
         self.best_goal_child = None
-        self.env_state_key = self.state.env_state_key()
 
     def simulate_step(self, action_id, problem_service):
         if hasattr(problem_service, "env_simulate_step"):
@@ -114,8 +110,9 @@ class MCTSNode(Node):
         # return self.state_id, self._hash
         raise NotImplementedError("Changed to using states in nodes instead of identifiers")
 
+    @property
     def state_key(self) -> bytes:
-        return self.env_state_key
+        return self.state.state_key
 
 
 class FixedChildMap:
@@ -325,7 +322,7 @@ class MCTS:
         self.N = defaultdict(int)  # total visit count for each node
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
-        self.state_to_node: dict[CanonicalState, MCTSNode] = {}
+        self.state_key_to_node: dict[bytes, MCTSNode] = {}
         self.problem_service = problem_service
         self.network = network
         self.policy_only = self.network.policy_only()
@@ -371,7 +368,7 @@ class MCTS:
         path_keys = set()
         while True:
             node_path.append(node)
-            path_keys.add(node.env_state_key)
+            path_keys.add(node.state_key)
             childmap = node.children
             if childmap is None or childmap.is_empty():
                 if self.debug_time_mcts_iterations:
@@ -460,7 +457,7 @@ class MCTS:
 
         # --- cycle mask ---
         cycle = np.fromiter(
-            (child.env_state_key in path_keys for child in child_list),
+            (child.state_key in path_keys for child in child_list),
             dtype=bool,
             count=n_children
         )

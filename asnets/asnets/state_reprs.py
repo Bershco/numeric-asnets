@@ -49,7 +49,9 @@ class CanonicalState(object):
     3. Possible to pickle & send between processes.
     4. Efficient to manipulate.
     5. Relatively light on memory."""
-    __slots__ = ("props_true", "flnt_values", "acts_enabled", "comps_true", "is_goal", "is_terminal", "_aux_data", "_aux_data_interp", "_aux_data_interp_to_id", "_aux_dat_interp")
+    __slots__ = ("props_true", "flnt_values", "acts_enabled", "comps_true", "is_goal", "is_terminal", "_aux_data",
+                 "_aux_data_interp", "_aux_data_interp_to_id", "_aux_dat_interp", "state_key")
+
     def __init__(self,
                  bound_prop_truth: Iterable[Tuple[BoundProp, bool]],
                  bound_flnt_value: Iterable[Tuple[BoundFlnt, float]],
@@ -60,7 +62,7 @@ class CanonicalState(object):
                  data_gens: Iterable['ActionDataGenerator'] = None,
                  prev_cstate: Optional[Self] = None,
                  prev_act: Optional[BoundAction] = None,
-                 is_init_cstate: Optional[bool] = None,):
+                 is_init_cstate: Optional[bool] = None, ):
         # note: props and acts should always use the same order! I don't want
         # to be passing around extra data to store "real" order for
         # propositions and actions all the time :(
@@ -84,6 +86,7 @@ class CanonicalState(object):
         # FIXME: make _do_validate conditional on a debug flag or something (I
         # suspect it's actually a bit expensive, so not turning on by default)
         # self._do_validate()
+        self.state_key = self.env_state_key()
 
     def _do_validate(self):
         """Run some sanity checks on the newly-constructed state."""
@@ -96,7 +99,7 @@ class CanonicalState(object):
             if prop_idx > 0:
                 # should come after previous proposition alphabetically
                 assert prop_tup[0].unique_ident \
-                    > self.props_true[prop_idx - 1][0].unique_ident
+                       > self.props_true[prop_idx - 1][0].unique_ident
 
         # check fluent values
         for flnt_idx, flnt_tup in enumerate(self.flnt_values):
@@ -107,7 +110,7 @@ class CanonicalState(object):
             if flnt_idx > 0:
                 # should come after previous fluent alphabetically
                 assert flnt_tup[0].unique_ident \
-                    > self.flnt_values[flnt_idx - 1][0].unique_ident
+                       > self.flnt_values[flnt_idx - 1][0].unique_ident
 
         # check comparisons
         for comp_idx, comp_tup in enumerate(self.comps_true):
@@ -116,7 +119,7 @@ class CanonicalState(object):
             assert isinstance(comp_tup[1], bool)
             if comp_idx > 0:
                 assert comp_tup[0].unique_ident \
-                    > self.comps_true[comp_idx - 1][0].unique_ident
+                       > self.comps_true[comp_idx - 1][0].unique_ident
 
         # next check action mask
         for act_idx, act_tup in enumerate(self.acts_enabled):
@@ -127,7 +130,7 @@ class CanonicalState(object):
             if act_idx > 0:
                 # should come after previous action alphabetically
                 assert act_tup[0].unique_ident \
-                    > self.acts_enabled[act_idx - 1][0].unique_ident
+                       > self.acts_enabled[act_idx - 1][0].unique_ident
 
         # make sure that auxiliary data is 1D ndarray
         if self._aux_data is not None:
@@ -176,10 +179,10 @@ class CanonicalState(object):
 
     def _ident_tup(self) \
             -> Tuple[Iterable[Tuple[BoundProp, bool]],
-                     Iterable[Tuple[BoundFlnt, float]],
-                     Iterable[Tuple[BoundComp, bool]],
-                     Iterable[Tuple[BoundAction, bool]],
-                     bool]:
+            Iterable[Tuple[BoundFlnt, float]],
+            Iterable[Tuple[BoundComp, bool]],
+            Iterable[Tuple[BoundAction, bool]],
+            bool]:
         """Return a tuple that uniquely identifies this state.
 
         Returns:
@@ -193,7 +196,6 @@ class CanonicalState(object):
         # whatever)
         return (self.props_true, self.flnt_values, self.comps_true,
                 self.acts_enabled, self._aux_data is None)
-
 
     def __hash__(self) -> int:
         """Return a hash of the state.
@@ -272,7 +274,7 @@ class CanonicalState(object):
             requires_memory |= dg.requires_memory
         if len(extra_data) == 0:
             num_acts = len(self.acts_enabled)
-            self._aux_data = np.zeros((num_acts, ), dtype='float32')
+            self._aux_data = np.zeros((num_acts,), dtype='float32')
         else:
             self._aux_data = np.concatenate(
                 extra_data, axis=1).astype('float32').flatten()
@@ -371,7 +373,6 @@ class CanonicalState(object):
         if missing:
             LOGGER.debug("Missing comparisons from MDPSim mask: %s", missing)
 
-
         act_mask = [(ba, act_on_by_name[ba.unique_ident])
                     for ba in problem_meta.bound_acts_ordered]
 
@@ -458,7 +459,7 @@ class CanonicalState(object):
         act_mask = [(ba, ba.unique_ident in ssipp_on_act_names)
                     for ba in problem_meta.bound_acts_ordered]
         assert len(ssipp_on_act_names) \
-            == sum(enabled for _, enabled in act_mask)
+               == sum(enabled for _, enabled in act_mask)
 
         # finally get goal flag
         is_goal = ssp.isGoal(ssipp_state)
@@ -557,13 +558,13 @@ class CanonicalState(object):
         to_concat.append(props_conv)
 
         if CanonicalState.use_fluents:
-            #v_f vector
+            # v_f vector
             flnts_conv = np.array([value for _, value in self.flnt_values],
                                   dtype='float32')
             to_concat.append(flnts_conv)
 
         if CanonicalState.use_comparisons:
-            #v_c vector
+            # v_c vector
             comps_conv = np.array([truth for _, truth in self.comps_true],
                                   dtype='float32')
             to_concat.append(comps_conv)
@@ -572,7 +573,6 @@ class CanonicalState(object):
 
     def get_applicable_action_mask(self):
         return np.array([enabled for _, enabled in self.acts_enabled], dtype=bool)
-
 
     def env_state_key(self) -> bytes:
         h = hashlib.blake2b(digest_size=16)
@@ -694,7 +694,7 @@ def successors(cstate: CanonicalState, action_id: int,
     ssipp_action = planner_exts.ssipp_problem.find_action("(%s)" % act_ident)
     cost = ssipp_action.cost(ssipp_state)
     assert cost == 1, \
-        "I don't think rest of the code can deal with cost of %s" % (cost, )
+        "I don't think rest of the code can deal with cost of %s" % (cost,)
     # gives us a list of (probability, ssipp successor state) tuples
     ssipp_successors = planner_exts.ssipp.successors(
         planner_exts.ssipp_ssp_iface, ssipp_state, ssipp_action)

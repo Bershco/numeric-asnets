@@ -1049,7 +1049,7 @@ def make_problem_service(config, set_proc_title=False):
                 return np.random.choice(future_states, size=self.her_k, replace=False)
 
         def internal_sample_k_states_from_tree(self, mcts_tree: TrainingMCTS) -> List[tuple[CanonicalState,np.ndarray]]:
-            all_nodes = mcts_tree.state_to_node.values()
+            all_nodes = mcts_tree.state_key_to_node.values()
             all_nodes = np.array(list(all_nodes))
             sampled_goals = np.random.choice(all_nodes, size=self.her_k, replace=False)
             good_nodes: Set[MCTSNode] = set()
