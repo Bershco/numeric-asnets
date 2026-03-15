@@ -71,6 +71,7 @@ class CanonicalState(object):
         self.flnt_values = tuple(bound_flnt_value)
         self.acts_enabled = tuple(bound_acts_enabled)
         self.comps_true = tuple(bound_comp_truth)
+        self.state_key = self.env_state_key()
         self.is_goal = is_goal
         self.is_terminal = is_goal or not any(
             enabled for _, enabled in self.acts_enabled)
@@ -85,7 +86,6 @@ class CanonicalState(object):
         # FIXME: make _do_validate conditional on a debug flag or something (I
         # suspect it's actually a bit expensive, so not turning on by default)
         # self._do_validate()
-        self.state_key = self.env_state_key()
 
     def _do_validate(self):
         """Run some sanity checks on the newly-constructed state."""
@@ -492,8 +492,11 @@ class CanonicalState(object):
             num_fluents.put(JInt(flnt_to_jpddl_id(bf)), JDouble(v))
 
         bool_fluents = J_BitSet()
-        for bp in (bp for bp, truth in self.props_true if truth):
-            bool_fluents.set(prop_to_jpddl_id(bp), True)
+        # for bp in (bp for bp, truth in self.props_true if truth):
+        #     bool_fluents.set(prop_to_jpddl_id(bp), True)
+        for bp, truth in self.props_true:
+            if truth:
+                bool_fluents.set(prop_to_jpddl_id(bp), True)
 
         return J_PDDLState(num_fluents, bool_fluents)
 
