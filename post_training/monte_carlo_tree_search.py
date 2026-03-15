@@ -9,7 +9,6 @@ from typing import Any, List, Optional, Iterator, Tuple
 from time import time
 import numpy as np
 from rpyc import BaseNetref
-from typing_extensions import Self
 import tensorflow as tf
 
 from asnets.state_reprs import CanonicalState
@@ -18,36 +17,7 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
 
-class Node(ABC):
-    """
-    A representation of a single board state.
-    MCTS works by constructing a tree of these Nodes.
-    Could be e.g. a chess or checkers board state.
-    """
-    __slots__ = ()
-
-    @abstractmethod
-    def is_terminal(self):
-        """Returns True if the node has no children"""
-        return True
-
-    @abstractmethod
-    def reward(self):
-        """Assumes `self` is terminal node. 1=win, 0=loss, .5=tie, etc"""
-        return 0
-
-    @abstractmethod
-    def __hash__(self):
-        """Nodes must be hashable"""
-        return 123456789
-
-    @abstractmethod
-    def __eq__(self, node2):
-        """Nodes must be comparable"""
-        return True
-
-
-class MCTSNode(Node):
+class MCTSNode:
     delete_counter = 0
     __slots__ = (
         "state", "cost_until_now", "reward_weight", "children", "goal_state", "terminal_state", "as_network_input",
@@ -93,18 +63,6 @@ class MCTSNode(Node):
     def to_network_input(self):
         """Make the cstate represented by 'this' MCTSNode to be compatible for the policy network, and transposes it"""
         return self.as_network_input
-
-    def __hash__(self):
-        """Nodes must be hashable"""
-        return hash(self.state)
-
-    def __eq__(self, node2: Self) -> bool:
-        """
-        Nodes must be comparable.
-        That being said, employing rpyc interception, pickling, serialization etc. just for equality seems redundant.
-        At least if their hashes already don't fit.
-        """
-        return hash(self) == hash(node2) and self.state == node2.state
 
     def get_identifiers(self) -> tuple[int, int]:
         # return self.state_id, self._hash
@@ -352,6 +310,8 @@ class MCTS:
 
     def mcts_iteration_value_based(self, node):
         path = self._select(node)
+        if hasattr(self, "total_select_depth"):
+            self.total_select_depth += len(path)
         leaf = path[-1]
         self._expand(leaf)
         # reward = 1 / (1 + self._evaluate_node(leaf))
@@ -367,6 +327,8 @@ class MCTS:
         node_path = []
         path_keys = set()
         while True:
+            if len(node_path) > 10000:
+                raise RuntimeError("Selection path exceeded 10000 nodes; likely cycle bug")
             node_path.append(node)
             path_keys.add(node.state_key)
             childmap = node.children
@@ -376,7 +338,12 @@ class MCTS:
                 return node_path
             action, child = self._puct_select_no_cycle(node, path_keys)
             # increment edge visit by ACTION KEY
+            if child is None:
+                if self.debug_time_mcts_iterations:
+                    self.after_selection_times.append(time())
+                return node_path
             childmap.increment_visit(action)
+            # all children are cyclic on this path -> stop here
             node = child
 
     def _expand(self, node):
@@ -439,7 +406,7 @@ class MCTS:
         assert n_children > 0, "PUCT select called on node with no children"
 
         # --- priors ---
-        priors = self.get_act_dist_from_mcts_node(node)
+        priors = node.act_dist
         priors = priors.numpy() if hasattr(priors, "numpy") else priors
         priors = np.asarray(priors, dtype=np.float32)
 
@@ -477,30 +444,21 @@ class MCTS:
 
         valid_mask = ~cycle
 
-        # fallback if all children are cycles
+        # no non-cyclic child available on this path
         if not valid_mask.any():
-            idx = int(np.argmax(Q_child))
-            action = int(actions[idx])
-            child = child_list[idx]
-
-            cycle_present = True
-            prior_entropy = None
-            chosen_p = None
-            edge_visits_chosen = int(edge_visits[idx])
-
             if self._probe:
                 self._probe.log_select_softmax(
-                    prior_entropy=prior_entropy,
-                    chosen_p=chosen_p,
-                    edge_visits_chosen=edge_visits_chosen,
-                    cycle_present=cycle_present
+                    prior_entropy=None,
+                    chosen_p=None,
+                    edge_visits_chosen=None,
+                    cycle_present=True
                 )
                 try:
-                    self._probe.log(Q_child.tolist(), U.tolist(), idx)
+                    self._probe.log(Q_child.tolist(), U.tolist(), -1)
                 except Exception:
                     pass
 
-            return action, child
+            return None, None
 
         valid_indices = np.flatnonzero(valid_mask)
         score_valid = score[valid_mask]
@@ -551,39 +509,18 @@ class MCTS:
         for mcts_node in path:
             if mcts_node == self.curr_tree_root:
                 continue
-            # assert mcts_node in self.children[output_path[-1][1]].values()
             assert output_path[-1][1].children is not None
             assert mcts_node in output_path[-1][1].children.values()
-            # for action, next_node in self.children[output_path[-1][1]].items():
             for action, next_node in output_path[-1][1].children.items():
                 if mcts_node == next_node:
                     output_path.append((action, mcts_node))
         return output_path[1:]
 
-    def get_act_dist_from_mcts_node(self, node: MCTSNode):
-        if node.act_dist is None:
-            if node.as_network_input is None:
-                node.as_network_input = self.problem_service.to_network_input(*node.get_identifiers())
-            if self.policy_only:
-                node.act_dist = self.network(node.as_network_input)
-            else:
-                node.act_dist, value_tensor = self.network(node.as_network_input)
-                node.pred_value = float(value_tensor.numpy().squeeze())
-        return tf.squeeze(node.act_dist)
 
     def get_value_from_mcts_node(self, node: MCTSNode) -> float:
         if node.goal_state:
             return 1.0
-        if self.policy_only:
-            # Heuristic value (received by get_state_h) would be the distance to goal,
-            # reward \ value for a node\state would be 'how good it is' - hence the inverse
-            return 1 / (1 + self.problem_service.get_state_h(node.state_id, hash(node)))
         else:
-            if node.pred_value is None:
-                if node.as_network_input is None:
-                    node.as_network_input = self.problem_service.to_network_input(*node.get_identifiers())
-                node.act_dist, value_tensor = self.network(node.as_network_input)
-                node.pred_value = float(value_tensor.numpy().squeeze())
             return node.pred_value
 
     def _delete_subtree(self, node, recursive=True):
@@ -592,10 +529,8 @@ class MCTS:
             if node.children is not None:
                 for _, child in node.children.items():
                     self._delete_subtree(child)
-        # self.children.pop(node, None)
         node.children = None
         self.N.pop(node, None)
-        # self.state_to_node.pop(node.state, None)
 
     def log_node_count(self, label=""):
         gc.collect()

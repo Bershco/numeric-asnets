@@ -18,7 +18,7 @@ class TrainingMCTS(MCTS):
     def __init__(self, network, ctx: LocalExploreContext,
                  iterations=10, expansion_k=5,
                  exploration_weight=1.0, sharpen_pi=1.0, one_hot_distance_gamma=0.999, use_batched_inference=True,
-                 log_visitations=False):
+                 log_visitations=False, log_puct_count=False):
         super().__init__(exploration_weight, network=network)
         self.use_batched_inference = use_batched_inference
         self.ctx = ctx
@@ -27,6 +27,12 @@ class TrainingMCTS(MCTS):
         self.sharpen_pi_T = sharpen_pi
         self.one_hot_distance_gamma = one_hot_distance_gamma
         self.log_visitations = log_visitations
+        if log_puct_count:
+            self.total_select_depth = 0
+            self.times_moved_forward = 0
+
+    def get_average_select_depth(self):
+        return self.total_select_depth / (self.iterations * self.times_moved_forward)
 
     def sharpen_pi(self, pi):
         T = self.sharpen_pi_T
@@ -51,23 +57,14 @@ class TrainingMCTS(MCTS):
             return
 
         # get priors from network
-        act_dist = self.get_act_dist_from_mcts_node(node)
+        act_dist = node.act_dist
         act_dist = tf.squeeze(act_dist).numpy()
 
         # mask invalid actions
         mask = self.get_applicable_action_mask(node)
 
-        # sorted_indices = sorted(range(len(act_dist)), key=lambda i: act_dist[i], reverse=True)
-        #
         actions, children_nodes = [], []
         children_network_repr = []
-        # selected_actions = []
-        # for i in sorted_indices:
-        #     if len(selected_actions) >= self.k:
-        #         break
-        #     if not mask[i] or act_dist[i] == 0.0:
-        #         continue
-        #     selected_actions.append(i)
         valid = np.where(mask & (act_dist > 0.0))[0]
 
         if len(valid) > self.k:
@@ -101,8 +98,15 @@ class TrainingMCTS(MCTS):
             pred_pi_batch = pred_pi_batch.numpy()
             pred_v_batch = pred_v_batch.numpy()
             for i, child in enumerate(children_nodes):
-                child.act_dist = pred_pi_batch[i]
+                child.act_dist = np.squeeze(pred_pi_batch[i]).astype(np.float32)
                 child.pred_value = pred_v_batch[i][0]
+        else:
+            for child in children_nodes:
+                net_input = child.as_network_input
+                act_dist, value = self.network(net_input, training=False)
+
+                child.act_dist = tf.squeeze(act_dist).numpy().astype(np.float32)
+                child.pred_value = float(value.numpy().squeeze())
         node.children = FixedChildMap(actions, children_nodes)
 
     def _rollout(self, node, horizon=0):
@@ -112,21 +116,9 @@ class TrainingMCTS(MCTS):
     def initialise_tree(self, cstate) -> None:
         """Start a new tree for a fresh episode."""
         self.curr_tree_root = wrapInMCTSNode(state=cstate, cost_until_now=0)
+        self.ensure_root_act_dist_value()
         self.state_key_to_node[cstate.state_key] = self.curr_tree_root
         self.N.clear()
-
-    def get_act_dist_from_mcts_node(self, node: MCTSNode):
-        if node.act_dist is None:
-            if node.as_network_input is None:
-                # node.as_network_input = self.problem_service.exposed_to_network_input(*node.get_identifiers())
-                # node.as_network_input = self.ctx.to_network_input(*node.get_identifiers())
-                node.as_network_input = self.ctx.to_network_input(node.state)
-            if self.policy_only:
-                node.act_dist = self.network(node.as_network_input)
-            else:
-                node.act_dist, value_tensor = self.network(node.as_network_input)
-                node.pred_value = float(value_tensor.numpy().squeeze())
-        return tf.squeeze(node.act_dist)
 
     def compute_pi_z_for_node(self, node: MCTSNode, act_dim) -> tuple[np.ndarray, float]:
         assert node.children is not None
@@ -188,6 +180,8 @@ class TrainingMCTS(MCTS):
         next_node = parent.children[action_id]
         # self.prune_children_except(parent, action_id)
         self.curr_tree_root = next_node
+        if hasattr(self, "times_moved_forward"):
+            self.times_moved_forward += 1
         return self.curr_tree_root.state
 
     def get_children_mask(self, act_dim=None, node=None,
@@ -307,3 +301,10 @@ class TrainingMCTS(MCTS):
                 seen_states.add(state)
                 all_paths.append(step)
         return all_paths
+
+    def ensure_root_act_dist_value(self):
+        assert self.curr_tree_root is not None
+        self.curr_tree_root.as_network_input = self.curr_tree_root.state.to_network_input()
+        act_dist, value = self.network(self.curr_tree_root.as_network_input)
+        self.curr_tree_root.act_dist = tf.squeeze(act_dist).numpy().astype(np.float32)
+        self.curr_tree_root.pred_value = float(value.numpy().squeeze())

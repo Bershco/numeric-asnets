@@ -416,7 +416,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     # --- run exploration ---
     # get init state
     cstate = ctx.get_init_state()
-
+    log_puct_count = True
     mcts = TrainingMCTS(
         network=net,
         ctx=ctx,
@@ -425,7 +425,9 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         exploration_weight=inp.spec.mcts_exploration_weight,
         sharpen_pi=0.1,
         log_visitations=False,
+        log_puct_count=True if log_puct_count else False,
     )
+
     mcts.initialise_tree(cstate)
 
     max_len = inp.spec.max_len
@@ -517,6 +519,10 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
             masked_pi[valid] = 1.0 / len(valid)
         a = action_policy.select_action(mcts=mcts, pi=masked_pi)
         cstate = mcts.step_forward(a)
+
+
+    if log_puct_count:
+        print(f"Average tree depth: {mcts.get_average_select_depth()}")
 
     # If ended due to max_len without terminal
     # TODO: make sure I don't miss successes if goal reached after max_len moves
