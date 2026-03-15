@@ -135,8 +135,8 @@ class NumericLandmarkGenerator:
             List[NumericLandmark]: A list of landmarks.
         """
         ensure_jvm()
-        if cstate in self._cache:
-            return self._cache[cstate]
+        if cstate.state_key in self._cache:
+            return self._cache[cstate.state_key]
 
         # See JPDDLPlus for more details on what a landmark here contains.
         j_state = cstate.to_jpddl()
@@ -175,7 +175,7 @@ class NumericLandmarkGenerator:
                             f'landmarks and {self._num_landmark_count} numeric '
                             'landmarks')
         
-        self._cache[cstate] = landmarks
+        self._cache[cstate.state_key] = landmarks
         return landmarks
 
     def _is_numeric_landmark(self,
