@@ -1091,7 +1091,7 @@ def make_problem_service(config, set_proc_title=False):
                         pi[:] = 1.0 / act_dim
                     continue
                 for action, child in node.children.items():
-                    pi[action] = mcts_tree.N.get(child, 0)
+                    pi[action] = child.visit_count
                 if pi.sum() > 0:
                     pi /= pi.sum()
                 else:

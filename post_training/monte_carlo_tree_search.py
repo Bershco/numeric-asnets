@@ -21,7 +21,8 @@ class MCTSNode:
     delete_counter = 0
     __slots__ = (
         "state", "cost_until_now", "reward_weight", "children", "goal_state", "terminal_state", "as_network_input",
-        "applicable_action_mask", "act_dist", "pred_value", "Q_value", "known_distance_to_goal", "best_goal_child"
+        "applicable_action_mask", "act_dist", "pred_value", "Q_value", "known_distance_to_goal", "best_goal_child",
+        "visit_count"
     )
 
     def __init__(self,
@@ -41,6 +42,7 @@ class MCTSNode:
         self.Q_value = 0
         self.known_distance_to_goal = 0 if is_goal else np.inf
         self.best_goal_child = None
+        self.visit_count = 0
 
     def simulate_step(self, action_id, problem_service):
         if hasattr(problem_service, "env_simulate_step"):
@@ -277,7 +279,6 @@ class MCTS:
                  debug_time_mcts_iterations=False,
                  debug_comparison_exploration_exploitation=False):
         self.curr_tree_root: Optional[MCTSNode] = None
-        self.N = defaultdict(int)  # total visit count for each node
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
         self.state_key_to_node: dict[bytes, MCTSNode] = {}
@@ -358,8 +359,8 @@ class MCTS:
         distance_from_goal = 0 if subtree_contains_goal else None
         child_toward_goal = None
         for node in reversed(path):
-            n = self.N[node] + 1
-            self.N[node] = n
+            n = node.visit_count + 1
+            node.visit_count = n
             q_old = node.Q_value
             node.Q_value = q_old + (reward - q_old) / n
             if distance_from_goal is not None:
@@ -371,8 +372,8 @@ class MCTS:
                     # tie-breaking
                     prev_child = node.best_goal_child
                     new_child = child_toward_goal
-                    prev_visits = self.N.get(prev_child, 0)
-                    new_visits = self.N.get(new_child, 0)
+                    prev_visits = prev_child.visit_count
+                    new_visits = new_child.visit_count
                     if new_visits > prev_visits:
                         update = True
                     elif new_visits == prev_visits and new_child.Q_value > prev_child.Q_value:
@@ -397,7 +398,6 @@ class MCTS:
         children = node.children
 
         # _keys are the REAL action IDs, not compact positions in the global action space
-        # actions = np.asarray(children._keys, dtype=np.int32)
         actions = children.actions_np
         child_list = children._values
         edge_visits = children.visits
@@ -434,8 +434,7 @@ class MCTS:
                 LOGGER.debug(f"Cycle found, {child_list[i]} is present in path")
 
         # --- PUCT ---
-        N_parent = float(self.N.get(node, 0))
-        sqrtN = math.sqrt(max(1.0, N_parent))
+        sqrtN = math.sqrt(max(1.0, node.visit_count))
 
         U = self.exploration_weight * prior * (
                 sqrtN / (1.0 + edge_visits)
@@ -530,7 +529,6 @@ class MCTS:
                 for _, child in node.children.items():
                     self._delete_subtree(child)
         node.children = None
-        self.N.pop(node, None)
 
     def log_node_count(self, label=""):
         gc.collect()

@@ -118,14 +118,13 @@ class TrainingMCTS(MCTS):
         self.curr_tree_root = wrapInMCTSNode(state=cstate, cost_until_now=0)
         self.ensure_root_act_dist_value()
         self.state_key_to_node[cstate.state_key] = self.curr_tree_root
-        self.N.clear()
 
     def compute_pi_z_for_node(self, node: MCTSNode, act_dim) -> tuple[np.ndarray, float]:
         assert node.children is not None
         pi = np.zeros(act_dim, dtype=np.float32)
         z_partial = np.zeros(act_dim, dtype=np.float32)
         for action, child in node.children.items():
-            visits = self.N.get(child, 0)
+            visits = child.visit_count
             pi[action] = visits
             z_partial[action] = visits * child.Q_value
         pi_sum = pi.sum()
@@ -204,8 +203,8 @@ class TrainingMCTS(MCTS):
 
     def sample_k_sufficient_nodes(self, k, min_visitations: int = 5, power_law_weight: float = 2.0) -> list:
         # 1. Filter eligible nodes
-        eligible = [(node, self.N[node]) for node, count in self.N.items() if count > min_visitations]
-
+        # eligible = [(node, self.N[node]) for node, count in self.N.items() if count > min_visitations]
+        eligible = [(node, node.visit_count) for node in self.state_key_to_node.values() if node.visit_count > min_visitations]
         if not eligible:
             return []
 

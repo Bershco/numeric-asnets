@@ -182,7 +182,7 @@ class MonteCarloPolicyEvaluator(MCTS):
                 return next_action
 
         def node_priority_by_n(node):
-            return self.N.get(node,0)
+            return node.visit_count
 
         def tiebreak_by_q(node):
             # return self.Q.get(node,0.0)
@@ -219,7 +219,6 @@ class MonteCarloPolicyEvaluator(MCTS):
             self.curr_tree_root = next_node
             #This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
             self._delete_subtree(_temp, recursive=False)
-            # LOGGER.info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
 
     def progress_to_without_cstate(self, action_id, cost):
         # next_node = self.children[self.curr_tree_root][action_id]
@@ -230,7 +229,6 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.curr_tree_root = next_node
         # This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
         self._delete_subtree(_temp, recursive=False)
-        # LOGGER.info(f'Next node is available, it has been visited %s times.', self.N[self.curr_tree_root])
         return self.curr_tree_root.state_id, hash(self.curr_tree_root), 1, self.curr_tree_root.goal_state, self.curr_tree_root.terminal_state
 
     def get_corresponding_mcts_node(self, cstate):

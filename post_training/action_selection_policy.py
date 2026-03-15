@@ -55,7 +55,7 @@ class VisitProportionalPolicy(ActionSelectionPolicy):
 
         for action, child in root.children.items():
             if child is not None:
-                visits[action] = mcts.N.get(child, 0)
+                visits[action] = child.visit_count
 
         s = visits.sum()
 
