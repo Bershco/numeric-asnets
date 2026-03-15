@@ -17,7 +17,6 @@ import jpype.imports
 from jpype.types import *
 
 LOGGER = logging.getLogger(__name__)
-# LOGGER.setLevel(logging.DEBUG)
 LOGGER.setLevel(logging.INFO)
 
 J_BitSet = None
@@ -619,6 +618,7 @@ def sample_next_state(
         action_id: int,
         planner_exts: 'PlannerExtensions',
         *,
+        mdpsim_state=None,
         ignore_disabled: bool = True):
     """Sample the next state given a canonical state and an action.
 
@@ -628,6 +628,7 @@ def sample_next_state(
         planner_exts (PlannerExtensions): The planner extensions.
         ignore_disabled (bool, optional): Whether to ignore disabled actions
         (just return the same state) or raise an exception. Defaults to True.
+        mdpsim_state: optional injection from outside - for batching.
 
     Raises:
         ValueError: If ignore_disabled is False and the action is disabled.
@@ -641,7 +642,10 @@ def sample_next_state(
     assert isinstance(cstate, CanonicalState)
 
     # TODO: instead of passing in action_id, pass in a BoundAction
-    mdpsim_state = cstate.to_mdpsim(planner_exts)
+    if mdpsim_state is None:
+        # TODO: make sure '...mdpsim_problem_apply(mdpsim_state,...' does not mutate the argument state,
+        #  if it does, this "if" needs and "else" that copies the mdpsim_state
+        mdpsim_state = cstate.to_mdpsim(planner_exts)
     bound_act, applicable = cstate.acts_enabled[action_id]
     if not applicable:
         tot_enabled = sum(truth for _, truth in cstate.acts_enabled)

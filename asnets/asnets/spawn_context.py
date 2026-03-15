@@ -44,8 +44,9 @@ class LocalExploreContext:
         # cstate = self.get_state_from_identifiers(sid, shash)
 
         results = []
+        mdpsim_state = cstate.to_mdpsim(self.planner_exts)
         for action_id in action_nums:
-            next_state, step_cost = sample_next_state(cstate, action_id, self.planner_exts)
+            next_state, step_cost = sample_next_state(cstate, int(action_id), self.planner_exts, mdpsim_state=mdpsim_state)
 
             results.append((
                 action_id,
