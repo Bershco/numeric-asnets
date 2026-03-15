@@ -411,7 +411,8 @@ class PlannerExtensions(object):
                 dg_use_numeric_landmarks:
             numeric_landmark_gen = NumericLandmarkGenerator(
                 weak_ref_to(self),
-                dg_use_contributions)
+                dg_use_contributions,
+                verbose=False)
             data_gens.append(numeric_landmark_gen)
 
         # Generic data generators
