@@ -2,6 +2,7 @@
 
 import argparse
 import atexit
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from json import dump
@@ -1570,11 +1571,17 @@ def _main():
     main()
 
 
-if __name__ == '__main__':
-    multiprocessing.set_start_method('forkserver', force=True)
-    # preload heavy stuff into the forkserver *once*
-    multiprocessing.set_forkserver_preload([
-        "asnets.tf_cpu_preload",
-        "asnets.models",
-    ])
+if __name__ == "__main__":
+    USE_GPU = os.environ.get("ASN_GPU", "0") == "1"
+    multiprocessing.set_start_method("forkserver", force=True)
+    if USE_GPU:
+        multiprocessing.set_forkserver_preload([
+            "asnets.tf_preload",
+            "asnets.models",
+        ])
+    else:
+        multiprocessing.set_forkserver_preload([
+            "asnets.tf_cpu_preload",
+            "asnets.models",
+        ])
     _main()
