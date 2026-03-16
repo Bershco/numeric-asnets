@@ -19,7 +19,7 @@ from pympler.asizeof import asized
 
 from asnets.explorer_spawn_grads import ParallelMCTSExplorerGrads
 from asnets.freeze_overfit_test import FrozenSupervisedTrainer
-from asnets.models import make_weight_manager
+from asnets.models import make_weight_manager, configure_tf_gpu_memory_growth
 from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import CanonicalState
 
@@ -1213,7 +1213,7 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
         use_fluents=args.use_fluents,
         use_comparisons=args.use_comparisons
     )
-
+    configure_tf_gpu_memory_growth()
     domain = Domain.from_pddl_name(
         extract_domain_name_from_file(args.pddls[0])
     )

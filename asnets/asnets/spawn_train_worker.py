@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional, List
 
 import numpy as np
-
+from asnets.models import configure_tf_gpu_memory_growth
 from post_training.action_selection_policy import build_action_policy
 
 _T0 = time.time()
@@ -382,6 +382,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     """
     set_random_seeds(inp.seed)
     worker_tag = f"[W{inp.seed}|{os.getpid()}]"
+    configure_tf_gpu_memory_growth()
     _dbg_tf_threads(tag=f"{worker_tag} worker_start")
     # --- build instance infra ---
     CanonicalState.network_input_config(use_fluents=inp.spec.use_fluents, use_comparisons=inp.spec.use_comps)
@@ -425,7 +426,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         exploration_weight=inp.spec.mcts_exploration_weight,
         sharpen_pi=0.1,
         log_visitations=False,
-        log_puct_count=True if log_puct_count else False,
+        log_puct_count=log_puct_count,
     )
 
     mcts.initialise_tree(cstate)
