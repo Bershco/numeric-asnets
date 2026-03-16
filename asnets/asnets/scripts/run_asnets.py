@@ -1282,6 +1282,7 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
         dg_use_act_history=args.use_act_history,
         difficulty=InstanceDifficulty.EASY,
         seed=args.seed,
+        fixed_instance=True,
     )
 
     dg_extra_dim = sum(g.extra_dim for g in p.data_gens)
