@@ -77,39 +77,41 @@ class MCTSNode:
 
 
 class FixedChildMap:
-    __slots__ = ("_keys", "_values", "_visits", "_actions_np")
+    __slots__ = ("_keys", "_values", "_visits", "_actions_np", "_priors")
 
-    def __init__(self, keys: List[int], values: List[Any]):
+    def __init__(self, keys: List[int], values: List[Any], priors: List[float]):
         assert len(keys) == len(values), "Keys and values must match in length"
+        assert len(keys) == len(priors), "Keys and priors must match in length"
 
-        sorted_pairs = sorted(zip(keys, values))
-        self._keys = array('H', (k for k, _ in sorted_pairs))
-        self._values = [v for _, v in sorted_pairs]
+        sorted_triples = sorted(zip(keys, values, priors))
+        self._keys = array('H', (k for k, _, _ in sorted_triples))
+        self._values = [v for _, v, _ in sorted_triples]
+        self._priors = np.asarray([p for _, _, p in sorted_triples], dtype=np.float32)
+
         self._visits = np.zeros(len(self._keys), dtype=np.int32)
-
-        # cached numpy version
         self._actions_np = np.asarray(self._keys, dtype=np.int32)
 
-    def _index_of(self, key: int) -> int:
-        """Return the index of the action key."""
+    def _find_index(self, key: int) -> Optional[int]:
         idx = bisect.bisect_left(self._keys, key)
         if idx < len(self._keys) and self._keys[idx] == key:
             return idx
-        raise KeyError(key)
+        return None
+
+    def _index_of(self, key: int) -> int:
+        idx = self._find_index(key)
+        if idx is None:
+            raise KeyError(key)
+        return idx
 
     def get(self, key: int, default: Optional[Any] = None) -> Optional[Any]:
-        idx = bisect.bisect_left(self._keys, key)
-        if idx < len(self._keys) and self._keys[idx] == key:
-            return self._values[idx]
-        return default
+        idx = self._find_index(key)
+        return self._values[idx] if idx is not None else default
 
     def __getitem__(self, key: int) -> Any:
-        idx = self._index_of(key)
-        return self._values[idx]
+        return self._values[self._index_of(key)]
 
     def __contains__(self, key: int) -> bool:
-        idx = bisect.bisect_left(self._keys, key)
-        return idx < len(self._keys) and self._keys[idx] == key
+        return self._find_index(key) is not None
 
     def items(self) -> Iterator[Tuple[int, Any]]:
         return zip(self._keys, self._values)
@@ -125,16 +127,15 @@ class FixedChildMap:
         return self._visits
 
     @property
+    def priors(self):
+        return self._priors
+
+    @property
     def actions_np(self):
         return self._actions_np
 
-    def visit_count(self, key: int) -> int:
-        return int(self._visits[self._index_of(key)])
-
     def increment_visit(self, key: int):
-        """Increment visit count for the given action key."""
-        idx = self._index_of(key)
-        self._visits[idx] += 1
+        self._visits[self._index_of(key)] += 1
 
     def __len__(self) -> int:
         return len(self._keys)
@@ -148,7 +149,6 @@ class FixedChildMap:
 
     def is_empty(self) -> bool:
         return len(self._keys) == 0
-
 
 class SelectProbe:
     """Lightweight, backward-compatible probe.
@@ -659,7 +659,8 @@ class MCTS:
         actions = children.actions_np
         child_list = children._values
         edge_visits = children.visits
-        priors = node.act_dist
+        # priors = node.act_dist
+        priors = children.priors
         sqrtN = math.sqrt(max(1.0, node.visit_count))
         c = self.exploration_weight
         sid = self._select_counter

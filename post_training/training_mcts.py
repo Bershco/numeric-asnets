@@ -56,14 +56,12 @@ class TrainingMCTS(MCTS):
         if node.children is not None:
             return
 
-        # get priors from network
         act_dist = node.act_dist
-
-        # mask invalid actions
         mask = self.get_applicable_action_mask(node)
 
-        actions, children_nodes = [], []
+        actions, children_nodes, edge_priors = [], [], []
         children_network_repr = []
+
         valid = np.where(mask & (act_dist > 0.0))[0]
 
         if len(valid) > self.k:
@@ -71,7 +69,9 @@ class TrainingMCTS(MCTS):
             selected_actions = valid[topk]
         else:
             selected_actions = valid
+
         results = self.ctx.env_simulate_batch_steps(node.state, selected_actions)
+
         for (
                 action_id,
                 cstate,
@@ -80,9 +80,10 @@ class TrainingMCTS(MCTS):
                 is_terminal,
                 network_ready_repr,
                 applicable_action_mask,
-             ) in results:
+        ) in results:
             state_key = cstate.state_key
             node_entry = self.state_key_to_node.get(state_key)
+
             if node_entry is None:
                 wrapped_output_cstate = wrapInMCTSNode(
                     state=cstate,
@@ -91,7 +92,9 @@ class TrainingMCTS(MCTS):
                 self.state_key_to_node[state_key] = wrapped_output_cstate
             else:
                 wrapped_output_cstate = node_entry
+
             actions.append(action_id)
+            edge_priors.append(float(act_dist[action_id]))
             children_nodes.append(wrapped_output_cstate)
             children_network_repr.append(wrapped_output_cstate.as_network_input)
 
@@ -100,6 +103,7 @@ class TrainingMCTS(MCTS):
             pred_pi_batch, pred_v_batch = self.network(batch_tensor, training=False)
             pred_pi_batch = pred_pi_batch.numpy().astype(np.float32, copy=False)
             pred_v_batch = pred_v_batch.numpy()
+
             for i, child in enumerate(children_nodes):
                 child.act_dist = pred_pi_batch[i]
                 child.pred_value = float(pred_v_batch[i][0])
@@ -107,10 +111,10 @@ class TrainingMCTS(MCTS):
             for child in children_nodes:
                 net_input = child.as_network_input
                 act_dist, value = self.network(net_input, training=False)
-
                 child.act_dist = tf.squeeze(act_dist).numpy().astype(np.float32, copy=False)
                 child.pred_value = float(value.numpy().squeeze())
-        node.children = FixedChildMap(actions, children_nodes)
+
+        node.children = FixedChildMap(actions, children_nodes, edge_priors)
 
     def _rollout(self, node, horizon=0):
         """Use value head for evaluation instead of random rollout."""
