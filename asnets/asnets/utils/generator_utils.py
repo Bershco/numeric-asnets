@@ -133,7 +133,7 @@ class DomainSpec:
 class Domain(Enum):
 
     BLOCK_GROUPING = DomainSpec(
-        pddl_name="block-grouping",
+        pddl_name="mt-block-grouping",
         domain_template="TBD",
         generator="TBD",
         instance_folder="TBD",
@@ -199,7 +199,7 @@ class Domain(Enum):
     )
 
     MPRIME = DomainSpec(
-        pddl_name="mprime",
+        pddl_name="mystery-prime-typed",
         domain_template="TBD",
         generator="TBD",
         instance_folder="TBD",
@@ -217,7 +217,7 @@ class Domain(Enum):
     )
 
     TPP = DomainSpec(
-        pddl_name="tpp",
+        pddl_name="TPP-Metric",
         domain_template="TBD",
         generator="TBD",
         instance_folder="TBD",
