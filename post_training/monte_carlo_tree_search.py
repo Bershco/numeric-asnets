@@ -1,5 +1,6 @@
 import gc
 import logging
+import random
 from abc import ABC, abstractmethod
 from array import array
 import bisect
@@ -9,7 +10,6 @@ from typing import Any, List, Optional, Iterator, Tuple
 from time import time
 import numpy as np
 from rpyc import BaseNetref
-import tensorflow as tf
 
 from asnets.state_reprs import CanonicalState
 
@@ -22,7 +22,7 @@ class MCTSNode:
     __slots__ = (
         "state", "cost_until_now", "reward_weight", "children", "goal_state", "terminal_state", "as_network_input",
         "applicable_action_mask", "act_dist", "pred_value", "Q_value", "known_distance_to_goal", "best_goal_child",
-        "visit_count"
+        "visit_count", "last_select_id"
     )
 
     def __init__(self,
@@ -43,6 +43,7 @@ class MCTSNode:
         self.known_distance_to_goal = 0 if is_goal else np.inf
         self.best_goal_child = None
         self.visit_count = 0
+        self.last_select_id = -1
 
     def simulate_step(self, action_id, problem_service):
         if hasattr(problem_service, "env_simulate_step"):
@@ -277,7 +278,8 @@ class MCTS:
                  problem_service=None,
                  debug_memory=False,
                  debug_time_mcts_iterations=False,
-                 debug_comparison_exploration_exploitation=False):
+                 debug_comparison_exploration_exploitation=False,
+                 use_numpy_sampler=False):
         self.curr_tree_root: Optional[MCTSNode] = None
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
@@ -298,6 +300,23 @@ class MCTS:
         self._probe = None
         if self.debug_comparison_exploration_exploitation:
             self._probe = SelectProbe()
+        self._select_counter = -1
+
+        # -- select path --
+        self._init_selector(use_numpy_sampler=use_numpy_sampler)
+
+    def _init_selector(self, use_numpy_sampler: bool):
+
+        if self._probe:
+            if use_numpy_sampler:
+                raise NotImplementedError
+            else:
+                self._puct_select_no_cycle = self._puct_select_probe_python
+        else:
+            if use_numpy_sampler:
+                self._puct_select_no_cycle = self._puct_select_fast_numpy
+            else:
+                self._puct_select_no_cycle = self._puct_select_fast_python
 
     def mcts_iteration_classic(self, node, horizon):
         """Make the tree one layer better. (Train for one iteration.)"""
@@ -326,18 +345,16 @@ class MCTS:
         if self.debug_time_mcts_iterations:
             self.start_times.append(time())
         node_path = []
-        path_keys = set()
+        self._select_counter += 1
         while True:
-            if len(node_path) > 10000:
-                raise RuntimeError("Selection path exceeded 10000 nodes; likely cycle bug")
             node_path.append(node)
-            path_keys.add(node.state_key)
+            node.last_select_id = self._select_counter
             childmap = node.children
             if childmap is None or childmap.is_empty():
                 if self.debug_time_mcts_iterations:
                     self.after_selection_times.append(time())
                 return node_path
-            action, child = self._puct_select_no_cycle(node, path_keys)
+            action, child = self._puct_select_no_cycle(node)
             # increment edge visit by ACTION KEY
             if child is None:
                 if self.debug_time_mcts_iterations:
@@ -394,114 +411,98 @@ class MCTS:
             self.after_eval_times.append(time())
         return value
 
-    def _puct_select_no_cycle(self, node, path_keys):
-        children = node.children
-
-        # _keys are the REAL action IDs, not compact positions in the global action space
-        actions = children.actions_np
-        child_list = children._values
-        edge_visits = children.visits
-
-        n_children = len(actions)
-        assert n_children > 0, "PUCT select called on node with no children"
-
-        # --- priors ---
-        priors = node.act_dist
-        priors = priors.numpy() if hasattr(priors, "numpy") else priors
-        priors = np.asarray(priors, dtype=np.float32)
-
-        prior = np.zeros(n_children, dtype=np.float32)
-        valid_prior = (actions >= 0) & (actions < priors.size)
-        if valid_prior.any():
-            prior[valid_prior] = priors[actions[valid_prior]]
-
-        # --- child Q values ---
-        Q_child = np.fromiter(
-            (child.Q_value for child in child_list),
-            dtype=np.float32,
-            count=n_children
-        )
-
-        # --- cycle mask ---
-        cycle = np.fromiter(
-            (child.state_key in path_keys for child in child_list),
-            dtype=bool,
-            count=n_children
-        )
-
-        if cycle.any():
-            for i in np.flatnonzero(cycle):
-                LOGGER.debug(f"Cycle found, {child_list[i]} is present in path")
-
-        # --- PUCT ---
-        sqrtN = math.sqrt(max(1.0, node.visit_count))
-
-        U = self.exploration_weight * prior * (
-                sqrtN / (1.0 + edge_visits)
-        )
-        score = Q_child + U
-
-        valid_mask = ~cycle
-
-        # no non-cyclic child available on this path
-        if not valid_mask.any():
-            if self._probe:
-                self._probe.log_select_softmax(
-                    prior_entropy=None,
-                    chosen_p=None,
-                    edge_visits_chosen=None,
-                    cycle_present=True
-                )
-                try:
-                    self._probe.log(Q_child.tolist(), U.tolist(), -1)
-                except Exception:
-                    pass
-
-            return None, None
-
-        valid_indices = np.flatnonzero(valid_mask)
-        score_valid = score[valid_mask]
-
-        # --- stable softmax on valid children only ---
-        x = score_valid.astype(np.float64)
-        x -= x.max()
-        w = np.exp(x)
-        s = float(w.sum())
-
-        if (not np.isfinite(s)) or s <= 0.0:
-            idx_local = int(np.argmax(score_valid))
-            p = None
-        else:
-            p = w / s
-            idx_local = int(np.random.choice(len(valid_indices), p=p))
-
-        idx = int(valid_indices[idx_local])
-        action = int(actions[idx])
-        child = child_list[idx]
-
-        if self._probe:
-            cycle_present = bool(cycle.any())
-            pv = prior[valid_mask]
-            pv_sum = float(pv.sum())
-            prior_entropy = None
-            if pv_sum > 0.0 and np.isfinite(pv_sum):
-                pv = pv / pv_sum
-                prior_entropy = float(-(pv * np.log(pv + 1e-12)).sum())
-            chosen_p = float(p[idx_local]) if p is not None else None
-            edge_visits_chosen = int(edge_visits[idx])
-
-            self._probe.log_select_softmax(
-                prior_entropy=prior_entropy,
-                chosen_p=chosen_p,
-                edge_visits_chosen=edge_visits_chosen,
-                cycle_present=cycle_present
-            )
-            try:
-                self._probe.log(Q_child.tolist(), U.tolist(), idx)
-            except Exception:
-                pass
-
-        return action, child
+    # def _puct_select_no_cycle(self, node):
+    #     children = node.children
+    #
+    #     # _keys are the REAL action IDs, not compact positions in the global action space
+    #     actions = children.actions_np
+    #     child_list = children._values
+    #     edge_visits = children.visits
+    #
+    #     n_children = len(actions)
+    #     assert n_children > 0, "PUCT select called on node with no children"
+    #
+    #     prior = node.act_dist[actions]
+    #
+    #     # --- child Q values ---
+    #     Q_child = np.empty(n_children, dtype=np.float32)
+    #     for i, child in enumerate(child_list):
+    #         Q_child[i] = child.Q_value
+    #
+    #     # # --- cycle mask ---
+    #     cycle = np.empty(n_children, dtype=bool)
+    #     for i, child in enumerate(child_list):
+    #         cycle[i] = (child.last_select_id == self._select_counter)
+    #
+    #     # --- PUCT ---
+    #     sqrtN = math.sqrt(max(1.0, node.visit_count))
+    #
+    #     U = self.exploration_weight * prior * (
+    #             sqrtN / (1.0 + edge_visits)
+    #     )
+    #     score = Q_child + U
+    #
+    #     valid_mask = ~cycle
+    #
+    #     # no non-cyclic child available on this path
+    #     if not valid_mask.any():
+    #         if self._probe:
+    #             self._probe.log_select_softmax(
+    #                 prior_entropy=None,
+    #                 chosen_p=None,
+    #                 edge_visits_chosen=None,
+    #                 cycle_present=True
+    #             )
+    #             try:
+    #                 self._probe.log(Q_child.tolist(), U.tolist(), -1)
+    #             except Exception:
+    #                 pass
+    #
+    #         return None, None
+    #
+    #     valid_indices = np.flatnonzero(valid_mask)
+    #     score_valid = score[valid_mask]
+    #
+    #     # --- stable softmax on valid children only ---
+    #     x = score_valid.astype(np.float64)
+    #     x -= x.max()
+    #     w = np.exp(x)
+    #     s = float(w.sum())
+    #
+    #     if (not np.isfinite(s)) or s <= 0.0:
+    #         idx_local = int(np.argmax(score_valid))
+    #         p = None
+    #     else:
+    #         p = w / s
+    #         idx_local = int(np.random.choice(len(valid_indices), p=p))
+    #
+    #     idx = int(valid_indices[idx_local])
+    #     action = int(actions[idx])
+    #     child = child_list[idx]
+    #
+    #     if self._probe:
+    #         cycle_present = bool(cycle.any())
+    #         pv = prior[valid_mask]
+    #         pv_sum = float(pv.sum())
+    #         prior_entropy = None
+    #         if pv_sum > 0.0 and np.isfinite(pv_sum):
+    #             pv = pv / pv_sum
+    #             prior_entropy = float(-(pv * np.log(pv + 1e-12)).sum())
+    #         chosen_p = float(p[idx_local]) if p is not None else None
+    #         edge_visits_chosen = int(edge_visits[idx])
+    #
+    #         self._probe.log_select_softmax(
+    #             prior_entropy=prior_entropy,
+    #             chosen_p=chosen_p,
+    #             edge_visits_chosen=edge_visits_chosen,
+    #             cycle_present=cycle_present
+    #         )
+    #         try:
+    #             self._probe.log(Q_child.tolist(), U.tolist(), idx)
+    #         except Exception:
+    #             pass
+    #
+    #     return action, child
 
     def reconstructSelectionPath(self, path):
         output_path = [(None, self.curr_tree_root)]
@@ -514,7 +515,6 @@ class MCTS:
                 if mcts_node == next_node:
                     output_path.append((action, mcts_node))
         return output_path[1:]
-
 
     def get_value_from_mcts_node(self, node: MCTSNode) -> float:
         if node.goal_state:
@@ -565,6 +565,126 @@ class MCTS:
         if node.applicable_action_mask is None:  # Fallback
             node.applicable_action_mask = self.problem_service.get_applicable_action_mask(*node.get_identifiers())
         return node.applicable_action_mask
+
+    def _puct_select_fast_python(self, node):
+        children = node.children
+        actions = children.actions_np
+        child_list = children._values
+        # next 4 lines are for readability and are not 100% optimized
+        edge_visits = children.visits
+        priors = node.act_dist
+        sqrtN = math.sqrt(max(1.0, node.visit_count))
+        c = self.exploration_weight
+
+        sid = self._select_counter
+        best_max = -math.inf
+        any_valid = False
+        scores = []
+        for i, child in enumerate(child_list):
+            u = c * priors[actions[i]] * (sqrtN / (1.0 + edge_visits[i]))
+            s = child.Q_value + u
+            scores.append(s)
+            if child.last_select_id != sid:
+                any_valid = True
+                if s > best_max:
+                    best_max = s
+        if not any_valid:
+            return None, None
+        total = 0.0
+        weights = []
+        for i, child in enumerate(child_list):
+            if child.last_select_id == sid:
+                weights.append(0.0)
+                continue
+            w = math.exp(scores[i] - best_max)
+            weights.append(w)
+            total += w
+        if total <= 0 or not math.isfinite(total):
+            best = -math.inf
+            idx = -1
+            for i, child in enumerate(child_list):
+                if child.last_select_id == sid:
+                    continue
+                s = scores[i]
+                if s > best:
+                    best = s
+                    idx = i
+        else:
+            r = random.random() * total
+            acc = 0.0
+            idx = -1
+            for i, child in enumerate(child_list):
+                if child.last_select_id == sid:
+                    continue
+                acc += weights[i]
+                if acc >= r:
+                    idx = i
+                    break
+        return int(actions[idx]), child_list[idx]
+
+    def _puct_select_fast_numpy(self, node):
+        children = node.children
+        actions = children.actions_np
+        child_list = children._values
+        edge_visits = children.visits
+        priors = node.act_dist
+        n = len(actions)
+        sid = self._select_counter
+        cycle = np.empty(n, dtype=bool)
+        Q = np.empty(n, dtype=np.float32)
+        for i, child in enumerate(child_list):
+            Q[i] = child.Q_value
+            cycle[i] = child.last_select_id == sid
+        prior = priors[actions]
+        sqrtN = math.sqrt(max(1.0, node.visit_count))
+        U = self.exploration_weight * prior * (sqrtN / (1.0 + edge_visits))
+        score = Q + U
+        valid_mask = ~cycle
+        if not valid_mask.any():
+            return None, None
+        score_valid = score[valid_mask]
+        x = score_valid - score_valid.max()
+        w = np.exp(x)
+        s = w.sum()
+        if not np.isfinite(s) or s <= 0:
+            idx_local = int(np.argmax(score_valid))
+        else:
+            p = w / s
+            idx_local = int(np.random.choice(len(score_valid), p=p))
+        idx = np.flatnonzero(valid_mask)[idx_local]
+        return int(actions[idx]), child_list[idx]
+
+    def _puct_select_probe_python(self, node):
+        children = node.children
+        actions = children.actions_np
+        child_list = children._values
+        edge_visits = children.visits
+        priors = node.act_dist
+        sqrtN = math.sqrt(max(1.0, node.visit_count))
+        c = self.exploration_weight
+        sid = self._select_counter
+        n = len(actions)
+        Q = np.empty(n, dtype=np.float32)
+        U = np.empty(n, dtype=np.float32)
+        scores = [0.0] * n
+        cycle = [False] * n
+        max_score = -math.inf
+        any_valid = False
+        for i, child in enumerate(child_list):
+            q = child.Q_value
+            u = c * priors[actions[i]] * (sqrtN / (1.0 + edge_visits[i]))
+            Q[i] = q
+            U[i] = u
+            s = q + u
+            scores[i] = s
+            cyc = child.last_select_id == sid
+            cycle[i] = cyc
+            if not cyc:
+                any_valid = True
+                if s > max_score:
+                    max_score = s
+        if not any_valid:
+            return None, None
 
 
 def wrapInMCTSNode(state: CanonicalState, cost_until_now=float('inf')):

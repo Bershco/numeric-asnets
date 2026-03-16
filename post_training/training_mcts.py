@@ -58,7 +58,6 @@ class TrainingMCTS(MCTS):
 
         # get priors from network
         act_dist = node.act_dist
-        act_dist = tf.squeeze(act_dist).numpy()
 
         # mask invalid actions
         mask = self.get_applicable_action_mask(node)
@@ -73,10 +72,14 @@ class TrainingMCTS(MCTS):
         else:
             selected_actions = valid
         results = self.ctx.env_simulate_batch_steps(node.state, selected_actions)
-        for (action_id,
-             cstate,
-             step_cost, is_goal, is_terminal,
-             network_ready_repr, applicable_action_mask
+        for (
+                action_id,
+                cstate,
+                step_cost,
+                is_goal,
+                is_terminal,
+                network_ready_repr,
+                applicable_action_mask,
              ) in results:
             state_key = cstate.state_key
             node_entry = self.state_key_to_node.get(state_key)
@@ -93,19 +96,19 @@ class TrainingMCTS(MCTS):
             children_network_repr.append(wrapped_output_cstate.as_network_input)
 
         if self.use_batched_inference and len(children_network_repr) > 0:
-            batch_tensor = tf.stack(children_network_repr)  # or tf.convert_to_tensor
+            batch_tensor = tf.stack(children_network_repr)
             pred_pi_batch, pred_v_batch = self.network(batch_tensor, training=False)
-            pred_pi_batch = pred_pi_batch.numpy()
+            pred_pi_batch = pred_pi_batch.numpy().astype(np.float32, copy=False)
             pred_v_batch = pred_v_batch.numpy()
             for i, child in enumerate(children_nodes):
-                child.act_dist = np.squeeze(pred_pi_batch[i]).astype(np.float32)
-                child.pred_value = pred_v_batch[i][0]
+                child.act_dist = pred_pi_batch[i]
+                child.pred_value = float(pred_v_batch[i][0])
         else:
             for child in children_nodes:
                 net_input = child.as_network_input
                 act_dist, value = self.network(net_input, training=False)
 
-                child.act_dist = tf.squeeze(act_dist).numpy().astype(np.float32)
+                child.act_dist = tf.squeeze(act_dist).numpy().astype(np.float32, copy=False)
                 child.pred_value = float(value.numpy().squeeze())
         node.children = FixedChildMap(actions, children_nodes)
 
