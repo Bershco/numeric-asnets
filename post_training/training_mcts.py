@@ -18,8 +18,8 @@ class TrainingMCTS(MCTS):
     def __init__(self, network, ctx: LocalExploreContext,
                  iterations=10, expansion_k=5,
                  exploration_weight=1.0, sharpen_pi=1.0, one_hot_distance_gamma=0.999, use_batched_inference=True,
-                 log_visitations=False, log_puct_count=False):
-        super().__init__(exploration_weight, network=network)
+                 log_visitations=False, select_logging=False):
+        super().__init__(exploration_weight, network=network, select_logging=select_logging)
         self.use_batched_inference = use_batched_inference
         self.ctx = ctx
         self.iterations = iterations
@@ -57,7 +57,7 @@ class TrainingMCTS(MCTS):
             return
 
         act_dist = node.act_dist
-        mask = self.get_applicable_action_mask(node)
+        mask = node.applicable_action_mask
 
         actions, children_nodes, edge_priors = [], [], []
         children_network_repr = []
@@ -139,7 +139,8 @@ class TrainingMCTS(MCTS):
             pi /= pi_sum
             z = z_partial.sum() / pi_sum
         else:
-            mask = self.get_applicable_action_mask(node)
+            # mask = self.get_applicable_action_mask(node)
+            mask = node.applicable_action_mask
             valid = np.where(mask)[0]
             if len(valid) > 0:
                 pi[valid] = 1.0 / len(valid)
@@ -211,7 +212,8 @@ class TrainingMCTS(MCTS):
     def sample_k_sufficient_nodes(self, k, min_visitations: int = 5, power_law_weight: float = 2.0) -> list:
         # 1. Filter eligible nodes
         # eligible = [(node, self.N[node]) for node, count in self.N.items() if count > min_visitations]
-        eligible = [(node, node.visit_count) for node in self.state_key_to_node.values() if node.visit_count > min_visitations]
+        eligible = [(node, node.visit_count) for node in self.state_key_to_node.values() if
+                    node.visit_count > min_visitations]
         if not eligible:
             return []
 
@@ -240,7 +242,8 @@ class TrainingMCTS(MCTS):
         return results
 
     def get_children_of(self, cstate: CanonicalState) -> list:
-        return [(act, child_node.state) for act, child_node in self.state_key_to_node[cstate.state_key].children.items()]
+        return [(act, child_node.state) for act, child_node in
+                self.state_key_to_node[cstate.state_key].children.items()]
 
     def count_subtrees_with_goal(self):
         return sum(1 for node in self.state_key_to_node.values() if node.known_distance_to_goal)
@@ -292,7 +295,8 @@ class TrainingMCTS(MCTS):
         print(f"[DEBUG_RECONSTRUCT_GOAL_PATH] The closest node to goal was on step {closest_ind}")
         return self.reconstruct_goal_path(closest, one_hot_pi_z=one_hot_pi_z)
 
-    def reconstruct_goal_paths_from_trajectory(self, trajectory_info, one_hot_pi_z: bool = False) -> list[dict[str, Any]]:
+    def reconstruct_goal_paths_from_trajectory(self, trajectory_info, one_hot_pi_z: bool = False) -> list[
+        dict[str, Any]]:
         seen_states: set[CanonicalState] = set()
         all_paths = []
         for i, item in enumerate(trajectory_info):

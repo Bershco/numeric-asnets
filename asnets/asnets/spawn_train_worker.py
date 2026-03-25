@@ -349,12 +349,11 @@ def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalE
         result.append(
             {'state': sampled_state, 'children': trajectory_info[ind]['children'], 'pi': sampled_state_softmax,
              'z': sampled_state_v})
-
     return result
 
 
 def _dbg_tf_threads(tag=""):
-    # TF-configured thread pools (may be 0/None meaning “default” depending on TF build)
+    # TF-configured thread pools (maybe 0/None meaning “default” depending on TF build)
     intra = tf.config.threading.get_intra_op_parallelism_threads()
     inter = tf.config.threading.get_inter_op_parallelism_threads()
 
@@ -411,13 +410,15 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     ctx = LocalExploreContext(
         planner_exts=planner_exts,
         estimator=estimator,
-        estimator_value_conversion_lambda=inp.spec.estimator_value_conversion_lambda,
+        estimator_h_to_v_coeff=inp.spec.estimator_h_to_v_coeff,
     )
 
     # --- run exploration ---
     # get init state
     cstate = ctx.get_init_state()
-    log_puct_count = True
+    # if inp.log:
+    #     cstate.print_state_data()
+    select_logging = False
     mcts = TrainingMCTS(
         network=net,
         ctx=ctx,
@@ -426,7 +427,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         exploration_weight=inp.spec.mcts_exploration_weight,
         sharpen_pi=0.1,
         log_visitations=False,
-        log_puct_count=log_puct_count,
+        select_logging=select_logging,
     )
 
     mcts.initialise_tree(cstate)
@@ -522,8 +523,8 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         cstate = mcts.step_forward(a)
 
 
-    if log_puct_count:
-        print(f"Average tree depth: {mcts.get_average_select_depth()}")
+    if select_logging:
+        mcts.get_select_depth_stats()
 
     # If ended due to max_len without terminal
     # TODO: make sure I don't miss successes if goal reached after max_len moves

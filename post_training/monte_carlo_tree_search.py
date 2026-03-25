@@ -279,7 +279,8 @@ class MCTS:
                  debug_memory=False,
                  debug_time_mcts_iterations=False,
                  debug_comparison_exploration_exploitation=False,
-                 use_numpy_sampler=False):
+                 use_numpy_sampler=False,
+                 select_logging=False, ):
         self.curr_tree_root: Optional[MCTSNode] = None
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
@@ -304,6 +305,89 @@ class MCTS:
 
         # -- select path --
         self._init_selector(use_numpy_sampler=use_numpy_sampler)
+        self.select_logging = select_logging
+        if select_logging:
+            self.select_depths = []
+            self.deep_select_applicable_actions = []
+            self.effectve_branching = []
+            self.times_moved_forward = 0
+            self.select_depth_limit = 80
+            self.num_applicable_action_limit = 2
+            self.same_action_streaks = []
+            self.effective_branching = []
+            self.select_stop_frontier = 0
+            self.select_stop_cycle_blocked = 0
+            self.cycle_blocked_depths = []
+
+    def get_select_depth_stats(self):
+        import numpy as np
+
+        depths = self.select_depths
+
+        if not depths:
+            print("[SELECT STATS] No data collected yet.")
+            return
+
+        d = np.asarray(depths, dtype=np.int32)
+
+        count = d.size
+        mean = float(d.mean())
+        median = float(np.median(d))
+        std = float(d.std())
+
+        d_min = int(d.min())
+        d_max = int(d.max())
+
+        p90 = float(np.percentile(d, 90))
+        p95 = float(np.percentile(d, 95))
+        p99 = float(np.percentile(d, 99))
+
+        # per decision step (very useful signal)
+        steps = max(1, self.times_moved_forward)
+        per_step = count / steps
+
+        print("\n=== SELECT DEPTH STATS ===")
+        print(f"Samples: {count}   Decision steps: {steps}   Selects/step: {per_step:.2f}")
+        print(f"Min: {d_min}   Max: {d_max}")
+        print(f"Mean: {mean:.2f}   Median: {median:.2f}   Std: {std:.2f}")
+        print(f"P90: {p90:.2f}   P95: {p95:.2f}   P99: {p99:.2f}")
+
+        # --- histogram (coarse but very informative) ---
+        bins = [0, 25, 50, 75, 100, 150, 200, 300, 500, 1000]
+        hist, edges = np.histogram(d, bins=bins)
+
+        print("\nDepth distribution:")
+        for i in range(len(hist)):
+            lo = edges[i]
+            hi = edges[i + 1]
+            print(f"[{int(lo):>4}, {int(hi):>4}): {hist[i]}")
+
+        # --- sanity hints ---
+        if p95 > 150:
+            print("\n[NOTE] Very deep selection paths (p95 > 150). Likely long corridors / low branching.")
+
+        if std > mean:
+            print("[NOTE] High variance in depth — search behavior is unstable across iterations.")
+
+        if median < mean:
+            print("[NOTE] Long tail detected (mean > median). Some very deep paths dominate runtime.")
+
+        print("Top 10 deepest paths:", sorted(depths)[-10:])
+        print("==========================")
+        print("Deep applicable actions mean:", np.mean(self.deep_select_applicable_actions))
+        print("Deep applicable actions P90:", np.percentile(self.deep_select_applicable_actions, 90))
+        print("Same-action streak mean:", np.mean(self.same_action_streaks))
+        print("Same-action streak max:", np.max(self.same_action_streaks))
+        print("Effective branching mean:", np.mean(self.effective_branching))
+        print("Effective branching P90:", np.percentile(self.effective_branching, 90))
+        print("==========================")
+        print(f"Select stop frontier: {self.select_stop_frontier}")
+        print(f"Select stop cycle-blocked: {self.select_stop_cycle_blocked}")
+        if self.cycle_blocked_depths:
+            cd = np.asarray(self.cycle_blocked_depths)
+            print(f"Cycle-blocked depth mean: {cd.mean():.2f}, median: {np.median(cd):.2f}, max: {cd.max()}")
+        print("==========================")
+
 
     def _init_selector(self, use_numpy_sampler: bool):
 
@@ -330,8 +414,8 @@ class MCTS:
 
     def mcts_iteration_value_based(self, node):
         path = self._select(node)
-        if hasattr(self, "total_select_depth"):
-            self.total_select_depth += len(path)
+        if self.select_logging:
+            self.select_depths.append(len(path))
         leaf = path[-1]
         self._expand(leaf)
         # reward = 1 / (1 + self._evaluate_node(leaf))
@@ -344,21 +428,46 @@ class MCTS:
         """Find an unexplored descendant of `node`."""
         if self.debug_time_mcts_iterations:
             self.start_times.append(time())
+        if self.select_logging:
+            prev_action = None
+            same_action_streak = 0
+            max_same_action_streak = 0
         node_path = []
         self._select_counter += 1
+        depth = 0
         while True:
             node_path.append(node)
+            depth += 1
+            if self.select_logging and depth > self.select_depth_limit:
+                self.deep_select_applicable_actions.append(sum(node.applicable_action_mask))
             node.last_select_id = self._select_counter
             childmap = node.children
             if childmap is None or childmap.is_empty():
                 if self.debug_time_mcts_iterations:
                     self.after_selection_times.append(time())
+                if self.select_logging:
+                    self.same_action_streaks.append(max_same_action_streak)
+                    self.select_stop_frontier += 1
                 return node_path
             action, child = self._puct_select_no_cycle(node)
+
+            if self.select_logging:
+                if prev_action is not None and action == prev_action:
+                    same_action_streak += 1
+                else:
+                    same_action_streak = 1
+
+                max_same_action_streak = max(max_same_action_streak, same_action_streak)
+                prev_action = action
+
             # increment edge visit by ACTION KEY
             if child is None:
                 if self.debug_time_mcts_iterations:
                     self.after_selection_times.append(time())
+                if self.select_logging:
+                    self.same_action_streaks.append(max_same_action_streak)
+                    self.select_stop_cycle_blocked += 1
+                    self.cycle_blocked_depths.append(depth)
                 return node_path
             childmap.increment_visit(action)
             # all children are cyclic on this path -> stop here
@@ -410,99 +519,6 @@ class MCTS:
         if self.debug_time_mcts_iterations:
             self.after_eval_times.append(time())
         return value
-
-    # def _puct_select_no_cycle(self, node):
-    #     children = node.children
-    #
-    #     # _keys are the REAL action IDs, not compact positions in the global action space
-    #     actions = children.actions_np
-    #     child_list = children._values
-    #     edge_visits = children.visits
-    #
-    #     n_children = len(actions)
-    #     assert n_children > 0, "PUCT select called on node with no children"
-    #
-    #     prior = node.act_dist[actions]
-    #
-    #     # --- child Q values ---
-    #     Q_child = np.empty(n_children, dtype=np.float32)
-    #     for i, child in enumerate(child_list):
-    #         Q_child[i] = child.Q_value
-    #
-    #     # # --- cycle mask ---
-    #     cycle = np.empty(n_children, dtype=bool)
-    #     for i, child in enumerate(child_list):
-    #         cycle[i] = (child.last_select_id == self._select_counter)
-    #
-    #     # --- PUCT ---
-    #     sqrtN = math.sqrt(max(1.0, node.visit_count))
-    #
-    #     U = self.exploration_weight * prior * (
-    #             sqrtN / (1.0 + edge_visits)
-    #     )
-    #     score = Q_child + U
-    #
-    #     valid_mask = ~cycle
-    #
-    #     # no non-cyclic child available on this path
-    #     if not valid_mask.any():
-    #         if self._probe:
-    #             self._probe.log_select_softmax(
-    #                 prior_entropy=None,
-    #                 chosen_p=None,
-    #                 edge_visits_chosen=None,
-    #                 cycle_present=True
-    #             )
-    #             try:
-    #                 self._probe.log(Q_child.tolist(), U.tolist(), -1)
-    #             except Exception:
-    #                 pass
-    #
-    #         return None, None
-    #
-    #     valid_indices = np.flatnonzero(valid_mask)
-    #     score_valid = score[valid_mask]
-    #
-    #     # --- stable softmax on valid children only ---
-    #     x = score_valid.astype(np.float64)
-    #     x -= x.max()
-    #     w = np.exp(x)
-    #     s = float(w.sum())
-    #
-    #     if (not np.isfinite(s)) or s <= 0.0:
-    #         idx_local = int(np.argmax(score_valid))
-    #         p = None
-    #     else:
-    #         p = w / s
-    #         idx_local = int(np.random.choice(len(valid_indices), p=p))
-    #
-    #     idx = int(valid_indices[idx_local])
-    #     action = int(actions[idx])
-    #     child = child_list[idx]
-    #
-    #     if self._probe:
-    #         cycle_present = bool(cycle.any())
-    #         pv = prior[valid_mask]
-    #         pv_sum = float(pv.sum())
-    #         prior_entropy = None
-    #         if pv_sum > 0.0 and np.isfinite(pv_sum):
-    #             pv = pv / pv_sum
-    #             prior_entropy = float(-(pv * np.log(pv + 1e-12)).sum())
-    #         chosen_p = float(p[idx_local]) if p is not None else None
-    #         edge_visits_chosen = int(edge_visits[idx])
-    #
-    #         self._probe.log_select_softmax(
-    #             prior_entropy=prior_entropy,
-    #             chosen_p=chosen_p,
-    #             edge_visits_chosen=edge_visits_chosen,
-    #             cycle_present=cycle_present
-    #         )
-    #         try:
-    #             self._probe.log(Q_child.tolist(), U.tolist(), idx)
-    #         except Exception:
-    #             pass
-    #
-    #     return action, child
 
     def reconstructSelectionPath(self, path):
         output_path = [(None, self.curr_tree_root)]
@@ -572,22 +588,31 @@ class MCTS:
         child_list = children._values
         # next 4 lines are for readability and are not 100% optimized
         edge_visits = children.visits
-        priors = node.act_dist
+        priors = children.priors
         sqrtN = math.sqrt(max(1.0, node.visit_count))
         c = self.exploration_weight
-
         sid = self._select_counter
         best_max = -math.inf
         any_valid = False
         scores = []
         for i, child in enumerate(child_list):
-            u = c * priors[actions[i]] * (sqrtN / (1.0 + edge_visits[i]))
+            u = c * priors[i] * (sqrtN / (1.0 + edge_visits[i]))
             s = child.Q_value + u
             scores.append(s)
             if child.last_select_id != sid:
                 any_valid = True
                 if s > best_max:
                     best_max = s
+        best = best_max
+        threshold = best - 1e-1
+        effective_branching = 0
+        for i, child in enumerate(child_list):
+            if child.last_select_id == sid:
+                continue
+            if scores[i] >= threshold:
+                effective_branching += 1
+        if self.select_logging:
+            self.effective_branching.append(effective_branching)
         if not any_valid:
             return None, None
         total = 0.0
@@ -659,7 +684,6 @@ class MCTS:
         actions = children.actions_np
         child_list = children._values
         edge_visits = children.visits
-        # priors = node.act_dist
         priors = children.priors
         sqrtN = math.sqrt(max(1.0, node.visit_count))
         c = self.exploration_weight

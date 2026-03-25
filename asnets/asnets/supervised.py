@@ -272,8 +272,6 @@ class PlannerExtensions(object):
     def __init__(self,
                  pddl_files: List[str],
                  domain,
-                 # init_problem_name: str,
-                 # domain_file_path_str: str,
                  domain_type: DomainType,
                  *,
                  dg_ssipp_heuristic_name: str = None,
@@ -300,22 +298,14 @@ class PlannerExtensions(object):
             dg_use_act_history (bool, optional): Whether to use the action count
             data generator. Defaults to False.
         """
-        # self.pddl_files = pddl_files
         self.pddl_files = [pddl_files[0]]
         self.domain_type = domain_type
-        # LOGGER.info('Parsing %d PDDL files for domain type %s',
-        #             len(self.pddl_files), domain_type.name)
         self.difficulty = difficulty
         self.seed = seed
 
         import mdpsim  # noqa: F811
         import ssipp  # noqa: F811
 
-        # self.domain = Domain.from_pddl_name(extract_domain_name_from_file(domain_file_path_str))
-
-        # self.domain.generate_instances(
-        #     difficulty=self.difficulty,
-        # )
         self.domain = domain
         if not fixed_instance:
             generated_problem_pddl_path = self.domain.get_realtime_instance(self.difficulty, self.seed)
@@ -327,8 +317,6 @@ class PlannerExtensions(object):
         print(f'Starting to parse mdpsim problem: {self.generated_problem_name}')
         # MDPSim stuff
         self.mdpsim: ModuleType = mdpsim
-        # self.mdpsim_problem = parse_problem_args(self.mdpsim, self.pddl_files,
-        #                                          init_problem_name)
         self.mdpsim_problem = parse_problem_args(self.mdpsim, self.pddl_files, self.generated_problem_name)
         self.problem_name: str = self.mdpsim_problem.name.strip()
 
@@ -339,7 +327,6 @@ class PlannerExtensions(object):
             strip_parens(a.identifier): a
             for a in self.mdpsim_problem.ground_actions
         }
-
         LOGGER.debug(f'Python-side extra data')
         # Python-side extra data
         self.domain_meta = get_domain_meta(self.mdpsim_problem.domain)
@@ -2058,8 +2045,6 @@ class ManualLoss:
                  reduction=tf.keras.losses.Reduction.AUTO,
                  name=None,
                  strategy=SupervisedObjective.ANY_GOOD_ACTION):
-        # super().__init__(reduction, name)
-        # #TODO: check if Loss class that was previously a superclass did anything in its init method
         self.problems = problems
         self.weight_manager = weight_manager
         self.summary_writer = summary_writer

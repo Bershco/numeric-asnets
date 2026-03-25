@@ -605,6 +605,20 @@ class CanonicalState(object):
 
         return h.digest()
 
+    def print_state_data(self):
+        print(f"--- Env state key: {self.state_key} ---")
+
+        # Accessing (BoundProp, bool)
+        print("\n[Properties]")
+        print("\n".join(f"{p._compute_unique_ident()}: {val}" for p, val in self.props_true))
+
+        # Accessing (BoundFlnt, float)
+        print("\n[Fluent Values]")
+        print("\n".join(f"{f._compute_unique_ident()} = {val:.2f}" for f, val in self.flnt_values))
+
+        # Accessing (BoundFlnt, bool)
+        print("\n[Comparisons]")
+        print("\n".join(f"{c._compute_unique_ident()}: {val}" for c, val in self.comps_true))
 
 def get_init_cstate(planner_exts):
     mdpsim_init = planner_exts.mdpsim_problem.init_state()
