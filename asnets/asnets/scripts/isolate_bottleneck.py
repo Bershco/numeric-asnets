@@ -44,7 +44,7 @@ class LocalService:
     def get_state_h(self, cstate):
         # value-based path (if used)
         # return float(hash(cstate) & 1023)
-        return self.estimator.get_cstate_h(cstate)
+        return self.estimator.get_cstate_h_and_pi(cstate)
     def get_act_dim(self):
         return compute_action_dim(self.p)
 

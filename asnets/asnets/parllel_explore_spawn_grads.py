@@ -75,7 +75,8 @@ class SpawnExploreSpec:
     fd_heuristic: Optional[str]
     ssipp_teacher_heuristic: Optional[str]
     enhsp_config: Optional[str]
-    estimator_value_conversion_lambda: float
+    estimator_h_to_v_coeff: float
+    estimator_decay: bool
     teacher_planner: str
     teacher_timeout_s: int
     only_one_good_action: bool

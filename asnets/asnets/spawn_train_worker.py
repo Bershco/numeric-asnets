@@ -324,7 +324,7 @@ def _corrupt_targets(inp, pi_tgt, z_tgt):
     return pi_tgt, z_tgt
 
 
-def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalExploreContext) -> list:
+def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalExploreContext, one_best_action=False) -> list:
     result = []
     traj_len = len(trajectory_info)
     if traj_len >= bootstrap_k:
@@ -334,20 +334,14 @@ def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalE
     print('[HEURISTIC_BOOTSTRAPPING] Acquiring sampled states heuristics.')
     for ind in sampled_traj_indices:
         sampled_state = trajectory_info[ind]['state']
-        sampled_state_v = ctx.get_state_h(sampled_state)
-        logits = np.full(ctx.get_act_dim(), -np.inf, dtype=np.float32)
-        # for act, child_node in mcts_tree.state_to_node[sampled_state].children.items():
-        for act, child_state in trajectory_info[ind]['children']:
-            logits[act] = -1 * ctx.estimator_value_conversion_lambda * ctx.get_state_h(child_state)
-
-        # subtract max for stability (this handles -inf too)
-        shifted = logits - np.max(logits)
-
-        exp_vals = np.exp(shifted)
-        sampled_state_softmax = exp_vals / np.sum(exp_vals)
-
+        sampled_state_children = trajectory_info[ind]['children']
+        if one_best_action:
+            sampled_state_v, sampled_state_pi = ctx.get_state_v_pi_one_hot_est(sampled_state)
+        else:
+            sampled_state_v, _ = ctx.get_state_v_pi_one_hot_est(sampled_state)
+            sampled_state_pi = ctx.get_state_pi_est(sampled_state_children)
         result.append(
-            {'state': sampled_state, 'children': trajectory_info[ind]['children'], 'pi': sampled_state_softmax,
+            {'state': sampled_state, 'children': sampled_state_children, 'pi': sampled_state_pi,
              'z': sampled_state_v})
     return result
 
@@ -428,6 +422,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         sharpen_pi=0.1,
         log_visitations=False,
         select_logging=select_logging,
+        estimator_decay=inp.spec.estimator_decay,
     )
 
     mcts.initialise_tree(cstate)

@@ -980,12 +980,6 @@ parser.add_argument(
     help='Path to profile directory, default is not profiling at all.'
 )
 parser.add_argument(
-    '--estimator-value-conversion-lambda',
-    type=float,
-    default=0.1,
-    help='Estimator coefficient for heuristic bootstrapping'
-)
-parser.add_argument(
     '--freeze-train',
     action='store_true',
     default=False,
@@ -1030,6 +1024,21 @@ parser.add_argument(
     default=None,
     help='Set decay rate mixin for MCTS action policy.'
 )
+parser.add_argument(
+    '--estimator-h-to-v-coeff',
+    type=float,
+    default=1.0,
+    help='Set "k" coefficient for e^{-k*h(s)} in conversion from estimator h value to canonical state value.'
+)
+parser.add_argument(
+    '--estimator-decay',
+    action='store_true',
+    default=False,
+    help='Enable estimator decay, when on, each node will be estimated by an estiamtor (ENHSP) during training,'
+         ' for MCTS exploration and policy+value targets,'
+         ' this "help" will decay in favor of the network output along the run.'
+)
+
 
 
 def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
@@ -1243,7 +1252,7 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
                 fd_heuristic=args.fd_teacher_heuristic,
                 ssipp_teacher_heuristic=args.ssipp_teacher_heuristic,
                 enhsp_config=args.enhsp_config,
-                estimator_value_conversion_lambda=args.estimator_value_conversion_lambda,
+                estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
                 teacher_planner=args.teacher_planner,
                 teacher_timeout_s=args.teacher_timeout_s,
                 only_one_good_action=only_one_good_action,
@@ -1265,6 +1274,7 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
                 action_policy_epsilon=args.action_policy_epsilon,
                 action_policy_temperature=args.action_policy_temperature,
                 action_policy_decay_rate=args.action_policy_decay_rate,
+                estimator_decay=args.estimator_decay,
             )
         )
 

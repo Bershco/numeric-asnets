@@ -180,7 +180,6 @@ class ProblemServiceConfig(object):
             planner_bootstrapping_her: bool = False,
             heuristic_bootstrapping: bool = False,
             difficulty: InstanceDifficulty = InstanceDifficulty.EASY,
-            estimator_value_conversion_lambda: float = 0.1,
             bootstrap_k: int = 3,
             mcts_expansion_k: int = 10,
             mcts_her_strategy: bool = False,
@@ -255,7 +254,6 @@ class ProblemServiceConfig(object):
         self.planner_bootstrapping_her = planner_bootstrapping_her
         self.heuristic_bootstrapping = heuristic_bootstrapping
         self.mcts_her_strategy = mcts_her_strategy
-        self.estimator_value_conversion_lambda = estimator_value_conversion_lambda
         self.bootstrap_k = bootstrap_k
         self.mcts_expansion_k = mcts_expansion_k
         self.use_fluents = use_fluents
@@ -326,6 +324,9 @@ class PlannerExtensions(object):
         self.act_ident_to_mdpsim_act: Dict[str, Any] = {
             strip_parens(a.identifier): a
             for a in self.mdpsim_problem.ground_actions
+        }
+        self.act_ident_to_ind: Dict [str, int] = {
+            "("+a+")" : i for i, a in enumerate(self.act_ident_to_mdpsim_act.keys())
         }
         LOGGER.debug(f'Python-side extra data')
         # Python-side extra data
@@ -792,7 +793,6 @@ def make_problem_service(config, set_proc_title=False):
             self.planner_trajectories: List[tuple[List[tuple[CanonicalState, tuple[np.ndarray, int]]], int]] = []
             self.state_id_to_value_cache = {}
             self.last_states_value_cache = []
-            self.estimator_value_conversion_lambda = config.estimator_value_conversion_lambda  # default is 0.1
 
             self.id_hash_to_state: dict[tuple[int, int], CanonicalState] = {}
             self.curr_state_id = 0
@@ -1315,7 +1315,7 @@ def make_problem_service(config, set_proc_title=False):
 
         def internal_get_state_h(self, cstate) -> float:
             assert self.estimator_initialised, "Can't get state h value without estimator initialised"
-            return self.estimator.get_cstate_h(cstate)
+            return self.estimator.get_cstate_h_and_pi(cstate)
 
         def exposed_get_state_h(self, cstate_id: int, cstate_hash: int = 0) -> float:
             if cstate_hash == 0:

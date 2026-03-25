@@ -18,7 +18,7 @@ class TrainingMCTS(MCTS):
     def __init__(self, network, ctx: LocalExploreContext,
                  iterations=10, expansion_k=5,
                  exploration_weight=1.0, sharpen_pi=1.0, one_hot_distance_gamma=0.999, use_batched_inference=True,
-                 log_visitations=False, select_logging=False):
+                 log_visitations=False, select_logging=False, estimator_decay=False, ):
         super().__init__(exploration_weight, network=network, select_logging=select_logging)
         self.use_batched_inference = use_batched_inference
         self.ctx = ctx
@@ -27,12 +27,26 @@ class TrainingMCTS(MCTS):
         self.sharpen_pi_T = sharpen_pi
         self.one_hot_distance_gamma = one_hot_distance_gamma
         self.log_visitations = log_visitations
-        if log_puct_count:
-            self.total_select_depth = 0
-            self.times_moved_forward = 0
+        if estimator_decay:
+            self.estimator_decay = estimator_decay
+            self.estimator_curr_coeff = 0.6
+            self.estimator_coeff_tup = (1.0,0.6,0.2)
 
-    def get_average_select_depth(self):
-        return self.total_select_depth / (self.iterations * self.times_moved_forward)
+    def get_single_node_policy_value(self, node, training=False):
+        act_dist, value = self.network(node.as_network_input, training=training)
+        if self.estimator_decay:
+            est_v, est_pi = self.ctx.get_state_v_pi_one_hot_est(node.state)
+            alpha = self.estimator_curr_coeff
+            # Identical logic: value = value * (1-alpha) + est_v * alpha
+            value += alpha * (est_v - value)
+            act_dist += alpha * (est_pi - act_dist)
+        return act_dist, value
+
+    def decay_estimator_coeff(self):
+        assert self.estimator_decay, "Can't decay estimator coefficient if estimator decay if off"
+        current_idx = self.estimator_coeff_tup.index(self.estimator_curr_coeff)
+        if current_idx + 1 < len(self.estimator_coeff_tup):
+            self.estimator_curr_coeff = self.estimator_coeff_tup[current_idx + 1]
 
     def sharpen_pi(self, pi):
         T = self.sharpen_pi_T
@@ -99,21 +113,43 @@ class TrainingMCTS(MCTS):
             children_network_repr.append(wrapped_output_cstate.as_network_input)
 
         if self.use_batched_inference and len(children_network_repr) > 0:
+            # 1. Network Inference (The GPU part)
             batch_tensor = tf.stack(children_network_repr)
             pred_pi_batch, pred_v_batch = self.network(batch_tensor, training=False)
-            pred_pi_batch = pred_pi_batch.numpy().astype(np.float32, copy=False)
-            pred_v_batch = pred_v_batch.numpy()
 
+            # Convert to numpy arrays immediately (squeezing v to be 1D)
+            pred_pi_batch = pred_pi_batch.numpy().astype(np.float32, copy=False)
+            pred_v_batch = pred_v_batch.numpy().flatten()  # (Batch,)
+
+            # 2. Handle Estimator Decay (The Hybrid part)
+            if self.estimator_decay:
+                alpha = self.estimator_curr_coeff
+                num_children = len(children_nodes)
+
+                # Pre-allocate containers for the estimates
+                est_v_batch = np.empty(num_children, dtype=np.float32)
+                est_pi_batch = np.empty_like(pred_pi_batch)
+
+                # Gather estimates (looping here is fine, the math is vectorized later)
+                for i, child in enumerate(children_nodes):
+                    v, pi = self.ctx.get_state_v_pi_one_hot_est(child.state)
+                    est_v_batch[i] = v
+                    est_pi_batch[i] = pi
+
+                # Vectorized Linear Interpolation on the entire batch
+                pred_v_batch += alpha * (est_v_batch - pred_v_batch)
+                pred_pi_batch += alpha * (est_pi_batch - pred_pi_batch)
+
+            # 3. Assign back to nodes
             for i, child in enumerate(children_nodes):
                 child.act_dist = pred_pi_batch[i]
-                child.pred_value = float(pred_v_batch[i][0])
+                child.pred_value = float(pred_v_batch[i])
         else:
+            # Fallback for single/small nodes
             for child in children_nodes:
-                net_input = child.as_network_input
-                act_dist, value = self.network(net_input, training=False)
-                child.act_dist = tf.squeeze(act_dist).numpy().astype(np.float32, copy=False)
-                child.pred_value = float(value.numpy().squeeze())
-
+                act_dist, value = self.get_single_node_policy_value(child)
+                child.act_dist = np.array(act_dist).flatten().astype(np.float32)
+                child.pred_value = float(value)
         node.children = FixedChildMap(actions, children_nodes, edge_priors)
 
     def _rollout(self, node, horizon=0):

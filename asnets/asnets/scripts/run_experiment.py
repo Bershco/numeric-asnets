@@ -572,6 +572,20 @@ parser.add_argument(
     default=None,
     help='Enable goal path reconstruction during training.'
 )
+parser.add_argument(
+    '--estimator-h-to-v-coeff',
+    type=float,
+    default=None,
+    help='Set "k" coefficient for e^{-k*h(s)} in conversion from estimator h value to canonical state value.'
+)
+parser.add_argument(
+    '--estimator-decay',
+    action='store_true',
+    default=False,
+    help='Enable estimator decay, when on, each node will be estimated by an estiamtor (ENHSP) during training,'
+         ' for MCTS exploration and policy+value targets,'
+         ' this "help" will decay in favor of the network output along the run.'
+)
 
 def main():
     args = parser.parse_args()
@@ -630,6 +644,8 @@ def main():
                num_training_workers=args.num_training_workers,
                sample_k_additional_states=args.sample_k_additional_states,
                profile_dir=args.profile_dir,
+               estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
+               estimator_decay=args.estimator_decay,
                )
     print('Fin :-)')
 
@@ -666,6 +682,8 @@ def main_inner(*,
                num_training_workers=None,
                sample_k_additional_states=0,
                profile_dir=None,
+               estimator_h_to_v_coeff=None,
+               estimator_decay=False,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -728,6 +746,10 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend(['--sample-k-additional-states', str(sample_k_additional_states)])
         if profile_dir:
             train_flags.extend(['--profile-dir', str(profile_dir)])
+        if estimator_h_to_v_coeff:
+            train_flags.extend(['--estimator-h-to-v-coeff', estimator_h_to_v_coeff])
+        if estimator_decay:
+            train_flags.append('--estimator-decay')
         final_checkpoint = run_asnets_local(
             flags=train_flags,
             # we make sure it runs cmd in same dir as us,
