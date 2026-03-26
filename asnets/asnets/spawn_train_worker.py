@@ -196,7 +196,7 @@ class WorkerCollectorWithLogging(WorkerCollector):
 # Hook functions you must connect
 # -----------------------------
 
-def _build_planner_exts_from_spec(spec, seed_override: Optional[int]):
+def _build_planner_exts_from_spec(spec):
     """
     MUST return a PlannerExtensions that already points to a concrete instance
     (i.e., has mdpsim_problem/init_state ready).
@@ -220,7 +220,7 @@ def _build_planner_exts_from_spec(spec, seed_override: Optional[int]):
         dg_use_contributions=spec.use_contributions,
         dg_use_act_history=spec.use_act_history,
         difficulty=spec.difficulty,
-        seed=seed_override if seed_override is not None else spec.random_seed,
+        seed=spec.random_seed, # same seed that is being set
         fixed_instance=spec.fixed_instance_pddl,
     )
     return pe
@@ -414,8 +414,6 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     # --- run exploration ---
     # get init state
     cstate = ctx.get_init_state()
-    # if inp.log:
-    #     cstate.print_state_data()
     select_logging = False
     mcts = TrainingMCTS(
         network=net,
