@@ -21,6 +21,7 @@ def run_epoch_spawn_grads(
     l1_reg_coeff: float,
     l1_l2_reg_coeff: float,
     log: bool,
+    curr_epoch: Optional[int],
     PROFILE_DIR: Optional[str] = None,
     corrupt_pi: Optional[str] = None,
     corrupt_z: Optional[str] = None,
@@ -33,12 +34,10 @@ def run_epoch_spawn_grads(
     with ProcessPoolExecutor(max_workers=max_workers or len(specs), mp_context=ctx) as ex:
         futs = []
         for i, spec in enumerate(specs):
-            # seed override (optional) per spec/slot
-            seed = getattr(spec, "random_seed", None)
             inp = WorkerInput(
                 spec=spec,
+                epoch=curr_epoch,
                 weights_np=weights_np,
-                seed=seed,
                 dropout=dropout,
                 debug=debug,
                 policy_only=policy_only,

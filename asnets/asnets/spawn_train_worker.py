@@ -50,7 +50,7 @@ LOGGER = logging.getLogger(__name__)
 class WorkerInput:
     spec: Any  # SpawnExploreSpec
     weights_np: dict  # PropNetworkWeights.export_numpy() result
-    seed: Optional[int]
+    epoch: Optional[int]
     dropout: float
     debug: bool
     policy_only: bool
@@ -70,6 +70,10 @@ class WorkerInput:
     # run corruption settings for corruption testing
     corrupt_pi: Optional[str] = None  # "shuffle" | "random" | "zero" | None
     corrupt_z: Optional[str] = None  # "shuffle" | "random" | "zero" | None
+
+    @property
+    def seed(self):
+        return self.spec.random_seed + self.epoch*128 #assuming max(workers) >>> 128
 
 
 @dataclass

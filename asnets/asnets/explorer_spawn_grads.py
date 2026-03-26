@@ -23,8 +23,10 @@ class ParallelMCTSExplorerGrads:
     l1_reg_coeff: float
     l1_l2_reg_coeff: float
 
-    PROFILE_DIR: Optional[str] = None
 
+
+    PROFILE_DIR: Optional[str] = None
+    curr_epoch: int = 0
     max_workers: Optional[int] = None
 
     #corruption testing settings
@@ -32,9 +34,11 @@ class ParallelMCTSExplorerGrads:
     corrupt_z: Optional[str] = None
 
 
-    def explore(self, weights_np: dict, limit_workers=None) -> list[WorkerOutput]:
+    def explore(self, weights_np: dict, limit_workers=None,) -> list[WorkerOutput]:
+        self.curr_epoch += 1
         return run_epoch_spawn_grads(
             specs=self.specs,
+            curr_epoch=self.curr_epoch-1, # so the first is 0
             weights_np=weights_np,
             dropout=self.dropout,
             debug=self.debug,

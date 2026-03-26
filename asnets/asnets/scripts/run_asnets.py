@@ -1244,6 +1244,7 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
                 pddls=args.pddls,
                 domain_type=args.domain_type,
                 random_seed=(args.seed + slot_id) if args.seed is not None else None,
+
                 ssipp_dg_heuristic=args.ssipp_dg_heuristic,
                 use_lm_cuts=args.use_lm_cuts,
                 use_numeric_landmarks=args.use_numeric_landmarks,
@@ -1294,7 +1295,6 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
         seed=args.seed,
         fixed_instance=True,
     )
-
     dg_extra_dim = sum(g.extra_dim for g in p.data_gens)
 
     # ------------------------------------------------------------

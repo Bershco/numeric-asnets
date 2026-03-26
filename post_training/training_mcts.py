@@ -6,6 +6,7 @@ from typing import Optional, Any
 
 from asnets.spawn_context import LocalExploreContext
 from asnets.state_reprs import CanonicalState
+from asnets.utils.pddl_utils import replace_init_state, hlist_to_sexprs
 from .monte_carlo_tree_search import MCTS, wrapInMCTSNode, FixedChildMap, MCTSNode
 
 
@@ -27,9 +28,9 @@ class TrainingMCTS(MCTS):
         self.sharpen_pi_T = sharpen_pi
         self.one_hot_distance_gamma = one_hot_distance_gamma
         self.log_visitations = log_visitations
+        self.estimator_decay = estimator_decay
+        self.estimator_curr_coeff = 0.0 if not estimator_decay else 1.0
         if estimator_decay:
-            self.estimator_decay = estimator_decay
-            self.estimator_curr_coeff = 0.6
             self.estimator_coeff_tup = (1.0,0.6,0.2)
 
     def get_single_node_policy_value(self, node, training=False):
@@ -69,23 +70,17 @@ class TrainingMCTS(MCTS):
         """Expand children using policy priors (top-k by prob)."""
         if node.children is not None:
             return
-
         act_dist = node.act_dist
         mask = node.applicable_action_mask
-
         actions, children_nodes, edge_priors = [], [], []
         children_network_repr = []
-
         valid = np.where(mask & (act_dist > 0.0))[0]
-
         if len(valid) > self.k:
             topk = np.argpartition(-act_dist[valid], self.k)[:self.k]
             selected_actions = valid[topk]
         else:
             selected_actions = valid
-
         results = self.ctx.env_simulate_batch_steps(node.state, selected_actions)
-
         for (
                 action_id,
                 cstate,
@@ -97,7 +92,6 @@ class TrainingMCTS(MCTS):
         ) in results:
             state_key = cstate.state_key
             node_entry = self.state_key_to_node.get(state_key)
-
             if node_entry is None:
                 wrapped_output_cstate = wrapInMCTSNode(
                     state=cstate,
@@ -106,40 +100,57 @@ class TrainingMCTS(MCTS):
                 self.state_key_to_node[state_key] = wrapped_output_cstate
             else:
                 wrapped_output_cstate = node_entry
-
             actions.append(action_id)
             edge_priors.append(float(act_dist[action_id]))
             children_nodes.append(wrapped_output_cstate)
             children_network_repr.append(wrapped_output_cstate.as_network_input)
-
         if self.use_batched_inference and len(children_network_repr) > 0:
             # 1. Network Inference (The GPU part)
             batch_tensor = tf.stack(children_network_repr)
             pred_pi_batch, pred_v_batch = self.network(batch_tensor, training=False)
-
             # Convert to numpy arrays immediately (squeezing v to be 1D)
             pred_pi_batch = pred_pi_batch.numpy().astype(np.float32, copy=False)
             pred_v_batch = pred_v_batch.numpy().flatten()  # (Batch,)
-
             # 2. Handle Estimator Decay (The Hybrid part)
-            if self.estimator_decay:
-                alpha = self.estimator_curr_coeff
+            alpha = self.estimator_curr_coeff
+            if self.estimator_decay and alpha > 0.0:
                 num_children = len(children_nodes)
-
-                # Pre-allocate containers for the estimates
                 est_v_batch = np.empty(num_children, dtype=np.float32)
                 est_pi_batch = np.empty_like(pred_pi_batch)
-
-                # Gather estimates (looping here is fine, the math is vectorized later)
+                estimator = self.ctx.estimator
+                state_cache = estimator.state_key_cache
+                uncached_indices = []
+                uncached_oneliners = []
+                # first pass: check cache
                 for i, child in enumerate(children_nodes):
-                    v, pi = self.ctx.get_state_v_pi_one_hot_est(child.state)
-                    est_v_batch[i] = v
-                    est_pi_batch[i] = pi
-
-                # Vectorized Linear Interpolation on the entire batch
+                    key = child.state.state_key
+                    cached = state_cache.get(key)
+                    if cached is not None:
+                        est_v_batch[i], est_pi_batch[i] = cached
+                    else:
+                        uncached_indices.append(i)
+                        problem_hlist = replace_init_state(
+                            estimator._problem_hlist,
+                            child.state.to_tup_state()
+                        )
+                        uncached_oneliners.append(
+                            hlist_to_sexprs(problem_hlist)
+                        )
+                # batch call only for uncached states
+                if uncached_oneliners:
+                    batch_results = estimator.get_heuristic_and_pi_batched(
+                        uncached_oneliners
+                    )
+                    coeff = self.ctx.estimator_h_to_v_coeff
+                    for idx, (h, pi) in zip(uncached_indices, batch_results):
+                        v = float(np.exp(-coeff * h))
+                        est_v_batch[idx] = v
+                        est_pi_batch[idx] = pi
+                        key = children_nodes[idx].state.state_key
+                        state_cache[key] = (v, pi)
+                # blend network + estimator
                 pred_v_batch += alpha * (est_v_batch - pred_v_batch)
                 pred_pi_batch += alpha * (est_pi_batch - pred_pi_batch)
-
             # 3. Assign back to nodes
             for i, child in enumerate(children_nodes):
                 child.act_dist = pred_pi_batch[i]
