@@ -296,7 +296,7 @@ class PlannerExtensions(object):
             dg_use_act_history (bool, optional): Whether to use the action count
             data generator. Defaults to False.
         """
-        self.pddl_files = [pddl_files[0]]
+        self.pddl_files = [pddl_files[0]] # domain file
         self.domain_type = domain_type
         self.difficulty = difficulty
         self.seed = seed

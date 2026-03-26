@@ -63,8 +63,8 @@ class SpawnExploreSpec:
     # minimal picklable config
     pddls: List[str]
     domain_type: Any  # DomainType enum
-    random_seed: Optional[int]
-
+    trainer_seed: Optional[int]
+    slot_id: Optional[int]
     # everything else you pass into ProblemServiceConfig that affects behavior:
     ssipp_dg_heuristic: Optional[str]
     use_lm_cuts: bool

@@ -1243,8 +1243,8 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
             SpawnExploreSpec(
                 pddls=args.pddls,
                 domain_type=args.domain_type,
-                random_seed=(args.seed + slot_id) if args.seed is not None else None,
-
+                trainer_seed=args.seed,
+                slot_id=slot_id,
                 ssipp_dg_heuristic=args.ssipp_dg_heuristic,
                 use_lm_cuts=args.use_lm_cuts,
                 use_numeric_landmarks=args.use_numeric_landmarks,

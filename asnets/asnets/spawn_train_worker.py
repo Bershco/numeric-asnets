@@ -73,7 +73,7 @@ class WorkerInput:
 
     @property
     def seed(self):
-        return self.spec.random_seed + self.epoch*128 #assuming max(workers) >>> 128
+        return self.spec.trainer_seed + self.spec.slot_id + self.epoch * 128  # assuming max(workers) >>> 128
 
 
 @dataclass
@@ -220,7 +220,8 @@ def _build_planner_exts_from_spec(spec):
         dg_use_contributions=spec.use_contributions,
         dg_use_act_history=spec.use_act_history,
         difficulty=spec.difficulty,
-        seed=spec.random_seed, # same seed that is being set
+        # this is merely for instance folder naming, set seed is derived as a function of trainer_seed, slot_id, and epoch_num
+        seed=spec.trainer_seed,
         fixed_instance=spec.fixed_instance_pddl,
     )
     return pe
@@ -328,7 +329,8 @@ def _corrupt_targets(inp, pi_tgt, z_tgt):
     return pi_tgt, z_tgt
 
 
-def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalExploreContext, one_best_action=False) -> list:
+def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalExploreContext,
+                            one_best_action=False) -> list:
     result = []
     traj_len = len(trajectory_info)
     if traj_len >= bootstrap_k:
@@ -383,7 +385,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     _dbg_tf_threads(tag=f"{worker_tag} worker_start")
     # --- build instance infra ---
     CanonicalState.network_input_config(use_fluents=inp.spec.use_fluents, use_comparisons=inp.spec.use_comps)
-    planner_exts = _build_planner_exts_from_spec(inp.spec, inp.seed)
+    planner_exts = _build_planner_exts_from_spec(inp.spec)
     estimator = _build_estimator(planner_exts, inp.spec)
     action_policy = build_action_policy(
         base_policy=inp.spec.action_policy,
@@ -518,7 +520,6 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
             masked_pi[valid] = 1.0 / len(valid)
         a = action_policy.select_action(mcts=mcts, pi=masked_pi)
         cstate = mcts.step_forward(a)
-
 
     if select_logging:
         mcts.get_select_depth_stats()
