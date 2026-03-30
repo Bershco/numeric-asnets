@@ -374,8 +374,8 @@ class MCTS:
 
         print("Top 10 deepest paths:", sorted(depths)[-10:])
         print("==========================")
-        print("Deep applicable actions mean:", np.mean(self.deep_select_applicable_actions))
-        print("Deep applicable actions P90:", np.percentile(self.deep_select_applicable_actions, 90))
+        print("Deep applicable actions mean:", np.mean(self.deep_select_applicable_actions) if self.deep_select_applicable_actions else "None")
+        print("Deep applicable actions P90:", np.percentile(self.deep_select_applicable_actions, 90) if self.deep_select_applicable_actions else "None")
         print("Same-action streak mean:", np.mean(self.same_action_streaks))
         print("Same-action streak max:", np.max(self.same_action_streaks))
         print("Effective branching mean:", np.mean(self.effective_branching))
