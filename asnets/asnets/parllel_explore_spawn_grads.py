@@ -65,6 +65,7 @@ class SpawnExploreSpec:
     domain_type: Any  # DomainType enum
     trainer_seed: Optional[int]
     slot_id: Optional[int]
+    num_slots: Optional[int]
     # everything else you pass into ProblemServiceConfig that affects behavior:
     ssipp_dg_heuristic: Optional[str]
     use_lm_cuts: bool
@@ -75,7 +76,6 @@ class SpawnExploreSpec:
     ssipp_teacher_heuristic: Optional[str]
     enhsp_config: Optional[str]
     estimator_h_to_v_coeff: float
-    estimator_decay: bool
     teacher_planner: str
     teacher_timeout_s: int
     only_one_good_action: bool
@@ -89,11 +89,18 @@ class SpawnExploreSpec:
     use_comps: bool
     difficulty: Any  # InstanceDifficulty enum
     fixed_instance_pddl: bool = False
+    original_training_set: bool = False
     mcts_exploration_weight: float = 1.0
     sample_k_additional_states: int = 5
     freeze_train_steps: int = 50
     freeze_batch_size: int = 32
     goal_path_reconstruction: Optional[str] = None
+
+    # estimator decay
+    estimator_decay: bool = False
+    estimator_decay_coeff_start: float = 1.0
+    estimator_decay_coeff_end: float = 0.2
+    estimator_decay_epochs: int = 150
 
     # action policy attributes
     action_policy: str = "argmax"

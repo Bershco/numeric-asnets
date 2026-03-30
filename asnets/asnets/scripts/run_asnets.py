@@ -1034,12 +1034,28 @@ parser.add_argument(
     '--estimator-decay',
     action='store_true',
     default=False,
-    help='Enable estimator decay, when on, each node will be estimated by an estiamtor (ENHSP) during training,'
+    help='Enable estimator decay, when on, each node will be estimated by an estimator (ENHSP) during training,'
          ' for MCTS exploration and policy+value targets,'
          ' this "help" will decay in favor of the network output along the run.'
 )
-
-
+parser.add_argument(
+    '--estimator-decay-epochs',
+    type=int,
+    default=100,
+    help='Set the amount of epochs estimator decays from est_coeff_start to est_coeff_end.'
+)
+parser.add_argument(
+    '--estimator-decay-coeff-start',
+    type=float,
+    default=1.0,
+    help='Set est_coeff_start value.'
+)
+parser.add_argument(
+    '--estimator-decay-coeff-end',
+    type=float,
+    default=0.2,
+    help='Set est_coeff_end value.'
+)
 
 def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
                 iter_num, weight_manager, scratch_dir):
@@ -1245,6 +1261,7 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
                 domain_type=args.domain_type,
                 trainer_seed=args.seed,
                 slot_id=slot_id,
+                num_slots=args.num_training_workers,
                 ssipp_dg_heuristic=args.ssipp_dg_heuristic,
                 use_lm_cuts=args.use_lm_cuts,
                 use_numeric_landmarks=args.use_numeric_landmarks,
@@ -1276,6 +1293,9 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
                 action_policy_temperature=args.action_policy_temperature,
                 action_policy_decay_rate=args.action_policy_decay_rate,
                 estimator_decay=args.estimator_decay,
+                estimator_decay_coeff_start=args.estimator_decay_coeff_start,
+                estimator_decay_coeff_end=args.estimator_decay_coeff_end,
+                estimator_decay_epochs=args.estimator_decay_epochs,
             )
         )
 

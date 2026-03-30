@@ -75,6 +75,12 @@ class WorkerInput:
     def seed(self):
         return self.spec.trainer_seed + self.spec.slot_id + self.epoch * 128  # assuming max(workers) >>> 128
 
+    @property
+    def estimator_coeff(self):
+        if not self.spec.estimator_decay:
+            return 0.0
+        return self.spec.estimator_decay_coeff_start + (self.spec.estimator_decay_coeff_end - self.spec.estimator_decay_coeff_start) * min(self.epoch/self.spec.estimator_decay_epochs,1)
+
 
 @dataclass
 class WorkerOutput:
@@ -232,7 +238,6 @@ def _build_estimator(planner_exts, spec):
     MUST return an object with:
         estimator.get_cstate_h(cstate) -> float
     """
-    # Replace with your actual ENHSP estimator wrapper creation.
     return ENHSPEstimator(planner_exts, enhsp_config=spec.enhsp_config)
 
 
@@ -385,7 +390,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     _dbg_tf_threads(tag=f"{worker_tag} worker_start")
     # --- build instance infra ---
     CanonicalState.network_input_config(use_fluents=inp.spec.use_fluents, use_comparisons=inp.spec.use_comps)
-    planner_exts = _build_planner_exts_from_spec(inp.spec)
+    planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
     estimator = _build_estimator(planner_exts, inp.spec)
     action_policy = build_action_policy(
         base_policy=inp.spec.action_policy,
@@ -426,7 +431,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         sharpen_pi=0.1,
         log_visitations=False,
         select_logging=select_logging,
-        estimator_decay=inp.spec.estimator_decay,
+        estimator_coeff=inp.estimator_coeff,
     )
 
     mcts.initialise_tree(cstate)

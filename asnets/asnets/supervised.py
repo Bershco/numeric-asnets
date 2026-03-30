@@ -338,7 +338,6 @@ class PlannerExtensions(object):
         # Either use JPDDL (numeric) or SSiPP (otherwise), ugly!
         if self.domain_type == DomainType.NUMERIC:
             domain_file = get_domain_file(self.pddl_files)
-            # problem_file = get_problem_file(self.pddl_files, self.problem_name)
 
             LOGGER.debug(f"Process {os.getpid()} Starting JVM...")
             start_jvm()

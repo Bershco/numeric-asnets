@@ -19,7 +19,7 @@ class TrainingMCTS(MCTS):
     def __init__(self, network, ctx: LocalExploreContext,
                  iterations=10, expansion_k=5,
                  exploration_weight=1.0, sharpen_pi=1.0, one_hot_distance_gamma=0.999, use_batched_inference=True,
-                 log_visitations=False, select_logging=False, estimator_decay=False, ):
+                 log_visitations=False, select_logging=False, estimator_coeff=0.0, ):
         super().__init__(exploration_weight, network=network, select_logging=select_logging)
         self.use_batched_inference = use_batched_inference
         self.ctx = ctx
@@ -28,26 +28,17 @@ class TrainingMCTS(MCTS):
         self.sharpen_pi_T = sharpen_pi
         self.one_hot_distance_gamma = one_hot_distance_gamma
         self.log_visitations = log_visitations
-        self.estimator_decay = estimator_decay
-        self.estimator_curr_coeff = 0.0 if not estimator_decay else 1.0
-        if estimator_decay:
-            self.estimator_coeff_tup = (1.0,0.6,0.2)
+        self.estimator_coeff = estimator_coeff
 
     def get_single_node_policy_value(self, node, training=False):
         act_dist, value = self.network(node.as_network_input, training=training)
-        if self.estimator_decay:
+        if self.estimator_coeff:
             est_v, est_pi = self.ctx.get_state_v_pi_one_hot_est(node.state)
-            alpha = self.estimator_curr_coeff
+            alpha = self.estimator_coeff
             # Identical logic: value = value * (1-alpha) + est_v * alpha
             value += alpha * (est_v - value)
             act_dist += alpha * (est_pi - act_dist)
         return act_dist, value
-
-    def decay_estimator_coeff(self):
-        assert self.estimator_decay, "Can't decay estimator coefficient if estimator decay if off"
-        current_idx = self.estimator_coeff_tup.index(self.estimator_curr_coeff)
-        if current_idx + 1 < len(self.estimator_coeff_tup):
-            self.estimator_curr_coeff = self.estimator_coeff_tup[current_idx + 1]
 
     def sharpen_pi(self, pi):
         T = self.sharpen_pi_T
@@ -81,6 +72,7 @@ class TrainingMCTS(MCTS):
         else:
             selected_actions = valid
         results = self.ctx.env_simulate_batch_steps(node.state, selected_actions)
+
         for (
                 action_id,
                 cstate,
@@ -105,15 +97,17 @@ class TrainingMCTS(MCTS):
             children_nodes.append(wrapped_output_cstate)
             children_network_repr.append(wrapped_output_cstate.as_network_input)
         if self.use_batched_inference and len(children_network_repr) > 0:
+            alpha = self.estimator_coeff
+            assert 0.0 <= alpha <= 1.0
             # 1. Network Inference (The GPU part)
+            # TODO: add an 'if' here to cancel network inference if alpha=1.0
             batch_tensor = tf.stack(children_network_repr)
             pred_pi_batch, pred_v_batch = self.network(batch_tensor, training=False)
             # Convert to numpy arrays immediately (squeezing v to be 1D)
             pred_pi_batch = pred_pi_batch.numpy().astype(np.float32, copy=False)
             pred_v_batch = pred_v_batch.numpy().flatten()  # (Batch,)
             # 2. Handle Estimator Decay (The Hybrid part)
-            alpha = self.estimator_curr_coeff
-            if self.estimator_decay and alpha > 0.0:
+            if alpha > 0.0:
                 num_children = len(children_nodes)
                 est_v_batch = np.empty(num_children, dtype=np.float32)
                 est_pi_batch = np.empty_like(pred_pi_batch)

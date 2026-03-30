@@ -586,6 +586,24 @@ parser.add_argument(
          ' for MCTS exploration and policy+value targets,'
          ' this "help" will decay in favor of the network output along the run.'
 )
+parser.add_argument(
+    '--estimator-decay-epochs',
+    type=int,
+    default=100,
+    help='Set the amount of epochs estimator decays from est_coeff_start to est_coeff_end.'
+)
+parser.add_argument(
+    '--estimator-decay-coeff-start',
+    type=float,
+    default=1.0,
+    help='Set est_coeff_start value.'
+)
+parser.add_argument(
+    '--estimator-decay-coeff-end',
+    type=float,
+    default=0.2,
+    help='Set est_coeff_end value.'
+)
 
 def main():
     args = parser.parse_args()
@@ -646,6 +664,9 @@ def main():
                profile_dir=args.profile_dir,
                estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
                estimator_decay=args.estimator_decay,
+               estimator_decay_coeff_start=args.estimator_decay_coeff_start,
+               estimator_decay_coeff_end=args.estimator_decay_coeff_end,
+               estimator_decay_epochs=args.estimator_decay_epochs,
                )
     print('Fin :-)')
 
@@ -684,6 +705,9 @@ def main_inner(*,
                profile_dir=None,
                estimator_h_to_v_coeff=None,
                estimator_decay=False,
+               estimator_decay_coeff_start=None,
+               estimator_decay_coeff_end=None,
+               estimator_decay_epochs=None,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -750,6 +774,12 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend(['--estimator-h-to-v-coeff', estimator_h_to_v_coeff])
         if estimator_decay:
             train_flags.append('--estimator-decay')
+        if estimator_decay_coeff_start:
+            train_flags.extend(['--estimator-decay-coeff-start', estimator_decay_coeff_start])
+        if estimator_decay_coeff_end:
+            train_flags.extend(['--estimator-decay-coeff-end', estimator_decay_coeff_end])
+        if estimator_decay_epochs:
+            train_flags.extend(['--estimator-decay-epochs', estimator_decay_epochs])
         final_checkpoint = run_asnets_local(
             flags=train_flags,
             # we make sure it runs cmd in same dir as us,
