@@ -54,7 +54,7 @@ def generate_instance(instance_name: str, num_counters: int, max_int: int) -> st
         j = order[idx + 1]
 
         final_values.append(
-            f"(= (+ (value c{i}) {step}) (value c{j}))"
+            f"(<= (+ (value c{i}) {step}) (value c{j}))"
         )
 
     # ---------------------------------------------------------
