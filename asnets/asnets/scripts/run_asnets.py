@@ -969,6 +969,12 @@ parser.add_argument(
     help='Single instance overfit test.'
 )
 parser.add_argument(
+    '--original-training-set',
+    action='store_true',
+    default=False,
+    help='Set the training set to be the original of Numeric ASNets paper, this overrides fixed-instance.'
+)
+parser.add_argument(
     '--sample-k-additional-states',
     type=int,
     default=0,
@@ -1296,6 +1302,7 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
                 estimator_decay_coeff_start=args.estimator_decay_coeff_start,
                 estimator_decay_coeff_end=args.estimator_decay_coeff_end,
                 estimator_decay_epochs=args.estimator_decay_epochs,
+                original_training_set=args.original_training_set
             )
         )
 
@@ -1304,16 +1311,12 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
     # ------------------------------------------------------------
     p = PlannerExtensions(
         args.pddls,
-        domain,
         args.domain_type,
         dg_ssipp_heuristic_name=args.ssipp_dg_heuristic,
         dg_use_lm_cuts=args.use_lm_cuts,
         dg_use_numeric_landmarks=args.use_numeric_landmarks,
         dg_use_contributions=args.use_contributions,
         dg_use_act_history=args.use_act_history,
-        difficulty=InstanceDifficulty.EASY,
-        seed=args.seed,
-        fixed_instance=True,
     )
     dg_extra_dim = sum(g.extra_dim for g in p.data_gens)
 

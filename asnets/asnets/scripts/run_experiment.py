@@ -544,6 +544,12 @@ parser.add_argument(
     help='Single instance overfit test.'
 )
 parser.add_argument(
+    '--original-training-set',
+    action='store_true',
+    default=False,
+    help='Set the training set to be the original of Numeric ASNets paper, this overrides fixed-instance.'
+)
+parser.add_argument(
     '--num-training-workers',
     type=int,
     default=4,
@@ -667,6 +673,7 @@ def main():
                estimator_decay_coeff_start=args.estimator_decay_coeff_start,
                estimator_decay_coeff_end=args.estimator_decay_coeff_end,
                estimator_decay_epochs=args.estimator_decay_epochs,
+               original_training_set=args.original_training_set,
                )
     print('Fin :-)')
 
@@ -708,6 +715,7 @@ def main_inner(*,
                estimator_decay_coeff_start=None,
                estimator_decay_coeff_end=None,
                estimator_decay_epochs=None,
+               original_training_set=False,
                ):
     run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
@@ -780,6 +788,8 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend(['--estimator-decay-coeff-end', estimator_decay_coeff_end])
         if estimator_decay_epochs:
             train_flags.extend(['--estimator-decay-epochs', estimator_decay_epochs])
+        if original_training_set:
+            train_flags.append('--original-training-set')
         final_checkpoint = run_asnets_local(
             flags=train_flags,
             # we make sure it runs cmd in same dir as us,

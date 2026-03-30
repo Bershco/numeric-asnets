@@ -202,35 +202,30 @@ class WorkerCollectorWithLogging(WorkerCollector):
 # Hook functions you must connect
 # -----------------------------
 
-def _build_planner_exts_from_spec(spec):
-    """
-    MUST return a PlannerExtensions that already points to a concrete instance
-    (i.e., has mdpsim_problem/init_state ready).
-    """
-    # You already do this in multiple places.
-    # Make it match your PlannerExtensions ctor signature.
-    # spec.pddls is list of pddl files; spec.domain_type exists.
-    # If you need Domain object: Domain.from_pddl_name(extract_domain_name_from_file(...))
-    # But many codepaths already infer from pddls.
-    domain = Domain.from_pddl_name(
-        extract_domain_name_from_file(spec.pddls[0])
-    )
-
-    pe = PlannerExtensions(
-        spec.pddls,
-        domain,
+def _build_planner_exts_from_spec(spec, epoch_num):
+    domain_pddl_path = spec.pddls[0]
+    domain = Domain.from_pddl_name(extract_domain_name_from_file(domain_pddl_path))
+    instance_pddl_paths = spec.pddls[1:]
+    if spec.original_training_set:
+        num_workers = spec.num_slots
+        this_worker_id = spec.slot_id
+        dataset_size = len(instance_pddl_paths)
+        instance_idx = (epoch_num * num_workers + this_worker_id) % dataset_size
+        instance_path = instance_pddl_paths[instance_idx]
+    elif spec.fixed_instance_pddl:
+        instance_path = instance_pddl_paths[0]
+    else:
+        instance_path = str(domain.get_realtime_instance(spec.difficulty, spec.trainer_seed))
+    pddls = [domain_pddl_path, instance_path]
+    return PlannerExtensions(
+        pddls,
         spec.domain_type,
         dg_ssipp_heuristic_name=spec.ssipp_dg_heuristic,
         dg_use_lm_cuts=spec.use_lm_cuts,
         dg_use_numeric_landmarks=spec.use_numeric_landmarks,
         dg_use_contributions=spec.use_contributions,
         dg_use_act_history=spec.use_act_history,
-        difficulty=spec.difficulty,
-        # this is merely for instance folder naming, set seed is derived as a function of trainer_seed, slot_id, and epoch_num
-        seed=spec.trainer_seed,
-        fixed_instance=spec.fixed_instance_pddl,
     )
-    return pe
 
 
 def _build_estimator(planner_exts, spec):
