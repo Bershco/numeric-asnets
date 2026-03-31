@@ -122,7 +122,7 @@ class SpawnExploreSpec:
     estimator_decay: bool = False
     estimator_decay_coeff_start: float = 1.0
     estimator_decay_coeff_end: float = 0.2
-    estimator_decay_epochs: int = 150
+    estimator_decay_epochs: int = 100
 
     # action policy attributes
     action_policy: str = "argmax"

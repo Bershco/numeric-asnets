@@ -590,7 +590,7 @@ parser.add_argument(
 parser.add_argument(
     '--estimator-decay-epochs',
     type=int,
-    default=100,
+    default=None,
     help='Set the amount of epochs estimator decays from est_coeff_start to est_coeff_end.'
 )
 parser.add_argument(

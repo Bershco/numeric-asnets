@@ -29,7 +29,6 @@ import tensorflow as tf
 import multiprocessing
 import tqdm.auto as tqdm
 
-
 from asnets.explorer import StaticExplorer, DynamicExplorer
 from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
 from asnets.supervised import SupervisedTrainer, SupervisedObjective, \
@@ -46,7 +45,6 @@ logging.basicConfig(
 )
 
 LOGGER = logging.getLogger(__name__)
-
 
 
 class CachingPolicyEvaluator(object):
@@ -90,11 +88,11 @@ from post_training.monte_carlo_tree_search import MCTSNode, wrapInMCTSNode, MCTS
 
 class MonteCarloPolicyEvaluator(MCTS):
 
-    def __init__(self, network, problem_service, horizon = 0, exploration_weight = 1, iterations = 10,
-                 num_cstates_to_generate_per_expansion = 5, batch_expansion_call = True,
-                 progressive_widening = False, problem_server = None,
-                 debug_memory = False, debug_time_mcts_iterations = False,
-                 debug_comparison_exploration_exploitation = False,):
+    def __init__(self, network, problem_service, horizon=0, exploration_weight=1, iterations=10,
+                 num_cstates_to_generate_per_expansion=5, batch_expansion_call=True,
+                 progressive_widening=False, problem_server=None,
+                 debug_memory=False, debug_time_mcts_iterations=False,
+                 debug_comparison_exploration_exploitation=False, ):
         super().__init__(exploration_weight, network=network,
                          problem_service=problem_service,
                          debug_memory=debug_memory,
@@ -109,7 +107,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.revisit_counter = 0
         self.debug_memory = debug_memory
         self.progressive_widening = progressive_widening
-        self.batch_expansion_call=batch_expansion_call
+        self.batch_expansion_call = batch_expansion_call
 
     def is_comparing_exploration_exploitation(self):
         return self._probe is not None
@@ -153,19 +151,19 @@ class MonteCarloPolicyEvaluator(MCTS):
         except Exception as e:
             print(f"Error sizing {name}: {e}")
 
-
     def get_action(self, obs):
         raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
 
-    def get_action_from_cstate_id_hash(self, cstate_id, cstate_hash, cost): #cstate is non-terminal
+    def get_action_from_cstate_id_hash(self, cstate_id, cstate_hash, cost):  # cstate is non-terminal
         if self.curr_tree_root is None:
-            self.curr_tree_root = wrapInMCTSNode(cstate_id=cstate_id,hashed_state=cstate_hash, cost_until_now=0, previous_action=None)
+            self.curr_tree_root = wrapInMCTSNode(cstate_id=cstate_id, hashed_state=cstate_hash, cost_until_now=0,
+                                                 previous_action=None)
             self.state_key_to_node[cstate_id] = self.curr_tree_root
             self.debug_orig_root = self.curr_tree_root
             self.visited_cstates_hashes.add(self.curr_tree_root.__hash__())
         if self.use_value_based:
             for i in range(self.iterations):
-                if i%5==0:
+                if i % 5 == 0:
                     gc.collect()
                 self.mcts_iteration_value_based(self.curr_tree_root)
         else:
@@ -207,7 +205,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         assert next_node in self.curr_tree_root.children.values(), \
             f"Assertion failed: next_node ({next_node}) is not one of current root's children"
         # assert next_node == self.children[self.curr_tree_root][action_id], \
-            # f"Assertion failed: next_node ({next_node}) != expected ({self.children[self.curr_tree_root][action_id]})"
+        # f"Assertion failed: next_node ({next_node}) != expected ({self.children[self.curr_tree_root][action_id]})"
         assert next_node == self.curr_tree_root.children[action_id], \
             f"Assertion failed: next_node ({next_node} != expected ({self.curr_tree_root.children[action_id]})"
         # TODO: these two assertions above might be redundant
@@ -218,7 +216,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         else:
             _temp = self.curr_tree_root
             self.curr_tree_root = next_node
-            #This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
+            # This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
             self._delete_subtree(_temp, recursive=False)
 
     def progress_to_without_cstate(self, action_id, cost):
@@ -230,7 +228,8 @@ class MonteCarloPolicyEvaluator(MCTS):
         self.curr_tree_root = next_node
         # This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
         self._delete_subtree(_temp, recursive=False)
-        return self.curr_tree_root.state_id, hash(self.curr_tree_root), 1, self.curr_tree_root.goal_state, self.curr_tree_root.terminal_state
+        return self.curr_tree_root.state_id, hash(
+            self.curr_tree_root), 1, self.curr_tree_root.goal_state, self.curr_tree_root.terminal_state
 
     def get_corresponding_mcts_node(self, cstate):
         return self.state_key_to_node.get(cstate, None)
@@ -257,22 +256,22 @@ class MonteCarloPolicyEvaluator(MCTS):
         if self.debug_time_mcts_iterations:
             self.after_expansion_times.append(time())
 
-
     def _rollout(self, mcts_node, horizon=10):
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
         action_following_state_path = []
         for _ in range(horizon):
             if mcts_node.is_goal():
-                print("\n\n============================================\nGoal was found during rollout\n============================================\n")
+                print(
+                    "\n\n============================================\nGoal was found during rollout\n============================================\n")
                 action_path = []
                 curr_mcts_node = self.curr_tree_root
                 for action_from_path, mcts_node_from_path in action_following_state_path:
                     # if curr_mcts_node not in self.children:
                     # if curr_mcts_node.children is None:
-                        # self.children[curr_mcts_node] = dict()
-                        # curr_mcts_node.children = None
+                    # self.children[curr_mcts_node] = dict()
+                    # curr_mcts_node.children = None
                     # self.children[curr_mcts_node][action_from_path] = mcts_node_from_path
-                    curr_mcts_node.children = FixedChildMap([action_from_path],[mcts_node_from_path])
+                    curr_mcts_node.children = FixedChildMap([action_from_path], [mcts_node_from_path])
                     self.state_key_to_node[curr_mcts_node.state_id] = curr_mcts_node
                     curr_mcts_node = mcts_node_from_path
                     action_path.append(action_from_path)
@@ -309,8 +308,8 @@ class MonteCarloPolicyEvaluator(MCTS):
 
             generated_ids = []
             for (action_id, cstate_after_action_i_id, cstate_after_action_i_hash,
-                step_cost, is_goal, is_terminal,
-                network_ready_repr,applicable_action_mask
+                 step_cost, is_goal, is_terminal,
+                 network_ready_repr, applicable_action_mask
                  ) in results:
                 generated_ids.append(cstate_after_action_i_id)
                 wrapped_output_cstate = wrapInMCTSNode(
@@ -339,7 +338,7 @@ class MonteCarloPolicyEvaluator(MCTS):
                 if self.problem_service is None:
                     raise RuntimeError("problem_service is None — was it shut down?")
                 # Simulate step only now (expensive!)
-                cstate_after_action_id, step_cost, is_goal, is_terminal, network_ready_repr,\
+                cstate_after_action_id, step_cost, is_goal, is_terminal, network_ready_repr, \
                     applicable_action_mask, state_hash = parent_node.simulate_step(i, self.problem_service)
                 wrapped_output_cstate = wrapInMCTSNode(
                     cstate_after_action_id,
@@ -366,7 +365,7 @@ class MonteCarloPolicyEvaluator(MCTS):
         masked_act_dist = tf.where(mask, act_dist, tf.zeros_like(act_dist))
         total = tf.reduce_sum(masked_act_dist)
         normalized_act_dist = tf.cond(
-            tf.greater(total,0),
+            tf.greater(total, 0),
             lambda: masked_act_dist / total,
             lambda: tf.zeros_like(act_dist)
         )
@@ -402,7 +401,9 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
             break
         action = policy_evaluator.get_action_from_cstate_id_hash(curr_state_id, curr_state_hash, cost)
         path.append(to_local(problem_service.action_name(action)))
-        curr_state_id, curr_sate_hash, step_cost, is_goal, is_terminal = move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=False)
+        curr_state_id, curr_sate_hash, step_cost, is_goal, is_terminal = move_to_next_state(problem_service,
+                                                                                            policy_evaluator, action,
+                                                                                            cost, current_code=False)
         cost += step_cost
         if is_goal:
             if policy_evaluator.is_comparing_exploration_exploitation():
@@ -412,22 +413,25 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
         # we can run out of time or run out of actions to take
         if is_terminal:
             break
-        if i == limit-1:
-            print(" I actually reached the end, something weird is happening, only some actions were chosen but limit was reached? ")
+        if i == limit - 1:
+            print(
+                " I actually reached the end, something weird is happening, only some actions were chosen but limit was reached? ")
     # path.append('FAIL! D:')
     if policy_evaluator.is_comparing_exploration_exploitation():
         print("Exploration-Exploitation comparison:")
         policy_evaluator.print_exploration_exploitation_comparison()
     return cost, False, path
 
+
 def move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=True):
     if current_code:
         curr_state, step_cost = to_local(problem_service.env_step(action))
-        policy_evaluator.progress_to(action, curr_state, cost+step_cost)
-        return curr_state, step_cost #FIXME: this currently does not work, must return also if the curr_state is goal
+        policy_evaluator.progress_to(action, curr_state, cost + step_cost)
+        return curr_state, step_cost  # FIXME: this currently does not work, must return also if the curr_state is goal
     else:
         assert isinstance(policy_evaluator, MonteCarloPolicyEvaluator)
-        return policy_evaluator.progress_to_without_cstate(action, cost) #TODO: env_step on the problem_service is irrelevant
+        return policy_evaluator.progress_to_without_cstate(action,
+                                                           cost)  # TODO: env_step on the problem_service is irrelevant
 
 
 def run_trials(network, problem_server, trials, iterations, horizon=None, limit=1000, det_sample=False,
@@ -448,11 +452,11 @@ def run_trials(network, problem_server, trials, iterations, horizon=None, limit=
     all_goal_reached = []
     paths = []
     print(f'\n-------------> MCTS iterations number: {iterations}\n')
-    #print(f'\n-------------> MCTS rollout horizon length: {horizon}\n')
+    # print(f'\n-------------> MCTS rollout horizon length: {horizon}\n')
     for _ in tqdm.trange(trials, desc='trials', leave=True):
         start = time()
         cost, goal_reached, path = run_trial(policy_evaluator, problem_server,
-                                             limit, det_sample,graceful_timeout=single_trial_graceful_timeout_sec)
+                                             limit, det_sample, graceful_timeout=single_trial_graceful_timeout_sec)
         elapsed = time() - start
         paths.append(path)
         all_exec_times.append(elapsed)
@@ -1042,8 +1046,8 @@ parser.add_argument(
 parser.add_argument(
     '--estimator-decay-epochs',
     type=int,
-    default=100,
-    help='Set the amount of epochs estimator decays from est_coeff_start to est_coeff_end.'
+    default=None,
+    help='Set the amount of epochs estimator decays from est_coeff_start to est_coeff_end, default value is 20% of all epochs.'
 )
 parser.add_argument(
     '--estimator-decay-coeff-start',
@@ -1057,6 +1061,7 @@ parser.add_argument(
     default=0.2,
     help='Set est_coeff_end value.'
 )
+
 
 def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
                 iter_num, weight_manager, scratch_dir):
@@ -1106,6 +1111,7 @@ def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
                 fp.write(')\n('.join(alist))
                 fp.write(')')
 
+
 class SingleProblem(object):
     """Wrapper to store all information relevant to training on a single
 
@@ -1132,6 +1138,7 @@ class SingleProblem(object):
     @network.setter
     def network(self, network):
         self.problem_server.network = network
+
 
 @can_profile
 def make_services(args):
@@ -1226,6 +1233,7 @@ def make_services(args):
         weight_manager = problem_server.register_network(weight_manager, args)
     return servers, weight_manager
 
+
 @can_profile
 def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     print('Training supervised on random instances (SPAWN, NO RPyC, NO REPLAY BUFFER)')
@@ -1242,8 +1250,8 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     configure_tf_gpu_memory_growth()
 
     only_one_good_action = (
-        args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
-        or args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
+            args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
+            or args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
     )
 
     # ------------------------------------------------------------
@@ -1290,11 +1298,12 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
                 action_policy_epsilon=args.action_policy_epsilon,
                 action_policy_temperature=args.action_policy_temperature,
                 action_policy_decay_rate=args.action_policy_decay_rate,
+                original_training_set=args.original_training_set,
                 estimator_decay=args.estimator_decay,
                 estimator_decay_coeff_start=args.estimator_decay_coeff_start,
                 estimator_decay_coeff_end=args.estimator_decay_coeff_end,
-                estimator_decay_epochs=args.estimator_decay_epochs,
-                original_training_set=args.original_training_set
+                estimator_decay_epochs=args.estimator_decay_epochs if args.estimator_decay_epochs is not None else int(
+                    args.max_opt_epochs / 5),
             )
         )
 
@@ -1357,7 +1366,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
         strategy = (
             SupervisedObjective.ANY_GOOD_ACTION
             if args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
-            and args.policy_network_only
+               and args.policy_network_only
             else args.sup_objective
         )
         if not args.freeze_train:
@@ -1412,7 +1421,6 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
                 planner_exts=p,
             )
 
-
         best_rate, elapsed_time, iter_num = sup_trainer.train(
             max_epochs=args.max_opt_epochs
         )
@@ -1426,7 +1434,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
         return
 
     weights_np = weight_manager.export_numpy()
-    assert len(specs)==1, f"Currently evaluation only works serially, {len(specs)}"
+    assert len(specs) == 1, f"Currently evaluation only works serially, {len(specs)}"
     specs[0].evaluation_instance_index = 0
     eval_explorer = ParallelMCTSExplorerEval(
         specs=specs,
@@ -1435,7 +1443,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     eval_start_time = time()
     success_rate, outs = eval_explorer.evaluate(weights_np)
     print("spec: ", specs[0])
-    print(f"Inference success rate: {success_rate}, took: {time()-eval_start_time}")
+    print(f"Inference success rate: {success_rate}, took: {time() - eval_start_time}")
 
 
 @can_profile
