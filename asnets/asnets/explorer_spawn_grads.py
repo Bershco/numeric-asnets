@@ -4,9 +4,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from asnets.parllel_explore_spawn_grads import run_epoch_spawn_grads
-from asnets.spawn_train_worker import WorkerOutput
+import numpy as np
 
+from asnets.parllel_explore_spawn_grads import run_epoch_spawn_grads, run_epoch_spawn_eval
+from asnets.spawn_train_worker import WorkerOutput
 
 @dataclass
 class ParallelMCTSExplorerGrads:
@@ -16,14 +17,11 @@ class ParallelMCTSExplorerGrads:
     policy_only: bool
     log: bool
 
-
     # loss cfg
     mse_coeff: float
     l2_reg_coeff: float
     l1_reg_coeff: float
     l1_l2_reg_coeff: float
-
-
 
     PROFILE_DIR: Optional[str] = None
     curr_epoch: int = 0
@@ -32,7 +30,6 @@ class ParallelMCTSExplorerGrads:
     #corruption testing settings
     corrupt_pi: Optional[str] = None
     corrupt_z: Optional[str] = None
-
 
     def explore(self, weights_np: dict, limit_workers=None,) -> list[WorkerOutput]:
         self.curr_epoch += 1
@@ -56,3 +53,18 @@ class ParallelMCTSExplorerGrads:
 
     def num_slots(self):
         return len(self.specs)
+
+@dataclass
+class ParallelMCTSExplorerEval:
+    specs: list[Any]
+    max_workers: Optional[int] = None
+
+    def evaluate(self, weights_np):
+        outs = run_epoch_spawn_eval(
+            specs=self.specs,
+            weights_np=weights_np,
+            max_workers=self.max_workers,
+        )
+        solved = [o.hit_goal for o in outs]
+        success_rate = float(np.mean(solved))
+        return success_rate, outs

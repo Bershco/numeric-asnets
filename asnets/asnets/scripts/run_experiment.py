@@ -279,10 +279,10 @@ def build_arch_flags(arch_mod, is_train, override_enhsp_config=None, override_ms
     if hasattr(arch_mod, 'MAX_REPLAY_SIZE'):
         assert isinstance(arch_mod.MAX_REPLAY_SIZE, int)
         flags.extend(['--max-replay-size', str(arch_mod.MAX_REPLAY_SIZE)])
-    if hasattr(arch_mod, 'TRAINING_LIMIT_TURNS'):
-        assert isinstance(arch_mod.TRAINING_LIMIT_TURNS, int)
-        flags.extend(['--training-limit-turns',
-                      str(arch_mod.TRAINING_LIMIT_TURNS)])
+    if hasattr(arch_mod, 'SEARCH_MAX_LENGTH'):
+        assert isinstance(arch_mod.SEARCH_MAX_LENGTH, int)
+        flags.extend(['--search-max-length',
+                      str(arch_mod.SEARCH_MAX_LENGTH)])
 
     # mcts flags
     if hasattr(arch_mod, 'ACTION_POLICY'):
@@ -407,7 +407,7 @@ parser.add_argument(
     help='run memray profiling for memory usage across main process and rpyc workers')
 parser.add_argument(
     '--serial-test',
-    default=False,
+    default=True,
     action='store_true',
     help='run test problems serially (default is to run them in parallel) '
          'subject to hardware limitations. These hardware limitations might not work'
@@ -453,11 +453,6 @@ parser.add_argument(
     metavar='prob-module',
     help='import path for Python file with problem config (e.g. '
          '"experiments.ex_blocksworld")')
-parser.add_argument(
-    '--mcts-iterations',
-    type=int,
-    default=3,
-    help='Number of nodes to select->expand->evaluate->backpropagate.')
 parser.add_argument(
     '--random-seed',
     type=int,
@@ -508,7 +503,7 @@ parser.add_argument(
     help='Override architecture mse coefficient.'
 )
 parser.add_argument(
-    '--training-mcts-iterations',
+    '--mcts-iterations',
     type=int,
     default=10,
     help='Number of MCTS iterations done during training'
@@ -550,10 +545,10 @@ parser.add_argument(
     help='Set the training set to be the original of Numeric ASNets paper, this overrides fixed-instance.'
 )
 parser.add_argument(
-    '--num-training-workers',
+    '--num-workers',
     type=int,
     default=4,
-    help='Number of MCTS iterations done during training'
+    help='Set the number of problem slots for the trainer\evaluator'
 )
 parser.add_argument(
     '--sample-k-additional-states',
@@ -649,7 +644,6 @@ def main():
                no_eval=args.no_eval,
                profiling=args.profiling,
                memory_profiling=args.memory_profiling,
-               mcts_iterations=args.mcts_iterations,
                random_seed=args.random_seed,
                mcts_expansion_size=args.mcts_expansion_size,
                train_only=args.no_eval,
@@ -658,14 +652,14 @@ def main():
                mcts_exploration_weight=args.mcts_exploration_weight,
                mcts_smart_expansions=args.mcts_smart_expansions,
                policy_network_only=args.policy_network_only,
-               training_mcts_iterations=args.training_mcts_iterations,
+               mcts_iterations=args.mcts_iterations,
                heuristic_bootstrapping=args.heuristic_bootstrapping,
                corrupt_pi=args.corrupt_pi,
                corrupt_z=args.corrupt_z,
                worker_logs=args.worker_logs,
                fixed_instance=args.fixed_instance,
                freeze_train=args.freeze_train,
-               num_training_workers=args.num_training_workers,
+               num_workers=args.num_workers,
                sample_k_additional_states=args.sample_k_additional_states,
                profile_dir=args.profile_dir,
                estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
@@ -691,7 +685,6 @@ def main_inner(*,
                no_eval=None,
                profiling=False,
                memory_profiling=False,
-               mcts_iterations=None,
                random_seed=None,
                mcts_expansion_size=None,
                train_only=False,
@@ -700,14 +693,14 @@ def main_inner(*,
                mcts_exploration_weight=1,
                mcts_smart_expansions=False,
                policy_network_only=False,
-               training_mcts_iterations=None,
+               mcts_iterations=None,
                heuristic_bootstrapping=False,
                corrupt_pi=None,
                corrupt_z=None,
                worker_logs=None,
                fixed_instance=False,
                freeze_train=False,
-               num_training_workers=None,
+               num_workers=None,
                sample_k_additional_states=0,
                profile_dir=None,
                estimator_h_to_v_coeff=None,
@@ -754,8 +747,8 @@ timeout = {arch_mod.TIME_LIMIT_SECONDS}
 evaluation = {"off" if no_eval else "on"}
 ========================================================
         ''', flush=True)
-        if training_mcts_iterations:
-            train_flags.extend(['--training-mcts-iterations', str(training_mcts_iterations)])
+        if mcts_iterations:
+            train_flags.extend(['--mcts-iterations', str(mcts_iterations)])
         if heuristic_bootstrapping:
             train_flags.append('--heuristic-bootstrapping')
         if mcts_exploration_weight:
@@ -772,22 +765,22 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.append('--fixed-instance')
         if freeze_train:
             train_flags.append('--freeze-train')
-        if num_training_workers:
-            train_flags.extend(['--num-training-workers', str(num_training_workers)])
+        if num_workers:
+            train_flags.extend(['--num-workers', str(num_workers)])
         if sample_k_additional_states:
             train_flags.extend(['--sample-k-additional-states', str(sample_k_additional_states)])
         if profile_dir:
             train_flags.extend(['--profile-dir', str(profile_dir)])
         if estimator_h_to_v_coeff:
-            train_flags.extend(['--estimator-h-to-v-coeff', estimator_h_to_v_coeff])
+            train_flags.extend(['--estimator-h-to-v-coeff', str(estimator_h_to_v_coeff)])
         if estimator_decay:
             train_flags.append('--estimator-decay')
         if estimator_decay_coeff_start:
-            train_flags.extend(['--estimator-decay-coeff-start', estimator_decay_coeff_start])
+            train_flags.extend(['--estimator-decay-coeff-start', str(estimator_decay_coeff_start)])
         if estimator_decay_coeff_end:
-            train_flags.extend(['--estimator-decay-coeff-end', estimator_decay_coeff_end])
+            train_flags.extend(['--estimator-decay-coeff-end', str(estimator_decay_coeff_end)])
         if estimator_decay_epochs:
-            train_flags.extend(['--estimator-decay-epochs', estimator_decay_epochs])
+            train_flags.extend(['--estimator-decay-epochs', str(estimator_decay_epochs)])
         if original_training_set:
             train_flags.append('--original-training-set')
         final_checkpoint = run_asnets_local(
@@ -830,8 +823,6 @@ evaluation = {"off" if no_eval else "on"}
         arch_mod, is_train=False,
         override_enhsp_config=override_enhsp_config))
 
-    if mcts_iterations is not None:
-        main_test_flags.extend(['--mcts-iterations', str(mcts_iterations)])
     if random_seed is not None:
         main_test_flags.extend(['--seed', str(random_seed)])
     if mcts_expansion_size is not None:
@@ -846,6 +837,11 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.append('--mcts-smart-expansions')
     if policy_network_only:
         main_test_flags.append('--policy-network-only')
+    if num_workers:
+        main_test_flags.extend(['--num-workers', str(num_workers)])
+    if mcts_iterations:
+        main_test_flags.extend(['--mcts-iterations', str(mcts_iterations)])
+
 
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:

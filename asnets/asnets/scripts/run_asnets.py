@@ -17,7 +17,7 @@ from pympler import muppy, summary, asizeof
 from typing import Set, Any
 from pympler.asizeof import asized
 
-from asnets.explorer_spawn_grads import ParallelMCTSExplorerGrads
+from asnets.explorer_spawn_grads import ParallelMCTSExplorerGrads, ParallelMCTSExplorerEval
 from asnets.freeze_overfit_test import FrozenSupervisedTrainer
 from asnets.models import make_weight_manager, configure_tf_gpu_memory_growth
 from asnets.prob_dom_meta import DomainType
@@ -736,10 +736,10 @@ parser.add_argument(
     default=100,
     help='max turns per round')
 parser.add_argument(
-    '--training-limit-turns',
+    '--search-max-length',
     type=int,
     default=50,
-    help='max turns per round during training')
+    help='Maximum number of action decision steps.')
 parser.add_argument(
     '-e', '--expt-dir',
     default=None,
@@ -862,11 +862,6 @@ parser.add_argument(
     nargs='+',
     help='paths to PDDL domain/problem definitions')
 parser.add_argument(
-    '--mcts-iterations',
-    type=int,
-    default=3,
-    help='Number of nodes to select->expand->rollout->backpropagate.')
-parser.add_argument(
     '--mcts-rollout-horizon',
     type=int,
     default=3,
@@ -915,7 +910,7 @@ parser.add_argument(
     help='Revert to policy network only instead of the new dual-head network (for ablation study)'
 )
 parser.add_argument(
-    '--training-mcts-iterations',
+    '--mcts-iterations',
     type=int,
     default=10,
     help='Number of MCTS iterations done during training'
@@ -933,10 +928,10 @@ parser.add_argument(
     help='Enable hindsight experience replay strategy where states are sampled from the training-based mcts tree and trajectories are decalred her goals.'
 )
 parser.add_argument(
-    '--num-training-workers',
+    '--num-workers',
     type=int,
     default=4,
-    help='Set the number of problem slots for the trainer'
+    help='Set the number of problem slots for the trainer\evaluator'
 )
 parser.add_argument(
     '--slurm-job-id',
@@ -1155,8 +1150,8 @@ def make_services(args):
     only_one_good_action = args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE or args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
 
     domain = Domain.from_pddl_name(extract_domain_name_from_file(args.pddls[0]))
-    LOGGER.info(f"Starting to initialize {args.num_training_workers} problem servers")
-    for slot_id in range(args.num_training_workers):
+    LOGGER.info(f"Starting to initialize {args.num_workers} problem servers")
+    for slot_id in range(args.num_workers):
         random_seed = None if args.seed is None \
             else args.seed + slot_id
         service_config = ProblemServiceConfig(
@@ -1176,8 +1171,8 @@ def make_services(args):
             teacher_timeout_s=args.teacher_timeout_s,
             only_one_good_action=only_one_good_action,
             use_teacher_envelope=args.use_teacher_envelope,
-            max_len=args.training_limit_turns,
-            training_mcts_iterations=args.training_mcts_iterations,
+            max_len=args.search_max_length,
+            training_mcts_iterations=args.mcts_iterations,
             heuristic_bootstrapping=args.heuristic_bootstrapping,
             mcts_her_strategy=args.mcts_her_strategy,
             mcts_expansion_k=args.mcts_expansion_size,
@@ -1232,9 +1227,9 @@ def make_services(args):
     return servers, weight_manager
 
 @can_profile
-def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, scratch_dir):
+def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     print('Training supervised on random instances (SPAWN, NO RPyC, NO REPLAY BUFFER)')
-
+    print(f"Instances: {args.pddls}")
     start_time = time()
 
     # ------------------------------------------------------------
@@ -1245,9 +1240,6 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
         use_comparisons=args.use_comparisons
     )
     configure_tf_gpu_memory_growth()
-    domain = Domain.from_pddl_name(
-        extract_domain_name_from_file(args.pddls[0])
-    )
 
     only_one_good_action = (
         args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
@@ -1260,14 +1252,14 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
     from asnets.parllel_explore_spawn_grads import SpawnExploreSpec
 
     specs = []
-    for slot_id in range(args.num_training_workers):
+    for slot_id in range(args.num_workers):
         specs.append(
             SpawnExploreSpec(
                 pddls=args.pddls,
                 domain_type=args.domain_type,
                 trainer_seed=args.seed,
                 slot_id=slot_id,
-                num_slots=args.num_training_workers,
+                num_slots=args.num_workers,
                 ssipp_dg_heuristic=args.ssipp_dg_heuristic,
                 use_lm_cuts=args.use_lm_cuts,
                 use_numeric_landmarks=args.use_numeric_landmarks,
@@ -1281,8 +1273,8 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
                 teacher_timeout_s=args.teacher_timeout_s,
                 only_one_good_action=only_one_good_action,
                 use_teacher_envelope=args.use_teacher_envelope,
-                max_len=args.training_limit_turns,
-                training_mcts_iterations=args.training_mcts_iterations,
+                max_len=args.search_max_length,
+                mcts_iterations=args.mcts_iterations,
                 heuristic_bootstrapping=args.heuristic_bootstrapping,
                 mcts_her_strategy=args.mcts_her_strategy,
                 mcts_expansion_k=args.mcts_expansion_size,
@@ -1321,7 +1313,7 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
     dg_extra_dim = sum(g.extra_dim for g in p.data_gens)
 
     # ------------------------------------------------------------
-    # Weight manager ONLY
+    # Weight manager
     # ------------------------------------------------------------
     weight_manager = make_weight_manager(
         args, p.domain_meta, dg_extra_dim
@@ -1356,7 +1348,7 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
         l2_reg_coeff=args.l2_reg,
         l1_reg_coeff=args.l1_reg,
         l1_l2_reg_coeff=args.l1_l2_reg,
-        max_workers=args.num_training_workers,
+        max_workers=args.num_workers,
     )
     # ------------------------------------------------------------
     # Trainer
@@ -1368,8 +1360,6 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
             and args.policy_network_only
             else args.sup_objective
         )
-
-
         if not args.freeze_train:
             sup_trainer = SupervisedTrainer(
                 weight_manager=weight_manager,
@@ -1430,26 +1420,28 @@ def main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, 
         elapsed_time = iter_num = None
 
     # ------------------------------------------------------------
-    # Evaluation (optional / unchanged semantics)
+    # Evaluation
     # ------------------------------------------------------------
     if args.no_eval:
         return
 
-    if weight_manager is not None and not args.minimal_file_saves:
-        weight_manager.save(
-            path.join(snapshot_dir, 'snapshot_final.pkl')
-        )
-
-    print(
-        'Evaluation skipped: spawn-based, serverless exploration '
-        'does not support eval_single yet'
+    weights_np = weight_manager.export_numpy()
+    assert len(specs)==1, f"Currently evaluation only works serially, {len(specs)}"
+    specs[0].evaluation_instance_index = 0
+    eval_explorer = ParallelMCTSExplorerEval(
+        specs=specs,
+        max_workers=args.num_workers,
     )
+    eval_start_time = time()
+    success_rate, outs = eval_explorer.evaluate(weights_np)
+    print("spec: ", specs[0])
+    print(f"Inference success rate: {success_rate}, took: {time()-eval_start_time}")
 
 
 @can_profile
 def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
     if args.exploration_algorithm == 'mcts':
-        main_supervised_parallel_random_problems(args, unique_prefix, snapshot_dir, scratch_dir)
+        main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir)
         return
     print('Training supervised')
 

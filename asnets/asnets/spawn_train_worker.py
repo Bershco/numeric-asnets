@@ -197,6 +197,27 @@ class WorkerCollectorWithLogging(WorkerCollector):
             "reg_loss": np.mean(self.reg_losses) if self.reg_losses else None,
         }
 
+@dataclass(frozen=True)
+class WorkerInputEval:
+
+    spec: Any #SpawnExploreSpec
+    weights_np: dict
+    epoch: Optional[int]
+    dropout: float
+    debug: bool
+    policy_only: bool
+
+    @property
+    def seed(self):
+        return self.spec.trainer_seed + self.spec.slot_id
+
+@dataclass
+class EvalWorkerOutput:
+
+    hit_goal: float
+    steps: int
+    cost: float
+
 
 # -----------------------------
 # Hook functions you must connect
@@ -206,16 +227,21 @@ def _build_planner_exts_from_spec(spec, epoch_num):
     domain_pddl_path = spec.pddls[0]
     domain = Domain.from_pddl_name(extract_domain_name_from_file(domain_pddl_path))
     instance_pddl_paths = spec.pddls[1:]
-    if spec.original_training_set:
-        num_workers = spec.num_slots
-        this_worker_id = spec.slot_id
-        dataset_size = len(instance_pddl_paths)
-        instance_idx = (epoch_num * num_workers + this_worker_id) % dataset_size
-        instance_path = instance_pddl_paths[instance_idx]
-    elif spec.fixed_instance_pddl:
-        instance_path = instance_pddl_paths[0]
+    if spec.evaluation_instance_index is not None:
+        instance_path = instance_pddl_paths[
+            spec.evaluation_instance_index
+        ]
     else:
-        instance_path = str(domain.get_realtime_instance(spec.difficulty, spec.trainer_seed))
+        if spec.original_training_set:
+            num_workers = spec.num_slots
+            this_worker_id = spec.slot_id
+            dataset_size = len(instance_pddl_paths)
+            instance_idx = (epoch_num * num_workers + this_worker_id) % dataset_size
+            instance_path = instance_pddl_paths[instance_idx]
+        elif spec.fixed_instance_pddl:
+            instance_path = instance_pddl_paths[0]
+        else:
+            instance_path = str(domain.get_realtime_instance(spec.difficulty, spec.trainer_seed, spec.slot_id))
     pddls = [domain_pddl_path, instance_path]
     return PlannerExtensions(
         pddls,
@@ -420,7 +446,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     mcts = TrainingMCTS(
         network=net,
         ctx=ctx,
-        iterations=inp.spec.training_mcts_iterations,
+        iterations=inp.spec.mcts_iterations,
         expansion_k=inp.spec.mcts_expansion_k,
         exploration_weight=inp.spec.mcts_exploration_weight,
         sharpen_pi=0.1,
@@ -793,3 +819,85 @@ def run_worker_opt_profile(inp: WorkerInput) -> WorkerOutput:
 
         # Optional: coarse phase timings even without pstats
         print(f"[WORKER TIMING] pid={os.getpid()} total={time.time() - t0:.2f}s", flush=True)
+
+def run_worker_eval(inp: WorkerInputEval):
+    set_random_seeds(inp.seed)
+    configure_tf_gpu_memory_growth()
+    CanonicalState.network_input_config(
+        use_fluents=inp.spec.use_fluents,
+        use_comparisons=inp.spec.use_comps,
+    )
+    planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
+    estimator = _build_estimator(planner_exts, inp.spec)
+    action_policy = build_action_policy(
+        base_policy=inp.spec.action_policy,
+        worker_tag=f"[EVAL|{os.getpid()}]",
+        distance_threshold=np.inf
+        if inp.spec.action_policy_goal_chase_distance_threshold == -1
+        else inp.spec.action_policy_goal_chase_distance_threshold,
+        epsilon=inp.spec.action_policy_epsilon,
+        temperature=inp.spec.action_policy_temperature,
+        decay_rate=inp.spec.action_policy_decay_rate,
+    )
+    wm_local = _rebuild_weight_manager_local(
+        planner_exts.problem_meta,
+        inp.weights_np,
+    )
+    net = _build_network_local(
+        wm_local,
+        planner_exts.problem_meta,
+        inp.dropout,
+        inp.debug,
+        inp.policy_only,
+    )
+    ctx = LocalExploreContext(
+        planner_exts=planner_exts,
+        estimator=estimator,
+        estimator_h_to_v_coeff=inp.spec.estimator_h_to_v_coeff,
+    )
+    mcts = TrainingMCTS(
+        network=net,
+        ctx=ctx,
+        iterations=inp.spec.mcts_iterations,
+        expansion_k=inp.spec.mcts_expansion_k,
+        exploration_weight=inp.spec.mcts_exploration_weight,
+        sharpen_pi=0.1,
+        log_visitations=False,
+        select_logging=False,
+        estimator_coeff=0.0,   # IMPORTANT difference vs training, estimator must not be used
+    )
+    cstate = ctx.get_init_state()
+    max_len = inp.spec.max_len
+    cost = 0
+    act_dim = planner_exts.problem_meta.num_acts
+    mcts.initialise_tree(cstate)
+
+    for step in range(max_len):
+        if cstate.is_terminal:
+            return EvalWorkerOutput(
+                hit_goal=float(cstate.is_goal),
+                steps=step,
+                cost=cost,
+            )
+        pi, _ = mcts.run_search()
+        mask = mcts.get_children_mask(act_dim=act_dim)
+        masked_pi = pi * mask
+        s = masked_pi.sum()
+        if s > 0:
+            masked_pi /= s
+        else:
+            valid = np.where(mask)[0]
+            if len(valid) == 0:
+                break
+            masked_pi = np.zeros_like(pi)
+            masked_pi[valid] = 1 / len(valid)
+        action = action_policy.select_action(
+            mcts=mcts,
+            pi=masked_pi,
+        )
+        cstate = mcts.step_forward(action)
+    return EvalWorkerOutput(
+        hit_goal=float(cstate.is_goal),
+        steps=max_len,
+        cost=cost,
+    )

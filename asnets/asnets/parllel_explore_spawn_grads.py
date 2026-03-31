@@ -1,13 +1,14 @@
 # asnets/parallel_explore_spawn_grads.py
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Any, Optional, List
 
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from asnets.spawn_train_worker import WorkerInput, WorkerOutput, run_worker_opt_profile
+from asnets.spawn_train_worker import WorkerInput, WorkerOutput, run_worker_opt_profile, run_worker_eval, \
+    WorkerInputEval
 
 
 def run_epoch_spawn_grads(
@@ -57,6 +58,27 @@ def run_epoch_spawn_grads(
 
     return outs
 
+def run_epoch_spawn_eval(specs, weights_np, max_workers=None):
+    ctx = mp.get_context("forkserver")
+    outs = []
+    with ProcessPoolExecutor(
+        max_workers=max_workers or len(specs),
+        mp_context=ctx,
+    ) as ex:
+        futs = []
+        for spec in specs:
+            inp = WorkerInputEval(
+                spec=spec,
+                epoch=None,
+                weights_np=weights_np,
+                dropout=0.0,
+                debug=False,
+                policy_only=False,
+            )
+            futs.append(ex.submit(run_worker_eval, inp))
+        for f in as_completed(futs):
+            outs.append(f.result())
+    return outs
 
 @dataclass
 class SpawnExploreSpec:
@@ -81,7 +103,7 @@ class SpawnExploreSpec:
     only_one_good_action: bool
     use_teacher_envelope: bool
     max_len: int
-    training_mcts_iterations: int
+    mcts_iterations: int
     heuristic_bootstrapping: bool
     mcts_her_strategy: bool
     mcts_expansion_k: int
@@ -108,3 +130,53 @@ class SpawnExploreSpec:
     action_policy_epsilon: float = None
     action_policy_temperature: float = None
     action_policy_decay_rate: float = None
+
+    # evaluation only attributes
+    evaluation_instance_index: Optional[int] = None
+
+    def __str__(self) -> str:
+        """A stylized, grouped, and colorized representation of the spec."""
+        # Define groupings for visual clarity
+        groups = {
+            "CORE": ["domain_type", "pddls", "difficulty", "trainer_seed", "slot_id", "num_slots"],
+            "PLANNER / TEACHER": ["teacher_planner", "teacher_timeout_s", "use_teacher_envelope", "enhsp_config",
+                                  "max_len"],
+            "HEURISTICS": ["ssipp_dg_heuristic", "fd_heuristic", "ssipp_teacher_heuristic", "use_lm_cuts",
+                           "use_numeric_landmarks", "use_contributions"],
+            "MCTS & EXPLORATION": ["training_mcts_iterations", "mcts_expansion_k", "mcts_exploration_weight",
+                                   "mcts_her_strategy", "sample_k_additional_states"],
+            "ESTIMATOR & DECAY": ["estimator_h_to_v_coeff", "estimator_decay", "estimator_decay_coeff_start",
+                                  "estimator_decay_coeff_end", "estimator_decay_epochs"],
+            "ACTION POLICY": ["action_policy", "action_policy_epsilon", "action_policy_temperature",
+                              "action_policy_decay_rate"],
+            "MISC / TRAINING": ["use_fluents", "use_comps", "fixed_instance_pddl", "original_training_set",
+                                "freeze_train_steps", "freeze_batch_size"]
+        }
+
+        # ANSI Color Codes (Optional - remove if you want plain text)
+        CLR = "\033[94m"  # Blue
+        VAL = "\033[92m"  # Green
+        RST = "\033[0m"  # Reset
+
+        header = f"\n{CLR}=== SpawnExploreSpec ==={RST}"
+        output = [header]
+
+        # Track which fields we've already categorized
+        seen_fields = set()
+        for group_name, field_list in groups.items():
+            output.append(f"\n  {CLR}[ {group_name} ]{RST}")
+            for f_name in field_list:
+                if hasattr(self, f_name):
+                    val = getattr(self, f_name)
+                    output.append(f"    {f_name:<40} : {VAL}{val}{RST}")
+                    seen_fields.add(f_name)
+
+        # Catch-all for any fields not explicitly grouped
+        remaining = [f.name for f in fields(self) if f.name not in seen_fields]
+        if remaining:
+            output.append(f"\n  {CLR}[ OTHER ]{RST}")
+            for f_name in remaining:
+                val = getattr(self, f_name)
+                output.append(f"    {f_name:<40} : {VAL}{val}{RST}")
+
+        return "\n".join(output) + "\n"

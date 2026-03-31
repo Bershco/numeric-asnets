@@ -118,7 +118,7 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
         mcts = TrainingMCTS(
             network=B.net,
             ctx=B.ctx,
-            iterations=spec.training_mcts_iterations,
+            iterations=spec.mcts_iterations,
             expansion_k=spec.mcts_expansion_k,
             exploration_weight=spec.mcts_exploration_weight,
             sharpen_pi=0.1,

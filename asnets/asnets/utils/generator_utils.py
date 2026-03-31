@@ -339,8 +339,8 @@ class Domain(Enum):
             raise FileNotFoundError(f"File {name} does not have a proper numerical index.")
         return res
 
-    def get_realtime_instance(self, difficulty: InstanceDifficulty, seed: int):
-        instance_folder = self.instance_folder / str(seed) / str(difficulty)
+    def get_realtime_instance(self, difficulty: InstanceDifficulty, seed: int, slot_id: int):
+        instance_folder = self.instance_folder / str(seed) / str(difficulty) /str(slot_id)
         instance_folder.mkdir(parents=True, exist_ok=True)
         # 1. Figure out if it's empty of files (ignoring directories)
         # We use a generator to check if at least one file exists
@@ -370,9 +370,12 @@ class Domain(Enum):
         # 4. Return the path of the singular instance
         # Assuming the generator creates exactly one file in the instance_folder
         # We look for the most recently created file that isn't the 'used' directory
-        generated_files = [f for f in instance_folder.iterdir() if f.is_file()]
-
-        # Return the first file found (or you can sort by creation time if needed)
+        generated_files = sorted(
+            [f for f in instance_folder.iterdir() if f.is_file()],
+            key=lambda f: f.stat().st_ctime,
+            reverse=True  # Set to True to get the most recent file first
+        )
+        # Return the first file found (sorted by creation time if needed)
         return generated_files[0] if generated_files else None
 
 
