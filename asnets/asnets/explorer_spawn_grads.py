@@ -55,7 +55,7 @@ class ParallelMCTSExplorerGrads:
         return len(self.specs)
 
     def estimator_decay_end_epoch(self):
-        return self.specs[0].estimator_decay_epochs
+        return self.specs[0].estimator_decay_epochs if self.specs[0].estimator_decay else 0
 
 @dataclass
 class ParallelMCTSExplorerEval:
