@@ -1303,7 +1303,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
                 estimator_decay_coeff_start=args.estimator_decay_coeff_start,
                 estimator_decay_coeff_end=args.estimator_decay_coeff_end,
                 estimator_decay_epochs=args.estimator_decay_epochs if args.estimator_decay_epochs is not None else int(
-                    args.max_opt_epochs / 5),
+                    args.max_opt_epochs / 3),
             )
         )
 

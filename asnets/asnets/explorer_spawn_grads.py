@@ -54,6 +54,9 @@ class ParallelMCTSExplorerGrads:
     def num_slots(self):
         return len(self.specs)
 
+    def estimator_decay_end_epoch(self):
+        return self.specs[0].estimator_decay_epochs
+
 @dataclass
 class ParallelMCTSExplorerEval:
     specs: list[Any]

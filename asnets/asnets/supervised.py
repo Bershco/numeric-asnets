@@ -804,7 +804,8 @@ class SupervisedTrainer:
         best_rate = None
         iter_num = 0
         time_since_best = 0
-        solve_thresh = 0.999
+        solve_thresh = 0.8
+        early_stop_first_epoch = self.explorer.estimator_decay_end_epoch() + self.early_stop if self.early_stop else 0
 
         tr = tqdm.trange(max_epochs, desc='epoch', leave=True)
         epoch = tf.Variable(0, dtype=tf.int64)
@@ -916,6 +917,7 @@ class SupervisedTrainer:
 
             if (
                     self.early_stop
+                    and epoch_num >= early_stop_first_epoch
                     and time_since_best >= self.early_stop
                     and best_rate >= solve_thresh
             ):
