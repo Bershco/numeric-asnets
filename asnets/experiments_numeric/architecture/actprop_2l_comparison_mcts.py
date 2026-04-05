@@ -3,11 +3,14 @@ from .actprop_2l_comparison import *
 EXPLORATION_ALGORITHM = 'mcts'
 ROLLOUTS = 2
 EXPLORATION_LEARNING_RATIO = 10
-MAX_OPT_EPOCHS = 100
+MAX_OPT_EPOCHS = 1000
 TIME_LIMIT_SECONDS = int(60 * 60 * 8)
 # TIME_LIMIT_SECONDS = int(60 * 90)
 
 MSE = 0.5
+
+ENHSP_CONFIG = 'hmrmax-astar'
+
 
 SUPERVISED_LEARNING_RATE = 0.003  # EXPERIMENTAL
 
@@ -17,7 +20,7 @@ HIDDEN_SIZE = 32
 SKIP = True
 
 #### MCTS settings ####
-SEARCH_MAX_LENGTH = 50
+SEARCH_MAX_LENGTH = 100
 
 #### MCTS Action Policy Settings ####
 ACTION_POLICY = "visit"
