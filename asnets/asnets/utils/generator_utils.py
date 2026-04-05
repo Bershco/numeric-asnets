@@ -171,7 +171,7 @@ class Domain(Enum):
                 kwargs=dict(
                     min_counters=7,
                     max_counters=10,
-                    max_int=800,
+                    max_int=100,
                 )
             ),
         },
