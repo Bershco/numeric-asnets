@@ -62,8 +62,9 @@ class ParallelMCTSExplorerGrads:
         return self.specs[0].estimator_decay_epochs if self.specs[0].estimator_decay else 0
 
     def advance_progression_level(self):
+        if self.progression_level == ProgressionLevel.LEVEL5:
+            return
         print(f"Starting to advance progression level from {self.progression_level} to {self.progression_level.next()}")
-        if self.progression_level == ProgressionLevel.LEVEL5: return
         self.progression_level = self.progression_level.next()
         self.set_specs_according_to_progression_level()
         print(f"Current progression level is {self.progression_level}, specs were given the following difficulties:")
