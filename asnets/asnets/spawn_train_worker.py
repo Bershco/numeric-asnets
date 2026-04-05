@@ -79,7 +79,9 @@ class WorkerInput:
     def estimator_coeff(self):
         if not self.spec.estimator_decay:
             return 0.0
-        return self.spec.estimator_decay_coeff_start + (self.spec.estimator_decay_coeff_end - self.spec.estimator_decay_coeff_start) * min(self.epoch/self.spec.estimator_decay_epochs,1)
+        return self.spec.estimator_decay_coeff_start + (
+                    self.spec.estimator_decay_coeff_end - self.spec.estimator_decay_coeff_start) * min(
+            self.epoch / self.spec.estimator_decay_epochs, 1)
 
 
 @dataclass
@@ -197,10 +199,10 @@ class WorkerCollectorWithLogging(WorkerCollector):
             "reg_loss": np.mean(self.reg_losses) if self.reg_losses else None,
         }
 
+
 @dataclass(frozen=True)
 class WorkerInputEval:
-
-    spec: Any #SpawnExploreSpec
+    spec: Any  # SpawnExploreSpec
     weights_np: dict
     epoch: Optional[int]
     dropout: float
@@ -211,9 +213,9 @@ class WorkerInputEval:
     def seed(self):
         return self.spec.trainer_seed + self.spec.slot_id
 
+
 @dataclass
 class EvalWorkerOutput:
-
     hit_goal: float
     steps: int
     cost: float
@@ -252,6 +254,11 @@ def _build_planner_exts_from_spec(spec, epoch_num):
         dg_use_contributions=spec.use_contributions,
         dg_use_act_history=spec.use_act_history,
     )
+
+
+def _compute_mcts_iterations(branching_factor: int, multiplier: int = 3, constant: int = 10, min_iter: int = 10,
+                             max_iter: int = 200):
+    return int(np.clip(constant + multiplier * branching_factor, min_iter, max_iter))
 
 
 def _build_estimator(planner_exts, spec):
@@ -422,6 +429,9 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         decay_rate=inp.spec.action_policy_decay_rate,
     )
     act_dim = planner_exts.problem_meta.num_acts
+    if not hasattr(inp.spec, "mcts_iterations") or inp.spec.mcts_iterations == 0:
+        branching_f = min(act_dim, inp.spec.mcts_expansion_k)
+        inp.spec.mcts_iterations = _compute_mcts_iterations(branching_f)
 
     # local weight vars
     wm_local = _rebuild_weight_manager_local(planner_exts.problem_meta, inp.weights_np)
@@ -820,6 +830,7 @@ def run_worker_opt_profile(inp: WorkerInput) -> WorkerOutput:
         # Optional: coarse phase timings even without pstats
         print(f"[WORKER TIMING] pid={os.getpid()} total={time.time() - t0:.2f}s", flush=True)
 
+
 def run_worker_eval(inp: WorkerInputEval):
     set_random_seeds(inp.seed)
     configure_tf_gpu_memory_growth()
@@ -864,7 +875,7 @@ def run_worker_eval(inp: WorkerInputEval):
         sharpen_pi=0.1,
         log_visitations=False,
         select_logging=False,
-        estimator_coeff=0.0,   # IMPORTANT difference vs training, estimator must not be used
+        estimator_coeff=0.0,  # IMPORTANT difference vs training, estimator must not be used
     )
     cstate = ctx.get_init_state()
     max_len = inp.spec.max_len

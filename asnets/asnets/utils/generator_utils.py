@@ -9,6 +9,8 @@ from pathlib import Path
 import numpy as np
 import logging
 
+from typing import NamedTuple
+
 LOGGER = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -53,12 +55,18 @@ class InstanceDifficulty(Enum):
         return self.value >= other.value
 
 
+class LevelData(NamedTuple):
+    rank: int
+    percentages: list[float]
+    description: str
+
+
 class ProgressionLevel(Enum):
-    RARE = auto()
-    MEDIUM_RARE = auto()
-    MEDIUM = auto()
-    MEDIUM_WELL = auto()
-    WELL_DONE = auto()
+    LEVEL1 = LevelData(1, [100.0, 0.0, 0.0], "100% Easy")
+    LEVEL2 = LevelData(2, [70.0, 30.0, 0.0], "70% Easy, 30% Medium")
+    LEVEL3 = LevelData(3, [40.0, 40.0, 20.0], "40% Easy, 40% Medium, 20% Hard")
+    LEVEL4 = LevelData(4, [20.0, 40.0, 40.0], "20% Easy, 40% Medium, 40% Hard")
+    LEVEL5 = LevelData(5, [10.0, 30.0, 60.0], "10% Easy, 30% Medium, 60% Hard")
 
     def next(self) -> "ProgressionLevel":
         order = list(ProgressionLevel)
@@ -71,49 +79,47 @@ class ProgressionLevel(Enum):
         return order[max(idx - 1, 0)]
 
     def __str__(self):
-        names_dict = {
-            'rare': "100% Easy",
-            'medium_rare': "70% Easy, 30% Medium",
-            'medium': "40% Easy, 40% Medium, 20% Hard",
-            'medium_well': "20% Easy, 40% Medium, 40% Hard",
-            'well_done': "10% Easy, 30% Medium, 60% Hard"
-        }
-        return names_dict[self.name.lower()]
+        return self.value.description
 
+    # Comparison operators use the 'rank' integer
     def __lt__(self, other):
-        return self.value < other.value
+        return self.value.rank < other.value.rank
 
     def __le__(self, other):
-        return self.value <= other.value
+        return self.value.rank <= other.value.rank
 
     def __gt__(self, other):
-        return self.value > other.value
+        return self.value.rank > other.value.rank
 
     def __ge__(self, other):
-        return self.value >= other.value
+        return self.value.rank >= other.value.rank
 
-    def get_percentages(self):
-        percentage_dict = {
-            'rare': [100.0,0.0,0.0],
-            'medium_rare': [70.0,30.0,0.0],
-            'medium': [40.0,40.0,20.0],
-            'medium_well': [20.0,40.0,40.0],
-            'well_done': [10.0,30.0,60.0]
-        }
-        return percentage_dict[self.name.lower()]
-
-    def difficulty_list(self, list_length: int):
-        percentages = self.get_percentages()
+    def get_difficulty_ratios(self, list_length: int) -> list[int]:
+        """Calculates the integer distribution of difficulties."""
+        percentages = self.value.percentages
         exact_parts = [(list_length * p) / 100 for p in percentages]
         floored_parts = [int(np.floor(p)) for p in exact_parts]
+
         difference = list_length - sum(floored_parts)
         remainders = [(p - f, i) for i, (p, f) in enumerate(zip(exact_parts, floored_parts))]
         remainders.sort(key=lambda x: x[0], reverse=True)
+
         for i in range(difference):
             index_to_increment = remainders[i][1]
             floored_parts[index_to_increment] += 1
+
         return floored_parts
 
+    def generate_difficulty_sequence(self, list_length: int) -> list["InstanceDifficulty"]:
+        """Returns a flat list of InstanceDifficulty enums."""
+        counts = self.get_difficulty_ratios(list_length)
+        difficulty_types = list(InstanceDifficulty)
+
+        result = []
+        for count, diff_enum in zip(counts, difficulty_types):
+            result.extend([diff_enum] * count)
+
+        return result
 
 @dataclass(frozen=True)
 class GeneratorParams:

@@ -8,6 +8,8 @@ import numpy as np
 
 from asnets.parllel_explore_spawn_grads import run_epoch_spawn_grads, run_epoch_spawn_eval
 from asnets.spawn_train_worker import WorkerOutput
+from asnets.utils.generator_utils import ProgressionLevel
+
 
 @dataclass
 class ParallelMCTSExplorerGrads:
@@ -26,6 +28,8 @@ class ParallelMCTSExplorerGrads:
     PROFILE_DIR: Optional[str] = None
     curr_epoch: int = 0
     max_workers: Optional[int] = None
+
+    progression_level: ProgressionLevel = ProgressionLevel.LEVEL1
 
     #corruption testing settings
     corrupt_pi: Optional[str] = None
@@ -56,6 +60,22 @@ class ParallelMCTSExplorerGrads:
 
     def estimator_decay_end_epoch(self):
         return self.specs[0].estimator_decay_epochs if self.specs[0].estimator_decay else 0
+
+    def advance_progression_level(self):
+        print(f"Starting to advance progression level from {self.progression_level} to {self.progression_level.next()}")
+        if self.progression_level == ProgressionLevel.LEVEL5: return
+        self.progression_level = self.progression_level.next()
+        self.set_specs_according_to_progression_level()
+        print(f"Current progression level is {self.progression_level}, specs were given the following difficulties:")
+        diff_list_from_specs = [str(self.specs[i].difficulty) for i in range(len(self.specs))]
+        print(",".join(diff_list_from_specs))
+
+    def set_specs_according_to_progression_level(self):
+        diff_seq = self.progression_level.generate_difficulty_sequence(len(self.specs))
+        assert len(diff_seq) == len(self.specs)
+        for i, diff in enumerate(diff_seq):
+            self.specs[i].difficulty = diff
+
 
 @dataclass
 class ParallelMCTSExplorerEval:

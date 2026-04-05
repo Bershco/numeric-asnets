@@ -802,10 +802,12 @@ class SupervisedTrainer:
 
     def train(self, max_epochs):
         best_rate = None
-        iter_num = 0
         time_since_best = 0
         solve_thresh = 0.8
         early_stop_first_epoch = self.explorer.estimator_decay_end_epoch() + self.early_stop if self.early_stop else 0
+        good_epoch_thresh = 0.5
+        good_epoch_num = 0
+        good_epoch_cap = 20
 
         tr = tqdm.trange(max_epochs, desc='epoch', leave=True)
         epoch = tf.Variable(0, dtype=tf.int64)
@@ -875,8 +877,6 @@ class SupervisedTrainer:
             tf_and_log('states', n_states)
             tf_and_log('lr', self.optimiser.lr)
 
-            iter_num += 1
-
             tr.set_postfix(
                 succ_rate=total_succ_rate,
                 net_loss=mean_loss,
@@ -895,15 +895,15 @@ class SupervisedTrainer:
             should_save = (
                     best_rate is None
                     or total_succ_rate >= best_rate
-                    or (self.save_every and iter_num % self.save_every == 0)
-                    or iter_num == 1
+                    or (self.save_every and epoch_num % self.save_every == 0)
+                    or epoch_num == 1
             )
 
             if should_save:
                 best_rate = total_succ_rate
                 snapshot_path = os.path.join(
                     self.snapshot_dir,
-                    f'snapshot_{iter_num}_{total_succ_rate:.4f}.pkl'
+                    f'snapshot_{epoch_num}_{total_succ_rate:.4f}.pkl'
                 )
                 self.weight_manager.save(snapshot_path)
                 shutil.copy(snapshot_path, self.dk)
@@ -924,7 +924,13 @@ class SupervisedTrainer:
                 LOGGER.info('Terminating early (early stop condition met)')
                 break
 
-        return best_rate, elapsed_time, iter_num
+            if good_epoch_cap:
+                if total_succ_rate > good_epoch_thresh:
+                    good_epoch_num += 1
+                if good_epoch_num >= good_epoch_cap:
+                    self.explorer.advance_progression_level()
+
+        return best_rate, elapsed_time, int(epoch)
 
     def apply_worker_grads(self, worker_outs):
         params = self.weight_manager.all_weights

@@ -878,7 +878,7 @@ parser.add_argument(
 parser.add_argument(
     '--mcts-expansion-size',
     type=int,
-    default=5,
+    default=20,
     help='Number of MCTS Nodes to generate upon MCTS parent node expansion.')
 parser.add_argument(
     '--no-eval',
@@ -916,8 +916,8 @@ parser.add_argument(
 parser.add_argument(
     '--mcts-iterations',
     type=int,
-    default=10,
-    help='Number of MCTS iterations done during training'
+    default=0,
+    help='Number of MCTS iterations done during training, default is f(act_dim)'
 )
 parser.add_argument(
     '--heuristic-bootstrapping',
