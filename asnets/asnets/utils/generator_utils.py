@@ -1,13 +1,12 @@
 import importlib
+import math
 import re
 import shutil
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import cached_property
-from pathlib import Path
-
-import numpy as np
 import logging
+from pathlib import Path
 
 from typing import NamedTuple
 
@@ -15,6 +14,7 @@ LOGGER = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PROBLEM_GENERATOR = PROJECT_ROOT / "problem_generator"
+GENERATED_INSTANCES_ROOT = PROBLEM_GENERATOR
 NUM_INSTANCES = 400
 _DOMAIN_RE = re.compile(
     r"\(\s*define\s*\(\s*domain\s+([^\s\)]+)\s*\)",
@@ -98,7 +98,7 @@ class ProgressionLevel(Enum):
         """Calculates the integer distribution of difficulties."""
         percentages = self.value.percentages
         exact_parts = [(list_length * p) / 100 for p in percentages]
-        floored_parts = [int(np.floor(p)) for p in exact_parts]
+        floored_parts = [math.floor(p) for p in exact_parts]
 
         difference = list_length - sum(floored_parts)
         remainders = [(p - f, i) for i, (p, f) in enumerate(zip(exact_parts, floored_parts))]
@@ -129,7 +129,6 @@ class GeneratorParams:
 @dataclass(frozen=False)
 class DomainSpec:
     pddl_name: str
-    domain_template: Path
     generator: Path
     instance_folder: Path
     generator_params: dict  # InstanceDifficulty -> GeneratorParams
@@ -140,16 +139,24 @@ class Domain(Enum):
 
     BLOCK_GROUPING = DomainSpec(
         pddl_name="mt-block-grouping",
-        domain_template="TBD",
-        generator="TBD",
-        instance_folder="TBD",
-        generator_params={},
+        generator=PROBLEM_GENERATOR / "block-grouping" / "generator.py",
+        instance_folder=GENERATED_INSTANCES_ROOT / "block-grouping" / "instances",
+        generator_params={
+            InstanceDifficulty.EASY: GeneratorParams(
+                kwargs=dict(min_blocks=5, max_blocks=10, min_groups=2, max_groups=3, max_values=10)
+            ),
+            InstanceDifficulty.MEDIUM: GeneratorParams(
+                kwargs=dict(min_blocks=12, max_blocks=20, min_groups=3, max_groups=5, max_values=20)
+            ),
+            InstanceDifficulty.HARD: GeneratorParams(
+                kwargs=dict(min_blocks=25, max_blocks=40, min_groups=4, max_groups=8, max_values=40)
+            ),
+        },
         instances_generated=0,
     )
 
     COUNTERS = DomainSpec(
         pddl_name="fn-counters",
-        domain_template=PROBLEM_GENERATOR / "counters" / "domain.pddl",
         generator=PROBLEM_GENERATOR / "counters" / "generator.py",
         instance_folder=PROBLEM_GENERATOR / "counters" / "instances",
         generator_params={
@@ -179,64 +186,148 @@ class Domain(Enum):
     )
     DELIVERY = DomainSpec(
         pddl_name="delivery",
-        domain_template="TBD",
-        generator="TBD",
-        instance_folder="TBD",
-        generator_params={},
+        generator=PROBLEM_GENERATOR / "delivery" / "generator.py",
+        instance_folder=GENERATED_INSTANCES_ROOT / "delivery" / "instances",
+        generator_params={
+            InstanceDifficulty.EASY: GeneratorParams(
+                kwargs=dict(
+                    min_locations=3,
+                    max_locations=4,
+                    min_packages=4,
+                    max_packages=8,
+                    max_capacity=4,
+                    max_distance=2,
+                )
+            ),
+            InstanceDifficulty.MEDIUM: GeneratorParams(
+                kwargs=dict(
+                    min_locations=4,
+                    max_locations=5,
+                    min_packages=10,
+                    max_packages=20,
+                    max_capacity=7,
+                    max_distance=3,
+                )
+            ),
+            InstanceDifficulty.HARD: GeneratorParams(
+                kwargs=dict(
+                    min_locations=5,
+                    max_locations=6,
+                    min_packages=22,
+                    max_packages=42,
+                    max_capacity=9,
+                    max_distance=4,
+                )
+            ),
+        },
         instances_generated=0,
     )
 
     DRONE = DomainSpec(
         pddl_name="drone",
-        domain_template="TBD",
-        generator="TBD",
-        instance_folder="TBD",
-        generator_params={},
+        generator=PROBLEM_GENERATOR / "drone" / "generator.py",
+        instance_folder=GENERATED_INSTANCES_ROOT / "drone" / "instances",
+        generator_params={
+            InstanceDifficulty.EASY: GeneratorParams(
+                kwargs=dict(min_x=1, max_x=2, min_y=1, max_y=2, min_z=1, max_z=2)
+            ),
+            InstanceDifficulty.MEDIUM: GeneratorParams(
+                kwargs=dict(min_x=2, max_x=4, min_y=2, max_y=4, min_z=2, max_z=3)
+            ),
+            InstanceDifficulty.HARD: GeneratorParams(
+                kwargs=dict(min_x=4, max_x=8, min_y=4, max_y=8, min_z=3, max_z=4)
+            ),
+        },
         instances_generated=0,
     )
 
     FO_COUNTERS = DomainSpec(
         pddl_name="fo-counters",
-        domain_template="TBD",
-        generator="TBD",
-        instance_folder="TBD",
-        generator_params={},
+        generator=PROBLEM_GENERATOR / "fo-counters" / "generator.py",
+        instance_folder=GENERATED_INSTANCES_ROOT / "fo-counters" / "instances",
+        generator_params={
+            InstanceDifficulty.EASY: GeneratorParams(
+                kwargs=dict(min_counters=2, max_counters=4, max_value=10)
+            ),
+            InstanceDifficulty.MEDIUM: GeneratorParams(
+                kwargs=dict(min_counters=5, max_counters=8, max_value=20)
+            ),
+            InstanceDifficulty.HARD: GeneratorParams(
+                kwargs=dict(min_counters=9, max_counters=16, max_value=40)
+            ),
+        },
         instances_generated=0,
     )
 
     MPRIME = DomainSpec(
         pddl_name="mystery-prime-typed",
-        domain_template="TBD",
-        generator="TBD",
-        instance_folder="TBD",
-        generator_params={},
+        generator=PROBLEM_GENERATOR / "mprime" / "generator.py",
+        instance_folder=GENERATED_INSTANCES_ROOT / "mprime" / "instances",
+        generator_params={
+            InstanceDifficulty.EASY: GeneratorParams(
+                kwargs=dict(min_locations=4, max_locations=5, min_keys=1, max_keys=2, max_fuel=5)
+            ),
+            InstanceDifficulty.MEDIUM: GeneratorParams(
+                kwargs=dict(min_locations=6, max_locations=7, min_keys=2, max_keys=3, max_fuel=7)
+            ),
+            InstanceDifficulty.HARD: GeneratorParams(
+                kwargs=dict(min_locations=8, max_locations=10, min_keys=3, max_keys=5, max_fuel=9)
+            ),
+        },
         instances_generated=0,
     )
 
     ROVER = DomainSpec(
         pddl_name="rover",
-        domain_template="TBD",
-        generator="TBD",
-        instance_folder="TBD",
-        generator_params={},
+        generator=PROBLEM_GENERATOR / "rover" / "generator.py",
+        instance_folder=GENERATED_INSTANCES_ROOT / "rover" / "instances",
+        generator_params={
+            InstanceDifficulty.EASY: GeneratorParams(
+                kwargs=dict(min_rovers=1, max_rovers=2, min_waypoints=4, max_waypoints=6, min_objectives=1, max_objectives=2, max_energy=50)
+            ),
+            InstanceDifficulty.MEDIUM: GeneratorParams(
+                kwargs=dict(min_rovers=2, max_rovers=3, min_waypoints=6, max_waypoints=8, min_objectives=2, max_objectives=3, max_energy=80)
+            ),
+            InstanceDifficulty.HARD: GeneratorParams(
+                kwargs=dict(min_rovers=3, max_rovers=3, min_waypoints=8, max_waypoints=12, min_objectives=3, max_objectives=5, max_energy=120)
+            ),
+        },
         instances_generated=0,
     )
 
     TPP = DomainSpec(
         pddl_name="TPP-Metric",
-        domain_template="TBD",
-        generator="TBD",
-        instance_folder="TBD",
-        generator_params={},
+        generator=PROBLEM_GENERATOR / "tpp" / "generator.py",
+        instance_folder=GENERATED_INSTANCES_ROOT / "tpp" / "instances",
+        generator_params={
+            InstanceDifficulty.EASY: GeneratorParams(
+                kwargs=dict(min_markets=4, max_markets=5, min_products=2, max_products=3, max_cost=30, max_capacity=10)
+            ),
+            InstanceDifficulty.MEDIUM: GeneratorParams(
+                kwargs=dict(min_markets=6, max_markets=8, min_products=3, max_products=5, max_cost=40, max_capacity=15)
+            ),
+            InstanceDifficulty.HARD: GeneratorParams(
+                kwargs=dict(min_markets=8, max_markets=10, min_products=5, max_products=8, max_cost=50, max_capacity=20)
+            ),
+        },
         instances_generated=0,
     )
 
     ZENOTRAVEL = DomainSpec(
         pddl_name="zenotravel",
-        domain_template="TBD",
-        generator="TBD",
-        instance_folder="TBD",
-        generator_params={},
+        generator=PROBLEM_GENERATOR / "zenotravel" / "generator.py",
+        instance_folder=GENERATED_INSTANCES_ROOT / "zenotravel" / "instances",
+        generator_params={
+            InstanceDifficulty.EASY: GeneratorParams(
+                kwargs=dict(min_cities=3, max_cities=4, min_people=2, max_people=4, min_aircraft=1, max_aircraft=1, max_fuel=2500)
+            ),
+            InstanceDifficulty.MEDIUM: GeneratorParams(
+                kwargs=dict(min_cities=5, max_cities=6, min_people=4, max_people=6, min_aircraft=1, max_aircraft=2, max_fuel=4000)
+            ),
+            InstanceDifficulty.HARD: GeneratorParams(
+                kwargs=dict(min_cities=6, max_cities=8, min_people=6, max_people=8, min_aircraft=2, max_aircraft=3, max_fuel=5000)
+            ),
+        },
         instances_generated=0,
     )
 
@@ -245,10 +336,6 @@ class Domain(Enum):
     @property
     def pddl_name(self) -> str:
         return self.value.pddl_name
-
-    @property
-    def domain_template(self) -> Path:
-        return self.value.domain_template
 
     @property
     def generator(self) -> Path:
@@ -285,7 +372,7 @@ class Domain(Enum):
         name = name.strip().lower()
 
         for d in cls:
-            if d.pddl_name == name:
+            if d.pddl_name.lower() == name:
                 return d
 
         raise ValueError(f"Unknown domain name: {name}")

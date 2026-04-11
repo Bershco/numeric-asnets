@@ -7,6 +7,6 @@ def get_problem_template(template_file_path: Path) -> string.Template:
 
     :return: the template object.
     """
-    with open(template_file_path, "rt") as template_file:
+    with open(template_file_path, "rt", encoding="utf-8") as template_file:
         text = template_file.read()
         return string.Template(text)
