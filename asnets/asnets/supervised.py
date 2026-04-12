@@ -621,11 +621,12 @@ class SupervisedTrainer:
                  save_every=20,
                  dk="dk",
                  policy_only=False,
+                 balanced_success_rate=True,
                  ):
         # gets incremented to deal with TF
         self.batches_seen = 0
-        # self.problems = problems
         self.policy_only = policy_only
+        self.balanced_success_rate = balanced_success_rate
         self.weight_manager = weight_manager
         # may be None if no summaries tuple()should be written
         self.summary_writer = summary_writer
@@ -667,19 +668,6 @@ class SupervisedTrainer:
         self.use_comps = use_comps
         self._init_tf()
 
-        # self.planner_bootstrapping = self.explorer.planner_bootstrapping
-        # Quick sanity checks
-        # assert hasattr(self, "network")
-        # assert self.network is not None
-        # assert self.network.trainable_weights is self.weight_manager.all_weights
-        # # --- CHECK 10: single source of truth for weights ---
-        # net_refs = {v.ref() for v in self.network.trainable_weights}
-        # wm_refs = {v.ref() for v in self.weight_manager.all_weights}
-        #
-        # assert net_refs == wm_refs, (
-        #     "Network trainable weights do not match weight_manager weights.\n"
-        #     "This means gradients will NOT update the intended variables."
-        # )
 
     @can_profile
     def _init_tf(self):
@@ -864,6 +852,7 @@ class SupervisedTrainer:
             # --------------------------------------------------
             W0 = [w.numpy().copy() for w in self.weight_manager.all_weights]
             mean_loss, total_succ_rate, n_states = self.apply_worker_grads(worker_outs)
+            succ_rate_easy, succ_rate_medium, succ_rate_hard = self.calculate_balanced_succ_rate(worker_outs)
             if getattr(self.explorer, "log", False):
                 w = self.weight_manager.all_weights[0]
                 print("MAIN after update:", float(tf.reduce_mean(w)), float(tf.math.reduce_std(w)),
@@ -874,9 +863,28 @@ class SupervisedTrainer:
             tf_and_log("weight-delta/max", np.max(deltas))
             tf_and_log('train-loss', mean_loss)
             tf_and_log('succ-rate/mean', total_succ_rate)
+
+            present_diffs = {o.instance_diff for o in worker_outs}
+            active_rates = []
+            if InstanceDifficulty.EASY in present_diffs:
+                tf_and_log('succ-rate/easy', succ_rate_easy)
+                active_rates.append(succ_rate_easy)
+            if InstanceDifficulty.MEDIUM in present_diffs:
+                tf_and_log('succ-rate/medium', succ_rate_medium)
+                active_rates.append(succ_rate_medium)
+            if InstanceDifficulty.HARD in present_diffs:
+                tf_and_log('succ-rate/hard', succ_rate_hard)
+                active_rates.append(succ_rate_hard)
+            if active_rates:
+                balanced_rate = sum(active_rates) / len(active_rates)
+                tf_and_log('succ-rate/balanced', balanced_rate)
+
             tf_and_log('states', n_states)
             tf_and_log('lr', self.optimiser.lr)
 
+            if active_rates:
+                total_succ_rate = balanced_rate # if we want to balance rates, this is the real deal
+                #TODO: make sure this doesnt fuck up later
             tr.set_postfix(
                 succ_rate=total_succ_rate,
                 net_loss=mean_loss,
@@ -907,7 +915,6 @@ class SupervisedTrainer:
                 )
                 self.weight_manager.save(snapshot_path)
                 shutil.copy(snapshot_path, self.dk)
-
             tf.summary.flush()
 
             elapsed_time = time() - self.start_time
@@ -1048,6 +1055,32 @@ class SupervisedTrainer:
             )
         return rv
 
+    def calculate_balanced_succ_rate(self, worker_outs):
+        if not self.balanced_success_rate:
+            return 0, 0, 0
+
+        # Use a dictionary to store counts and totals simultaneously
+        # Structure: {difficulty: [sum_of_hits, total_count]}
+        stats = {
+            InstanceDifficulty.EASY: [0, 0],
+            InstanceDifficulty.MEDIUM: [0, 0],
+            InstanceDifficulty.HARD: [0, 0]
+        }
+
+        # Single pass: O(n) complexity
+        for o in worker_outs:
+            if o.instance_diff in stats:
+                stats[o.instance_diff][0] += o.hit_goal_mean
+                stats[o.instance_diff][1] += 1
+
+        # Calculate rates with zero-division protection
+        # Using a list comprehension for a clean return
+        rates = [
+            (val[0] / val[1]) if val[1] > 0 else 0.0
+            for val in stats.values()
+        ]
+
+        return tuple(rates)
 
 class ManualLoss:
     def __init__(self,

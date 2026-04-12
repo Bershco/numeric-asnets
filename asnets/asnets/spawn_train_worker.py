@@ -32,7 +32,7 @@ print(
 from asnets.spawn_context import LocalExploreContext
 from asnets.state_reprs import CanonicalState
 from asnets.supervised import PlannerExtensions
-from asnets.utils.generator_utils import extract_domain_name_from_file, Domain
+from asnets.utils.generator_utils import extract_domain_name_from_file, Domain, InstanceDifficulty
 from asnets.utils.py_utils import set_random_seeds
 from post_training.enhspwrapper import ENHSPEstimator
 from post_training.training_mcts import TrainingMCTS
@@ -93,6 +93,7 @@ class WorkerOutput:
     root_target_entropy: Optional[np.float64] = None
     root_pred_entropy: Optional[np.float64] = None
     root_kl: Optional[np.float64] = None
+    instance_diff: InstanceDifficulty = None
 
 
 class DataSource(Enum):
@@ -432,6 +433,8 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     if not hasattr(inp.spec, "mcts_iterations") or inp.spec.mcts_iterations == 0:
         branching_f = min(act_dim, inp.spec.mcts_expansion_k)
         inp.spec.mcts_iterations = _compute_mcts_iterations(branching_f)
+        if inp.log:
+            print(f"{worker_tag} mcts_iterations was not set manually, calculated to be:{inp.spec.mcts_iterations}")
 
     # local weight vars
     wm_local = _rebuild_weight_manager_local(planner_exts.problem_meta, inp.weights_np)
@@ -795,6 +798,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         root_target_entropy=root_summary.get("root_target_entropy"),
         root_pred_entropy=root_summary.get("root_pred_entropy"),
         root_kl=root_summary.get("root_kl"),
+        instance_diff=inp.spec.difficulty
     )
 
 
