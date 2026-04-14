@@ -59,18 +59,24 @@ class TrainingMCTS(MCTS):
 
     def _expand(self, node: MCTSNode):
         """Expand children using policy priors (top-k by prob)."""
+
         if node.children is not None:
             return
+
         act_dist = node.act_dist
         mask = node.applicable_action_mask
+
         actions, children_nodes, edge_priors = [], [], []
         children_network_repr = []
+
         valid = np.where(mask & (act_dist > 0.0))[0]
+
         if len(valid) > self.k:
             topk = np.argpartition(-act_dist[valid], self.k)[:self.k]
             selected_actions = valid[topk]
         else:
             selected_actions = valid
+
         results = self.ctx.env_simulate_batch_steps(node.state, selected_actions)
 
         for (
@@ -82,16 +88,24 @@ class TrainingMCTS(MCTS):
                 network_ready_repr,
                 applicable_action_mask,
         ) in results:
+
             state_key = cstate.state_key
+
             node_entry = self.state_key_to_node.get(state_key)
+
             if node_entry is None:
+
                 wrapped_output_cstate = wrapInMCTSNode(
                     state=cstate,
                     cost_until_now=node.cost_until_now + step_cost
                 )
+
                 self.state_key_to_node[state_key] = wrapped_output_cstate
+
             else:
+
                 wrapped_output_cstate = node_entry
+
             actions.append(action_id)
             edge_priors.append(float(act_dist[action_id]))
             children_nodes.append(wrapped_output_cstate)
@@ -102,6 +116,7 @@ class TrainingMCTS(MCTS):
             # 1. Network Inference (The GPU part)
             # TODO: add an 'if' here to cancel network inference if alpha=1.0
             batch_tensor = tf.stack(children_network_repr)
+
             pred_pi_batch, pred_v_batch = self.network(batch_tensor, training=False)
             # Convert to numpy arrays immediately (squeezing v to be 1D)
             pred_pi_batch = pred_pi_batch.numpy().astype(np.float32, copy=False)
@@ -149,12 +164,15 @@ class TrainingMCTS(MCTS):
             for i, child in enumerate(children_nodes):
                 child.act_dist = pred_pi_batch[i]
                 child.pred_value = float(pred_v_batch[i])
+
         else:
-            # Fallback for single/small nodes
+
             for child in children_nodes:
                 act_dist, value = self.get_single_node_policy_value(child)
+
                 child.act_dist = np.array(act_dist).flatten().astype(np.float32)
                 child.pred_value = float(value)
+
         node.children = FixedChildMap(actions, children_nodes, edge_priors)
 
     def _rollout(self, node, horizon=0):

@@ -225,6 +225,7 @@ class ActionModule(NetworkModule):
         self._trainable_weights = [self.W, self.b]  # tell Keras these are trainable
         self.built = True
 
+
 class ValueModule(NetworkModule):
     """A network module for the secondary head of the network."""
 
@@ -384,7 +385,7 @@ class PropLayerModule(NetworkModule):
                     in self.rel_act_slots_of_ground(ground)
                     for candidate_act in candidate_acts
                     if candidate_act_schema == unbound_act
-                    and candidate_slot == slot
+                       and candidate_slot == slot
                 ]  # Such sql, much relational. This doesn't seem efficient.
                 pools.append([
                     self.prob_meta.act_to_schema_subtensor_ind(ground_act)

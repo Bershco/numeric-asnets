@@ -275,7 +275,7 @@ class PlannerExtensions(object):
                  dg_use_lm_cuts: bool = False,
                  dg_use_numeric_landmarks: bool = False,
                  dg_use_contributions: bool = False,
-                 dg_use_act_history: bool = False,):
+                 dg_use_act_history: bool = False, ):
         """Initialise a PlannerExtensions object.
 
         Args:
@@ -292,7 +292,7 @@ class PlannerExtensions(object):
             dg_use_act_history (bool, optional): Whether to use the action count
             data generator. Defaults to False.
         """
-        self.pddl_files = pddl_files # domain file
+        self.pddl_files = pddl_files  # domain file
         self.domain_type = domain_type
 
         import mdpsim  # noqa: F811
@@ -313,8 +313,8 @@ class PlannerExtensions(object):
             strip_parens(a.identifier): a
             for a in self.mdpsim_problem.ground_actions
         }
-        self.act_ident_to_ind: Dict [str, int] = {
-            "("+a+")" : i for i, a in enumerate(self.act_ident_to_mdpsim_act.keys())
+        self.act_ident_to_ind: Dict[str, int] = {
+            "(" + a + ")": i for i, a in enumerate(self.act_ident_to_mdpsim_act.keys())
         }
         LOGGER.debug(f'Python-side extra data')
         # Python-side extra data
@@ -419,6 +419,7 @@ class PlannerExtensions(object):
         assert type(difficulty) == int
         self.difficulty = InstanceDifficulty.EASY if difficulty == 0 else InstanceDifficulty.MEDIUM if difficulty == 1 else InstanceDifficulty.HARD
 
+
 def cosine_similarity(p, q):
     # p, q: numpy vectors representing policies
     dot = np.dot(p, q)
@@ -481,6 +482,7 @@ def tf_and_log(name: str, value):
     base_name = tf.get_current_name_scope()
     # print(f"[TF_SUMMARY_SCALAR_LOG] {base_name + '/' if base_name is not None else ''}{name} : {value}")
     tf_logger.info(f"[TF_SUMMARY_SCALAR_LOG] {base_name + '/' if base_name is not None else ''}{name} : {value}")
+
 
 @lru_cache(None)
 def mock_qvalues(planner: Teacher,
@@ -668,14 +670,13 @@ class SupervisedTrainer:
         self.use_comps = use_comps
         self._init_tf()
 
-
     @can_profile
     def _init_tf(self):
         """Do setup necessary for network (e.g. initialising weights)."""
         assert not self.tf_init_done, \
             "this class is not designed to be initialised twice"
 
-        LOGGER.info('Initialising network structure')
+        # LOGGER.info('Initialising network structure')
 
         if len(self.lr_steps) > 1:
             # using a scheduler to control the learning rate
@@ -855,8 +856,11 @@ class SupervisedTrainer:
             succ_rate_easy, succ_rate_medium, succ_rate_hard = self.calculate_balanced_succ_rate(worker_outs)
             if getattr(self.explorer, "log", False):
                 w = self.weight_manager.all_weights[0]
-                print("MAIN after update:", float(tf.reduce_mean(w)), float(tf.math.reduce_std(w)),
-                      float(tf.linalg.norm(w)))
+                # print("MAIN after update:", float(tf.reduce_mean(w)), float(tf.math.reduce_std(w)),
+                #       float(tf.linalg.norm(w)))
+                print(f"Trainer first weight (logging for update in between epochs): "
+                      f"μ±σ: {float(tf.reduce_mean(w))}±{float(tf.math.reduce_std(w))},"
+                      f"weight norm: {float(tf.linalg.norm(w))}")
             W1 = self.weight_manager.all_weights
             deltas = [np.mean(np.abs(w1.numpy() - w0)) for w0, w1 in zip(W0, W1)]
             tf_and_log("weight-delta/mean", np.mean(deltas))
@@ -883,8 +887,8 @@ class SupervisedTrainer:
             tf_and_log('lr', self.optimiser.lr)
 
             if active_rates:
-                total_succ_rate = balanced_rate # if we want to balance rates, this is the real deal
-                #TODO: make sure this doesnt fuck up later
+                total_succ_rate = balanced_rate  # if we want to balance rates, this is the real deal
+                # TODO: make sure this doesnt fuck up later
             tr.set_postfix(
                 succ_rate=total_succ_rate,
                 net_loss=mean_loss,
@@ -1081,6 +1085,7 @@ class SupervisedTrainer:
         ]
 
         return tuple(rates)
+
 
 class ManualLoss:
     def __init__(self,

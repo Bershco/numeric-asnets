@@ -1085,7 +1085,7 @@ def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
 def configure_tf_gpu_memory_growth():
     gpus = tf.config.list_physical_devices("GPU")
     if not gpus:
-        print("[TF_GPU] no GPU detected")
+        # print("[TF_GPU] no GPU detected")
         return
     for gpu in gpus:
         tf.config.experimental.set_memory_growth(gpu, True)

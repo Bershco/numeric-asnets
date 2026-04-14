@@ -31,7 +31,7 @@ class MCTSNode:
                  is_goal=False, is_terminal=False, as_network_input=None, applicable_action_mask=None):
         self.state = state
         self.cost_until_now = cost_until_now
-        self.reward_weight = reward_weight
+        self.reward_weight = reward_weight #FIXME: this is not used
         self.children = None
         self.goal_state = is_goal
         self.terminal_state = is_terminal

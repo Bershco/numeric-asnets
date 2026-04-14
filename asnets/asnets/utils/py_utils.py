@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from json import dumps
 import os
 from time import time
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Optional
 from weakref import proxy, CallableProxyType, ProxyTypes
 
 import ctypes
@@ -179,10 +179,10 @@ def set_c_seeds(seed):
     libc.seed48(seed48_seed)
 
 
-def set_random_seeds(seed):
+def set_random_seeds(seed, worker_tag: Optional[str] = None):
     """Set random seeds that are relevant for main process."""
     if "tf" in globals() or "tensorflow" in sys.modules:
-        print(f"Setting C/Python/Numpy/TF seeds to {seed}")
+        print(f"{worker_tag if worker_tag else '['+str(os.getpid())+']'} Setting C/Python/Numpy/TF seeds to {seed}")
         tf = sys.modules["tensorflow"]
         tf.random.set_seed(seed)
     else:

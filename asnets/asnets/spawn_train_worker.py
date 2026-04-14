@@ -14,21 +14,21 @@ from asnets.models import configure_tf_gpu_memory_growth
 from post_training.action_selection_policy import build_action_policy
 
 _T0 = time.time()
-print(f"[WORKER_IMPORT] pid={os.getpid()} module start", flush=True)
+# print(f"[WORKER_IMPORT] pid={os.getpid()} module start", flush=True)
 t = time.time()
 import tensorflow as tf
 
-print(
-    f"[WORKER_IMPORT] pid={os.getpid()} import tensorflow: {time.time() - t:.2f}s (since module start {time.time() - _T0:.2f}s)",
-    flush=True)
+# print(
+#     f"[WORKER_IMPORT] pid={os.getpid()} import tensorflow: {time.time() - t:.2f}s (since module start {time.time() - _T0:.2f}s)",
+#     flush=True)
 import logging
 
 t = time.time()
 from asnets.models import PropNetworkWeights, PropNetwork
 
-print(
-    f"[WORKER_IMPORT] pid={os.getpid()} import asnets models: {time.time() - t:.2f}s (since module start {time.time() - _T0:.2f}s)",
-    flush=True)
+# print(
+#     f"[WORKER_IMPORT] pid={os.getpid()} import asnets models: {time.time() - t:.2f}s (since module start {time.time() - _T0:.2f}s)",
+#     flush=True)
 from asnets.spawn_context import LocalExploreContext
 from asnets.state_reprs import CanonicalState
 from asnets.supervised import PlannerExtensions
@@ -63,6 +63,7 @@ class WorkerInput:
 
     # logging
     log: bool = False
+    log_weights: bool = False
 
     # profiling
     PROFILE_DIR: Optional[str] = None
@@ -413,10 +414,10 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     This runs fully inside a spawned process.
     It returns grads as numpy arrays aligned to local weight_manager_local.all_weights order.
     """
-    set_random_seeds(inp.seed)
     worker_tag = f"[W{inp.seed}|{os.getpid()}]"
+    set_random_seeds(inp.seed,worker_tag=worker_tag)
     configure_tf_gpu_memory_growth()
-    _dbg_tf_threads(tag=f"{worker_tag} worker_start")
+    # _dbg_tf_threads(tag=f"{worker_tag} worker_start")
     # --- build instance infra ---
     CanonicalState.network_input_config(use_fluents=inp.spec.use_fluents, use_comparisons=inp.spec.use_comps)
     planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
@@ -428,6 +429,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         epsilon=inp.spec.action_policy_epsilon,
         temperature=inp.spec.action_policy_temperature,
         decay_rate=inp.spec.action_policy_decay_rate,
+        epoch=inp.epoch,
     )
     act_dim = planner_exts.problem_meta.num_acts
     if not hasattr(inp.spec, "mcts_iterations") or inp.spec.mcts_iterations == 0:
@@ -438,7 +440,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
 
     # local weight vars
     wm_local = _rebuild_weight_manager_local(planner_exts.problem_meta, inp.weights_np)
-    if inp.log:
+    if inp.log_weights:
         w = wm_local.all_weights[0]
         print(f"{worker_tag} after rebuild:", float(tf.reduce_mean(w)), float(tf.math.reduce_std(w)),
               float(tf.linalg.norm(w)))
@@ -836,7 +838,8 @@ def run_worker_opt_profile(inp: WorkerInput) -> WorkerOutput:
 
 
 def run_worker_eval(inp: WorkerInputEval):
-    set_random_seeds(inp.seed)
+    worker_tag=f"[EVAL|{os.getpid()}]"
+    set_random_seeds(inp.seed,worker_tag=worker_tag)
     configure_tf_gpu_memory_growth()
     CanonicalState.network_input_config(
         use_fluents=inp.spec.use_fluents,
@@ -846,10 +849,8 @@ def run_worker_eval(inp: WorkerInputEval):
     estimator = _build_estimator(planner_exts, inp.spec)
     action_policy = build_action_policy(
         base_policy=inp.spec.action_policy,
-        worker_tag=f"[EVAL|{os.getpid()}]",
-        distance_threshold=np.inf
-        if inp.spec.action_policy_goal_chase_distance_threshold == -1
-        else inp.spec.action_policy_goal_chase_distance_threshold,
+        worker_tag=worker_tag,
+        distance_threshold=np.inf, #on evaluation there is always a need to goal chase
         epsilon=inp.spec.action_policy_epsilon,
         temperature=inp.spec.action_policy_temperature,
         decay_rate=inp.spec.action_policy_decay_rate,

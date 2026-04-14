@@ -7,22 +7,21 @@ import numpy as np
 
 class ActionSelectionPolicy:
 
+
     def __init__(self, worker_tag="WORKER", **kwargs):
         self.worker_tag = worker_tag
+        if "epoch" not in kwargs or kwargs["epoch"] is None or kwargs["epoch"] == 0:
+            print(f"{self.worker_tag} ACTION POLICY INITIALIZED")
+            print(f"{self.worker_tag} policy_class = {self.__class__.__name__}")
 
-        # super().__init__(**kwargs)
-
-        print(f"{self.worker_tag} ACTION POLICY INITIALIZED")
-        print(f"{self.worker_tag} policy_class = {self.__class__.__name__}")
-
-        for attr in [
-            "distance_threshold",
-            "epsilon",
-            "temperature",
-            "decay_rate",
-        ]:
-            if hasattr(self, attr):
-                print(f"{self.worker_tag} {attr} = {getattr(self, attr)}")
+            for attr in [
+                "distance_threshold",
+                "epsilon",
+                "temperature",
+                "decay_rate",
+            ]:
+                if hasattr(self, attr):
+                    print(f"{self.worker_tag} {attr} = {getattr(self, attr)}")
 
     def select_action(self, mcts, pi: np.ndarray) -> int:
         raise NotImplementedError
@@ -156,6 +155,7 @@ def build_action_policy(
         epsilon=None,
         temperature=None,
         decay_rate=None,
+        epoch=None,
 ):
     base = BASE_POLICIES[base_policy]
 
@@ -191,6 +191,7 @@ def build_action_policy(
         epsilon=epsilon,
         temperature=temperature,
         decay_rate=decay_rate,
+        epoch=epoch,
     )
 # ============================================================
 # Example
