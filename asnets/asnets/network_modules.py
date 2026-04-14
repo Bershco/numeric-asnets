@@ -118,6 +118,10 @@ class ActionModule(NetworkModule):
 
         pred_to_idx, pred_list = _sort_inputs(prev_pred)
         pred_index_spec: List[Tuple[int, List[List[int]]]] = []
+        func_index_spec: List[Tuple[int, List[List[
+            int]]]] = []  # this is important even if we don't use fluents, as tf sees this list creation inside conditionals as a breach and slows the whole thing down
+        comp_index_spec: List[Tuple[int, List[List[
+            int]]]] = []  # this is important even if we don't use fluents, as tf sees this list creation inside conditionals as a breach and slows the whole thing down
         for rel_pred_idx, rel_pred in enumerate(
                 self.dom_meta.rel_pred_names(self.unbound_act)):
 
@@ -136,7 +140,6 @@ class ActionModule(NetworkModule):
 
         if use_flnt:
             func_to_idx, func_list = _sort_inputs(prev_func)
-            func_index_spec: List[Tuple[int, List[List[int]]]] = []
             for rel_func_idx, rel_func in enumerate(
                     self.dom_meta.rel_func_names(self.unbound_act)):
 
@@ -155,7 +158,6 @@ class ActionModule(NetworkModule):
 
         if use_comp:
             comp_to_idx, comp_list = _sort_inputs(prev_comp)
-            comp_index_spec: List[Tuple[int, List[List[int]]]] = []
             for rel_comp_idx, rel_comp in enumerate(
                     self.dom_meta.rel_comps(self.unbound_act)):
 
