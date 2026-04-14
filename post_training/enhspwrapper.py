@@ -10,7 +10,15 @@ from asnets.interfaces.enhsp_interface import ENHSPCache, ENHSP_CONFIGS
 from asnets.utils.pddl_utils import replace_init_state, hlist_to_sexprs
 
 logger = logging.getLogger(__name__)
-JARPATH = f"{os.path.dirname(__file__)}/ENHSPHeuristicServer.jar"
+JARPATH = f"{os.path.dirname(__file__)}/ENHSPHeuristicServer_v_pi_optional.jar"
+
+from enum import Enum
+
+class EstimatorMode(str, Enum):
+    NONE = "NONE"
+    V_ONLY = "V_ONLY"
+    PI_ONLY = "PI_ONLY"
+    BOTH = "BOTH"
 
 class ENHSPEstimator(ENHSPCache):
     DEFAULT_ENHSP_CONFIG = 'hadd-gbfs'
@@ -50,10 +58,10 @@ class ENHSPEstimator(ENHSPCache):
             self.initialise_heuristic_server(problem_pddl_oneliner)
         return self.heuristic_client.get_heuristic_and_pi(problem_pddl_oneliner)
 
-    def get_heuristic_and_pi_batched(self, problem_pddl_oneliner_list: list[str]) -> list[tuple[float,np.ndarray]]:
+    def get_estimate_batched(self, problem_pddl_oneliner_list: list[str], mode) -> list[tuple[float,np.ndarray]]:
         if not self.heuristic_client_initialised:
             self.initialise_heuristic_server(problem_pddl_oneliner_list[0]) # this is just for initialization
-        return self.heuristic_client.get_heuristic_and_pi_batched(problem_pddl_oneliner_list)
+        return self.heuristic_client.get_estimate_batched(problem_pddl_oneliner_list, mode)
 
 class HeuristicClient:
     def __init__(self, jar_path: str, domain_text: str, init_instance_text: str, enhsp_config: str, act_to_ind: dict[str,int],):
@@ -134,41 +142,44 @@ class HeuristicClient:
         # return copy (caller must not mutate shared buffer)
         return h, one_hot.copy()
 
-    def get_heuristic_and_pi_batched(
+    def get_estimate_batched(
             self,
-            problem_pddl_oneliner_list: list[str]
+            problem_pddl_oneliner_list: list[str],
+            mode: EstimatorMode = EstimatorMode.BOTH
     ) -> list[tuple[float, np.ndarray]]:
         n = len(problem_pddl_oneliner_list)
         if n == 0:
             return []
-        self._send_line(f"BATCH {n}")
+        self._send_line(f"BATCH {n} MODE {mode.value}")
         for p in problem_pddl_oneliner_list:
             self._send_line(p)
         results = []
-        one_hot = self._one_hot_buffer
         while True:
             line = self._read_line()
             if line.startswith("BATCH_DONE"):
                 break
             if not line.startswith("BEGIN_RESULT"):
                 continue
-            h = float("inf")
-            one_hot.fill(1.0 / self.act_dim)
+            h = None
+            pi = None
+            if mode in (EstimatorMode.PI_ONLY, EstimatorMode.BOTH):
+                pi = self._one_hot_buffer.copy()
+                pi.fill(1.0 / self.act_dim)
             while True:
                 line = self._read_line()
                 if line.startswith("Heuristic Value:"):
                     h = float(line[17:])
                     continue
                 if line.startswith("Best Action:"):
-                    best_action = line[13:].rstrip("\n")
-                    idx = self.act_to_ind.get(best_action)
-                    if idx is not None:
-                        one_hot.fill(0.0)
-                        one_hot[idx] = 1.0
-
+                    if pi is not None:
+                        best_action = line[13:].rstrip("\n")
+                        idx = self.act_to_ind.get(best_action)
+                        if idx is not None:
+                            pi.fill(0.0)
+                            pi[idx] = 1.0
                     continue
                 if line.startswith("END_RESULT"):
-                    results.append((h, one_hot.copy()))
+                    results.append((h, pi))
                     break
         assert len(results) == n, (
             f"Expected {n} heuristic results but received {len(results)}"

@@ -7,6 +7,7 @@ from typing import Optional, Any
 from asnets.spawn_context import LocalExploreContext
 from asnets.state_reprs import CanonicalState
 from asnets.utils.pddl_utils import replace_init_state, hlist_to_sexprs
+from .enhspwrapper import EstimatorMode
 from .monte_carlo_tree_search import MCTS, wrapInMCTSNode, FixedChildMap, MCTSNode
 
 
@@ -29,6 +30,7 @@ class TrainingMCTS(MCTS):
         self.one_hot_distance_gamma = one_hot_distance_gamma
         self.log_visitations = log_visitations
         self.estimator_coeff = estimator_coeff
+        self.estimator_mode = EstimatorMode.V_ONLY
 
     def get_single_node_policy_value(self, node, training=False):
         act_dist, value = self.network(node.as_network_input, training=training)
@@ -110,57 +112,17 @@ class TrainingMCTS(MCTS):
             edge_priors.append(float(act_dist[action_id]))
             children_nodes.append(wrapped_output_cstate)
             children_network_repr.append(wrapped_output_cstate.as_network_input)
+
+        # Network inference only (no estimator here anymore)
         if self.use_batched_inference and len(children_network_repr) > 0:
-            alpha = self.estimator_coeff
-            assert 0.0 <= alpha <= 1.0
-            # 1. Network Inference (The GPU part)
-            # TODO: add an 'if' here to cancel network inference if alpha=1.0
+
             batch_tensor = tf.stack(children_network_repr)
 
             pred_pi_batch, pred_v_batch = self.network(batch_tensor, training=False)
-            # Convert to numpy arrays immediately (squeezing v to be 1D)
+
             pred_pi_batch = pred_pi_batch.numpy().astype(np.float32, copy=False)
-            pred_v_batch = pred_v_batch.numpy().flatten()  # (Batch,)
-            # 2. Handle Estimator Decay (The Hybrid part)
-            if alpha > 0.0:
-                num_children = len(children_nodes)
-                est_v_batch = np.empty(num_children, dtype=np.float32)
-                est_pi_batch = np.empty_like(pred_pi_batch)
-                estimator = self.ctx.estimator
-                state_cache = estimator.state_key_cache
-                uncached_indices = []
-                uncached_oneliners = []
-                # first pass: check cache
-                for i, child in enumerate(children_nodes):
-                    key = child.state.state_key
-                    cached = state_cache.get(key)
-                    if cached is not None:
-                        est_v_batch[i], est_pi_batch[i] = cached
-                    else:
-                        uncached_indices.append(i)
-                        problem_hlist = replace_init_state(
-                            estimator._problem_hlist,
-                            child.state.to_tup_state()
-                        )
-                        uncached_oneliners.append(
-                            hlist_to_sexprs(problem_hlist)
-                        )
-                # batch call only for uncached states
-                if uncached_oneliners:
-                    batch_results = estimator.get_heuristic_and_pi_batched(
-                        uncached_oneliners
-                    )
-                    coeff = self.ctx.estimator_h_to_v_coeff
-                    for idx, (h, pi) in zip(uncached_indices, batch_results):
-                        v = float(np.exp(-coeff * h))
-                        est_v_batch[idx] = v
-                        est_pi_batch[idx] = pi
-                        key = children_nodes[idx].state.state_key
-                        state_cache[key] = (v, pi)
-                # blend network + estimator
-                pred_v_batch += alpha * (est_v_batch - pred_v_batch)
-                pred_pi_batch += alpha * (est_pi_batch - pred_pi_batch)
-            # 3. Assign back to nodes
+            pred_v_batch = pred_v_batch.numpy().flatten()
+
             for i, child in enumerate(children_nodes):
                 child.act_dist = pred_pi_batch[i]
                 child.pred_value = float(pred_v_batch[i])
@@ -174,6 +136,45 @@ class TrainingMCTS(MCTS):
                 child.pred_value = float(value)
 
         node.children = FixedChildMap(actions, children_nodes, edge_priors)
+
+    def _evaluate_node(self, node: MCTSNode) -> float:
+        """
+        Evaluate node value.
+        Uses network prediction as base value.
+        Optionally refines with estimator (once per state).
+        """
+        if node.goal_state:
+            if self.debug_time_mcts_iterations:
+                self.after_eval_times.append(time())
+            return 1.0
+        net_v = node.pred_value
+        alpha = self.estimator_coeff
+        if alpha > 0.0 and self.estimator_mode in (EstimatorMode.V_ONLY, EstimatorMode.BOTH):
+            estimator = self.ctx.estimator
+            key = node.state.state_key
+            cached = estimator.state_key_cache.get(key)
+            if cached is not None:
+                est_v = cached[0]
+            else:
+                problem_hlist = replace_init_state(
+                    estimator._problem_hlist,
+                    node.state.to_tup_state()
+                )
+                oneliner = hlist_to_sexprs(problem_hlist)
+                (h, _) = estimator.get_estimate_batched(
+                    [oneliner],
+                    EstimatorMode.V_ONLY
+                )[0]
+                coeff = self.ctx.estimator_h_to_v_coeff
+                est_v = float(np.exp(-coeff * h))
+                estimator.state_key_cache[key] = (est_v, None)
+            value = (1.0 - alpha) * net_v + alpha * est_v
+            node.pred_value = value  # overwrite prior with refined estimate
+        else:
+            value = net_v
+        if self.debug_time_mcts_iterations:
+            self.after_eval_times.append(time())
+        return value
 
     def _rollout(self, node, horizon=0):
         """Use value head for evaluation instead of random rollout."""
