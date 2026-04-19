@@ -113,7 +113,7 @@ class SpawnExploreSpec:
     fixed_instance_pddl: bool = False
     original_training_set: bool = False
     mcts_exploration_weight: float = 1.0
-    sample_k_additional_states: int = 5
+    sample_k_additional_states: int = 0
     freeze_train_steps: int = 50
     freeze_batch_size: int = 32
     goal_path_reconstruction: Optional[str] = None

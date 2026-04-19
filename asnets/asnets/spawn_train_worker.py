@@ -787,10 +787,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         log_lines.append(f"Loss: xent={x_s}  mse={m_s}  reg={r_s}")
     root_summary = collector.root_summary() if inp.log else {}
     if inp.log:
-        print(
-            f"\n{worker_tag} ".join(log_lines),
-            flush=True
-        )
+        print(f"{worker_tag} " + f"\n{worker_tag} ".join(log_lines), flush=True)
 
     return WorkerOutput(
         hit_goal_mean=float(collector.hit_goal),
