@@ -1,6 +1,7 @@
 # asnets/explorer_spawn_grads.py
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -28,6 +29,9 @@ class ParallelMCTSExplorerGrads:
     PROFILE_DIR: Optional[str] = None
     curr_epoch: int = 0
     max_workers: Optional[int] = None
+    bootstrap_timeout: Optional[int] = 300
+    rolling_worker_times = deque(maxlen=10)
+    timeout_multiplier: Optional[int] = 3
 
     progression_level: ProgressionLevel = ProgressionLevel.LEVEL1
 
@@ -37,6 +41,8 @@ class ParallelMCTSExplorerGrads:
 
     def explore(self, weights_np: dict, limit_workers=None,) -> list[WorkerOutput]:
         self.curr_epoch += 1
+        max_rolling_worker_times = max(self.rolling_worker_times) if len(self.rolling_worker_times) > 0 else 0
+        timeout= max(self.bootstrap_timeout, self.timeout_multiplier * max_rolling_worker_times)
         return run_epoch_spawn_grads(
             specs=self.specs,
             curr_epoch=self.curr_epoch-1, # so the first is 0
@@ -53,6 +59,7 @@ class ParallelMCTSExplorerGrads:
             l1_reg_coeff=self.l1_reg_coeff,
             l1_l2_reg_coeff=self.l1_l2_reg_coeff,
             max_workers=self.max_workers if limit_workers is None else min(limit_workers,self.max_workers),
+            epoch_timeout=timeout,
         )
 
     def num_slots(self):

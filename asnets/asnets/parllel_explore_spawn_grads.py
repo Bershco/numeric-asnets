@@ -27,6 +27,7 @@ def run_epoch_spawn_grads(
     corrupt_pi: Optional[str] = None,
     corrupt_z: Optional[str] = None,
     max_workers: Optional[int] = None,
+    epoch_timeout: Optional[int] = None,
 ) -> list[WorkerOutput]:
 
     ctx = mp.get_context('forkserver')
@@ -52,10 +53,19 @@ def run_epoch_spawn_grads(
                 l1_l2_reg_coeff=l1_l2_reg_coeff,
             )
             futs.append(ex.submit(run_worker_opt_profile, inp))
-
-        for f in as_completed(futs):
-            outs.append(f.result())
-
+        try:
+            for f in as_completed(futs, timeout=epoch_timeout):
+                try:
+                    outs.append(f.result())
+                except Exception as e:
+                    print(f"[TRAINER WARNING] Worker crashed: {e}")
+        except TimeoutError:
+            print("[TRAINER WARNING] Epoch timeout reached")
+        unfinished = [f for f in futs if not f.done()]
+        for f in unfinished:
+            f.cancel() #failsafe
+        if unfinished:
+            print(f"[TRAINER WARNING] {'1 worker has timed out' if len(unfinished)==1 else str(len(unfinished)) + ' workers have timed out'}| The timeout was {epoch_timeout} seconds.") #very important to discern
     return outs
 
 def run_epoch_spawn_eval(specs, weights_np, max_workers=None):
