@@ -607,6 +607,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
             n_samples=0,
             loss_mean=0.0,
             grads_np=zeros,
+            instance_diff=inp.spec.difficulty,
         )
 
     obs_batch, pi_tgt, z_tgt = collector.as_batches()

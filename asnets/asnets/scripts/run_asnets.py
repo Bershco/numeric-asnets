@@ -1236,7 +1236,7 @@ def make_services(args):
 
 @can_profile
 def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
-    print('Training supervised on random instances (SPAWN, NO RPyC, NO REPLAY BUFFER)')
+    print('Training supervised on random instances (SPAWN, NO RPyC)')
     print(f"Instances: {args.pddls}")
     start_time = time()
 
