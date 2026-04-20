@@ -2,78 +2,131 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, fields
+from time import time
 from typing import Any, Optional, List
 
 import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed, Future, wait, ALL_COMPLETED
 
 from asnets.spawn_train_worker import WorkerInput, WorkerOutput, run_worker_opt_profile, run_worker_eval, \
     WorkerInputEval
 
 
 def run_epoch_spawn_grads(
-    specs: list[Any],
-    weights_np: dict,
-    dropout: float,
-    debug: bool,
-    policy_only: bool,
-    mse_coeff: float,
-    l2_reg_coeff: float,
-    l1_reg_coeff: float,
-    l1_l2_reg_coeff: float,
-    log: bool,
-    curr_epoch: Optional[int],
-    PROFILE_DIR: Optional[str] = None,
-    corrupt_pi: Optional[str] = None,
-    corrupt_z: Optional[str] = None,
-    max_workers: Optional[int] = None,
-    epoch_timeout: Optional[int] = None,
+        specs: list[Any],
+        weights_np: dict,
+        dropout: float,
+        debug: bool,
+        policy_only: bool,
+        mse_coeff: float,
+        l2_reg_coeff: float,
+        l1_reg_coeff: float,
+        l1_l2_reg_coeff: float,
+        log: bool,
+        curr_epoch: Optional[int],
+        PROFILE_DIR: Optional[str] = None,
+        corrupt_pi: Optional[str] = None,
+        corrupt_z: Optional[str] = None,
+        max_workers: Optional[int] = None,
+        epoch_timeout: Optional[float] = None,
 ) -> list[WorkerOutput]:
+    """
+    Run one exploration epoch in parallel and return completed worker outputs.
 
-    ctx = mp.get_context('forkserver')
+    All workers are submitted together through a forkserver-based process pool.
+    The function waits up to `epoch_timeout` seconds for all workers. Workers that
+    do not finish in time are treated as timed out; completed workers are kept,
+    timed-out workers are skipped, and the executor is shut down early.
 
+    Args:
+        specs: Worker specifications for this epoch.
+        weights_np: Network weights passed to each worker.
+        dropout: Dropout rate used by workers.
+        debug: Whether debug mode is enabled.
+        policy_only: Whether to train/evaluate policy only.
+        mse_coeff: MSE loss coefficient.
+        l2_reg_coeff: L2 regularization coefficient.
+        l1_reg_coeff: L1 regularization coefficient.
+        l1_l2_reg_coeff: Combined L1/L2 regularization coefficient.
+        log: Whether worker logging is enabled.
+        curr_epoch: Current epoch index.
+        PROFILE_DIR: Optional profiling output directory.
+        corrupt_pi: Optional corruption mode for policy targets.
+        corrupt_z: Optional corruption mode for value targets.
+        max_workers: Maximum number of worker processes.
+        epoch_timeout: Maximum wait time in seconds for the whole epoch.
+
+    Returns:
+        A list of outputs from workers that finished successfully before timeout.
+    """
+    ctx = mp.get_context("forkserver")
+    fn_start = time()
     outs: list[WorkerOutput] = []
-    with ProcessPoolExecutor(max_workers=max_workers or len(specs), mp_context=ctx) as ex:
-        futs = []
-        for i, spec in enumerate(specs):
-            inp = WorkerInput(
-                spec=spec,
-                epoch=curr_epoch,
-                weights_np=weights_np,
-                dropout=dropout,
-                debug=debug,
-                policy_only=policy_only,
-                log=log,
-                PROFILE_DIR=PROFILE_DIR,
-                corrupt_pi=corrupt_pi,
-                corrupt_z=corrupt_z,
-                mse_coeff=mse_coeff,
-                l2_reg_coeff=l2_reg_coeff,
-                l1_reg_coeff=l1_reg_coeff,
-                l1_l2_reg_coeff=l1_l2_reg_coeff,
+    with ProcessPoolExecutor(
+            max_workers=max_workers or len(specs),
+            mp_context=ctx,
+    ) as ex:
+        submit_start = time()
+        futs: list[Future[WorkerOutput]] = [
+            ex.submit(
+                run_worker_opt_profile,
+                WorkerInput(
+                    spec=spec,
+                    epoch=curr_epoch,
+                    weights_np=weights_np,
+                    dropout=dropout,
+                    debug=debug,
+                    policy_only=policy_only,
+                    log=log,
+                    PROFILE_DIR=PROFILE_DIR,
+                    corrupt_pi=corrupt_pi,
+                    corrupt_z=corrupt_z,
+                    mse_coeff=mse_coeff,
+                    l2_reg_coeff=l2_reg_coeff,
+                    l1_reg_coeff=l1_reg_coeff,
+                    l1_l2_reg_coeff=l1_l2_reg_coeff,
+                ),
             )
-            futs.append(ex.submit(run_worker_opt_profile, inp))
-        try:
-            for f in as_completed(futs, timeout=epoch_timeout):
-                try:
-                    outs.append(f.result())
-                except Exception as e:
-                    print(f"[TRAINER WARNING] Worker crashed: {e}")
-        except TimeoutError:
-            print("[TRAINER WARNING] Epoch timeout reached")
+            for spec in specs
+        ]
+        wait_start = time()
+        done, not_done = wait(
+            futs,
+            timeout=epoch_timeout,
+            return_when=ALL_COMPLETED,
+        )
+        collect_start = time()
+        for fut in done:
+            try:
+                outs.append(fut.result())
+            except Exception as e:
+                print(f"[TRAINER WARNING] Worker crashed: {e}")
+        shutdown_start = time()
+        if not_done:
+            print(
+                f"[TRAINER WARNING] {len(not_done)} worker(s) timed out | "
+                f"timeout={epoch_timeout:.1f}s | epoch={curr_epoch}"
+            )
+            ex.shutdown(wait=False, cancel_futures=True)
+        unfinished_start = time()
         unfinished = [f for f in futs if not f.done()]
-        for f in unfinished:
-            f.cancel() #failsafe
+        for fut in unfinished:
+            fut.cancel()  # failsafe for tasks that never started
         if unfinished:
-            print(f"[TRAINER WARNING] {'1 worker has timed out' if len(unfinished)==1 else str(len(unfinished)) + ' workers have timed out'}| The timeout was {epoch_timeout} seconds.") #very important to discern
+            plural = "worker has" if len(unfinished) == 1 else "workers have"
+            print(
+                f"[TRAINER WARNING] {len(unfinished)} {plural} timed out | "
+                f"The timeout was {epoch_timeout:.1f} seconds."
+            )
     return outs
+
 
 def run_epoch_spawn_eval(specs, weights_np, max_workers=None):
     ctx = mp.get_context("forkserver")
     outs = []
     with ProcessPoolExecutor(
-        max_workers=max_workers or len(specs),
-        mp_context=ctx,
+            max_workers=max_workers or len(specs),
+            mp_context=ctx,
     ) as ex:
         futs = []
         for spec in specs:
@@ -89,6 +142,7 @@ def run_epoch_spawn_eval(specs, weights_np, max_workers=None):
         for f in as_completed(futs):
             outs.append(f.result())
     return outs
+
 
 @dataclass
 class SpawnExploreSpec:

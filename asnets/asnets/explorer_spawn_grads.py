@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
+from time import time
 from typing import Any, Optional
 
 import numpy as np
@@ -29,9 +30,10 @@ class ParallelMCTSExplorerGrads:
     PROFILE_DIR: Optional[str] = None
     curr_epoch: int = 0
     max_workers: Optional[int] = None
-    bootstrap_timeout: Optional[int] = 300
-    rolling_worker_times = deque(maxlen=10)
+    bootstrap_timeout_s: Optional[int] = 300
+    rolling_epoch_times = deque(maxlen=10)
     timeout_multiplier: Optional[int] = 3
+    max_epoch_timeout_s = 3600
 
     progression_level: ProgressionLevel = ProgressionLevel.LEVEL1
 
@@ -39,13 +41,32 @@ class ParallelMCTSExplorerGrads:
     corrupt_pi: Optional[str] = None
     corrupt_z: Optional[str] = None
 
-    def explore(self, weights_np: dict, limit_workers=None,) -> list[WorkerOutput]:
+    def explore(
+            self,
+            weights_np: dict,
+            limit_workers: Optional[int] = None,
+    ) -> list[WorkerOutput]:
+        """
+        Run one exploration epoch and update rolling timing statistics.
+
+        Args:
+            weights_np: Current network weights to send to workers.
+            limit_workers: Optional upper bound on the number of workers to use.
+
+        Returns:
+            A list of successful worker outputs for this epoch.
+        """
         self.curr_epoch += 1
-        max_rolling_worker_times = max(self.rolling_worker_times) if len(self.rolling_worker_times) > 0 else 0
-        timeout= max(self.bootstrap_timeout, self.timeout_multiplier * max_rolling_worker_times)
-        return run_epoch_spawn_grads(
+        epoch_timeout = self._compute_epoch_timeout()
+        effective_max_workers = (
+            self.max_workers
+            if limit_workers is None
+            else min(limit_workers, self.max_workers)
+        )
+        start_time = time()
+        outputs = run_epoch_spawn_grads(
             specs=self.specs,
-            curr_epoch=self.curr_epoch-1, # so the first is 0
+            curr_epoch=self.curr_epoch - 1,  # first epoch is 0
             weights_np=weights_np,
             dropout=self.dropout,
             debug=self.debug,
@@ -58,9 +79,39 @@ class ParallelMCTSExplorerGrads:
             l2_reg_coeff=self.l2_reg_coeff,
             l1_reg_coeff=self.l1_reg_coeff,
             l1_l2_reg_coeff=self.l1_l2_reg_coeff,
-            max_workers=self.max_workers if limit_workers is None else min(limit_workers,self.max_workers),
-            epoch_timeout=timeout,
+            max_workers=effective_max_workers,
+            epoch_timeout=epoch_timeout,
         )
+        self.rolling_epoch_times.append(time() - start_time)
+        return outputs
+
+    def _compute_epoch_timeout(self) -> float:
+        """
+        Compute the epoch timeout from rolling worker times.
+
+        The timeout is:
+            max(bootstrap_timeout, timeout_multiplier * rolling_max_worker_time)
+
+        and is capped at one hour. A message is printed if the cap is reached.
+
+        Returns:
+            Timeout in seconds.
+        """
+        rolling_max = max(self.rolling_epoch_times) if self.rolling_epoch_times else 0.0
+
+        timeout = max(
+            float(self.bootstrap_timeout_s),
+            float(self.timeout_multiplier) * float(rolling_max),
+        )
+
+        if timeout >= self.max_epoch_timeout_s:
+            print(
+                f"[TRAINER] Timeout capped at 1 hour "
+                f"({self.max_epoch_timeout_s}s) | raw_timeout={timeout:.1f}s"
+            )
+            return float(self.max_epoch_timeout_s)
+
+        return float(timeout)
 
     def num_slots(self):
         return len(self.specs)
