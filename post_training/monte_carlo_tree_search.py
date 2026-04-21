@@ -282,6 +282,7 @@ class MCTS:
                  use_numpy_sampler=False,
                  select_logging=False, ):
         self.curr_tree_root: Optional[MCTSNode] = None
+        self.original_tree_root: Optional[MCTSNode] = None
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
         self.state_key_to_node: dict[bytes, MCTSNode] = {}

@@ -38,8 +38,6 @@ class LocalExploreContext:
         Local replacement for exposed_env_simulate_batch_steps.
         Returns the same tuple structure your MCTS expects.
         """
-        # cstate = self.get_state_from_identifiers(sid, shash)
-
         results = []
         mdpsim_state = cstate.to_mdpsim(self.planner_exts)
         for action_id in action_nums:
@@ -55,6 +53,12 @@ class LocalExploreContext:
                 next_state.get_applicable_action_mask(),
             ))
         return results
+
+    def env_simulate_step(self,
+                          cstate: CanonicalState,
+                          action_id: int):
+        next_state, _ = sample_next_state(cstate, int(action_id), self.planner_exts, mdpsim_state=cstate.to_mdpsim(self.planner_exts))
+        return next_state
 
     # ----- init state -----
     def get_init_state(self) -> "CanonicalState":

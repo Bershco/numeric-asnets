@@ -183,6 +183,7 @@ class TrainingMCTS(MCTS):
     def initialise_tree(self, cstate) -> None:
         """Start a new tree for a fresh episode."""
         self.curr_tree_root = wrapInMCTSNode(state=cstate, cost_until_now=0)
+        self.original_tree_root = self.curr_tree_root
         self.ensure_root_act_dist_value()
         self.state_key_to_node[cstate.state_key] = self.curr_tree_root
 

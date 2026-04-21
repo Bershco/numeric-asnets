@@ -292,7 +292,7 @@ class PlannerExtensions(object):
             dg_use_act_history (bool, optional): Whether to use the action count
             data generator. Defaults to False.
         """
-        self.pddl_files = pddl_files  # domain file
+        self.pddl_files = pddl_files
         self.domain_type = domain_type
 
         import mdpsim  # noqa: F811

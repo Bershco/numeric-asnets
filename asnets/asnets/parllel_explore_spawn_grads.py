@@ -60,13 +60,11 @@ def run_epoch_spawn_grads(
         A list of outputs from workers that finished successfully before timeout.
     """
     ctx = mp.get_context("forkserver")
-    fn_start = time()
     outs: list[WorkerOutput] = []
     with ProcessPoolExecutor(
             max_workers=max_workers or len(specs),
             mp_context=ctx,
     ) as ex:
-        submit_start = time()
         futs: list[Future[WorkerOutput]] = [
             ex.submit(
                 run_worker_opt_profile,
@@ -89,26 +87,19 @@ def run_epoch_spawn_grads(
             )
             for spec in specs
         ]
-        wait_start = time()
         done, not_done = wait(
             futs,
             timeout=epoch_timeout,
             return_when=ALL_COMPLETED,
         )
-        collect_start = time()
         for fut in done:
-            try:
-                outs.append(fut.result())
-            except Exception as e:
-                print(f"[TRAINER WARNING] Worker crashed: {e}")
-        shutdown_start = time()
+            outs.append(fut.result())
         if not_done:
             print(
                 f"[TRAINER WARNING] {len(not_done)} worker(s) timed out | "
                 f"timeout={epoch_timeout:.1f}s | epoch={curr_epoch}"
             )
             ex.shutdown(wait=False, cancel_futures=True)
-        unfinished_start = time()
         unfinished = [f for f in futs if not f.done()]
         for fut in unfinished:
             fut.cancel()  # failsafe for tasks that never started
@@ -181,6 +172,8 @@ class SpawnExploreSpec:
     freeze_train_steps: int = 50
     freeze_batch_size: int = 32
     goal_path_reconstruction: Optional[str] = None
+    ENHSP_plan_bootstrap: bool = True
+    est_plan_z: bool = False
 
     # estimator decay
     estimator_decay: bool = False

@@ -1,6 +1,7 @@
 # asnets/spawn_train_worker.py
 from __future__ import annotations
-
+from enhsp_wrapper.enhsp import ENHSP, PlanningResult, PlanningStatus
+from .interfaces.enhsp_interface import ENHSP_CONFIGS
 import cProfile
 import os
 import pstats
@@ -12,6 +13,7 @@ from typing import Any, Optional, List
 import numpy as np
 from asnets.models import configure_tf_gpu_memory_growth
 from post_training.action_selection_policy import build_action_policy
+from .utils.pddl_utils import hlist_to_sexprs, replace_init_state
 
 _T0 = time.time()
 # print(f"[WORKER_IMPORT] pid={os.getpid()} module start", flush=True)
@@ -34,7 +36,7 @@ from asnets.state_reprs import CanonicalState
 from asnets.supervised import PlannerExtensions
 from asnets.utils.generator_utils import extract_domain_name_from_file, Domain, InstanceDifficulty
 from asnets.utils.py_utils import set_random_seeds
-from post_training.enhspwrapper import ENHSPEstimator
+from post_training.enhspwrapper import ENHSPEstimator, EstimatorMode
 from post_training.training_mcts import TrainingMCTS
 
 from enum import Enum, auto
@@ -102,6 +104,7 @@ class DataSource(Enum):
     TREE_SAMPLE = auto()
     HEURISTIC_BOOTSTRAP = auto()
     GOAL_PATH = auto()
+    ENHSP_PLAN = auto()
 
 
 @dataclass
@@ -581,6 +584,63 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
                 z=item['z'],
                 source=DataSource.HEURISTIC_BOOTSTRAP,
             )
+    if inp.spec.ENHSP_plan_bootstrap:
+        enhsp_timeout = 15
+        params = ENHSP_CONFIGS[inp.spec.enhsp_config] + f" -timeout {enhsp_timeout}"
+        planner = ENHSP(params)
+        pddl_files = planner_exts.pddl_files
+        domain_path = pddl_files[0]
+        instance_path = pddl_files[1]
+        plan_res: PlanningResult = planner.plan(domain_path, instance_path)
+        if plan_res.status == PlanningStatus.SUCCESS:
+            plan_actions_int = [planner_exts.act_ident_to_ind[act_ident] for act_ident in plan_res.plan]
+            plan_len = len(plan_actions_int) + 1
+            init_state = mcts.original_tree_root.state
+            plan_states = [init_state]
+            plan_states_pi = []
+            plan_states_z = []
+            curr_state = init_state
+            for i, act_int in enumerate(plan_actions_int):
+                prev_state_pi = np.zeros(act_dim, dtype=np.float32)
+                prev_state_pi[act_int] = 1.0
+                plan_states_pi.append(prev_state_pi)
+                prev_state_key = curr_state.state_key
+                if inp.spec.est_plan_z:
+                    cached = estimator.state_key_cache.get(prev_state_key)
+                    if cached is None:
+                        problem_hlist = replace_init_state(
+                            estimator._problem_hlist,
+                            curr_state.to_tup_state()
+                        )
+                        oneliner = hlist_to_sexprs(problem_hlist)
+                        (h, _) = estimator.get_estimate_batched(
+                            [oneliner],
+                            EstimatorMode.V_ONLY
+                        )[0]
+                        coeff = ctx.estimator_h_to_v_coeff
+                        est_v = float(np.exp(-coeff * h))
+                        estimator.state_key_cache[prev_state_key] = (est_v, None)
+                    else:
+                        est_v, _ = cached
+                    plan_states_z.append(est_v)
+                else:
+                    dist_from_goal = plan_len - i
+                    plan_states_z.append(float(1 - (dist_from_goal/plan_len)))
+                curr_state = ctx.env_simulate_step(curr_state, act_int)
+                plan_states.append(curr_state)
+            assert plan_states[-1].is_goal, "Somehow planner found a plan that is successful but does not reach the goal"
+            plan_states = plan_states[:-1]
+            assert len(plan_states) == len(plan_states_z) == len(plan_states_pi)
+            for state, pi, z in zip(plan_states, plan_states_pi, plan_states_z):
+                collector.add_sample(
+                    cstate=state,
+                    children=None,
+                    action=None,
+                    pi=pi,
+                    z=z,
+                    source=DataSource.ENHSP_PLAN,
+                )
+
     reconstruct_goal_path = inp.spec.goal_path_reconstruction
     if reconstruct_goal_path:
         trajectory_info = collector.get_trajectory_info_as_list()
@@ -620,12 +680,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
 
         # ---- source masks & counts ----
         src_list = collector.sources
-        all_sources = [
-            DataSource.TRAJECTORY,
-            DataSource.TREE_SAMPLE,
-            DataSource.HEURISTIC_BOOTSTRAP,
-            DataSource.GOAL_PATH,
-        ]
+        all_sources = list(DataSource)
         masks = {ds: np.asarray([s == ds for s in src_list], dtype=bool) for ds in all_sources}
 
         counts = Counter(src_list)
