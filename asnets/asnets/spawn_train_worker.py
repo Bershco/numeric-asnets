@@ -83,7 +83,7 @@ class WorkerInput:
         if not self.spec.estimator_decay:
             return 0.0
         return self.spec.estimator_decay_coeff_start + (
-                    self.spec.estimator_decay_coeff_end - self.spec.estimator_decay_coeff_start) * min(
+                self.spec.estimator_decay_coeff_end - self.spec.estimator_decay_coeff_start) * min(
             self.epoch / self.spec.estimator_decay_epochs, 1)
 
 
@@ -390,6 +390,54 @@ def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalE
     return result
 
 
+def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_ident_to_ind, act_dim: int,
+                       init_state: CanonicalState, ctx: LocalExploreContext, estimator: ENHSPEstimator,
+                       est_plan_z: bool = False, enhsp_timeout: int = 15):
+    params = ENHSP_CONFIGS[enhsp_config] + f" -timeout {enhsp_timeout}"
+    planner = ENHSP(params)
+    domain_path = pddl_files[0]
+    instance_path = pddl_files[1]
+    plan_res: PlanningResult = planner.plan(domain_path, instance_path)
+    if plan_res.status == PlanningStatus.SUCCESS:
+        plan_actions_int = [act_ident_to_ind[act_ident] for act_ident in plan_res.plan]
+        plan_len = len(plan_actions_int) + 1
+        plan_states = [init_state]
+        plan_states_pi = []
+        plan_states_z = []
+        curr_state = init_state
+        for i, act_int in enumerate(plan_actions_int):
+            prev_state_pi = np.zeros(act_dim, dtype=np.float32)
+            prev_state_pi[act_int] = 1.0
+            plan_states_pi.append(prev_state_pi)
+            prev_state_key = curr_state.state_key
+            if est_plan_z:
+                cached = estimator.state_key_cache.get(prev_state_key)
+                if cached is None:
+                    problem_hlist = replace_init_state(
+                        estimator._problem_hlist,
+                        curr_state.to_tup_state()
+                    )
+                    oneliner = hlist_to_sexprs(problem_hlist)
+                    (h, _) = estimator.get_estimate_batched(
+                        [oneliner],
+                        EstimatorMode.V_ONLY
+                    )[0]
+                    coeff = ctx.estimator_h_to_v_coeff
+                    est_v = float(np.exp(-coeff * h))
+                    estimator.state_key_cache[prev_state_key] = (est_v, None)
+                else:
+                    est_v, _ = cached
+                plan_states_z.append(est_v)
+            else:
+                dist_from_goal = plan_len - i
+                plan_states_z.append(float(1 - (dist_from_goal / plan_len)))
+            curr_state = ctx.env_simulate_step(curr_state, act_int)
+            plan_states.append(curr_state)
+        assert plan_states[-1].is_goal, "Somehow planner found a plan that is successful but does not reach the goal"
+        plan_states = plan_states[:-1]
+        assert len(plan_states) == len(plan_states_z) == len(plan_states_pi)
+
+
 def _dbg_tf_threads(tag=""):
     # TF-configured thread pools (maybe 0/None meaning “default” depending on TF build)
     intra = tf.config.threading.get_intra_op_parallelism_threads()
@@ -418,7 +466,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     It returns grads as numpy arrays aligned to local weight_manager_local.all_weights order.
     """
     worker_tag = f"[W{inp.seed}|{os.getpid()}]"
-    set_random_seeds(inp.seed,worker_tag=worker_tag)
+    set_random_seeds(inp.seed, worker_tag=worker_tag)
     configure_tf_gpu_memory_growth()
     # _dbg_tf_threads(tag=f"{worker_tag} worker_start")
     # --- build instance infra ---
@@ -585,62 +633,21 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
                 source=DataSource.HEURISTIC_BOOTSTRAP,
             )
     if inp.spec.ENHSP_plan_bootstrap:
-        enhsp_timeout = 15
-        params = ENHSP_CONFIGS[inp.spec.enhsp_config] + f" -timeout {enhsp_timeout}"
-        planner = ENHSP(params)
-        pddl_files = planner_exts.pddl_files
-        domain_path = pddl_files[0]
-        instance_path = pddl_files[1]
-        plan_res: PlanningResult = planner.plan(domain_path, instance_path)
-        if plan_res.status == PlanningStatus.SUCCESS:
-            plan_actions_int = [planner_exts.act_ident_to_ind[act_ident] for act_ident in plan_res.plan]
-            plan_len = len(plan_actions_int) + 1
-            init_state = mcts.original_tree_root.state
-            plan_states = [init_state]
-            plan_states_pi = []
-            plan_states_z = []
-            curr_state = init_state
-            for i, act_int in enumerate(plan_actions_int):
-                prev_state_pi = np.zeros(act_dim, dtype=np.float32)
-                prev_state_pi[act_int] = 1.0
-                plan_states_pi.append(prev_state_pi)
-                prev_state_key = curr_state.state_key
-                if inp.spec.est_plan_z:
-                    cached = estimator.state_key_cache.get(prev_state_key)
-                    if cached is None:
-                        problem_hlist = replace_init_state(
-                            estimator._problem_hlist,
-                            curr_state.to_tup_state()
-                        )
-                        oneliner = hlist_to_sexprs(problem_hlist)
-                        (h, _) = estimator.get_estimate_batched(
-                            [oneliner],
-                            EstimatorMode.V_ONLY
-                        )[0]
-                        coeff = ctx.estimator_h_to_v_coeff
-                        est_v = float(np.exp(-coeff * h))
-                        estimator.state_key_cache[prev_state_key] = (est_v, None)
-                    else:
-                        est_v, _ = cached
-                    plan_states_z.append(est_v)
-                else:
-                    dist_from_goal = plan_len - i
-                    plan_states_z.append(float(1 - (dist_from_goal/plan_len)))
-                curr_state = ctx.env_simulate_step(curr_state, act_int)
-                plan_states.append(curr_state)
-            assert plan_states[-1].is_goal, "Somehow planner found a plan that is successful but does not reach the goal"
-            plan_states = plan_states[:-1]
-            assert len(plan_states) == len(plan_states_z) == len(plan_states_pi)
-            for state, pi, z in zip(plan_states, plan_states_pi, plan_states_z):
-                collector.add_sample(
-                    cstate=state,
-                    children=None,
-                    action=None,
-                    pi=pi,
-                    z=z,
-                    source=DataSource.ENHSP_PLAN,
-                )
-
+        plan_states, plan_states_pi, plan_states_z = plan_to_trajectory(enhsp_config=inp.spec.enhsp_config,
+                                                                        pddl_files=planner_exts.pddl_files,
+                                                                        act_ident_to_ind=planner_exts.act_ident_to_ind,
+                                                                        act_dim=act_dim,
+                                                                        init_state=mcts.original_tree_root.state,
+                                                                        ctx=ctx, estimator=estimator)
+        for state, pi, z in zip(plan_states, plan_states_pi, plan_states_z):
+            collector.add_sample(
+                cstate=state,
+                children=None,
+                action=None,
+                pi=pi,
+                z=z,
+                source=DataSource.ENHSP_PLAN,
+            )
     reconstruct_goal_path = inp.spec.goal_path_reconstruction
     if reconstruct_goal_path:
         trajectory_info = collector.get_trajectory_info_as_list()
@@ -891,8 +898,8 @@ def run_worker_opt_profile(inp: WorkerInput) -> WorkerOutput:
 
 
 def run_worker_eval(inp: WorkerInputEval):
-    worker_tag=f"[EVAL|{os.getpid()}]"
-    set_random_seeds(inp.seed,worker_tag=worker_tag)
+    worker_tag = f"[EVAL|{os.getpid()}]"
+    set_random_seeds(inp.seed, worker_tag=worker_tag)
     configure_tf_gpu_memory_growth()
     CanonicalState.network_input_config(
         use_fluents=inp.spec.use_fluents,
@@ -903,7 +910,7 @@ def run_worker_eval(inp: WorkerInputEval):
     action_policy = build_action_policy(
         base_policy=inp.spec.action_policy,
         worker_tag=worker_tag,
-        distance_threshold=np.inf, #on evaluation there is always a need to goal chase
+        distance_threshold=np.inf,  # on evaluation there is always a need to goal chase
         epsilon=inp.spec.action_policy_epsilon,
         temperature=inp.spec.action_policy_temperature,
         decay_rate=inp.spec.action_policy_decay_rate,

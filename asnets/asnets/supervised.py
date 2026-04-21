@@ -676,8 +676,6 @@ class SupervisedTrainer:
         assert not self.tf_init_done, \
             "this class is not designed to be initialised twice"
 
-        # LOGGER.info('Initialising network structure')
-
         if len(self.lr_steps) > 1:
             # using a scheduler to control the learning rate
             boundaries = [i[0] for i in self.lr_steps[1:]]
@@ -688,24 +686,7 @@ class SupervisedTrainer:
                 learning_rate=lr_scheduler)
         else:
             self.optimiser = tf.keras.optimizers.Adam(learning_rate=self.lr)
-        # self.optimiser.build(self.weight_manager.all_weights)
-        # assert len(self.optimiser.variables) > 1, 'optimiser build wasn\'t successful'
-        # self.loss_fn = ManualLoss(
-        #     problems=self.problems,
-        #     weight_manager=self.weight_manager,
-        #     summary_writer=self.summary_writer,
-        #     l1_reg_coeff=self.l1_reg_coeff,
-        #     l2_reg_coeff=self.l2_reg_coeff,
-        #     l1_l2_reg_coeff=self.l1_l2_reg_coeff,
-        #     mse_coeff=self.mse_coeff,
-        #     name="loss_fn",
-        #     # strategy=SupervisedObjective.ANY_GOOD_ACTION
-        #     strategy=self.strategy,
-        # )
-        # tensorboard ops
         self._log_ops = {}
-
-        # self.sess.graph.finalize()
         self.tf_init_done = True
 
     def _optimise(self, n_batches):
@@ -809,8 +790,7 @@ class SupervisedTrainer:
             # 1. EXPLORE (spawn workers, compute grads there)
             # --------------------------------------------------
             t_explore = time()
-            weights_np = self.weight_manager.export_numpy()
-            worker_outs = self.explorer.explore(weights_np)
+            worker_outs = self.explorer.explore(self.weight_manager.export_numpy())
             print(f"[EXPLORE TIMING] pid={os.getpid()} total={time() - t_explore:.2f}s", flush=True)
 
             if not worker_outs:
