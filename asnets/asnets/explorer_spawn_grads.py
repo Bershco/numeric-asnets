@@ -135,7 +135,6 @@ class ParallelMCTSExplorerGrads:
         for i, diff in enumerate(diff_seq):
             self.specs[i].difficulty = diff
 
-
 @dataclass
 class ParallelMCTSExplorerEval:
     specs: list[Any]

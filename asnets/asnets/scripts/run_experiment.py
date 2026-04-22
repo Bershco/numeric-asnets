@@ -407,7 +407,7 @@ parser.add_argument(
     help='run memray profiling for memory usage across main process and rpyc workers')
 parser.add_argument(
     '--serial-test',
-    default=True,
+    default=False,
     action='store_true',
     help='run test problems serially (default is to run them in parallel) '
          'subject to hardware limitations. These hardware limitations might not work'
@@ -616,21 +616,21 @@ def main():
     prob_mod = import_module(args.prob_module)
 
     # 2. spool up Ray if not in serial mode
-    if not args.serial_test and args.resume_from is not None and not args.no_eval:
-        new_cluster = args.ray_connect is None
-        ray_kwargs = {}
-        if not new_cluster:
-            ray_kwargs["redis_address"] = args.ray_connect
-            assert args.ray_ncpus is None, \
-                "can't provide --ray-ncpus and --ray-connect"
-        else:
-            if args.ray_ncpus is not None:
-                assert args.job_ncpus is None \
-                       or args.job_ncpus <= args.ray_ncpus, \
-                    "must have --job-ncpus <= --ray-ncpus if both given"
-                ray_kwargs["num_cpus"] = args.ray_ncpus
-        print("[DEBUG_RAY] - ray.init() called with:", ray_kwargs)
-        ray.init(**ray_kwargs)
+    # if not args.serial_test and args.resume_from is not None and not args.no_eval:
+    #     new_cluster = args.ray_connect is None
+    #     ray_kwargs = {}
+    #     if not new_cluster:
+    #         ray_kwargs["redis_address"] = args.ray_connect
+    #         assert args.ray_ncpus is None, \
+    #             "can't provide --ray-ncpus and --ray-connect"
+    #     else:
+    #         if args.ray_ncpus is not None:
+    #             assert args.job_ncpus is None \
+    #                    or args.job_ncpus <= args.ray_ncpus, \
+    #                 "must have --job-ncpus <= --ray-ncpus if both given"
+    #             ray_kwargs["num_cpus"] = args.ray_ncpus
+    #     print("[DEBUG_RAY] - ray.init() called with:", ray_kwargs)
+    #     ray.init(**ray_kwargs)
 
     main_inner(arch_mod=arch_mod,
                prob_mod=prob_mod,
@@ -865,31 +865,28 @@ evaluation = {"off" if no_eval else "on"}
                 profiling=profiling,
             )
     else:
-        print('Starting parallel test loop')
-        job_infos = {}
-        for prob_idx, test_prob_flags in prob_flag_list:
-            print('Launching test on problem %d' % (prob_idx + 1))
-            full_flags = main_test_flags + test_prob_flags
-            # ensure each job has at least 8Gb of memory
-            job = run_asnets_ray.options(memory=0.1 * 1024 * 1024 * 1024).remote(
-                flags=full_flags,
-                root_dir=prefix_dir,
-                cwd=root_cwd,
-                need_snapshot=False,
-                is_train=False,
-                enforce_ncpus=enforce_job_ncpus,
-                # run_asnets.py has its own timeout which it should obey, so
-                # give it some slack
-                timeout=arch_mod.EVAL_TIME_LIMIT_SECONDS + 30)
-            job_infos[job] = (prob_idx, test_prob_flags)
+        all_test_flags = list(main_test_flags)
 
-        print("Waiting for jobs to finish")
-        remaining = list(job_infos)
-        while remaining:
-            (ready,), remaining = ray.wait(remaining, num_returns=1)
-            prob_idx, test_prob_flags = job_infos[ready]
-            print("Finished job %d (flags: %s)" % (prob_idx, test_prob_flags))
+        domain = None
+        instances = []
 
+        for _, test_prob_flags in prob_flag_list:
+            if domain is None:
+                domain = test_prob_flags[0]
+            instances.append(test_prob_flags[1])
+
+        all_test_flags.append(domain)
+        all_test_flags.extend(instances)
+
+        run_asnets_local(
+            flags=all_test_flags,
+            root_dir=prefix_dir,
+            cwd=root_cwd,
+            need_snapshot=False,
+            is_train=False,
+            enforce_ncpus=enforce_job_ncpus,
+            timeout=arch_mod.EVAL_TIME_LIMIT_SECONDS + 30,
+        )
     # return the prefix_dir because hype.py needs that to figure out where to
     # point collate_results at
     return prefix_dir

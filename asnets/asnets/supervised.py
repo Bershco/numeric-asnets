@@ -1,6 +1,3 @@
-import queue
-import threading
-import traceback
 from collections import Counter, deque
 from enum import Enum
 from functools import lru_cache
@@ -9,20 +6,17 @@ import joblib
 import logging
 import numpy as np
 import os
-import rpyc
-import setproctitle
 import shutil
 import tensorflow as tf
 from time import time
 import tqdm.auto as tqdm
 from types import ModuleType
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Set
-import cProfile
 import datetime
+
 from asnets.heur_inputs import ActionCountDataGenerator, \
     HeuristicDataGenerator, LMCutDataGenerator, RelaxedDeadendDetector, \
     NumericLandmarkGenerator
-from asnets.models import PropNetworkWeights, PropNetwork
 from asnets.utils.generator_utils import InstanceDifficulty, get_problem_names
 from asnets.utils.mdpsim_utils import parse_problem_args
 from asnets.utils.rpyc_utils import to_local, find_netrefs
@@ -39,8 +33,6 @@ from asnets.utils.pddl_utils import get_domain_file
 from asnets.utils.py_utils import RandomPopContainer, TimerContext, \
     strip_parens, weak_ref_to
 from asnets.utils.tf_utils import cross_entropy, mean_squared_error
-from post_training.monte_carlo_tree_search import MCTSNode
-from post_training.training_mcts import TrainingMCTS
 import jpype
 import jpype.imports
 import sys
@@ -600,6 +592,7 @@ class SupervisedTrainer:
                  weight_manager,
                  summary_writer,
                  explorer,
+                 validator,
                  strategy,
                  start_time,
                  scratch_dir,
@@ -633,6 +626,7 @@ class SupervisedTrainer:
         # may be None if no summaries tuple()should be written
         self.summary_writer = summary_writer
         self.explorer = explorer
+        self.validator = validator
         self.batch_size_per_problem = max(batch_size // self.explorer.num_slots(), 1)
         self.opt_batches_per_epoch = opt_batches_per_epoch
         self.hide_progress = hide_progress
@@ -876,6 +870,14 @@ class SupervisedTrainer:
                 lr=self.optimiser.lr,
             )
 
+            # --------------------------------------------------
+            # 2.1 validation
+            # --------------------------------------------------
+            if epoch_num % 10 == 0:# and epoch_num > 0:
+                succ_rate, validation_outs = self.validator.evaluate(self.weight_manager.export_numpy())
+                print(f"[VALIDATION] Current network validation success rate: {succ_rate}")
+                for i, val_worker_out in enumerate(validation_outs):
+                    print(f"[{val_worker_out.instance_name}] - {'PASS' if val_worker_out.hit_goal else 'FAIL'}")
             # --------------------------------------------------
             # 3. EARLY STOP / SNAPSHOT LOGIC (unchanged)
             # --------------------------------------------------

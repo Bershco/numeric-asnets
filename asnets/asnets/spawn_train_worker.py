@@ -206,11 +206,10 @@ class WorkerCollectorWithLogging(WorkerCollector):
 
 
 @dataclass(frozen=True)
-class WorkerInputEval:
+class EvalWorkerInput:
     spec: Any  # SpawnExploreSpec
     weights_np: dict
     epoch: Optional[int]
-    dropout: float
     debug: bool
     policy_only: bool
 
@@ -224,11 +223,8 @@ class EvalWorkerOutput:
     hit_goal: float
     steps: int
     cost: float
+    instance_name: Optional[str] = None
 
-
-# -----------------------------
-# Hook functions you must connect
-# -----------------------------
 
 def _build_planner_exts_from_spec(spec, epoch_num):
     domain_pddl_path = spec.pddls[0]
@@ -284,7 +280,7 @@ def _rebuild_weight_manager_local(prob_meta, weights_np: dict):
     return wm
 
 
-def _build_network_local(weight_manager_local, prob_meta, dropout, debug, policy_only):
+def _build_network_local(weight_manager_local, prob_meta, debug, policy_only):
     """
     MUST return a Keras-callable network:
         if policy_only: pi_pred
@@ -293,7 +289,6 @@ def _build_network_local(weight_manager_local, prob_meta, dropout, debug, policy
     net = PropNetwork(
         weight_manager=weight_manager_local,
         problem_meta=prob_meta,
-        dropout=dropout,
         debug=debug,
         policy_network_only=policy_only,
     )
@@ -435,7 +430,8 @@ def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_ident_to_in
             plan_states.append(curr_state)
         assert plan_states[-1].is_goal, "Somehow planner found a plan that is successful but does not reach the goal"
         plan_states = plan_states[:-1]
-        assert len(plan_states) == len(plan_states_z) == len(plan_states_pi)
+        assert len(plan_states) == len(plan_states_pi) == len(plan_states_z)
+        return plan_states, plan_states_pi, plan_states_z
 
 
 def _dbg_tf_threads(tag=""):
@@ -496,7 +492,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         print(f"{worker_tag} after rebuild:", float(tf.reduce_mean(w)), float(tf.math.reduce_std(w)),
               float(tf.linalg.norm(w)))
     # local network for THIS instance
-    net = _build_network_local(wm_local, planner_exts.problem_meta, inp.dropout, inp.debug, inp.policy_only)
+    net = _build_network_local(wm_local, planner_exts.problem_meta, inp.debug, inp.policy_only)
 
     # ctx for TrainingMCTS
     ctx = LocalExploreContext(
@@ -897,8 +893,9 @@ def run_worker_opt_profile(inp: WorkerInput) -> WorkerOutput:
         print(f"[WORKER TIMING] pid={os.getpid()} total={time.time() - t0:.2f}s", flush=True)
 
 
-def run_worker_eval(inp: WorkerInputEval):
+def run_worker_eval(inp: EvalWorkerInput) -> EvalWorkerOutput:
     worker_tag = f"[EVAL|{os.getpid()}]"
+    instance_name = f"[{str(inp.spec.slot_id)}] {inp.spec.pddls[1]}"
     set_random_seeds(inp.seed, worker_tag=worker_tag)
     configure_tf_gpu_memory_growth()
     CanonicalState.network_input_config(
@@ -906,6 +903,7 @@ def run_worker_eval(inp: WorkerInputEval):
         use_comparisons=inp.spec.use_comps,
     )
     planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
+    act_dim = planner_exts.problem_meta.num_acts
     estimator = _build_estimator(planner_exts, inp.spec)
     action_policy = build_action_policy(
         base_policy=inp.spec.action_policy,
@@ -922,7 +920,6 @@ def run_worker_eval(inp: WorkerInputEval):
     net = _build_network_local(
         wm_local,
         planner_exts.problem_meta,
-        inp.dropout,
         inp.debug,
         inp.policy_only,
     )
@@ -931,6 +928,10 @@ def run_worker_eval(inp: WorkerInputEval):
         estimator=estimator,
         estimator_h_to_v_coeff=inp.spec.estimator_h_to_v_coeff,
     )
+    if not hasattr(inp.spec, "mcts_iterations") or inp.spec.mcts_iterations == 0:
+        branching_f = min(act_dim, inp.spec.mcts_expansion_k)
+        inp.spec.mcts_iterations = _compute_mcts_iterations(branching_f)
+        print(f"{worker_tag} mcts_iterations was not set manually, calculated to be:{inp.spec.mcts_iterations}")
     mcts = TrainingMCTS(
         network=net,
         ctx=ctx,
@@ -945,7 +946,6 @@ def run_worker_eval(inp: WorkerInputEval):
     cstate = ctx.get_init_state()
     max_len = inp.spec.max_len
     cost = 0
-    act_dim = planner_exts.problem_meta.num_acts
     mcts.initialise_tree(cstate)
 
     for step in range(max_len):
@@ -954,6 +954,7 @@ def run_worker_eval(inp: WorkerInputEval):
                 hit_goal=float(cstate.is_goal),
                 steps=step,
                 cost=cost,
+                instance_name=instance_name,
             )
         pi, _ = mcts.run_search()
         mask = mcts.get_children_mask(act_dim=act_dim)
@@ -976,4 +977,5 @@ def run_worker_eval(inp: WorkerInputEval):
         hit_goal=float(cstate.is_goal),
         steps=max_len,
         cost=cost,
+        instance_name=instance_name,
     )

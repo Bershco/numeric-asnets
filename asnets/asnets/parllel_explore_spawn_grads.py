@@ -9,7 +9,7 @@ import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future, wait, ALL_COMPLETED
 
 from asnets.spawn_train_worker import WorkerInput, WorkerOutput, run_worker_opt_profile, run_worker_eval, \
-    WorkerInputEval
+    EvalWorkerInput, EvalWorkerOutput
 
 
 def run_epoch_spawn_grads(
@@ -112,28 +112,28 @@ def run_epoch_spawn_grads(
     return outs
 
 
-def run_epoch_spawn_eval(specs, weights_np, max_workers=None):
+def run_epoch_spawn_eval(specs, weights_np, max_workers=None) -> list[Optional[EvalWorkerOutput]]:
     ctx = mp.get_context("forkserver")
-    outs = []
     with ProcessPoolExecutor(
-            max_workers=max_workers or len(specs),
-            mp_context=ctx,
+        max_workers=max_workers or len(specs),
+        mp_context=ctx,
     ) as ex:
-        futs = []
-        for spec in specs:
-            inp = WorkerInputEval(
+        fut_to_idx: dict[Future[EvalWorkerOutput],int] = {}
+        for i, spec in enumerate(specs):
+            inp = EvalWorkerInput(
                 spec=spec,
                 epoch=None,
                 weights_np=weights_np,
-                dropout=0.0,
                 debug=False,
                 policy_only=False,
             )
-            futs.append(ex.submit(run_worker_eval, inp))
-        for f in as_completed(futs):
-            outs.append(f.result())
+            fut: Future[EvalWorkerOutput] = ex.submit(run_worker_eval, inp)
+            fut_to_idx[fut] = i
+        outs: list[Optional[EvalWorkerOutput]] = [None] * len(specs)
+        for fut in as_completed(fut_to_idx):
+            idx = fut_to_idx[fut]
+            outs[idx] = fut.result()
     return outs
-
 
 @dataclass
 class SpawnExploreSpec:

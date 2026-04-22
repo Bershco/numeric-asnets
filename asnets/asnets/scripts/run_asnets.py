@@ -2,6 +2,7 @@
 
 import argparse
 import atexit
+import copy
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
@@ -17,6 +18,7 @@ from pympler import muppy, summary, asizeof
 from typing import Set, Any
 from pympler.asizeof import asized
 
+from asnets.parllel_explore_spawn_grads import SpawnExploreSpec
 from asnets.explorer_spawn_grads import ParallelMCTSExplorerGrads, ParallelMCTSExplorerEval
 from asnets.freeze_overfit_test import FrozenSupervisedTrainer
 from asnets.models import make_weight_manager, configure_tf_gpu_memory_growth
@@ -1255,59 +1257,6 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     )
 
     # ------------------------------------------------------------
-    # Build SpawnExploreSpec list (one per slot)
-    # ------------------------------------------------------------
-    from asnets.parllel_explore_spawn_grads import SpawnExploreSpec
-
-    specs = []
-    for slot_id in range(args.num_workers):
-        specs.append(
-            SpawnExploreSpec(
-                pddls=args.pddls,
-                domain_type=args.domain_type,
-                trainer_seed=args.seed,
-                slot_id=slot_id,
-                num_slots=args.num_workers,
-                ssipp_dg_heuristic=args.ssipp_dg_heuristic,
-                use_lm_cuts=args.use_lm_cuts,
-                use_numeric_landmarks=args.use_numeric_landmarks,
-                use_contributions=args.use_contributions,
-                use_act_history=args.use_act_history,
-                fd_heuristic=args.fd_teacher_heuristic,
-                ssipp_teacher_heuristic=args.ssipp_teacher_heuristic,
-                enhsp_config=args.enhsp_config,
-                estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
-                teacher_planner=args.teacher_planner,
-                teacher_timeout_s=args.teacher_timeout_s,
-                only_one_good_action=only_one_good_action,
-                use_teacher_envelope=args.use_teacher_envelope,
-                max_len=args.search_max_length,
-                mcts_iterations=args.mcts_iterations,
-                heuristic_bootstrapping=args.heuristic_bootstrapping,
-                mcts_her_strategy=args.mcts_her_strategy,
-                mcts_expansion_k=args.mcts_expansion_size,
-                use_fluents=args.use_fluents,
-                use_comps=args.use_comparisons,
-                difficulty=InstanceDifficulty.EASY,
-                fixed_instance_pddl=args.fixed_instance,
-                mcts_exploration_weight=args.mcts_exploration_weight,
-                sample_k_additional_states=args.sample_k_additional_states,
-                goal_path_reconstruction=args.goal_path_reconstruction,
-                action_policy=args.action_policy,
-                action_policy_goal_chase_distance_threshold=args.action_policy_goal_chase_distance_threshold,
-                action_policy_epsilon=args.action_policy_epsilon,
-                action_policy_temperature=args.action_policy_temperature,
-                action_policy_decay_rate=args.action_policy_decay_rate,
-                original_training_set=args.original_training_set,
-                estimator_decay=args.estimator_decay,
-                estimator_decay_coeff_start=args.estimator_decay_coeff_start,
-                estimator_decay_coeff_end=args.estimator_decay_coeff_end,
-                estimator_decay_epochs=args.estimator_decay_epochs if args.estimator_decay_epochs is not None else int(
-                    args.max_opt_epochs / 3),
-            )
-        )
-
-    # ------------------------------------------------------------
     # Build planner ONCE (for shapes / network construction)
     # ------------------------------------------------------------
     p = PlannerExtensions(
@@ -1336,33 +1285,83 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     else:
         sample_writer = tf.summary.create_file_writer(summary_path)
 
-    # ------------------------------------------------------------
-    # Explorer (SPAWN-BASED, SERVERLESS)
-    # ------------------------------------------------------------
-
     if args.corrupt_pi:
         LOGGER.info(f'Set corrupt_pi to {args.corrupt_pi}')
     if args.corrupt_z:
         LOGGER.info(f'Set corrupt_z to {args.corrupt_z}')
-    explorer = ParallelMCTSExplorerGrads(
-        specs=specs,
-        dropout=args.dropout,
-        debug=args.debug_memory,
-        policy_only=args.policy_network_only,
-        log=args.worker_logs,
-        PROFILE_DIR=args.profile_dir,
-        corrupt_pi=args.corrupt_pi,
-        corrupt_z=args.corrupt_z,
-        mse_coeff=args.mse,
-        l2_reg_coeff=args.l2_reg,
-        l1_reg_coeff=args.l1_reg,
-        l1_l2_reg_coeff=args.l1_l2_reg,
-        max_workers=args.num_workers,
-    )
-    # ------------------------------------------------------------
-    # Trainer
-    # ------------------------------------------------------------
+
     if not args.no_train:
+        specs = []
+        for slot_id in range(args.num_workers):
+            specs.append(
+                SpawnExploreSpec(
+                    pddls=args.pddls,
+                    domain_type=args.domain_type,
+                    trainer_seed=args.seed,
+                    slot_id=slot_id,
+                    num_slots=args.num_workers,
+                    ssipp_dg_heuristic=args.ssipp_dg_heuristic,
+                    use_lm_cuts=args.use_lm_cuts,
+                    use_numeric_landmarks=args.use_numeric_landmarks,
+                    use_contributions=args.use_contributions,
+                    use_act_history=args.use_act_history,
+                    fd_heuristic=args.fd_teacher_heuristic,
+                    ssipp_teacher_heuristic=args.ssipp_teacher_heuristic,
+                    enhsp_config=args.enhsp_config,
+                    estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
+                    teacher_planner=args.teacher_planner,
+                    teacher_timeout_s=args.teacher_timeout_s,
+                    only_one_good_action=only_one_good_action,
+                    use_teacher_envelope=args.use_teacher_envelope,
+                    max_len=args.search_max_length,
+                    mcts_iterations=args.mcts_iterations,
+                    heuristic_bootstrapping=args.heuristic_bootstrapping,
+                    mcts_her_strategy=args.mcts_her_strategy,
+                    mcts_expansion_k=args.mcts_expansion_size,
+                    use_fluents=args.use_fluents,
+                    use_comps=args.use_comparisons,
+                    difficulty=InstanceDifficulty.EASY,
+                    fixed_instance_pddl=args.fixed_instance,
+                    mcts_exploration_weight=args.mcts_exploration_weight,
+                    sample_k_additional_states=args.sample_k_additional_states,
+                    goal_path_reconstruction=args.goal_path_reconstruction,
+                    action_policy=args.action_policy,
+                    action_policy_goal_chase_distance_threshold=args.action_policy_goal_chase_distance_threshold,
+                    action_policy_epsilon=args.action_policy_epsilon,
+                    action_policy_temperature=args.action_policy_temperature,
+                    action_policy_decay_rate=args.action_policy_decay_rate,
+                    original_training_set=args.original_training_set,
+                    estimator_decay=args.estimator_decay,
+                    estimator_decay_coeff_start=args.estimator_decay_coeff_start,
+                    estimator_decay_coeff_end=args.estimator_decay_coeff_end,
+                    estimator_decay_epochs=args.estimator_decay_epochs if args.estimator_decay_epochs is not None else int(
+                        args.max_opt_epochs / 3),
+                )
+            )
+        explorer = ParallelMCTSExplorerGrads(
+            specs=specs,
+            dropout=args.dropout,
+            debug=args.debug_memory,
+            policy_only=args.policy_network_only,
+            log=args.worker_logs,
+            PROFILE_DIR=args.profile_dir,
+            corrupt_pi=args.corrupt_pi,
+            corrupt_z=args.corrupt_z,
+            mse_coeff=args.mse,
+            l2_reg_coeff=args.l2_reg,
+            l1_reg_coeff=args.l1_reg,
+            l1_l2_reg_coeff=args.l1_l2_reg,
+            max_workers=args.num_workers,
+        )
+        domain = args.pddls[0]
+        instances = args.pddls[1:]
+        validation_specs = []
+        for i, instance in enumerate(instances):
+            spec: SpawnExploreSpec = copy.deepcopy(specs[0])
+            spec.pddls = [domain, instance]
+            spec.slot_id = i
+            validation_specs.append(spec)
+        validator = ParallelMCTSExplorerEval(specs=validation_specs, max_workers=min(args.num_workers, len(instances)))
         strategy = (
             SupervisedObjective.ANY_GOOD_ACTION
             if args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
@@ -1374,6 +1373,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
                 weight_manager=weight_manager,
                 summary_writer=sample_writer,
                 explorer=explorer,
+                validator=validator,
                 strategy=strategy,
                 batch_size=args.supervised_bs,
                 lr=args.supervised_lr,
@@ -1433,9 +1433,47 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     if args.no_eval:
         return
 
+    instances = args.pddls[1:]
+    domain = args.pddls[0]
+
+    specs = []
+
+    for i, instance in enumerate(instances):
+        specs.append(
+            SpawnExploreSpec(
+                pddls=[domain, instance],
+                domain_type=args.domain_type,
+                trainer_seed=args.seed,
+                slot_id=i,
+                evaluation_instance_index=i,
+                num_slots=len(instances),
+                ssipp_dg_heuristic=args.ssipp_dg_heuristic,
+                use_lm_cuts=args.use_lm_cuts,
+                use_numeric_landmarks=args.use_numeric_landmarks,
+                use_contributions=args.use_contributions,
+                use_act_history=args.use_act_history,
+                fd_heuristic=args.fd_teacher_heuristic,
+                ssipp_teacher_heuristic=args.ssipp_teacher_heuristic,
+                enhsp_config=args.enhsp_config,
+                estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
+                teacher_planner=args.teacher_planner,
+                teacher_timeout_s=args.teacher_timeout_s,
+                only_one_good_action=only_one_good_action,
+                use_teacher_envelope=args.use_teacher_envelope,
+                max_len=args.search_max_length,
+                mcts_iterations=args.mcts_iterations,
+                heuristic_bootstrapping=args.heuristic_bootstrapping,
+                mcts_her_strategy=args.mcts_her_strategy,
+                mcts_expansion_k=args.mcts_expansion_size,
+                use_fluents=args.use_fluents,
+                use_comps=args.use_comparisons,
+                difficulty=InstanceDifficulty.EASY,
+                fixed_instance_pddl=args.fixed_instance,
+                mcts_exploration_weight=args.mcts_exploration_weight,
+            )
+        )
+
     weights_np = weight_manager.export_numpy()
-    assert len(specs) == 1, f"Currently evaluation only works serially, {len(specs)}"
-    specs[0].evaluation_instance_index = 0
     eval_explorer = ParallelMCTSExplorerEval(
         specs=specs,
         max_workers=args.num_workers,
@@ -1443,7 +1481,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     eval_start_time = time()
     success_rate, outs = eval_explorer.evaluate(weights_np)
     print("spec: ", specs[0])
-    print(f"Inference success rate: {success_rate}, took: {time() - eval_start_time}")
+    print(f"Inference success rate: {success_rate}, took: {time() - eval_start_time}s")
 
 
 @can_profile
