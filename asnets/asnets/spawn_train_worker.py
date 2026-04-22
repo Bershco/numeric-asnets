@@ -629,21 +629,23 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
                 source=DataSource.HEURISTIC_BOOTSTRAP,
             )
     if inp.spec.ENHSP_plan_bootstrap:
-        plan_states, plan_states_pi, plan_states_z = plan_to_trajectory(enhsp_config=inp.spec.enhsp_config,
+        plan_as_traj = plan_to_trajectory(enhsp_config=inp.spec.enhsp_config,
                                                                         pddl_files=planner_exts.pddl_files,
                                                                         act_ident_to_ind=planner_exts.act_ident_to_ind,
                                                                         act_dim=act_dim,
                                                                         init_state=mcts.original_tree_root.state,
                                                                         ctx=ctx, estimator=estimator)
-        for state, pi, z in zip(plan_states, plan_states_pi, plan_states_z):
-            collector.add_sample(
-                cstate=state,
-                children=None,
-                action=None,
-                pi=pi,
-                z=z,
-                source=DataSource.ENHSP_PLAN,
-            )
+        if plan_as_traj:
+            plan_states, plan_states_pi, plan_states_z = plan_as_traj
+            for state, pi, z in zip(plan_states, plan_states_pi, plan_states_z):
+                collector.add_sample(
+                    cstate=state,
+                    children=None,
+                    action=None,
+                    pi=pi,
+                    z=z,
+                    source=DataSource.ENHSP_PLAN,
+                )
     reconstruct_goal_path = inp.spec.goal_path_reconstruction
     if reconstruct_goal_path:
         trajectory_info = collector.get_trajectory_info_as_list()
