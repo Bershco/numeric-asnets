@@ -256,12 +256,6 @@ class PropNetworkWeights:
             num_comps = len(self.dom_meta.unbound_comps) if self.use_comparisons else 0
 
             # Use prob_meta to account for grounding multiplicity
-            # num_ground_props = sum(
-            #     len(self.dom_meta.rel_pred_names(a)) for a in self.dom_meta.unbound_acts) if num_props > 0 else 0
-            # num_ground_flnts = sum(
-            #     len(self.dom_meta.rel_func_names(a)) for a in self.dom_meta.unbound_acts) if num_flnts > 0 else 0
-            # num_ground_comps = sum(
-            #     len(self.dom_meta.rel_comps(a)) for a in self.dom_meta.unbound_acts) if num_comps > 0 else 0
             num_ground_props = len({
                 item
                 for res_list in [self.dom_meta.rel_pred_names(a) for a in self.dom_meta.unbound_acts]
@@ -280,14 +274,6 @@ class PropNetworkWeights:
 
             input_dim = (num_ground_props + num_ground_flnts + num_ground_comps) * hidden_dim
 
-            # print(f"[DEBUG] computed value head input_dim={input_dim} "
-            #       f"({num_ground_props}gP, {num_ground_flnts}gF, {num_ground_comps}gC) "
-            #       f"x hidden={hidden_dim}")
-
-            # hidden_dim = 64
-            # input_dim = ((len(self.dom_meta.pred_names)) +
-            #              (len(self.dom_meta.func_names) if self.use_fluents else 0) +
-            #              (len(self.dom_meta.unbound_comps) if self.use_comparisons else 0))
 
             # === value_module ===
             def value_mod_in_size(_: str, hid_idx: int) -> int:
@@ -557,8 +543,8 @@ class PropNetwork(tf.keras.layers.Layer):
                  **kwargs):
         super().__init__(trainable=trainable, name=name, dtype=dtype, dynamic=dynamic, **kwargs)
 
-        self._weight_manager: PropNetworkWeights = to_local(weight_manager)
-        self._prob_meta = to_local(problem_meta)
+        self._weight_manager: PropNetworkWeights = weight_manager
+        self._prob_meta = problem_meta
         self._debug = debug
         # I tried ReLU, tanh, softplus, & leaky ReLU before settling on ELU for
         # best combination of numeric stability + sample efficiency
@@ -1081,11 +1067,9 @@ def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
         use_fluents=args.use_fluents,
         use_comparisons=args.use_comparisons)
 
-
 def configure_tf_gpu_memory_growth():
     gpus = tf.config.list_physical_devices("GPU")
     if not gpus:
-        # print("[TF_GPU] no GPU detected")
         return
     for gpu in gpus:
         tf.config.experimental.set_memory_growth(gpu, True)

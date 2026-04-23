@@ -34,9 +34,9 @@ class TrainingMCTS(MCTS):
 
     def get_single_node_policy_value(self, node, training=False):
         act_dist, value = self.network(node.as_network_input, training=training)
-        if self.estimator_coeff:
+        alpha = self.estimator_coeff
+        if alpha:
             est_v, est_pi = self.ctx.get_state_v_pi_one_hot_est(node.state)
-            alpha = self.estimator_coeff
             # Identical logic: value = value * (1-alpha) + est_v * alpha
             value += alpha * (est_v - value)
             act_dist += alpha * (est_pi - act_dist)
