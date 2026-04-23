@@ -999,7 +999,7 @@ def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
         skip=args.skip,
         use_fluents=args.use_fluents,
         use_comparisons=args.use_comparisons,
-        value_head_enabled=not args.value_head_disabled)
+        value_head_enabled=not args.disable_value_head)
 
 def configure_tf_gpu_memory_growth():
     gpus = tf.config.list_physical_devices("GPU")
