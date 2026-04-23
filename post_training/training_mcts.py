@@ -33,14 +33,17 @@ class TrainingMCTS(MCTS):
         self.estimator_mode = EstimatorMode.V_ONLY
 
     def get_single_node_policy_value(self, node, training=False):
-        act_dist, value = self.network(node.as_network_input, training=training)
-        alpha = self.estimator_coeff
-        if alpha:
-            est_v, est_pi = self.ctx.get_state_v_pi_one_hot_est(node.state)
-            # Identical logic: value = value * (1-alpha) + est_v * alpha
-            value += alpha * (est_v - value)
-            act_dist += alpha * (est_pi - act_dist)
-        return act_dist, value
+        if self.network.value_network_enabled:
+            act_dist, value = self.network(node.as_network_input, training=training)
+            alpha = self.estimator_coeff
+            if alpha:
+                est_v, est_pi = self.ctx.get_state_v_pi_one_hot_est(node.state)
+                # Identical logic: value = value * (1-alpha) + est_v * alpha
+                value += alpha * (est_v - value)
+                act_dist += alpha * (est_pi - act_dist)
+            return act_dist, value
+        else:
+            return self.network(node.as_network_input, training=training)
 
     def sharpen_pi(self, pi):
         T = self.sharpen_pi_T
@@ -117,24 +120,34 @@ class TrainingMCTS(MCTS):
         if self.use_batched_inference and len(children_network_repr) > 0:
 
             batch_tensor = tf.stack(children_network_repr)
+            if self.network.value_head_enabled:
+                pred_pi_batch, pred_v_batch = self.network(batch_tensor, training=False)
+                pred_pi_batch = pred_pi_batch.numpy().astype(np.float32, copy=False)
+                pred_v_batch = pred_v_batch.numpy().flatten()
 
-            pred_pi_batch, pred_v_batch = self.network(batch_tensor, training=False)
-
-            pred_pi_batch = pred_pi_batch.numpy().astype(np.float32, copy=False)
-            pred_v_batch = pred_v_batch.numpy().flatten()
-
-            for i, child in enumerate(children_nodes):
-                child.act_dist = pred_pi_batch[i]
-                child.pred_value = float(pred_v_batch[i])
+                for i, child in enumerate(children_nodes):
+                    child.act_dist = pred_pi_batch[i]
+                    child.pred_value = float(pred_v_batch[i])
+            else:
+                pred_pi_batch = self.network(batch_tensor, training=False)
+                pred_pi_batch = pred_pi_batch.numpy().astype(np.float32, copy=False)
+                for i, child in enumerate(children_nodes):
+                    child.act_dist = pred_pi_batch[i]
+                    child.pred_value = 0.0 if not child.goal_state else 1.0
 
         else:
+            # FIXME: this needs a fix (regarding the 'get_single_node_policy_value' method call) or else this will raise errors.
+            if self.network.value_head_enabled:
+                for child in children_nodes:
+                    act_dist, value = self.get_single_node_policy_value(child)
 
-            for child in children_nodes:
-                act_dist, value = self.get_single_node_policy_value(child)
-
-                child.act_dist = np.array(act_dist).flatten().astype(np.float32)
-                child.pred_value = float(value)
-
+                    child.act_dist = np.array(act_dist).flatten().astype(np.float32)
+                    child.pred_value = float(value)
+            else:
+                for child in children_nodes:
+                    act_dist = self.get_single_node_policy_value(child)
+                    child.act_dist = np.array(act_dist).flatten().astype(np.float32)
+                    child.pred_value = 0.0 if not child.goal_state else 1.0
         node.children = FixedChildMap(actions, children_nodes, edge_priors)
 
     def _evaluate_node(self, node: MCTSNode) -> float:
@@ -376,6 +389,10 @@ class TrainingMCTS(MCTS):
     def ensure_root_act_dist_value(self):
         assert self.curr_tree_root is not None
         self.curr_tree_root.as_network_input = self.curr_tree_root.state.to_network_input()
-        act_dist, value = self.network(self.curr_tree_root.as_network_input)
+        if self.network.value_head_enabled:
+            act_dist, value = self.network(self.curr_tree_root.as_network_input)
+            self.curr_tree_root.pred_value = float(value.numpy().squeeze())
+        else:
+            act_dist = self.network(self.curr_tree_root.as_network_input)
+            self.curr_tree_root.pred_value = 0.0 if not self.curr_tree_root.goal_state else 1.0
         self.curr_tree_root.act_dist = tf.squeeze(act_dist).numpy().astype(np.float32)
-        self.curr_tree_root.pred_value = float(value.numpy().squeeze())

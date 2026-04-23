@@ -1,7 +1,6 @@
 from collections import Counter, deque
 from enum import Enum
 from functools import lru_cache
-from itertools import repeat
 import joblib
 import logging
 import numpy as np
@@ -11,7 +10,7 @@ import tensorflow as tf
 from time import time
 import tqdm.auto as tqdm
 from types import ModuleType
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Set
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 import datetime
 
 from asnets.heur_inputs import ActionCountDataGenerator, \
@@ -19,19 +18,15 @@ from asnets.heur_inputs import ActionCountDataGenerator, \
     NumericLandmarkGenerator
 from asnets.utils.generator_utils import InstanceDifficulty, get_problem_names
 from asnets.utils.mdpsim_utils import parse_problem_args
-from asnets.utils.rpyc_utils import to_local, find_netrefs
 from asnets.prob_dom_meta import BoundAction, DomainType, get_domain_meta, \
     get_problem_meta
 from asnets.interfaces.jpddl_interface import start_jvm
 from asnets.interfaces.ssipp_interface import set_up_ssipp
-from asnets.state_reprs import compute_observation_dim, compute_action_dim, \
-    get_action_name, sample_next_state, get_init_cstate, CanonicalState
-from asnets.teacher import DomainSpecificTeacher, FDTeacher, MetricFFTeacher, \
-    SSiPPTeacher, Teacher, TeacherException, ENHSPTeacher
+from asnets.state_reprs import CanonicalState
+from asnets.teacher import Teacher
 from asnets.utils.prof_utils import can_profile
 from asnets.utils.pddl_utils import get_domain_file
-from asnets.utils.py_utils import RandomPopContainer, TimerContext, \
-    strip_parens, weak_ref_to
+from asnets.utils.py_utils import TimerContext, strip_parens, weak_ref_to
 from asnets.utils.tf_utils import cross_entropy, mean_squared_error
 import jpype
 import jpype.imports
@@ -135,122 +130,6 @@ class WeightedReplayBuffer:
         item_counter = self.added_items.popleft()
         self.counter.subtract(item_counter)
         self.counter += Counter()  # remove zero and negative counts
-
-
-class ProblemServiceConfig(object):
-    """Configuration for a ProblemService. This is a separate class so that
-    the config can be serialised and sent to the remote server."""
-
-    def __init__(
-            self,
-            pddl_files: List[str],
-            # init_problem_name: str,
-            domain_type: DomainType,
-            *,
-            domain=None,
-            ssipp_dg_heuristic: str = None,
-            use_lm_cuts: bool = False,
-            use_numeric_landmarks: bool = False,
-            use_contributions: bool = False,
-            use_act_history: bool = False,
-            # ??? what does this do?
-            # Oh, it controls the maximum length of training trajectories! That
-            # explains why I'm not able to solve some certain big training
-            # problems.
-            # FIXME: this max_len should be adjusted based on the V(s0)
-            # calculated by the teacher planner! Maybe add a separate method
-            # for that (like "exposed_find_path_length") that plans on the
-            # first state & uses the result to figure out what length should
-            # be.
-            fd_heuristic="astar-hadd",
-            ssipp_teacher_heuristic: str = 'lm-cut',
-            enhsp_config: str = 'hadd-gbfs',
-            max_len: int = 50,
-            her_k: int = 0,
-            training_mcts_iterations: int = 10,
-            planner_bootstrapping: bool = False,
-            planner_bootstrapping_her: bool = False,
-            heuristic_bootstrapping: bool = False,
-            difficulty: InstanceDifficulty = InstanceDifficulty.EASY,
-            bootstrap_k: int = 3,
-            mcts_expansion_k: int = 10,
-            mcts_her_strategy: bool = False,
-            teacher_planner: str,
-            random_seed: int = None,
-            teacher_timeout_s: int = 1800,
-            only_one_good_action: bool = False,
-            use_teacher_envelope: bool = True,
-            use_fluents: bool = False,
-            use_comps: bool = False,
-            slot_id: int = None,
-    ):
-        """Initialise a ProblemServiceConfig. This Config will allow
-        initialisation of a ProblemService, which involves:
-        - Initialising mdpsim and ssipp (requires pddl_files, problem_name)
-        - Initialising data generators. This might be easiest to achieve with
-          just a list of generator class names and arguments (although I
-          still need to make sure those are actually deep copied, grumble
-          grumble).
-
-        Args:
-            pdll_files (List[str]): List of PDDL files to load.
-            init_problem_name (str): Name of the problem to load.
-            domain_type (DomainType): Type of the domain.
-            ssipp_dg_heuristic (str, optional): Name of the heuristic to use.
-            Defaults to None.
-            use_lm_cuts (bool, optional): Whether to use lm-cut heuristic.
-            Defaults to False.
-            use_act_history (bool, optional): Whether to use action history
-            as input to the heuristic. Defaults to False.
-            fd_heuristic (str, optional): Name of the heuristic to use for 
-            FastDownward. Defaults to 'astar-hadd'.
-            ssipp_teacher_heuristic (str, optional): Name of the heuristic to
-            use for SSiPP. Defaults to 'lm-cut'.
-            enhsp_config (str, optional): Name of the configuration to use for
-            unified-planning when using ENHSP. Defaults to None.
-            max_len (int, optional): Maximum length of training trajectories.
-            Defaults to 50.
-            teacher_planner (str, optional): Name of the planner to use for
-            teacher. Defaults to None.
-            random_seed (int, optional): Random seed to use. Defaults to None.
-            only_one_good_action (bool, optional): Whether to only use the
-            teacher action as a positive example. Controls whether planner
-            should return accurate Q-values (False) or return Q-values that only
-            make its favourite action look good (True). Defaults to False.
-            use_teacher_envelope (bool, optional): Whether to use an entire
-            policy envelope from teacher (True), or just a rollout (False).
-            Defaults to True.
-        """
-        self.pddl_files = pddl_files
-        # self.init_problem_name = init_problem_name
-        self.domain = domain
-        self.difficulty = difficulty
-        self.domain_type = domain_type
-        self.ssipp_dg_heuristic = ssipp_dg_heuristic
-        self.use_lm_cuts = use_lm_cuts
-        self.use_numeric_landmarks = use_numeric_landmarks
-        self.use_contributions = use_contributions
-        self.use_act_history = use_act_history
-        self.fd_heuristic = fd_heuristic
-        self.ssipp_teacher_heuristic = ssipp_teacher_heuristic
-        self.enhsp_config = enhsp_config
-        self.max_len = max_len
-        self.random_seed = random_seed
-        self.teacher_planner = teacher_planner
-        self.teacher_timeout_s = teacher_timeout_s
-        self.only_one_good_action = only_one_good_action
-        self.use_teacher_envelope = use_teacher_envelope
-        self.her_k = her_k
-        self.training_mcts_iterations = training_mcts_iterations
-        self.planner_bootstrapping = planner_bootstrapping
-        self.planner_bootstrapping_her = planner_bootstrapping_her
-        self.heuristic_bootstrapping = heuristic_bootstrapping
-        self.mcts_her_strategy = mcts_her_strategy
-        self.bootstrap_k = bootstrap_k
-        self.mcts_expansion_k = mcts_expansion_k
-        self.use_fluents = use_fluents
-        self.use_comps = use_comps
-        self.slot_id = slot_id
 
 
 class PlannerExtensions(object):
@@ -456,19 +335,6 @@ def log_grad_norms(grads_and_vars):
     tf_logger.info(
         f"[TF_GRAD_NORMS_LOG] {base_name + '/' if base_name is not None else ''}value_grad_norm : {value_grad_norm}")
 
-
-def log_policy_target(pi_target_batch, problem: 'SingleProblem'):
-    sampled_pi_targets_ind = np.random.choice(pi_target_batch.shape[0], size=3, replace=False)
-    for pi_target_ind in sampled_pi_targets_ind:
-        pi_target = pi_target_batch[pi_target_ind]
-        pi_target_first_ten_entries = pi_target[:10]
-        pi_target_sum = np.sum(pi_target)
-        pi_target_argmax = np.argmax(pi_target)
-        pi_target_argmax_name = problem.prob_meta.bound_acts_ordered[pi_target_argmax].__str__()
-        LOGGER.info(
-            f"[POLICY_TARGET_LOG - {problem.name}] pi_target (first 10 entries): {pi_target_first_ten_entries}, sum: {pi_target_sum} argmax: {pi_target_argmax}|{pi_target_argmax_name}")
-
-
 def tf_and_log(name: str, value):
     tf.summary.scalar(name, value)
     base_name = tf.get_current_name_scope()
@@ -593,7 +459,6 @@ class SupervisedTrainer:
                  summary_writer,
                  explorer,
                  validator,
-                 strategy,
                  start_time,
                  scratch_dir,
                  snapshot_dir,
@@ -615,12 +480,10 @@ class SupervisedTrainer:
                  early_stop=20,
                  save_every=20,
                  dk="dk",
-                 policy_only=False,
                  balanced_success_rate=True,
                  ):
         # gets incremented to deal with TF
         self.batches_seen = 0
-        self.policy_only = policy_only
         self.balanced_success_rate = balanced_success_rate
         self.weight_manager = weight_manager
         # may be None if no summaries tuple()should be written
@@ -630,7 +493,6 @@ class SupervisedTrainer:
         self.batch_size_per_problem = max(batch_size // self.explorer.num_slots(), 1)
         self.opt_batches_per_epoch = opt_batches_per_epoch
         self.hide_progress = hide_progress
-        self.strategy = strategy
         self.tf_init_done = False
         self.lr = lr
         self.l1_reg_coeff = l1_reg_coeff
@@ -682,87 +544,6 @@ class SupervisedTrainer:
             self.optimiser = tf.keras.optimizers.Adam(learning_rate=self.lr)
         self._log_ops = {}
         self.tf_init_done = True
-
-    def _optimise(self, n_batches):
-        params = self.weight_manager.all_weights
-
-        all_batches_iter = self._make_batches(n_batches)
-        tr = tqdm.tqdm(all_batches_iter, desc='batch', total=n_batches)
-
-        sample_indices = np.random.choice(n_batches, size=min(3, n_batches), replace=False)
-
-        start_time = time()
-        losses = []
-
-        for feed_dict in tr:
-            with tf.name_scope('grads_opt'):
-                with tf.GradientTape() as tape:
-                    per_prob_losses = []
-                    per_prob_weights = []
-
-                    for i, problem in enumerate(self.problems):
-                        batch = feed_dict[i]
-
-                        # empty_feed_value(...) should return arrays with correct shapes
-                        # but may represent "no real data". Detect and skip.
-                        if batch is None:
-                            continue
-
-                        if self.policy_only:
-                            obs, pi_target = batch
-                        else:
-                            obs, pi_target, z_target = batch
-
-                        # Detect “empty” batch (your empty_feed_value likely returns zeros)
-                        # If you have a cleaner sentinel, use that instead.
-                        if obs is None or len(obs) == 0:
-                            continue
-
-                        # Ensure batch dims
-                        obs = np.asarray(obs)
-                        if obs.ndim == 1:
-                            obs = np.expand_dims(obs, axis=0)
-
-                        if tr.n in sample_indices:
-                            # optional debug hook
-                            try:
-                                log_policy_target(pi_target, problem)
-                            except Exception:
-                                pass
-
-                        if self.policy_only:
-                            pi_pred = problem.network(obs)
-                            loss_i = self.loss_fn([pi_pred], [pi_target])
-                        else:
-                            pi_pred, v_pred = problem.network(obs)
-                            loss_i = self.loss_fn(
-                                [pi_pred], [pi_target],
-                                target_values=[z_target],
-                                pred_values=[v_pred],
-                            )
-
-                        # Weight by how many samples contributed in this slot-batch
-                        bs_i = int(obs.shape[0])
-                        per_prob_losses.append(loss_i * bs_i)
-                        per_prob_weights.append(bs_i)
-
-                    # Pool across slots (epoch-pooled)
-                    assert len(per_prob_weights) > 0, "No non-empty batches — epoch_data had nothing usable."
-                    total_w = tf.cast(tf.add_n([tf.constant(w, dtype=tf.float32) for w in per_prob_weights]),
-                                      tf.float32)
-                    loss = tf.add_n(per_prob_losses) / total_w
-
-                grads = tape.gradient(loss, params)
-                self.optimiser.apply_gradients(zip(grads, params))
-
-            tr.set_postfix(loss=float(loss))
-            losses.append(float(loss))
-            if (self.batches_seen % 10) == 0:
-                tf_and_log('train-loss', loss)
-            self.batches_seen += 1
-
-        self.explorer.update_learning_time(time() - start_time)
-        return float(np.mean(losses))
 
     def train(self, max_epochs):
         best_rate = None
@@ -873,7 +654,7 @@ class SupervisedTrainer:
             # --------------------------------------------------
             # 2.1 validation
             # --------------------------------------------------
-            if epoch_num % 10 == 0:# and epoch_num > 0:
+            if epoch_num % 10 == 0:  # and epoch_num > 0:
                 succ_rate, validation_outs = self.validator.evaluate(self.weight_manager.export_numpy())
                 print(f"[VALIDATION] Current network validation success rate: {succ_rate}")
                 for i, val_worker_out in enumerate(validation_outs):
@@ -955,91 +736,6 @@ class SupervisedTrainer:
         self.optimiser.apply_gradients(zip(mean_grads_tf, params))
 
         return float(sum(losses) / len(losses)), float(sum(succs) / len(succs)), int(total)
-
-    @can_profile
-    def _make_batches(self, n_batches: int):
-        """
-        Epoch-pooled batching:
-        - Consumes ONLY the current epoch's exploration data (self._epoch_data).
-        - No replay buffer.
-        - Supports variable obs/act dims by batching PER problem slot (network instance),
-          then pooling at the loss level in _optimise.
-        """
-        assert hasattr(self, "_epoch_data") and self._epoch_data is not None, \
-            "self._epoch_data missing. In train(): succs_probs, epoch_data = explorer.extend_replay(); self._epoch_data = epoch_data"
-
-        cached_shapes = {p.name: (p.obs_dim, p.act_dim) for p in self.problems}
-
-        # Build per-problem iterators that sample from that problem's epoch data
-        batch_iters = []
-        for problem in self.problems:
-            obs_dim, act_dim = cached_shapes[problem.name]
-
-            if problem not in self._epoch_data or self._epoch_data[problem] is None:
-                # no samples this epoch for this slot
-                batch_iters.append(repeat(None))
-                continue
-
-            prob_obs, prob_pi, prob_z = self._epoch_data[problem]
-
-            # Safety: allow z to be (N,1)
-            prob_z = np.asarray(prob_z)
-            if prob_z.ndim == 2 and prob_z.shape[1] == 1:
-                prob_z = prob_z[:, 0]
-
-            # If the explorer returned python lists, normalize to arrays
-            prob_obs = np.asarray(prob_obs)
-            prob_pi = np.asarray(prob_pi)
-            prob_z = np.asarray(prob_z)
-
-            # Basic sanity
-            if len(prob_obs) == 0:
-                batch_iters.append(repeat(None))
-                continue
-
-            N = len(prob_obs)
-            bs = self.batch_size_per_problem
-
-            def epoch_sampler():
-                for _ in range(n_batches):
-                    if N <= bs:
-                        idx = np.arange(N)
-                    else:
-                        idx = np.random.choice(N, size=bs, replace=False)
-
-                    obs_b = prob_obs[idx]
-                    pi_b = prob_pi[idx]
-                    if self.policy_only:
-                        yield (obs_b, pi_b)
-                    else:
-                        z_b = prob_z[idx]
-                        yield (obs_b, pi_b, z_b)
-
-            batch_iters.append(epoch_sampler())
-
-        # Combine into aligned per-problem “feed_dict”
-        combined = zip(*batch_iters)
-        for combined_batch in combined:
-            yield_val = []
-            have_any = False
-
-            for problem, batch in zip(self.problems, combined_batch):
-                yield_val.append(batch)
-                have_any = True
-
-            assert have_any, "No epoch data at all for any problem — exploration produced nothing."
-            yield yield_val
-
-    def _get_replay_sizes(self):
-        """Get the sizes of replay buffers for each problem."""
-        # to avoid circular imports
-        rv = []
-        for problem in self.problems:
-            rv.append(
-                # to_local(problem.problem_service.get_replay_size())
-                problem.get_replay_size()
-            )
-        return rv
 
     def calculate_balanced_succ_rate(self, worker_outs):
         if not self.balanced_success_rate:
@@ -1164,8 +860,7 @@ class ManualLoss:
 
                 # zero out disabled or dead-end actions!
                 problem_service = problem.problem_service
-                dead_end_value = to_local(
-                    problem_service.get_ssipp_dead_end_value())
+                dead_end_value = problem_service.get_ssipp_dead_end_value()
                 act_label_dist *= tf.cast(act_labels < dead_end_value,
                                           'float32')
                 # this tf.cond() call ensures that this still works when batch

@@ -17,7 +17,6 @@ def run_epoch_spawn_grads(
         weights_np: dict,
         dropout: float,
         debug: bool,
-        policy_only: bool,
         mse_coeff: float,
         l2_reg_coeff: float,
         l1_reg_coeff: float,
@@ -43,7 +42,6 @@ def run_epoch_spawn_grads(
         weights_np: Network weights passed to each worker.
         dropout: Dropout rate used by workers.
         debug: Whether debug mode is enabled.
-        policy_only: Whether to train/evaluate policy only.
         mse_coeff: MSE loss coefficient.
         l2_reg_coeff: L2 regularization coefficient.
         l1_reg_coeff: L1 regularization coefficient.
@@ -74,7 +72,6 @@ def run_epoch_spawn_grads(
                     weights_np=weights_np,
                     dropout=dropout,
                     debug=debug,
-                    policy_only=policy_only,
                     log=log,
                     PROFILE_DIR=PROFILE_DIR,
                     corrupt_pi=corrupt_pi,
@@ -125,7 +122,6 @@ def run_epoch_spawn_eval(specs, weights_np, max_workers=None) -> list[Optional[E
                 epoch=None,
                 weights_np=weights_np,
                 debug=False,
-                policy_only=False,
             )
             fut: Future[EvalWorkerOutput] = ex.submit(run_worker_eval, inp)
             fut_to_idx[fut] = i

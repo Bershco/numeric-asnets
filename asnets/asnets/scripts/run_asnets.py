@@ -3,6 +3,7 @@
 import argparse
 import atexit
 import copy
+import ctypes
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
@@ -34,8 +35,7 @@ import tqdm.auto as tqdm
 from asnets.explorer import StaticExplorer, DynamicExplorer
 from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
 from asnets.supervised import SupervisedTrainer, SupervisedObjective, \
-    ProblemServiceConfig, PlannerExtensions
-from asnets.multiprob import ProblemServer, to_local, parent_death_pact
+    PlannerExtensions
 from asnets.utils.generator_utils import Domain, extract_domain_name_from_file, InstanceDifficulty
 from asnets.utils.prof_utils import can_profile
 from asnets.utils.py_utils import set_random_seeds
@@ -391,8 +391,7 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
     print(f'\n-------------> Limit is set to {limit}\n')
     trial_start_time = time()
     problem_service = problem_server.service
-    # curr_state = to_local(problem_service.env_reset())
-    curr_state_id, curr_state_hash = to_local(problem_service.env_reset())
+    curr_state_id, curr_state_hash = problem_service.env_reset()
 
     # total cost of this run
     cost = 0
@@ -402,7 +401,7 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
             print('Graceful_timeout has been reached :)')
             break
         action = policy_evaluator.get_action_from_cstate_id_hash(curr_state_id, curr_state_hash, cost)
-        path.append(to_local(problem_service.action_name(action)))
+        path.append(problem_service.action_name(action))
         curr_state_id, curr_sate_hash, step_cost, is_goal, is_terminal = move_to_next_state(problem_service,
                                                                                             policy_evaluator, action,
                                                                                             cost, current_code=False)
@@ -427,7 +426,7 @@ def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, gr
 
 def move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=True):
     if current_code:
-        curr_state, step_cost = to_local(problem_service.env_step(action))
+        curr_state, step_cost = problem_service.env_step(action)
         policy_evaluator.progress_to(action, curr_state, cost + step_cost)
         return curr_state, step_cost  # FIXME: this currently does not work, must return also if the curr_state is goal
     else:
@@ -910,10 +909,10 @@ parser.add_argument(
          ' otherwise only limits number of generated children nodes to be min(mcts_expansion_size,(mcts_iterations - 1))'
 )
 parser.add_argument(
-    '--policy-network-only',
+    '--disable-value-head',
     action='store_true',
     default=False,
-    help='Revert to policy network only instead of the new dual-head network (for ablation study)'
+    help='Disable the usage of value head, meaning policy network only instead of two-headed.'
 )
 parser.add_argument(
     '--mcts-iterations',
@@ -1089,7 +1088,7 @@ def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
     out_dict = {
         'no_train': args.no_train,
         'args_problems': args.problems,
-        'problem': to_local(problem_server.service.get_current_problem_name()),
+        'problem': problem_server.service.get_current_problem_name(),
         'timeout': args.timeout,
         'hidden_size': args.hidden_size,
         'num_layers': args.num_layers,
@@ -1126,11 +1125,10 @@ class SingleProblem(object):
         # would kill the child process!)
         self.problem_server = problem_server
         self.problem_service = problem_server.service
-        self.prob_meta, self.dom_meta = to_local(
-            self.problem_service.get_meta())
-        self.obs_dim = to_local(self.problem_service.get_obs_dim())
-        self.act_dim = to_local(self.problem_service.get_act_dim())
-        self.dg_extra_dim = to_local(self.problem_service.get_dg_extra_dim())
+        self.prob_meta, self.dom_meta = self.problem_service.get_meta()
+        self.obs_dim = self.problem_service.get_obs_dim()
+        self.act_dim = self.problem_service.get_act_dim()
+        self.dg_extra_dim = self.problem_service.get_dg_extra_dim()
         # will get filled in later
 
     @property
@@ -1140,101 +1138,6 @@ class SingleProblem(object):
     @network.setter
     def network(self, network):
         self.problem_server.network = network
-
-
-@can_profile
-def make_services(args):
-    """Make a ProblemService for each relevant problem."""
-    servers = []
-
-    def kill_servers():
-        for server in servers:
-            try:
-                server.stop()
-            except Exception as e:
-                print("Got exception %r while trying to stop %r" % (e, server))
-
-    atexit.register(kill_servers)
-
-    only_one_good_action = args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE or args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
-
-    domain = Domain.from_pddl_name(extract_domain_name_from_file(args.pddls[0]))
-    LOGGER.info(f"Starting to initialize {args.num_workers} problem servers")
-    for slot_id in range(args.num_workers):
-        random_seed = None if args.seed is None \
-            else args.seed + slot_id
-        service_config = ProblemServiceConfig(
-            args.pddls,
-            args.domain_type,
-            domain=domain,
-            random_seed=random_seed,
-            ssipp_dg_heuristic=args.ssipp_dg_heuristic,
-            use_lm_cuts=args.use_lm_cuts,
-            use_numeric_landmarks=args.use_numeric_landmarks,
-            use_contributions=args.use_contributions,
-            use_act_history=args.use_act_history,
-            fd_heuristic=args.fd_teacher_heuristic,
-            ssipp_teacher_heuristic=args.ssipp_teacher_heuristic,
-            enhsp_config=args.enhsp_config,
-            teacher_planner=args.teacher_planner,
-            teacher_timeout_s=args.teacher_timeout_s,
-            only_one_good_action=only_one_good_action,
-            use_teacher_envelope=args.use_teacher_envelope,
-            max_len=args.search_max_length,
-            training_mcts_iterations=args.mcts_iterations,
-            heuristic_bootstrapping=args.heuristic_bootstrapping,
-            mcts_her_strategy=args.mcts_her_strategy,
-            mcts_expansion_k=args.mcts_expansion_size,
-            use_fluents=args.use_fluents,
-            use_comps=args.use_comparisons,
-            slot_id=slot_id,
-        )
-        servers.append(ProblemServer(service_config))
-    with ThreadPoolExecutor(max_workers=min(32, len(servers))) as ex:
-        futs = [ex.submit(s.connect) for s in servers]
-        for f in as_completed(futs):
-            f.result()  # raises immediately on connect failure
-
-    # Dispatch initialise() for ALL servers
-    init_results = []
-    for s in servers:
-        init_async = rpyc.async_(s.service.initialise)  # netref lookup happens once here
-        init_results.append(init_async())
-
-    # Ensure initialise() completed everywhere (and surface remote exceptions)
-    for ar in init_results:
-        _ = ar.value
-
-    step2_results = []
-    step3_results = []
-
-    for s in servers:
-        # estimator init after initialise barrier
-        init_est_async = rpyc.async_(s.service.initialise_estimator)
-        step2_results.append(init_est_async(enhsp_config=args.mcts_heuristic))
-
-        # local setter ok (not RPyC)
-        s.set_enhsp_config(args.mcts_heuristic)
-
-        set_pol_async = rpyc.async_(s.service.set_policy_only)
-        step3_results.append(set_pol_async(bool(args.policy_network_only)))
-
-        # local setter ok
-        s.set_policy_only(bool(args.policy_network_only))
-
-    # Barrier 2: wait + surface remote exceptions
-    for ar in step2_results:
-        _ = ar.value
-    for ar in step3_results:
-        _ = ar.value
-    LOGGER.info("Finished initializing problem servers")
-    # do this as a separate loop so that we can wait for services to spool
-    # up in background
-    weight_manager = None
-    for problem_server in servers:
-        weight_manager = problem_server.register_network(weight_manager, args)
-    return servers, weight_manager
-
 
 @can_profile
 def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
@@ -1342,7 +1245,6 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             specs=specs,
             dropout=args.dropout,
             debug=args.debug_memory,
-            policy_only=args.policy_network_only,
             log=args.worker_logs,
             PROFILE_DIR=args.profile_dir,
             corrupt_pi=args.corrupt_pi,
@@ -1362,19 +1264,12 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             spec.slot_id = i
             validation_specs.append(spec)
         validator = ParallelMCTSExplorerEval(specs=validation_specs, max_workers=min(args.num_workers, len(instances)))
-        strategy = (
-            SupervisedObjective.ANY_GOOD_ACTION
-            if args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
-               and args.policy_network_only
-            else args.sup_objective
-        )
         if not args.freeze_train:
             sup_trainer = SupervisedTrainer(
                 weight_manager=weight_manager,
                 summary_writer=sample_writer,
                 explorer=explorer,
                 validator=validator,
-                strategy=strategy,
                 batch_size=args.supervised_bs,
                 lr=args.supervised_lr,
                 lr_steps=args.lr_steps,
@@ -1392,14 +1287,12 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
                 time_out=args.timeout,
                 use_fluents=args.use_fluents,
                 use_comps=args.use_comparisons,
-                policy_only=args.policy_network_only,
             )
         else:
             sup_trainer = FrozenSupervisedTrainer(
                 weight_manager=weight_manager,
                 summary_writer=sample_writer,
                 explorer=explorer,
-                strategy=strategy,
                 batch_size=args.supervised_bs,
                 lr=args.supervised_lr,
                 lr_steps=args.lr_steps,
@@ -1417,7 +1310,6 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
                 time_out=args.timeout,
                 use_fluents=args.use_fluents,
                 use_comps=args.use_comparisons,
-                policy_only=args.policy_network_only,
                 planner_exts=p,
             )
 
@@ -1497,8 +1389,28 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
     CanonicalState.network_input_config(use_fluents=args.use_fluents,
                                         use_comparisons=args.use_comparisons)
 
-    problems, weight_manager = make_services(args)
+    # problems, weight_manager = make_services(args)
+    # ------------------------------------------------------------
+    # Build planner ONCE (for shapes / network construction)
+    # ------------------------------------------------------------
+    p = PlannerExtensions(
+        args.pddls,
+        args.domain_type,
+        dg_ssipp_heuristic_name=args.ssipp_dg_heuristic,
+        dg_use_lm_cuts=args.use_lm_cuts,
+        dg_use_numeric_landmarks=args.use_numeric_landmarks,
+        dg_use_contributions=args.use_contributions,
+        dg_use_act_history=args.use_act_history,
+    )
+    dg_extra_dim = sum(g.extra_dim for g in p.data_gens)
 
+    # ------------------------------------------------------------
+    # Weight manager
+    # ------------------------------------------------------------
+    weight_manager = make_weight_manager(
+        args, p.domain_meta, dg_extra_dim
+    )
+    problems = [] #FIXME: have backward compatibility work
     # need to create FileWriter *after* creating the policy network itself, or
     # the network will not show up in TB (I assume that the `Graph` view is
     # just a snapshot of the global TF op graph at the time a given
@@ -1532,13 +1444,11 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
                 f'Unknown exploration algorithm: {args.exploration_algorithm}')
 
         # we maintain the old loss for usage of policy network only (instead of dual-head using the new loss)
-        strategy = SupervisedObjective.ANY_GOOD_ACTION if args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST and args.policy_network_only else args.sup_objective
         sup_trainer = SupervisedTrainer(
             problems=problems,
             weight_manager=weight_manager,
             summary_writer=sample_writer,
             explorer=explorer,
-            strategy=strategy,
             batch_size=args.supervised_bs,
             lr=args.supervised_lr,
             lr_steps=args.lr_steps,
@@ -1581,6 +1491,27 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
                     unique_prefix + '-' + problem.name, elapsed_time,
                     iter_num, weight_manager, scratch_dir)
 
+
+def parent_death_pact(signal: signal.Signals=signal.SIGINT) -> None:
+    """Commit to kill current process when parent process dies. This function
+    only works on linux for now. Specifically, it calls prctl() with the
+    operation PR_SET_PDEATHSIG, which is documented in the kernel source code
+    in include/uapi/linux/prctl.h. This operation is available for
+    Linux>=2.1.57.
+
+    Args:
+        signal: the signal to send to the current process when the parent
+        process dies. Defaults to SIGINT.
+    """
+    assert sys.platform == 'linux', \
+        "this fn only works on Linux right now"
+    libc = ctypes.CDLL("libc.so.6")
+    # see include/uapi/linux/prctl.h in kernel
+    PR_SET_PDEATHSIG = 1
+    # last three args are unused for PR_SET_PDEATHSIG
+    retcode = libc.prctl(PR_SET_PDEATHSIG, signal, 0, 0, 0)
+    if retcode != 0:
+        raise Exception("prctl() returned nonzero retcode %d" % retcode)
 
 def main():
     rpyc.core.protocol.DEFAULT_CONFIG.update({

@@ -15,22 +15,12 @@ from asnets.models import configure_tf_gpu_memory_growth
 from post_training.action_selection_policy import build_action_policy
 from .utils.pddl_utils import hlist_to_sexprs, replace_init_state
 
-_T0 = time.time()
-# print(f"[WORKER_IMPORT] pid={os.getpid()} module start", flush=True)
-t = time.time()
 import tensorflow as tf
 
-# print(
-#     f"[WORKER_IMPORT] pid={os.getpid()} import tensorflow: {time.time() - t:.2f}s (since module start {time.time() - _T0:.2f}s)",
-#     flush=True)
 import logging
 
-t = time.time()
 from asnets.models import PropNetworkWeights, PropNetwork
 
-# print(
-#     f"[WORKER_IMPORT] pid={os.getpid()} import asnets models: {time.time() - t:.2f}s (since module start {time.time() - _T0:.2f}s)",
-#     flush=True)
 from asnets.spawn_context import LocalExploreContext
 from asnets.state_reprs import CanonicalState
 from asnets.supervised import PlannerExtensions
@@ -55,7 +45,6 @@ class WorkerInput:
     epoch: Optional[int]
     dropout: float
     debug: bool
-    policy_only: bool
 
     # loss cfg
     mse_coeff: float
@@ -211,7 +200,6 @@ class EvalWorkerInput:
     weights_np: dict
     epoch: Optional[int]
     debug: bool
-    policy_only: bool
 
     @property
     def seed(self):
@@ -280,17 +268,11 @@ def _rebuild_weight_manager_local(prob_meta, weights_np: dict):
     return wm
 
 
-def _build_network_local(weight_manager_local, prob_meta, debug, policy_only):
-    """
-    MUST return a Keras-callable network:
-        if policy_only: pi_pred
-        else: (pi_pred, v_pred)
-    """
+def _build_network_local(weight_manager_local, prob_meta, debug):
     net = PropNetwork(
         weight_manager=weight_manager_local,
         problem_meta=prob_meta,
         debug=debug,
-        policy_network_only=policy_only,
     )
     return net
 
@@ -487,12 +469,13 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
 
     # local weight vars
     wm_local = _rebuild_weight_manager_local(planner_exts.problem_meta, inp.weights_np)
+    value_head_enabled = wm_local.value_head_enabled
     if inp.log_weights:
         w = wm_local.all_weights[0]
         print(f"{worker_tag} after rebuild:", float(tf.reduce_mean(w)), float(tf.math.reduce_std(w)),
               float(tf.linalg.norm(w)))
     # local network for THIS instance
-    net = _build_network_local(wm_local, planner_exts.problem_meta, inp.debug, inp.policy_only)
+    net = _build_network_local(wm_local, planner_exts.problem_meta, inp.debug)
 
     # ctx for TrainingMCTS
     ctx = LocalExploreContext(
@@ -550,11 +533,10 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
             obs = cstate.to_network_input()
             obs_tf = tf.expand_dims(tf.convert_to_tensor(obs, tf.float32), 0)
 
-            if inp.policy_only:
-                pi_net = net(obs_tf, training=False)
-                z_net = None
+            if value_head_enabled:
+                pi_net, _ = net(obs_tf, training=False)
             else:
-                pi_net, z_net = net(obs_tf, training=False)
+                pi_net = net(obs_tf, training=False)
 
             pi_mcts = tf.stop_gradient(tf.convert_to_tensor(pi, tf.float32))
             pi_net = tf.stop_gradient(pi_net[0])
@@ -699,14 +681,15 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         log_lines.append(
             f"Samples: {pi_tgt_2d.shape[0]}   [{counts_str}]   Hit:{collector.hit_goal}   AppActsμ:{applicable.mean():.2f}")
 
-        # ---- NEW: batched predictions for ALL samples ----
+        # ---- batched predictions for ALL samples ----
         obs_tf = tf.convert_to_tensor(obs_batch, dtype=tf.float32)
 
-        if inp.policy_only:
+        if value_head_enabled:
+            pi_pred_all, v_pred_all = net(obs_tf, training=False)
+        else:
             pi_pred_all = net(obs_tf, training=False)
             v_pred_all = None
-        else:
-            pi_pred_all, v_pred_all = net(obs_tf, training=False)
+
 
         # convert to numpy, squeeze if needed
         pi_pred_all = tf.stop_gradient(pi_pred_all).numpy()
@@ -808,25 +791,26 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
 
         obs_mb = obs_batch[idx]
         pi_mb = pi_tgt[idx]
-        z_mb = z_tgt[idx] if not inp.policy_only else None
+        z_mb = z_tgt[idx] if value_head_enabled else None
 
         with tf.GradientTape() as tape:
-            if inp.policy_only:
-                pi_pred = net(obs_mb, training=True)
-                xent_loss = _policy_xent_loss(pi_pred, tf.convert_to_tensor(pi_mb, dtype=pi_pred.dtype))
-                mse_loss = 0.0
-            else:
+            if value_head_enabled:
                 pi_pred, v_pred = net(obs_mb, training=True)
                 xent_loss = _policy_xent_loss(pi_pred, tf.convert_to_tensor(pi_mb, dtype=pi_pred.dtype))
                 mse_loss = tf.cast(inp.mse_coeff, xent_loss.dtype) * _value_mse_loss(v_pred, tf.convert_to_tensor(z_mb,
                                                                                                                   dtype=v_pred.dtype))
+            else:
+                pi_pred = net(obs_mb, training=True)
+                xent_loss = _policy_xent_loss(pi_pred, tf.convert_to_tensor(pi_mb, dtype=pi_pred.dtype))
+                mse_loss = 0.0
+
 
             reg_loss = _reg_terms(vars_, inp.l2_reg_coeff, inp.l1_reg_coeff, inp.l1_l2_reg_coeff)
             loss = xent_loss + mse_loss + reg_loss
             if inp.log:
                 collector.add_losses(
                     xent_loss.numpy(),
-                    float(mse_loss.numpy()) if not inp.policy_only else 0.0,
+                    float(mse_loss.numpy()) if value_head_enabled else 0.0,
                     reg_loss.numpy(),
                 )
 
@@ -923,7 +907,6 @@ def run_worker_eval(inp: EvalWorkerInput) -> EvalWorkerOutput:
         wm_local,
         planner_exts.problem_meta,
         inp.debug,
-        inp.policy_only,
     )
     ctx = LocalExploreContext(
         planner_exts=planner_exts,

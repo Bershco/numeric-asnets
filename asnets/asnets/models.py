@@ -32,8 +32,7 @@ class PropNetworkWeights:
                  skip: bool,
                  use_fluents: bool,
                  use_comparisons: bool,
-                 policy_network_only: bool = False,
-                 value_head_added : bool = False):
+                 value_head_enabled : bool = False):
         """Initialises weights for a domain-specific problem network.
 
         Args:
@@ -55,8 +54,7 @@ class PropNetworkWeights:
         self.skip: bool = skip
         self.use_fluents: bool = use_fluents
         self.use_comparisons: bool = use_comparisons
-        self.value_head_added = value_head_added
-        self.policy_network_only = policy_network_only
+        self.value_head_enabled = value_head_enabled
         self._make_weights()
 
     def __getstate__(self):
@@ -247,7 +245,7 @@ class PropNetworkWeights:
             final_act_in_size, final_act_name_pfx))
 
         # make value module + head weights
-        if not self.policy_network_only:
+        if self.value_head_enabled:
             # Estimate input dimension for value module
             # Based on how ValueModule.forward() aggregates tensors.
             hidden_dim = self.hidden_sizes[-1][1]
@@ -330,7 +328,6 @@ class PropNetworkWeights:
                 )
             )
 
-            self.value_head_added = True
 
     def _make_modules_weights(self,
                               hid_idx: int,
@@ -417,8 +414,7 @@ class PropNetworkWeights:
             "skip": bool(self.skip),
             "use_fluents": bool(self.use_fluents),
             "use_comparisons": bool(self.use_comparisons),
-            "value_head_added": bool(self.value_head_added),
-            "policy_network_only": bool(self.policy_network_only),
+            "value_head_enabled": bool(self.value_head_enabled),
             "act_weights": conv_list(self.act_weights),
             "prop_weights": conv_list(self.prop_weights),
             "comp_weights": conv_list(self.comp_weights),
@@ -440,8 +436,7 @@ class PropNetworkWeights:
             skip=weights_np["skip"],
             use_fluents=weights_np["use_fluents"],
             use_comparisons=weights_np["use_comparisons"],
-            value_head_added=weights_np["value_head_added"],
-            policy_network_only=weights_np["policy_network_only"],
+            value_head_enabled=weights_np["value_head_enabled"],
         )
 
         # IMPORTANT: variables exist now — overwrite them
@@ -487,7 +482,7 @@ class PropNetworkWeights:
         for dst, src in zip(self.flnt_weights, weights_np["flnt_weights"]):
             assign_block(dst, src)
 
-        if self.value_head_added:
+        if self.value_head_enabled:
             for dst, src in zip(self.value_weights, weights_np["value_weights"]):
                 assign_block(dst, src)
 
@@ -495,35 +490,6 @@ class PropNetworkWeights:
     def save(self, path):
         """Save a snapshot of the current network weights to the given path."""
         joblib.dump(self, path, compress=True)
-
-    def build_network(
-            self,
-            prob_meta: ProblemMeta,
-            dropout: float = 0.0,
-            debug: bool = False,
-            policy_network_only: bool | None = None,
-    ):
-        """
-        Build a PropNetwork view over *this* weight manager.
-
-        IMPORTANT:
-        - Does NOT create new tf.Variables
-        - Reuses self.all_weights
-        - Safe to call multiple times
-        """
-
-        if policy_network_only is None:
-            policy_network_only = self.policy_network_only
-
-        net = PropNetwork(
-            weight_manager=self,
-            problem_meta=prob_meta,
-            dropout=dropout,
-            debug=debug,
-            policy_network_only=policy_network_only,
-        )
-
-        return net
 
 
 class PropNetwork(tf.keras.layers.Layer):
@@ -539,7 +505,6 @@ class PropNetwork(tf.keras.layers.Layer):
                  name: Optional[str] = None,
                  dtype=None,
                  dynamic: bool = False,
-                 policy_network_only: bool = False,
                  **kwargs):
         super().__init__(trainable=trainable, name=name, dtype=dtype, dynamic=dynamic, **kwargs)
 
@@ -570,8 +535,6 @@ class PropNetwork(tf.keras.layers.Layer):
         self.action_layer_input = {}
         self.weights_collection = []
         self.bias_collection = []
-
-        self.policy_network_only = policy_network_only
 
         # hidden layers
         for hid_idx, hid_sizes in enumerate(hidden_sizes):
@@ -676,7 +639,7 @@ class PropNetwork(tf.keras.layers.Layer):
             self.weights_collection.append(weight)
             self.bias_collection.append(bias)
         self.act_layers.append(finals)
-        if not self.policy_network_only:
+        if self._weight_manager.value_head_enabled:
             vw = self._weight_manager.value_weights
 
             # unpack by index: [0]=module, [1]=hidden, [2]=out
@@ -715,6 +678,10 @@ class PropNetwork(tf.keras.layers.Layer):
             self.value_out_layer.kernel = val_out_W
             self.value_out_layer.bias = val_out_b
         self._trainable_weights = list(self._weight_manager.all_weights) # Supposedly tells keras these are trainable
+
+    @property
+    def value_head_enabled(self):
+        return self._weight_manager.value_head_enabled
 
     def _split_input(self,
                      obs: tf.Tensor,
@@ -967,7 +934,7 @@ class PropNetwork(tf.keras.layers.Layer):
         # policy head
         policy_out = masked_softmax(l_pre_softmax, act_mask)
 
-        if self.policy_network_only:
+        if not self.value_head_enabled:
             return policy_out
 
         # value head
@@ -980,9 +947,6 @@ class PropNetwork(tf.keras.layers.Layer):
         value_hidden = self.value_hidden_layer(value_features)
         value_out = self.value_out_layer(value_hidden)
         return policy_out, value_out
-
-    def policy_only(self) -> bool:
-        return self.policy_network_only
 
 
 def _merge_finals(prob_meta, final_acts):
@@ -1025,37 +989,6 @@ def _merge_finals(prob_meta, final_acts):
 
     return rv
 
-
-@can_profile
-def make_network(args,
-                 dom_meta,
-                 prob_meta,
-                 dg_extra_dim=None,
-                 weight_manager=None):
-    # can make normal FC MLP or an action/proposition network
-    if weight_manager is not None:
-        print('Re-using same weight manager')
-    elif args.resume_from:
-        print('Reloading weight manager (resuming training)')
-        resume_from_str = args.resume_from
-        print(f'\n\n[model-loading] - Resuming from: {args.resume_from}\n\n')
-        resume_from_str = resume_from_str.replace("\\",'/') # for Windows support, do not delete.
-        resume_from_path_obj = Path(resume_from_str)
-        resume_from_path_obj = resume_from_path_obj.resolve(strict=False)
-        weight_manager = joblib.load(resume_from_path_obj)
-    else:
-        print('Creating new weight manager (not resuming)')
-        # TODO: should save all network metadata with the network weights or
-        # within a separate config class, INCLUDING heuristic configuration
-        weight_manager = make_weight_manager(args, dom_meta, dg_extra_dim)
-    custom_network = PropNetwork(
-        weight_manager, prob_meta, dropout=args.dropout, debug=args.net_debug, policy_network_only=args.policy_network_only)
-    hits = find_netrefs(custom_network)
-    assert not hits, f"Netrefs leaked into local model: {hits}"
-
-    # weight_manager will sometimes be None
-    return custom_network, weight_manager
-
 @can_profile
 def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
     return PropNetworkWeights(
@@ -1065,7 +998,8 @@ def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
         extra_dim=dg_extra_dim,
         skip=args.skip,
         use_fluents=args.use_fluents,
-        use_comparisons=args.use_comparisons)
+        use_comparisons=args.use_comparisons,
+        value_head_enabled=not args.value_head_disabled)
 
 def configure_tf_gpu_memory_growth():
     gpus = tf.config.list_physical_devices("GPU")

@@ -15,7 +15,6 @@ rpyc.core.protocol.DEFAULT_CONFIG.update({
 from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import get_init_cstate, sample_next_state, compute_action_dim
 from asnets.supervised import PlannerExtensions, ProblemServiceConfig
-from asnets.multiprob import ProblemServer, to_local
 
 # Import your evaluator & node wrappers
 from run_asnets import MonteCarloPolicyEvaluator, move_to_next_state  # uses your _expand/find_children
@@ -50,13 +49,13 @@ class LocalService:
 
 def _maybe_to_local_pair(x):
     """Robustly obtain (state, cost) from local or RPyC result."""
-    res = to_local(x)
+    res = x
     if isinstance(res, tuple) and len(res) == 2:
         s, c = res
         try:
             c = float(c)
         except Exception:
-            c = float(to_local(c))
+            c = float(c)
         return s, c
     # Fallback if service returns only a state
     return res, 0.0
@@ -67,7 +66,6 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
     dtype = DomainType.NUMERIC if domain_type == "numeric" else DomainType.PROBABILISTIC
     pddl_files = [pddl_domain, pddl_problem]
     srv = None
-    service = None
     if mode == "local":
         p = PlannerExtensions(pddl_files, problem_name, dtype,
                               dg_ssipp_heuristic_name=None,
@@ -76,14 +74,8 @@ def bench(mode: str, pddl_domain: str, pddl_problem: str, problem_name: str,
                               dg_use_contributions=False,
                               dg_use_act_history=False)
         service = LocalService(p)
-    elif mode == "rpyc":
-        cfg = ProblemServiceConfig(pddl_files, problem_name, dtype, teacher_planner="enhsp")
-        srv = ProblemServer(cfg)
-        srv.service.initialise()
-        srv.service.initialise_estimator("hadd-gbfs")
-        service = srv.service
     else:
-        raise SystemExit("mode must be local or rpyc")
+        raise SystemExit("mode must be local")
 
     act_dim = service.get_act_dim()
     policy = uniform_policy(act_dim)

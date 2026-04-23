@@ -492,9 +492,10 @@ parser.add_argument(
          ' otherwise only limits number of generated children nodes to be min(mcts_expansion_size,(mcts_iterations - 1))'
 )
 parser.add_argument(
-    '--policy-network-only',
+    '--disable-value-head',
     action='store_true',
-    help='Revert to policy network only instead of the new dual-head network (for ablation study)'
+    default=False,
+    help='Disable the usage of value head, meaning policy network only instead of two-headed.'
 )
 parser.add_argument(
     '--override-mse-coeff',
@@ -615,23 +616,6 @@ def main():
     print('Importing problem from %s' % args.prob_module)
     prob_mod = import_module(args.prob_module)
 
-    # 2. spool up Ray if not in serial mode
-    # if not args.serial_test and args.resume_from is not None and not args.no_eval:
-    #     new_cluster = args.ray_connect is None
-    #     ray_kwargs = {}
-    #     if not new_cluster:
-    #         ray_kwargs["redis_address"] = args.ray_connect
-    #         assert args.ray_ncpus is None, \
-    #             "can't provide --ray-ncpus and --ray-connect"
-    #     else:
-    #         if args.ray_ncpus is not None:
-    #             assert args.job_ncpus is None \
-    #                    or args.job_ncpus <= args.ray_ncpus, \
-    #                 "must have --job-ncpus <= --ray-ncpus if both given"
-    #             ray_kwargs["num_cpus"] = args.ray_ncpus
-    #     print("[DEBUG_RAY] - ray.init() called with:", ray_kwargs)
-    #     ray.init(**ray_kwargs)
-
     main_inner(arch_mod=arch_mod,
                prob_mod=prob_mod,
                job_ncpus=args.job_ncpus,
@@ -651,7 +635,7 @@ def main():
                debug_memory=args.debug_memory,
                mcts_exploration_weight=args.mcts_exploration_weight,
                mcts_smart_expansions=args.mcts_smart_expansions,
-               policy_network_only=args.policy_network_only,
+               disable_value_head=args.disable_value_head,
                mcts_iterations=args.mcts_iterations,
                heuristic_bootstrapping=args.heuristic_bootstrapping,
                corrupt_pi=args.corrupt_pi,
@@ -692,7 +676,7 @@ def main_inner(*,
                debug_memory=False,
                mcts_exploration_weight=1,
                mcts_smart_expansions=False,
-               policy_network_only=False,
+               disable_value_head=False,
                mcts_iterations=None,
                heuristic_bootstrapping=False,
                corrupt_pi=None,
@@ -835,8 +819,8 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.extend(['--mcts-exploration-weight', str(mcts_exploration_weight)])
     if mcts_smart_expansions:
         main_test_flags.append('--mcts-smart-expansions')
-    if policy_network_only:
-        main_test_flags.append('--policy-network-only')
+    if disable_value_head:
+        main_test_flags.append('--disable-value-head')
     if num_workers:
         main_test_flags.extend(['--num-workers', str(num_workers)])
     if mcts_iterations:

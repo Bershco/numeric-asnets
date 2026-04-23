@@ -18,7 +18,6 @@ class ParallelMCTSExplorerGrads:
     specs: list[Any]
     dropout: float
     debug: bool
-    policy_only: bool
     log: bool
 
     # loss cfg
@@ -70,7 +69,6 @@ class ParallelMCTSExplorerGrads:
             weights_np=weights_np,
             dropout=self.dropout,
             debug=self.debug,
-            policy_only=self.policy_only,
             log=self.log,
             PROFILE_DIR=self.PROFILE_DIR,
             corrupt_pi=self.corrupt_pi,

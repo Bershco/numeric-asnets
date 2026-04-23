@@ -288,7 +288,6 @@ class MCTS:
         self.state_key_to_node: dict[bytes, MCTSNode] = {}
         self.problem_service = problem_service
         self.network = network
-        self.policy_only = self.network.policy_only()
 
         self.debug_memory = debug_memory
         self.debug_time_mcts_iterations = debug_time_mcts_iterations

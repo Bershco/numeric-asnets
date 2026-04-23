@@ -15,7 +15,6 @@ import rpyc
 # import tqdm
 from tdqm.auto import tqdm
 
-from asnets.multiprob import ProblemServer
 from asnets.utils.prof_utils import can_profile
 from asnets.utils.py_utils import remove_cycles
 from asnets.scripts.run_asnets import get_problem_names
@@ -463,47 +462,47 @@ def gold_miner_planner(cstate):
 # #################################### #
 
 
-def demo():
-    # get arg path
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--out-dir',
-        default='gm-plan-out',
-        help='output dir to write plan frames to (if --plan given)')
-    parser.add_argument(
-        '--max-cycle-repeat',
-        default=4,
-        help='max num cycles to show for cyclic plan tails (0 for unlimited)')
-    parser.add_argument('--plan',
-                        default=None,
-                        help='path to .txt file for plan')
-    parser.add_argument('domain_pddl', help='path to PDDL domain')
-    parser.add_argument('problem_pddl', help='path to PDDL problem')
-    args = parser.parse_args()
-
-    print("Setting up MDPSim/SSiPP crap")
-    rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
-    all_pddl = [args.domain_pddl, args.problem_pddl]
-    prob_name = get_problem_names(all_pddl)[0]
-    service_config = ProblemServiceConfig(all_pddl,
-                                          prob_name,
-                                          teacher_heur='h-add',
-                                          use_lm_cuts=True,
-                                          teacher_planner='fd')
-    problem_server = ProblemServer(service_config)
-    problem_server.service.initialise()
-    # single_problem = SingleProblem(prob_name, problem_server)
-    planner_exts = PlannerExtensions(service_config.pddl_files,
-                                     service_config.init_problem_name,
-                                     dg_use_lm_cuts=True,
-                                     dg_use_act_history=True)
-
-    # split rest of this out into separate functions so that I don't pollute
-    # their scopes (& also so that flake8 provides better warnings)
-    if not args.plan:
-        main_interactive(args, planner_exts)
-    else:
-        main_plan(args, planner_exts)
+# def demo():
+#     # get arg path
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument(
+#         '--out-dir',
+#         default='gm-plan-out',
+#         help='output dir to write plan frames to (if --plan given)')
+#     parser.add_argument(
+#         '--max-cycle-repeat',
+#         default=4,
+#         help='max num cycles to show for cyclic plan tails (0 for unlimited)')
+#     parser.add_argument('--plan',
+#                         default=None,
+#                         help='path to .txt file for plan')
+#     parser.add_argument('domain_pddl', help='path to PDDL domain')
+#     parser.add_argument('problem_pddl', help='path to PDDL problem')
+#     args = parser.parse_args()
+#
+#     print("Setting up MDPSim/SSiPP crap")
+#     rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
+#     all_pddl = [args.domain_pddl, args.problem_pddl]
+#     prob_name = get_problem_names(all_pddl)[0]
+#     service_config = ProblemServiceConfig(all_pddl,
+#                                           prob_name,
+#                                           teacher_heur='h-add',
+#                                           use_lm_cuts=True,
+#                                           teacher_planner='fd')
+#     problem_server = ProblemServer(service_config)
+#     problem_server.service.initialise()
+#     # single_problem = SingleProblem(prob_name, problem_server)
+#     planner_exts = PlannerExtensions(service_config.pddl_files,
+#                                      service_config.init_problem_name,
+#                                      dg_use_lm_cuts=True,
+#                                      dg_use_act_history=True)
+#
+#     # split rest of this out into separate functions so that I don't pollute
+#     # their scopes (& also so that flake8 provides better warnings)
+#     if not args.plan:
+#         main_interactive(args, planner_exts)
+#     else:
+#         main_plan(args, planner_exts)
 
 
 def get_action_freqs(state,

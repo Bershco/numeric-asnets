@@ -23,7 +23,6 @@ import matplotlib.font_manager as fm  # noqa
 # also holy shit graph_tool is a pain to install---you're on your own there!
 import graph_tool.all as gt  # noqa
 
-from asnets.interactive_network import NetworkInstantiator  # noqa
 from asnets.state_reprs import sample_next_state, get_init_cstate  # noqa
 from asnets.scripts.weights2equations import snapshot_to_equations  # noqa
 
@@ -476,89 +475,89 @@ def add_colours(graphs, cmap):
             vertex_cols[vertex] = cmap(norm_act)
 
 
-def main(args):
-    np.random.seed(args.seed)
-    gt.seed_rng(args.seed)
-    tf.compat.v1.random.set_random_seed(args.seed)
-    random.seed(args.seed)
-    with tf.compat.v1.Session(graph=tf.Graph()) as sess:
-        net_instantiator = NetworkInstantiator(
-            args.snapshot,
-            extra_ppddl=[args.domain_path],
-            use_lm_cuts=args.use_lm_cut,
-            use_history=args.use_history,
-            heuristic_data_gen_name=args.heur_data_gen)
-        net_container = net_instantiator.net_for_problem([args.problem_path])
-
-        # now let's scoop up all the useful information we can!
-        planner_exts = net_container.planner_exts
-        policy = net_container.policy
-        # weight_manager = net_instantiator.weight_manager
-        domain_meta = net_container.single_problem.dom_meta
-        problem_meta = net_container.single_problem.prob_meta
-        sess.run(tf.compat.v1.global_variables_initializer())
-        (cstates, actions, act_layer_inputs_all, act_layer_outputs_all,
-         prop_layer_outputs_all, costs, enabled_acts_all) \
-            = roll_out_trajectory(policy, planner_exts, args.horizon)
-
-    # Get relevant eqns. This will be a list of weights for alternating
-    # action/proposition layers.
-    sparse_equations = snapshot_to_equations(args.snapshot)
-    out_rgraph = None
-    graph_steps = []
-
-    for time_step in range(len(actions)):
-        cstate = cstates[time_step]
-        cost = costs[time_step]
-        bound_act = actions[time_step]
-        act_layer_outputs = act_layer_outputs_all[time_step]
-        prop_layer_outputs = prop_layer_outputs_all[time_step]
-        act_layer_inputs_first = act_layer_inputs_all[time_step]
-        enabled_acts = enabled_acts_all[time_step]
-
-        print('STEP', time_step)
-        print('Action:', bound_act.unique_ident)
-        print('State:', str(cstate))
-        print('Cost:', cost)
-        # print('Activations:')
-        out_rgraph = make_output_graph(
-            sparse_equations,
-            act_layer_inputs_first,
-            act_layer_outputs,
-            prop_layer_outputs,
-            problem_meta,
-            domain_meta,
-            enabled_acts,
-            bound_act,
-            actions,
-            args.draw_act_seq,
-            original_rgraph=out_rgraph,
-            verbose=args.verbose)
-        out_rgraph.get_layout()
-        print('-' * 40)
-        nospace_ba_ident = str(bound_act.unique_ident) \
-            .replace(' ', '-') \
-            .replace('/', '-')
-        out_path = path.join(
-            args.save_dir,
-            'frame%02d-%s%s' % (time_step, nospace_ba_ident, args.ext))
-        graph_steps.append({'graph': out_rgraph, 'out_path': out_path})
-
-    add_colours([step['graph'].graph for step in graph_steps], cmap=CMAP)
-
-    for state, action, graph_step in zip(cstates, actions, graph_steps):
-        os.makedirs(args.save_dir, exist_ok=True)
-        draw_rgraph(
-            graph_step['graph'],
-            graph_step['out_path'],
-            args.size,
-            state,
-            action,
-            actions,
-            draw_state=args.draw_state,
-            draw_action=args.draw_action,
-            draw_cmap=args.draw_cmap,
-            draw_vertex_labels=args.draw_labels)
+# def main(args):
+#     np.random.seed(args.seed)
+#     gt.seed_rng(args.seed)
+#     tf.compat.v1.random.set_random_seed(args.seed)
+#     random.seed(args.seed)
+#     with tf.compat.v1.Session(graph=tf.Graph()) as sess:
+#         net_instantiator = NetworkInstantiator(
+#             args.snapshot,
+#             extra_ppddl=[args.domain_path],
+#             use_lm_cuts=args.use_lm_cut,
+#             use_history=args.use_history,
+#             heuristic_data_gen_name=args.heur_data_gen)
+#         net_container = net_instantiator.net_for_problem([args.problem_path])
+#
+#         # now let's scoop up all the useful information we can!
+#         planner_exts = net_container.planner_exts
+#         policy = net_container.policy
+#         # weight_manager = net_instantiator.weight_manager
+#         domain_meta = net_container.single_problem.dom_meta
+#         problem_meta = net_container.single_problem.prob_meta
+#         sess.run(tf.compat.v1.global_variables_initializer())
+#         (cstates, actions, act_layer_inputs_all, act_layer_outputs_all,
+#          prop_layer_outputs_all, costs, enabled_acts_all) \
+#             = roll_out_trajectory(policy, planner_exts, args.horizon)
+#
+#     # Get relevant eqns. This will be a list of weights for alternating
+#     # action/proposition layers.
+#     sparse_equations = snapshot_to_equations(args.snapshot)
+#     out_rgraph = None
+#     graph_steps = []
+#
+#     for time_step in range(len(actions)):
+#         cstate = cstates[time_step]
+#         cost = costs[time_step]
+#         bound_act = actions[time_step]
+#         act_layer_outputs = act_layer_outputs_all[time_step]
+#         prop_layer_outputs = prop_layer_outputs_all[time_step]
+#         act_layer_inputs_first = act_layer_inputs_all[time_step]
+#         enabled_acts = enabled_acts_all[time_step]
+#
+#         print('STEP', time_step)
+#         print('Action:', bound_act.unique_ident)
+#         print('State:', str(cstate))
+#         print('Cost:', cost)
+#         # print('Activations:')
+#         out_rgraph = make_output_graph(
+#             sparse_equations,
+#             act_layer_inputs_first,
+#             act_layer_outputs,
+#             prop_layer_outputs,
+#             problem_meta,
+#             domain_meta,
+#             enabled_acts,
+#             bound_act,
+#             actions,
+#             args.draw_act_seq,
+#             original_rgraph=out_rgraph,
+#             verbose=args.verbose)
+#         out_rgraph.get_layout()
+#         print('-' * 40)
+#         nospace_ba_ident = str(bound_act.unique_ident) \
+#             .replace(' ', '-') \
+#             .replace('/', '-')
+#         out_path = path.join(
+#             args.save_dir,
+#             'frame%02d-%s%s' % (time_step, nospace_ba_ident, args.ext))
+#         graph_steps.append({'graph': out_rgraph, 'out_path': out_path})
+#
+#     add_colours([step['graph'].graph for step in graph_steps], cmap=CMAP)
+#
+#     for state, action, graph_step in zip(cstates, actions, graph_steps):
+#         os.makedirs(args.save_dir, exist_ok=True)
+#         draw_rgraph(
+#             graph_step['graph'],
+#             graph_step['out_path'],
+#             args.size,
+#             state,
+#             action,
+#             actions,
+#             draw_state=args.draw_state,
+#             draw_action=args.draw_action,
+#             draw_cmap=args.draw_cmap,
+#             draw_vertex_labels=args.draw_labels)
 
 
 def filter_colours(graph, vertex_colours, enabled):

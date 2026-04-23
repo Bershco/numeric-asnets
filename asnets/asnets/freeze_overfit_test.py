@@ -25,7 +25,6 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
                  weight_manager,
                  summary_writer,
                  explorer,
-                 strategy,
                  start_time,
                  scratch_dir,
                  snapshot_dir,
@@ -47,13 +46,11 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
                  early_stop=20,
                  save_every=20,
                  dk="dk",
-                 policy_only=False,
                  planner_exts=None,
                  ):
         super().__init__(weight_manager=weight_manager,
                          summary_writer=summary_writer,
                          explorer=explorer,
-                         strategy=strategy,
                          start_time=start_time,
                          scratch_dir=scratch_dir,
                          snapshot_dir=snapshot_dir,
@@ -74,7 +71,6 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
                          early_stop=early_stop,
                          save_every=save_every,
                          dk=dk,
-                         policy_only=policy_only,
                          )
         self._frozen_dataset = None
         self.planner_exts=planner_exts
@@ -109,15 +105,15 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
 
     def _collect_frozen_dataset(self):
         self._build_frozen_bundle_if_needed()
-        B = self._frozen_bundle
+        fb = self._frozen_bundle
         spec = self.explorer.specs[0]
 
         # Run EXACTLY the same episode logic as worker, but only collect samples
-        cstate = B.ctx.get_init_state()
+        cstate = fb.ctx.get_init_state()
 
         mcts = TrainingMCTS(
-            network=B.net,
-            ctx=B.ctx,
+            network=fb.net,
+            ctx=fb.ctx,
             iterations=spec.mcts_iterations,
             expansion_k=spec.mcts_expansion_k,
             exploration_weight=spec.mcts_exploration_weight,
@@ -157,7 +153,7 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
                     )
 
             # deterministic step like your worker (argmax)
-            mask = mcts.get_children_mask(act_dim=B.act_dim)
+            mask = mcts.get_children_mask(act_dim=fb.act_dim)
             masked_pi = pi * mask
             s = masked_pi.sum()
             if s <= 0:
@@ -178,7 +174,7 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
         # optional heuristic bootstrapping
         if spec.heuristic_bootstrapping:
             trajectory_info = collector.get_trajectory_info_as_list()
-            sampled_data = heuristic_bootstrapping(bootstrap_k=5, trajectory_info=trajectory_info, ctx=B.ctx,
+            sampled_data = heuristic_bootstrapping(bootstrap_k=5, trajectory_info=trajectory_info, ctx=fb.ctx,
                                                    mcts_tree=mcts)
             for item in sampled_data:
                 collector.add_sample(
@@ -201,7 +197,7 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
             "obs": obs_batch.astype(np.float32, copy=False),
             "pi_tgt": pi_tgt.astype(np.float32, copy=False),
             "z_tgt": (z_tgt.astype(np.float32, copy=False) if z_tgt is not None else None),
-            "prob_meta": B.planner_exts.problem_meta,
+            "prob_meta": fb.planner_exts.problem_meta,
         }
 
         print(
@@ -267,7 +263,7 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
         # Convert once
         obs_tf_all = tf.convert_to_tensor(obs, tf.float32)
         pi_tf_all = tf.convert_to_tensor(pi_tgt, tf.float32)
-        z_tf_all = tf.convert_to_tensor(z_tgt, tf.float32) if (z_tgt is not None and not self.policy_only) else None
+        z_tf_all = tf.convert_to_tensor(z_tgt, tf.float32) if (z_tgt is not None and net.value_head_enabled) else None
 
         n = obs.shape[0]
         idx_all = np.arange(n)
@@ -292,7 +288,7 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
                     # Do NOT rely on Keras tracking; explicitly watch shared weights
                     tape.watch(vars_)
 
-                    if self.policy_only:
+                    if not net.value_head_enabled:
                         pi_pred = net(obs_mb, training=True)
                         xent_loss = _policy_xent_loss(pi_pred, pi_mb)
                         mse_loss = tf.constant(0.0, dtype=xent_loss.dtype)
@@ -320,7 +316,7 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
         # Diagnostics on FULL dataset
         # -------------------------------
         with tf.device("/CPU:0"):
-            if self.policy_only:
+            if not net.value_head_enabled:
                 pi_pred_all = net(obs_tf_all, training=False)
                 v_pred_all = None
             else:
@@ -389,7 +385,6 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
             prob_meta=planner_exts.problem_meta,
             dropout=0,  # whatever you use
             debug=False,
-            policy_only=self.policy_only,
         )
 
         self._frozen_bundle = FrozenInstanceBundle(planner_exts, estimator, ctx, net, act_dim)
