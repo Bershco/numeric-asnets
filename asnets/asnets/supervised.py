@@ -654,7 +654,7 @@ class SupervisedTrainer:
             # --------------------------------------------------
             # 2.1 validation
             # --------------------------------------------------
-            if epoch_num % 10 == 0:  # and epoch_num > 0:
+            if epoch_num % 10 == 0:
                 succ_rate, validation_outs = self.validator.evaluate(self.weight_manager.export_numpy())
                 print(f"[VALIDATION] Current network validation success rate: {succ_rate}")
                 for i, val_worker_out in enumerate(validation_outs):

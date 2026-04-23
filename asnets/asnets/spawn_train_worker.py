@@ -263,7 +263,6 @@ def _rebuild_weight_manager_local(prob_meta, weights_np: dict):
     MUST return PropNetworkWeights instance whose variables are created locally,
     then assigned from weights_np.
     """
-    # Your classmethod signature currently: from_numpy(cls, prob_meta, weights_np)
     wm = PropNetworkWeights.from_numpy(prob_meta, weights_np)
     return wm
 

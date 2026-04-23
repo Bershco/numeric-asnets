@@ -27,35 +27,10 @@ def extract_by_prefix(lines, prefix):
         if line.startswith(prefix):
             return line[len(prefix):]
 
-
-def get_pin_list():
-    """Get list of CPU IDs to pin to, using Ray's CPU allocation."""
-    resources = ray.get_resource_ids()
-    cpu_ids = []
-    for cpu_id, cpu_frac in resources['CPU']:
-        # sanity check: we should have 100% of each CPU
-        assert abs(cpu_frac - 1.0) < 1e-5, \
-            "for some reason I have fraction %f of CPU %d (??)" \
-            % (cpu_id, cpu_frac)
-        cpu_ids.append(cpu_id)
-    assert len(cpu_ids) > 0, \
-        "Ray returned no CPU IDs (was num_cpus=0 accidentally specified " \
-        "for this task?)"
-    return cpu_ids
-
-
 def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
-                     enforce_ncpus, cwd, profiling=False, train_only=False, memory_profiling=False):
-    """Run ASNets code on current node. May be useful to wrap this in a
-    ray.remote()."""
+                     cwd, profiling=False, train_only=False, memory_profiling=False):
     assert not profiling or not memory_profiling, "Cannot profile memory and efficiency at the same time."
     cmdline = []
-    if enforce_ncpus:
-        pin_list = get_pin_list()
-        pin_list_str = ','.join(map(str, pin_list))
-        ts_cmd = ['taskset', '--cpu-list', pin_list_str]
-        print('Pinning job with "%s"' % ' '.join(ts_cmd))
-        cmdline.extend(ts_cmd)
     if profiling:
         print("[run_experiment_setup] timing profiling is on.")
         cmdline.extend([
@@ -418,27 +393,6 @@ parser.add_argument(
     type=parse_idx_list,
     help='takes comma-separated list of evaluation problem numbers to test')
 parser.add_argument(
-    '--job-ncpus',
-    type=int,
-    default=None,
-    help='number of CPUs *per job* (must be <= --ray-ncpus; default is 1)')
-parser.add_argument(
-    '--enforce-job-ncpus',
-    default=False,
-    action='store_true',
-    help='enforce --job-ncpus usage by using taskset/sched_setaffinity to '
-         'pin jobs to unique cores')
-parser.add_argument(
-    '--ray-connect',
-    default=None,
-    help='connect Ray to this Redis DB instead of starting new cluster')
-parser.add_argument(
-    '--ray-ncpus',
-    default=None,
-    type=int,
-    help='restrict Ray pool to use this many CPUs *in total* (only valid if '
-         'spinning up new Ray cluster)')
-parser.add_argument(
     '--override-enhsp-config',
     default=None,
     help='override the ENHSP config file with this one (useful for '
@@ -606,6 +560,12 @@ parser.add_argument(
     default=0.2,
     help='Set est_coeff_end value.'
 )
+parser.add_argument(
+    '--resume-train',
+    action='store_true',
+    default=False,
+    help='Resume training instead of only evaluation when using --resume-from'
+)
 
 def main():
     args = parser.parse_args()
@@ -618,9 +578,7 @@ def main():
 
     main_inner(arch_mod=arch_mod,
                prob_mod=prob_mod,
-               job_ncpus=args.job_ncpus,
                resume_from=args.resume_from,
-               enforce_job_ncpus=args.enforce_job_ncpus,
                restrict_test_probs=args.restrict_test_probs,
                override_enhsp_config=args.override_enhsp_config,
                override_mse_coeff=args.override_mse_coeff,
@@ -659,8 +617,6 @@ def main():
 def main_inner(*,
                arch_mod,
                prob_mod,
-               job_ncpus,
-               enforce_job_ncpus,
                resume_from=None,
                restrict_test_probs=None,
                override_enhsp_config=None,
@@ -694,12 +650,11 @@ def main_inner(*,
                estimator_decay_epochs=None,
                original_training_set=False,
                ):
-    run_asnets_ray = ray.remote(num_cpus=job_ncpus)(run_asnets_local)
     root_cwd = getcwd()
 
     arch_name = arch_mod.__name__
     prob_name = prob_mod.__name__
-    if resume_from is None:
+    if resume_from is None or args.resume_train:
         time_str = datetime.datetime.now().isoformat()
         prefix_dir = 'experiment-results/%s-%s-%s' % (prob_name, arch_name,
                                                       time_str)
@@ -767,15 +722,14 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend(['--estimator-decay-epochs', str(estimator_decay_epochs)])
         if original_training_set:
             train_flags.append('--original-training-set')
+        if resume_from is not None:
+            train_flags.extend(['--resume-from', resume_from])
         final_checkpoint = run_asnets_local(
             flags=train_flags,
-            # we make sure it runs cmd in same dir as us,
-            # because otherwise Ray subprocs freak out
             cwd=root_cwd,
             root_dir=prefix_dir,
             need_snapshot=True,
             is_train=True,
-            enforce_ncpus=enforce_job_ncpus,
             timeout=arch_mod.TIME_LIMIT_SECONDS,
             train_only=train_only,
             profiling=profiling,
@@ -789,8 +743,6 @@ evaluation = {"off" if no_eval else "on"}
         print('Using experiment dir "%s"' % prefix_dir)
 
     if no_eval:
-        assert not resume_from, \
-            'cannot use --no-eval with --resume-from'
         print('Skipping evaluation')
         return prefix_dir
 
@@ -842,7 +794,6 @@ evaluation = {"off" if no_eval else "on"}
                 cwd=root_cwd,
                 need_snapshot=False,
                 is_train=False,
-                enforce_ncpus=enforce_job_ncpus,
                 # run_asnets.py has its own timeout which it should obey, so
                 # give it some slack
                 timeout=arch_mod.EVAL_TIME_LIMIT_SECONDS + 30,
@@ -868,7 +819,6 @@ evaluation = {"off" if no_eval else "on"}
             cwd=root_cwd,
             need_snapshot=False,
             is_train=False,
-            enforce_ncpus=enforce_job_ncpus,
             timeout=arch_mod.EVAL_TIME_LIMIT_SECONDS + 30,
         )
     # return the prefix_dir because hype.py needs that to figure out where to

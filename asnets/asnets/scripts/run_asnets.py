@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
-import atexit
 import copy
 import ctypes
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from json import dump
 import logging
@@ -36,7 +34,7 @@ from asnets.explorer import StaticExplorer, DynamicExplorer
 from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
 from asnets.supervised import SupervisedTrainer, SupervisedObjective, \
     PlannerExtensions
-from asnets.utils.generator_utils import Domain, extract_domain_name_from_file, InstanceDifficulty
+from asnets.utils.generator_utils import InstanceDifficulty
 from asnets.utils.prof_utils import can_profile
 from asnets.utils.py_utils import set_random_seeds
 
@@ -1115,8 +1113,6 @@ def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
 
 class SingleProblem(object):
     """Wrapper to store all information relevant to training on a single
-
-
     problem."""
 
     def __init__(self, name, problem_server):

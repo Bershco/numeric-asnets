@@ -991,6 +991,10 @@ def _merge_finals(prob_meta, final_acts):
 
 @can_profile
 def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
+    if args.resume_from:
+        wm = joblib.load(args.resume_from)
+        print(f"[WM] Successfully loaded previous weight manager from {args.resume_from}")
+        return wm
     return PropNetworkWeights(
         dom_meta,
         hidden_sizes=[(args.hidden_size, args.hidden_size)] * args.num_layers,
