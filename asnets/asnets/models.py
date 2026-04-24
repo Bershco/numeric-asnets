@@ -1,11 +1,8 @@
-from pathlib import Path
-
 from asnets.prob_dom_meta import UnboundAction, UnboundComp, DomainMeta, \
     ProblemMeta
 from asnets.network_modules import ActionModule, CompModule, FlntModule, \
     PropModule, ValueModule
 from asnets.utils.prof_utils import can_profile
-from asnets.utils.rpyc_utils import to_local, find_netrefs
 from asnets.utils.tf_utils import masked_softmax
 
 import joblib
@@ -48,7 +45,7 @@ class PropNetworkWeights:
             modules will have the same hidden size of prop modules in the same
             layer.
         """
-        self.dom_meta: DomainMeta = to_local(dom_meta)
+        self.dom_meta: DomainMeta = dom_meta
         self.hidden_sizes: List[Tuple[int, int]] = list(hidden_sizes)
         self.extra_dim: int = extra_dim
         self.skip: bool = skip
@@ -65,15 +62,6 @@ class PropNetworkWeights:
     def __setstate__(self, state):
         # Just restore the dict; don't rebuild variables
         self.__dict__.update(state)
-
-    def load_into_existing_state_dict(self, state):
-        # same assign() logic as load_into_existing(), but reads from 'state' instead of a path
-        for hid_idx, layer in enumerate(state['prop_weights_np']):
-            for key, (W_np, b_np) in layer.items():
-                W, b = self.prop_weights[hid_idx][key]
-                W.assign(W_np)
-                b.assign(b_np)
-        # repeat for acts / comps / value / flnts like before
 
     @staticmethod
     def _serialise_weight_list(weight_list):
@@ -991,13 +979,29 @@ def _merge_finals(prob_meta, final_acts):
 
 @can_profile
 def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
+    hidden_sizes = [(args.hidden_size, args.hidden_size)] * args.num_layers
     if args.resume_from:
-        wm = joblib.load(args.resume_from)
+        if args.resume_from.endswith(".pkl"):
+            # old-format checkpoint
+            wm = joblib.load(args.resume_from)
+        else:
+            # new-format checkpoint directory
+            wm = joblib.load(
+                os.path.join(args.resume_from, "weights.joblib")
+            )
+        assert wm.hidden_sizes == hidden_sizes
+        assert len(wm.hidden_sizes) == args.num_layers
+        assert wm.use_fluents == args.use_fluents
+        assert wm.use_comparisons == args.use_comparisons
+        assert wm.dom_meta == dom_meta
+        assert wm.value_head_enabled == (not args.disable_value_head)
+        assert wm.skip == args.skip
+        assert wm.extra_dim == dg_extra_dim
         print(f"[WM] Successfully loaded previous weight manager from {args.resume_from}")
         return wm
     return PropNetworkWeights(
         dom_meta,
-        hidden_sizes=[(args.hidden_size, args.hidden_size)] * args.num_layers,
+        hidden_sizes=hidden_sizes,
         # extra inputs to each action module from data generators
         extra_dim=dg_extra_dim,
         skip=args.skip,

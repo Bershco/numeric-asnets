@@ -335,6 +335,7 @@ def log_grad_norms(grads_and_vars):
     tf_logger.info(
         f"[TF_GRAD_NORMS_LOG] {base_name + '/' if base_name is not None else ''}value_grad_norm : {value_grad_norm}")
 
+
 def tf_and_log(name: str, value):
     tf.summary.scalar(name, value)
     base_name = tf.get_current_name_scope()
@@ -481,6 +482,7 @@ class SupervisedTrainer:
                  save_every=20,
                  dk="dk",
                  balanced_success_rate=True,
+                 resume_from=None,
                  ):
         # gets incremented to deal with TF
         self.batches_seen = 0
@@ -525,6 +527,21 @@ class SupervisedTrainer:
         self.use_fluents = use_fluents
         self.use_comps = use_comps
         self._init_tf()
+        if resume_from is not None and not resume_from.endswith(".pkl"):
+            opt_path = os.path.join(resume_from, "optimizer.joblib")
+            if os.path.exists(opt_path):
+                trainable_vars = self.weight_manager.all_weights
+                assert len(trainable_vars) > 0
+                # Force Adam slot variable creation
+                self.optimiser.apply_gradients([
+                    (tf.zeros_like(v), v)
+                    for v in trainable_vars
+                ])
+                opt_vals = joblib.load(opt_path)
+                assert len(opt_vals) == len(self.optimiser.variables())
+                for var, val in zip(self.optimiser.variables(), opt_vals):
+                    var.assign(val)
+                print("[Optimizer] restored from checkpoint")
 
     @can_profile
     def _init_tf(self):
@@ -678,12 +695,28 @@ class SupervisedTrainer:
                 best_rate = total_succ_rate
                 snapshot_path = os.path.join(
                     self.snapshot_dir,
-                    f'snapshot_{epoch_num}_{total_succ_rate:.4f}.pkl'
+                    f'snapshot_{epoch_num}_{total_succ_rate:.4f}'
                 )
-                self.weight_manager.save(snapshot_path)
-                shutil.copy(snapshot_path, self.dk)
-            tf.summary.flush()
+                os.makedirs(snapshot_path, exist_ok=True)
+                # Save weights
+                self.weight_manager.save(
+                    os.path.join(snapshot_path, "weights.joblib")
+                )
+                # Save optimizer state
+                opt_vars = self.optimizer.variables()
+                if opt_vars:
+                    joblib.dump(
+                        [v.numpy() for v in opt_vars],
+                        os.path.join(snapshot_path, "optimizer.joblib"),
+                        compress=True
+                    )
+                shutil.copytree(
+                    snapshot_path,
+                    os.path.join(self.dk, os.path.basename(snapshot_path)),
+                    dirs_exist_ok=True
+                )
 
+            tf.summary.flush()
             elapsed_time = time() - self.start_time
             if self.timeout and elapsed_time > self.timeout * 0.95:
                 LOGGER.info('[TIMING_TERMINATION] Timeout reached')

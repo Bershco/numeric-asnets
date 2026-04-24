@@ -579,6 +579,7 @@ def main():
     main_inner(arch_mod=arch_mod,
                prob_mod=prob_mod,
                resume_from=args.resume_from,
+               resume_train=args.resume_train,
                restrict_test_probs=args.restrict_test_probs,
                override_enhsp_config=args.override_enhsp_config,
                override_mse_coeff=args.override_mse_coeff,
@@ -613,11 +614,11 @@ def main():
                )
     print('Fin :-)')
 
-
 def main_inner(*,
                arch_mod,
                prob_mod,
                resume_from=None,
+               resume_train=None,
                restrict_test_probs=None,
                override_enhsp_config=None,
                override_mse_coeff=None,
@@ -654,7 +655,7 @@ def main_inner(*,
 
     arch_name = arch_mod.__name__
     prob_name = prob_mod.__name__
-    if resume_from is None or args.resume_train:
+    if resume_from is None or resume_train:
         time_str = datetime.datetime.now().isoformat()
         prefix_dir = 'experiment-results/%s-%s-%s' % (prob_name, arch_name,
                                                       time_str)

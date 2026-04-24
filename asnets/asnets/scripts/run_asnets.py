@@ -1283,6 +1283,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
                 time_out=args.timeout,
                 use_fluents=args.use_fluents,
                 use_comps=args.use_comparisons,
+                resume_from=args.resume_from,
             )
         else:
             sup_trainer = FrozenSupervisedTrainer(
