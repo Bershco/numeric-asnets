@@ -721,6 +721,8 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend(['--estimator-decay-coeff-end', str(estimator_decay_coeff_end)])
         if estimator_decay_epochs:
             train_flags.extend(['--estimator-decay-epochs', str(estimator_decay_epochs)])
+        if disable_value_head:
+            train_flags.append('--disable-value-head')
         if original_training_set:
             train_flags.append('--original-training-set')
         if resume_from is not None:

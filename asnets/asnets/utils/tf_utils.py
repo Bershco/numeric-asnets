@@ -143,3 +143,10 @@ def empty_feed_value(obs_dim, p_value_dim):
     return (np.zeros(new_obs_shape, dtype=np.float16), np.zeros(new_p_shape, dtype=np.float16))
 
 
+def configure_tf_gpu_memory_growth():
+    gpus = tf.config.list_physical_devices("GPU")
+    if not gpus:
+        return
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
+    print(f"[TF_GPU] memory growth enabled for {len(gpus)} GPUs")

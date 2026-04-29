@@ -1,18 +1,23 @@
 # asnets/spawn_train_worker.py
 from __future__ import annotations
+
+import tqdm
 from enhsp_wrapper.enhsp import ENHSP, PlanningResult, PlanningStatus
 from .interfaces.enhsp_interface import ENHSP_CONFIGS
 import cProfile
 import os
 import pstats
 import time
-from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any, Optional, List
 
 import numpy as np
-from asnets.models import configure_tf_gpu_memory_growth
+
+from .prob_dom_meta import DomainMeta, ProblemMeta
+from .utils.tf_utils import configure_tf_gpu_memory_growth
 from post_training.action_selection_policy import build_action_policy
+from .teacher import ENHSPTeacher, Teacher
+from .teacher_cache import TeacherException
 from .utils.pddl_utils import hlist_to_sexprs, replace_init_state
 
 import tensorflow as tf
@@ -22,10 +27,10 @@ import logging
 from asnets.models import PropNetworkWeights, PropNetwork
 
 from asnets.spawn_context import LocalExploreContext
-from asnets.state_reprs import CanonicalState
-from asnets.supervised import PlannerExtensions
+from asnets.state_reprs import CanonicalState, get_init_cstate, sample_next_state
+from asnets.supervised import PlannerExtensions, planner_trace
 from asnets.utils.generator_utils import extract_domain_name_from_file, Domain, InstanceDifficulty
-from asnets.utils.py_utils import set_random_seeds
+from asnets.utils.py_utils import set_random_seeds, RandomPopContainer
 from post_training.enhspwrapper import ENHSPEstimator, EstimatorMode
 from post_training.training_mcts import TrainingMCTS
 
@@ -218,9 +223,9 @@ def _build_planner_exts_from_spec(spec, epoch_num):
     domain_pddl_path = spec.pddls[0]
     domain = Domain.from_pddl_name(extract_domain_name_from_file(domain_pddl_path))
     instance_pddl_paths = spec.pddls[1:]
-    if spec.evaluation_instance_index is not None:
+    if spec.evaluation_mode:
         instance_path = instance_pddl_paths[
-            spec.evaluation_instance_index
+            0
         ]
     else:
         if spec.original_training_set:
@@ -611,11 +616,11 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
             )
     if inp.spec.ENHSP_plan_bootstrap:
         plan_as_traj = plan_to_trajectory(enhsp_config=inp.spec.enhsp_config,
-                                                                        pddl_files=planner_exts.pddl_files,
-                                                                        act_ident_to_ind=planner_exts.act_ident_to_ind,
-                                                                        act_dim=act_dim,
-                                                                        init_state=mcts.original_tree_root.state,
-                                                                        ctx=ctx, estimator=estimator)
+                                          pddl_files=planner_exts.pddl_files,
+                                          act_ident_to_ind=planner_exts.act_ident_to_ind,
+                                          act_dim=act_dim,
+                                          init_state=mcts.original_tree_root.state,
+                                          ctx=ctx, estimator=estimator)
         if plan_as_traj:
             plan_states, plan_states_pi, plan_states_z = plan_as_traj
             for state, pi, z in zip(plan_states, plan_states_pi, plan_states_z):
@@ -688,7 +693,6 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         else:
             pi_pred_all = net(obs_tf, training=False)
             v_pred_all = None
-
 
         # convert to numpy, squeeze if needed
         pi_pred_all = tf.stop_gradient(pi_pred_all).numpy()
@@ -802,7 +806,6 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
                 pi_pred = net(obs_mb, training=True)
                 xent_loss = _policy_xent_loss(pi_pred, tf.convert_to_tensor(pi_mb, dtype=pi_pred.dtype))
                 mse_loss = 0.0
-
 
             reg_loss = _reg_terms(vars_, inp.l2_reg_coeff, inp.l1_reg_coeff, inp.l1_l2_reg_coeff)
             loss = xent_loss + mse_loss + reg_loss
@@ -962,4 +965,190 @@ def run_worker_eval(inp: EvalWorkerInput) -> EvalWorkerOutput:
         steps=max_len,
         cost=cost,
         instance_name=instance_name,
+    )
+
+
+def run_multiple_trajectory_collection(spec, epoch_num: int, weights_np, num_trajectories: int, dynamic: bool,
+                                       min_new_pairs: Optional[int], max_new_pairs: Optional[int],
+                                       recent_learning_time: Optional[int], expl_learn_ratio: Optional[int]):
+    start_time = time.time()
+    # Stage 1 - collect trajectories by current policy
+    CanonicalState.network_input_config(
+        use_fluents=spec.use_fluents,
+        use_comparisons=spec.use_comps
+    )
+    pe = _build_planner_exts_from_spec(spec, epoch_num)
+    wm_local = _rebuild_weight_manager_local(
+        pe.problem_meta,
+        weights_np,
+    )
+    net = _build_network_local(
+        wm_local,
+        pe.problem_meta,
+        debug=False,
+    )
+    teacher_timeout_s = 15
+    teacher = ENHSPTeacher(planner_exts=pe, teacher_timeout_s=teacher_timeout_s, enhsp_config=spec.enhsp_config)
+    model_cache = {}
+    trajectories = []
+    for _ in range(num_trajectories):
+        path, hit_goal = collect_single_trajectory(spec, pe, net,
+                                                   model_cache)  # model_cache might be useless - in hit rate and in speed of network, both cpu and gpu
+        trajectories.append((path, hit_goal))
+    # Stage 2 - collect expert trajectories by planner from either dynamic (with _terminate) or static (just grab all of them) explorer
+    expert_trajectories = []
+    first_explore = epoch_num == 0
+    if dynamic:
+        t = tqdm.tqdm(desc='dynamic explore', total=max_new_pairs)
+        last_progress_time = int(time.time())
+        total_new_pairs = 0
+        cont = RandomPopContainer()
+        for path, _ in trajectories:
+            for state, act in path:
+                cont.add(state)
+        while True:
+            terminate, last_progress_time = _terminate(start_time, total_new_pairs, min_new_pairs, max_new_pairs, last_progress_time, t,
+                             first_explore, recent_learning_time, expl_learn_ratio)
+            if terminate or len(cont) == 0:
+                break
+            cstate = cont.pop_random()
+            new_pairs = explore_from_state(spec=spec, epoch_num=epoch_num, cstate=cstate, pe=pe, teacher=teacher,
+                                   only_one_good_action=spec.only_one_good_action,
+                                   use_teacher_envelope=spec.use_teacher_envelope)
+            if new_pairs: # to avoid crashing the exploration process over teacher failure
+                expert_trajectories.extend(new_pairs)
+            total_new_pairs += len(new_pairs)
+
+    else:
+        for path, _ in trajectories:
+            for cstate, act in path:
+                expert_trajectories.extend(
+                    explore_from_state(spec=spec, epoch_num=epoch_num, cstate=cstate, pe=pe, teacher=teacher,
+                                       only_one_good_action=spec.only_one_good_action,
+                                       use_teacher_envelope=spec.use_teacher_envelope))
+    return expert_trajectories, trajectories
+
+def collect_single_trajectory(spec, pe, net, model_cache):
+    hit_goal = False
+    path = []
+    cstate = get_init_cstate(pe)
+    for _ in range(spec.max_len):
+        obs = cstate.to_network_input()
+        obs_bytes = obs.tobytes()
+        if obs_bytes not in model_cache:
+            if net.value_head_enabled:
+                act_dist, _ = net(obs[None], training=False)
+            else:
+                act_dist = net(obs[None], training=False)
+            act_dist = tf.reshape(act_dist, [-1, ], ).numpy()
+            s = np.sum(act_dist)
+            if s == 0:
+                act_dist[:] = 1 / len(act_dist)
+            else:
+                act_dist /= s
+            model_cache[obs_bytes] = act_dist
+        else:
+            act_dist = model_cache[obs_bytes]
+        action = int(np.random.choice(np.arange(act_dist.shape[0]), p=act_dist))
+
+        path.append((cstate, pe.problem_meta.bound_acts_ordered[action]))
+        cstate, _ = sample_next_state(cstate=cstate, action_id=action, planner_exts=pe)
+        if cstate.is_terminal:
+            if cstate.is_goal:
+                hit_goal = True
+            break
+    return path, hit_goal
+
+
+def explore_from_state(spec, epoch_num, cstate: CanonicalState, pe, teacher: Teacher,
+                       only_one_good_action: bool = True,
+                       use_teacher_envelope: bool = True):
+    if pe is None:
+        pe = _build_planner_exts_from_spec(spec, epoch_num)
+    try:
+        teacher_experience = planner_trace(planner=teacher, planner_exts=pe, root_cstate=cstate,
+                                           only_one_good_action=only_one_good_action,
+                                           use_teacher_envelope=use_teacher_envelope)
+    except TeacherException as ex:
+        LOGGER.warning(f'Teacher error on problem \
+                        {pe.problem_name} ({ex})')
+        return None
+    filtered_envelope = []
+    for env_cstate, act in teacher_experience:
+        nactions = sum(p[1] for p in env_cstate.acts_enabled)
+
+        if nactions <= 1:
+            # skip states
+            continue
+        filtered_envelope.append((env_cstate, act))
+    return filtered_envelope
+
+
+def _terminate(start_time: float, total_new_pairs: int, min_new_pairs: int, max_new_pairs: int, last_progress_time: int,
+               t: tqdm.tqdm, first_explore: bool, recent_learning_time: int, expl_learn_ratio: int) -> tuple[bool, int]:
+    if first_explore:
+        t.update(total_new_pairs - t.n)
+        last_progress_time = int(time.time())
+        return total_new_pairs >= min_new_pairs, last_progress_time
+
+    # Terminating when there seems to be no progress
+    if total_new_pairs == t.n:
+        if time.time() - last_progress_time > 10:
+            LOGGER.warning('No progress in exploration phase for 10s, aborting')
+            return True, last_progress_time
+    else:
+        last_progress_time = int(time.time())
+        t.update(total_new_pairs - t.n)
+
+    # hard termination when we take too long
+    if time.time() - start_time > 3 * expl_learn_ratio * recent_learning_time:
+        return True, last_progress_time
+    if total_new_pairs >= max_new_pairs:
+        return True, last_progress_time
+    if total_new_pairs >= min_new_pairs:
+        return time.time() - start_time >= expl_learn_ratio * recent_learning_time, last_progress_time
+    return False, last_progress_time
+
+@dataclass(frozen=True)
+class ProblemInitData:
+    slot_id: int
+    name: str
+    obs_dim: int
+    act_dim: int
+    dom_meta: DomainMeta #might cause circular imports
+    prob_meta: ProblemMeta #might cause circular imports
+    ssipp_dead_end_value: int
+
+
+def collect_problem_dims_worker(spec: Any) -> ProblemInitData:
+    """
+    Runs in a fresh spawn process.
+
+    Purpose:
+        Build planner extensions / mdpsim for exactly one problem,
+        extract grounded obs/action dimensions, return plain metadata.
+
+    Must avoid importing TensorFlow here if possible.
+    """
+    CanonicalState.network_input_config(
+        use_fluents=spec.use_fluents,
+        use_comparisons=spec.use_comps,
+    )
+    pe = _build_planner_exts_from_spec(spec, 0)
+
+    # Adapt these to your real fields.
+    init_cstate = get_init_cstate(pe)
+    obs = init_cstate.to_network_input()
+
+    obs_dim = int(obs.shape[-1])
+    act_dim = int(pe.problem_meta.num_acts)
+
+    return ProblemInitData(
+        slot_id=spec.slot_id,
+        name=pe.current_problem_name,
+        obs_dim=obs_dim,
+        act_dim=act_dim,
+        dom_meta=pe.domain_meta,
+        prob_meta=pe.problem_meta,
+        ssipp_dead_end_value=pe.ssipp_dead_end_value
     )

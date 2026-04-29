@@ -14,13 +14,14 @@ import sys
 from time import time
 
 from pympler import muppy, summary, asizeof
-from typing import Set, Any
+from typing import Set, Any, Optional
 from pympler.asizeof import asized
 
-from asnets.parllel_explore_spawn_grads import SpawnExploreSpec
 from asnets.explorer_spawn_grads import ParallelMCTSExplorerGrads, ParallelMCTSExplorerEval
 from asnets.freeze_overfit_test import FrozenSupervisedTrainer
-from asnets.models import make_weight_manager, configure_tf_gpu_memory_growth
+from asnets.models import make_weight_manager, PropNetworkWeights, PropNetwork, make_network
+from asnets.parllel_explore_spawn_grads import make_specs
+from asnets.utils.tf_utils import configure_tf_gpu_memory_growth
 from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import CanonicalState
 
@@ -30,10 +31,10 @@ import tensorflow as tf
 import multiprocessing
 import tqdm.auto as tqdm
 
-from asnets.explorer import StaticExplorer, DynamicExplorer
+from asnets.explorer import StaticExplorer, DynamicExplorer, SingleProblem, run_parallel_problem_init_data_collection
 from asnets.interfaces.enhsp_interface import ENHSP_CONFIGS
 from asnets.supervised import SupervisedTrainer, SupervisedObjective, \
-    PlannerExtensions
+    PlannerExtensions, OriginalSupervisedTrainer
 from asnets.utils.generator_utils import InstanceDifficulty
 from asnets.utils.prof_utils import can_profile
 from asnets.utils.py_utils import set_random_seeds
@@ -629,10 +630,10 @@ parser.add_argument(
     help='base random seed to use for main proc & subprocs')
 parser.add_argument(
     '-A',
-    '--optimiser-opts',
+    '--optimizer-opts',
     default={},
     type=opt_str,
-    help='additional arguments for optimiser')
+    help='additional arguments for optimizer')
 parser.add_argument(
     '--resume-from', default=None, help='snapshot pickle to resume from')
 parser.add_argument(
@@ -1111,30 +1112,6 @@ def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
                 fp.write(')')
 
 
-class SingleProblem(object):
-    """Wrapper to store all information relevant to training on a single
-    problem."""
-
-    def __init__(self, name, problem_server):
-        self.name = name
-        # need a handle to problem server so that it doesn't get GC'd (which
-        # would kill the child process!)
-        self.problem_server = problem_server
-        self.problem_service = problem_server.service
-        self.prob_meta, self.dom_meta = self.problem_service.get_meta()
-        self.obs_dim = self.problem_service.get_obs_dim()
-        self.act_dim = self.problem_service.get_act_dim()
-        self.dg_extra_dim = self.problem_service.get_dg_extra_dim()
-        # will get filled in later
-
-    @property
-    def network(self):
-        return self.problem_server.network
-
-    @network.setter
-    def network(self, network):
-        self.problem_server.network = network
-
 @can_profile
 def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     print('Training supervised on random instances (SPAWN, NO RPyC)')
@@ -1190,53 +1167,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
         LOGGER.info(f'Set corrupt_z to {args.corrupt_z}')
 
     if not args.no_train:
-        specs = []
-        for slot_id in range(args.num_workers):
-            specs.append(
-                SpawnExploreSpec(
-                    pddls=args.pddls,
-                    domain_type=args.domain_type,
-                    trainer_seed=args.seed,
-                    slot_id=slot_id,
-                    num_slots=args.num_workers,
-                    ssipp_dg_heuristic=args.ssipp_dg_heuristic,
-                    use_lm_cuts=args.use_lm_cuts,
-                    use_numeric_landmarks=args.use_numeric_landmarks,
-                    use_contributions=args.use_contributions,
-                    use_act_history=args.use_act_history,
-                    fd_heuristic=args.fd_teacher_heuristic,
-                    ssipp_teacher_heuristic=args.ssipp_teacher_heuristic,
-                    enhsp_config=args.enhsp_config,
-                    estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
-                    teacher_planner=args.teacher_planner,
-                    teacher_timeout_s=args.teacher_timeout_s,
-                    only_one_good_action=only_one_good_action,
-                    use_teacher_envelope=args.use_teacher_envelope,
-                    max_len=args.search_max_length,
-                    mcts_iterations=args.mcts_iterations,
-                    heuristic_bootstrapping=args.heuristic_bootstrapping,
-                    mcts_her_strategy=args.mcts_her_strategy,
-                    mcts_expansion_k=args.mcts_expansion_size,
-                    use_fluents=args.use_fluents,
-                    use_comps=args.use_comparisons,
-                    difficulty=InstanceDifficulty.EASY,
-                    fixed_instance_pddl=args.fixed_instance,
-                    mcts_exploration_weight=args.mcts_exploration_weight,
-                    sample_k_additional_states=args.sample_k_additional_states,
-                    goal_path_reconstruction=args.goal_path_reconstruction,
-                    action_policy=args.action_policy,
-                    action_policy_goal_chase_distance_threshold=args.action_policy_goal_chase_distance_threshold,
-                    action_policy_epsilon=args.action_policy_epsilon,
-                    action_policy_temperature=args.action_policy_temperature,
-                    action_policy_decay_rate=args.action_policy_decay_rate,
-                    original_training_set=args.original_training_set,
-                    estimator_decay=args.estimator_decay,
-                    estimator_decay_coeff_start=args.estimator_decay_coeff_start,
-                    estimator_decay_coeff_end=args.estimator_decay_coeff_end,
-                    estimator_decay_epochs=args.estimator_decay_epochs if args.estimator_decay_epochs is not None else int(
-                        args.max_opt_epochs / 3),
-                )
-            )
+        specs = make_specs(args)
         explorer = ParallelMCTSExplorerGrads(
             specs=specs,
             dropout=args.dropout,
@@ -1251,14 +1182,8 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             l1_l2_reg_coeff=args.l1_l2_reg,
             max_workers=args.num_workers,
         )
-        domain = args.pddls[0]
         instances = args.pddls[1:]
-        validation_specs = []
-        for i, instance in enumerate(instances):
-            spec: SpawnExploreSpec = copy.deepcopy(specs[0])
-            spec.pddls = [domain, instance]
-            spec.slot_id = i
-            validation_specs.append(spec)
+        validation_specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
         validator = ParallelMCTSExplorerEval(specs=validation_specs, max_workers=min(args.num_workers, len(instances)))
         if not args.freeze_train:
             sup_trainer = SupervisedTrainer(
@@ -1273,20 +1198,15 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
                 l2_reg_coeff=args.l2_reg,
                 l1_l2_reg_coeff=args.l1_l2_reg,
                 mse_coeff=args.mse,
-                opt_batches_per_epoch=args.opt_batch_per_epoch,
                 start_time=start_time,
                 early_stop=args.supervised_early_stop,
                 save_every=args.save_every,
-                scratch_dir=scratch_dir,
                 snapshot_dir=snapshot_dir,
-                dk=args.dK,
                 time_out=args.timeout,
-                use_fluents=args.use_fluents,
-                use_comps=args.use_comparisons,
                 resume_from=args.resume_from,
             )
         else:
-            sup_trainer = FrozenSupervisedTrainer(
+            sup_trainer = FrozenSupervisedTrainer(  # FIXME: if testing frozen training again - this is probably broken
                 weight_manager=weight_manager,
                 summary_writer=sample_writer,
                 explorer=explorer,
@@ -1323,45 +1243,8 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
         return
 
     instances = args.pddls[1:]
-    domain = args.pddls[0]
 
-    specs = []
-
-    for i, instance in enumerate(instances):
-        specs.append(
-            SpawnExploreSpec(
-                pddls=[domain, instance],
-                domain_type=args.domain_type,
-                trainer_seed=args.seed,
-                slot_id=i,
-                evaluation_instance_index=i,
-                num_slots=len(instances),
-                ssipp_dg_heuristic=args.ssipp_dg_heuristic,
-                use_lm_cuts=args.use_lm_cuts,
-                use_numeric_landmarks=args.use_numeric_landmarks,
-                use_contributions=args.use_contributions,
-                use_act_history=args.use_act_history,
-                fd_heuristic=args.fd_teacher_heuristic,
-                ssipp_teacher_heuristic=args.ssipp_teacher_heuristic,
-                enhsp_config=args.enhsp_config,
-                estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
-                teacher_planner=args.teacher_planner,
-                teacher_timeout_s=args.teacher_timeout_s,
-                only_one_good_action=only_one_good_action,
-                use_teacher_envelope=args.use_teacher_envelope,
-                max_len=args.search_max_length,
-                mcts_iterations=args.mcts_iterations,
-                heuristic_bootstrapping=args.heuristic_bootstrapping,
-                mcts_her_strategy=args.mcts_her_strategy,
-                mcts_expansion_k=args.mcts_expansion_size,
-                use_fluents=args.use_fluents,
-                use_comps=args.use_comparisons,
-                difficulty=InstanceDifficulty.EASY,
-                fixed_instance_pddl=args.fixed_instance,
-                mcts_exploration_weight=args.mcts_exploration_weight,
-            )
-        )
-
+    specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
     weights_np = weight_manager.export_numpy()
     eval_explorer = ParallelMCTSExplorerEval(
         specs=specs,
@@ -1378,7 +1261,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
     if args.exploration_algorithm == 'mcts':
         main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir)
         return
-    print('Training supervised')
+    print('Training supervised - not mcts')
 
     start_time = time()
 
@@ -1407,7 +1290,28 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
     weight_manager = make_weight_manager(
         args, p.domain_meta, dg_extra_dim
     )
-    problems = [] #FIXME: have backward compatibility work
+    specs = make_specs(args)
+    problems = [SingleProblem(spec) for spec in specs]
+    before_dim_init = time()
+    init_data = run_parallel_problem_init_data_collection(
+        specs=[problem.spec for problem in problems], max_workers=args.num_workers
+    )
+
+    for id in init_data:
+        problem = problems[id.slot_id]
+        problem.name = id.name
+        problem.obs_dim = id.obs_dim
+        problem.act_dim = id.act_dim
+        problem.dom_meta = id.dom_meta
+        problem.problem_meta = id.prob_meta
+        problem.ssipp_dead_end_value = id.ssipp_dead_end_value
+    print(f"[EXPLORER_DIM_CACHE] dimension initialization done, took {time() - before_dim_init} seconds")
+
+    for problem in problems:
+        problem.network, weight_manager = make_network(
+            args, problem, dg_extra_dim, weight_manager,
+        )
+
     # need to create FileWriter *after* creating the policy network itself, or
     # the network will not show up in TB (I assume that the `Graph` view is
     # just a snapshot of the global TF op graph at the time a given
@@ -1423,7 +1327,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
         print('Training supervised with strategy %r and heuristic %r' %
               (args.sup_objective, args.fd_teacher_heuristic))
         if args.exploration_algorithm == 'static':
-            explorer = StaticExplorer(problems, args.rollouts)
+            explorer = StaticExplorer(problems, args.rollouts, args.max_replay_size)
         elif args.exploration_algorithm == 'dynamic':
             explorer = DynamicExplorer(
                 problems,
@@ -1431,40 +1335,40 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
                 min_new_pairs=args.min_explored,
                 max_new_pairs=args.max_explored,
                 expl_learn_ratio=args.exploration_learning_ratio,
-                max_replay_size=args.max_replay_size,
-                debug_memory=args.debug_memory)
+                max_replay_size=args.max_replay_size)
         elif args.exploration_algorithm == 'mcts':
-            # explorer = MCTSExplorer(
             raise NotImplementedError("This is weird, should have arrived in a different code location.")
         else:
             raise ValueError(
                 f'Unknown exploration algorithm: {args.exploration_algorithm}')
-
+        instances = args.pddls[1:]
+        validation_specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
+        validator = ParallelMCTSExplorerEval(specs=validation_specs, max_workers=min(args.num_workers, len(instances)))
         # we maintain the old loss for usage of policy network only (instead of dual-head using the new loss)
-        sup_trainer = SupervisedTrainer(
+        sup_trainer = OriginalSupervisedTrainer(
             problems=problems,
             weight_manager=weight_manager,
             summary_writer=sample_writer,
             explorer=explorer,
+            validator=validator,
             batch_size=args.supervised_bs,
             lr=args.supervised_lr,
             lr_steps=args.lr_steps,
             l1_reg_coeff=args.l1_reg,
             l2_reg_coeff=args.l2_reg,
             l1_l2_reg_coeff=args.l1_l2_reg,
-            mse_coeff=args.mse,
             opt_batches_per_epoch=args.opt_batch_per_epoch,
             save_training_set=args.save_training_set,
             use_saved_training_set=args.use_saved_training_set,
+            resume_from=args.resume_from,  # the default is None, and will not load any optimizer weights,
+            # if resume_from is not None and code reached here,
+            # that means we want to re-train the network so we load the optimizer weights
             start_time=start_time,
             early_stop=args.supervised_early_stop,
             save_every=args.save_every,
             scratch_dir=scratch_dir,
             snapshot_dir=snapshot_dir,
-            dk=args.dK,
             time_out=args.timeout,
-            use_fluents=args.use_fluents,
-            use_comps=args.use_comparisons,
         )
         best_rate, elapsed_time, iter_num = sup_trainer.train(
             max_epochs=args.max_opt_epochs)
@@ -1489,7 +1393,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
                     iter_num, weight_manager, scratch_dir)
 
 
-def parent_death_pact(signal: signal.Signals=signal.SIGINT) -> None:
+def parent_death_pact(signal: signal.Signals = signal.SIGINT) -> None:
     """Commit to kill current process when parent process dies. This function
     only works on linux for now. Specifically, it calls prctl() with the
     operation PR_SET_PDEATHSIG, which is documented in the kernel source code
@@ -1509,6 +1413,7 @@ def parent_death_pact(signal: signal.Signals=signal.SIGINT) -> None:
     retcode = libc.prctl(PR_SET_PDEATHSIG, signal, 0, 0, 0)
     if retcode != 0:
         raise Exception("prctl() returned nonzero retcode %d" % retcode)
+
 
 def main():
     rpyc.core.protocol.DEFAULT_CONFIG.update({

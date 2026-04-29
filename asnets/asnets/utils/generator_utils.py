@@ -480,7 +480,6 @@ def extract_domain_name_strict(text: str) -> str:
     """
     Require exactly one (define (domain ...) and no domain definition.
     """
-    #TODO: make sure this really works
 
     #Strip comments
     text = re.sub(r";.*", "", text)

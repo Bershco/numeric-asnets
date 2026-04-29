@@ -1,6 +1,9 @@
+from abc import abstractmethod, ABC
 from collections import Counter, deque
 from enum import Enum
 from functools import lru_cache
+from itertools import repeat
+
 import joblib
 import logging
 import numpy as np
@@ -13,6 +16,7 @@ from types import ModuleType
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 import datetime
 
+from asnets.checkpointing import save_checkpoint_dir, resolve_optimizer_path
 from asnets.heur_inputs import ActionCountDataGenerator, \
     HeuristicDataGenerator, LMCutDataGenerator, RelaxedDeadendDetector, \
     NumericLandmarkGenerator
@@ -26,8 +30,8 @@ from asnets.state_reprs import CanonicalState
 from asnets.teacher import Teacher
 from asnets.utils.prof_utils import can_profile
 from asnets.utils.pddl_utils import get_domain_file
-from asnets.utils.py_utils import TimerContext, strip_parens, weak_ref_to
-from asnets.utils.tf_utils import cross_entropy, mean_squared_error
+from asnets.utils.py_utils import TimerContext, strip_parens, weak_ref_to, weighted_batch_iter
+from asnets.utils.tf_utils import cross_entropy, mean_squared_error, empty_feed_value
 import jpype
 import jpype.imports
 import sys
@@ -81,57 +85,6 @@ def _import_java_classes() -> None:
     J_PDDLProblem = jpype.JPackage('com').hstairs.ppmajal.problem.PDDLProblem
 
 
-class WeightedReplayBuffer:
-    """Replay buffer for previously-encountered states. The 'weighted' in the
-    name comes from the fact that it's really a multiset that lets you sample
-    states weighted by multiplicity."""
-
-    def __init__(self):
-        """Initialize the replay buffer."""
-        self.counter = Counter()
-        self.added_items = deque()
-
-    def update(self, new_elems: Iterable[Any]) -> None:
-        """Add new elements to the replay buffer.
-
-        Args:
-            new_elems (Iterable[Any]): New elements to add to the replay
-            buffer.
-        """
-        item_counter = Counter(new_elems)
-        self.counter.update(item_counter)
-        self.added_items.append(item_counter)
-
-    def __len__(self) -> int:
-        """Get the number of unique elements in the replay buffer.
-
-        Returns:
-            int: Number of unique elements in the replay buffer.
-        """
-        return len(self.counter)
-
-    def get_full_dataset(self) -> Tuple[List[Any], List[int]]:
-        """Get the full dataset stored in the replay buffer.
-
-        Returns:
-            Tuple[List[Any], List[int]]: List of elements in the replay buffer
-            and list of their counts.
-        """
-        rich_dataset = list(self.counter)
-        counts = [self.counter[item] for item in rich_dataset]
-        return rich_dataset, counts
-
-    def remove_oldest(self):
-        """Remove the oldest element from the replay buffer."""
-        # make sure we do not empty the replay buffer
-        if len(self.added_items) <= 1:
-            return
-
-        item_counter = self.added_items.popleft()
-        self.counter.subtract(item_counter)
-        self.counter += Counter()  # remove zero and negative counts
-
-
 class PlannerExtensions(object):
     """Wrapper to hold references to SSiPP and MDPSim modules, and references
     to the relevant loaded problems (like the old ModuleSandbox). Mostly
@@ -169,12 +122,12 @@ class PlannerExtensions(object):
         import mdpsim  # noqa: F811
         import ssipp  # noqa: F811
         current_problem = pddl_files[1]
-        current_problem_name = get_problem_names([current_problem])[0]
+        self.current_problem_name = get_problem_names([current_problem])[0]
 
-        print(f'Starting to parse mdpsim problem: {current_problem_name}')
+        print(f'Starting to parse mdpsim problem: {self.current_problem_name}')
         # MDPSim stuff
         self.mdpsim: ModuleType = mdpsim
-        self.mdpsim_problem = parse_problem_args(self.mdpsim, self.pddl_files, current_problem_name)
+        self.mdpsim_problem = parse_problem_args(self.mdpsim, self.pddl_files, self.current_problem_name)
         self.problem_name: str = self.mdpsim_problem.name.strip()
 
         print(f'Finished parsing mdpsim problem: {self.problem_name}')
@@ -339,7 +292,6 @@ def log_grad_norms(grads_and_vars):
 def tf_and_log(name: str, value):
     tf.summary.scalar(name, value)
     base_name = tf.get_current_name_scope()
-    # print(f"[TF_SUMMARY_SCALAR_LOG] {base_name + '/' if base_name is not None else ''}{name} : {value}")
     tf_logger.info(f"[TF_SUMMARY_SCALAR_LOG] {base_name + '/' if base_name is not None else ''}{name} : {value}")
 
 
@@ -452,62 +404,21 @@ class SupervisedObjective(Enum):
     MCTS_POLICY_DIST = 3
 
 
-class SupervisedTrainer:
-    @can_profile
-    def __init__(self,
-                 # problems,
-                 weight_manager,
-                 summary_writer,
-                 explorer,
-                 validator,
-                 start_time,
-                 scratch_dir,
-                 snapshot_dir,
-                 *,
-                 batch_size=64,
-                 lr=0.001,
-                 lr_steps=[],
-                 opt_batches_per_epoch=300,
-                 l1_reg_coeff,
-                 l2_reg_coeff,
-                 l1_l2_reg_coeff,
-                 mse_coeff,
-                 save_training_set=None,
-                 use_saved_training_set=None,
-                 hide_progress=False,
-                 use_fluents=False,
-                 use_comps=False,
-                 time_out=40,
-                 early_stop=20,
-                 save_every=20,
-                 dk="dk",
-                 balanced_success_rate=True,
-                 resume_from=None,
+class BaseTrainer(ABC):
+
+    def __init__(self, weight_manager, summary_writer, explorer, validator, lr, l1_reg_coeff, l2_reg_coeff,
+                 l1_l2_reg_coeff, lr_steps
                  ):
-        # gets incremented to deal with TF
-        self.batches_seen = 0
-        self.balanced_success_rate = balanced_success_rate
         self.weight_manager = weight_manager
         # may be None if no summaries tuple()should be written
         self.summary_writer = summary_writer
         self.explorer = explorer
         self.validator = validator
-        self.batch_size_per_problem = max(batch_size // self.explorer.num_slots(), 1)
-        self.opt_batches_per_epoch = opt_batches_per_epoch
-        self.hide_progress = hide_progress
-        self.tf_init_done = False
         self.lr = lr
         self.l1_reg_coeff = l1_reg_coeff
         self.l2_reg_coeff = l2_reg_coeff
-        self.mse_coeff = mse_coeff
         self.l1_l2_reg_coeff = l1_l2_reg_coeff
-        self.timer = TimerContext()
-        self.save_training_set = save_training_set
-        self.use_saved_training_set = use_saved_training_set
-        if use_saved_training_set:
-            LOGGER.info("Loading saved training set from '%s'",
-                        use_saved_training_set)
-            self.loaded_training_set = joblib.load(use_saved_training_set)
+        self.tf_init_done = False
         lr_steps = [(0, lr)] + sorted(lr_steps)
         for k, lr in lr_steps:
             assert k >= 0, "one of the steps was negative (?)"
@@ -517,15 +428,52 @@ class SupervisedTrainer:
                 "one of the given learning rates was not positive (?)"
         self.lr_steps = lr_steps
         self.lr_steps_remaining = list(lr_steps)
+
+    @abstractmethod
+    def train(self, max_epochs):
+        pass
+
+    @abstractmethod
+    def _init_tf(self):
+        pass
+
+
+class SupervisedTrainer(BaseTrainer):
+    @can_profile
+    def __init__(self,
+                 # problems,
+                 weight_manager,
+                 summary_writer,
+                 explorer,
+                 validator,
+                 start_time,
+                 snapshot_dir,
+                 *,
+                 lr=0.001,
+                 lr_steps=[],
+                 l1_reg_coeff,
+                 l2_reg_coeff,
+                 l1_l2_reg_coeff,
+                 mse_coeff,
+                 hide_progress=False,
+                 time_out=40,
+                 early_stop=20,
+                 save_every=20,
+                 balanced_success_rate=True,
+                 resume_from=None,
+                 ):
+        super().__init__(weight_manager, summary_writer, explorer, validator, lr, l1_reg_coeff, l2_reg_coeff,
+                         l1_l2_reg_coeff, lr_steps)
+        # gets incremented to deal with TF
+        self.balanced_success_rate = balanced_success_rate
+        self.hide_progress = hide_progress
+        self.mse_coeff = mse_coeff
+        self.timer = TimerContext()
         self.start_time = start_time
         self.timeout = time_out
         self.early_stop = early_stop
         self.save_every = save_every
-        self.scratch_dir = scratch_dir
         self.snapshot_dir = snapshot_dir
-        self.dk = dk
-        self.use_fluents = use_fluents
-        self.use_comps = use_comps
         self._init_tf()
         if resume_from is not None and not resume_from.endswith(".pkl"):
             opt_path = os.path.join(resume_from, "optimizer.joblib")
@@ -533,15 +481,21 @@ class SupervisedTrainer:
                 trainable_vars = self.weight_manager.all_weights
                 assert len(trainable_vars) > 0
                 # Force Adam slot variable creation
-                self.optimiser.apply_gradients([
+                self.optimizer.apply_gradients([
                     (tf.zeros_like(v), v)
                     for v in trainable_vars
                 ])
+                print(
+                    "[Optimizer BEFORE restore]",
+                    self.optimizer.iterations.numpy(),
+                )
+
                 opt_vals = joblib.load(opt_path)
-                assert len(opt_vals) == len(self.optimiser.variables())
-                for var, val in zip(self.optimiser.variables(), opt_vals):
+                assert len(opt_vals) == len(self.optimizer.variables())
+                for var, val in zip(self.optimizer.variables(), opt_vals):
                     var.assign(val)
                 print("[Optimizer] restored from checkpoint")
+                print("optimizer step:", self.optimizer.iterations.numpy())
 
     @can_profile
     def _init_tf(self):
@@ -555,10 +509,10 @@ class SupervisedTrainer:
             values = [i[1] for i in self.lr_steps]
             lr_scheduler = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
                 boundaries, values)
-            self.optimiser = tf.keras.optimizers.Adam(
+            self.optimizer = tf.keras.optimizers.Adam(
                 learning_rate=lr_scheduler)
         else:
-            self.optimiser = tf.keras.optimizers.Adam(learning_rate=self.lr)
+            self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
         self._log_ops = {}
         self.tf_init_done = True
 
@@ -656,7 +610,7 @@ class SupervisedTrainer:
                 tf_and_log('succ-rate/balanced', balanced_rate)
 
             tf_and_log('states', n_states)
-            tf_and_log('lr', self.optimiser.lr)
+            tf_and_log('lr', self.optimizer.lr)
 
             if active_rates:
                 total_succ_rate = balanced_rate  # if we want to balance rates, this is the real deal
@@ -665,7 +619,8 @@ class SupervisedTrainer:
                 succ_rate=total_succ_rate,
                 net_loss=mean_loss,
                 states=n_states,
-                lr=self.optimiser.lr,
+                lr=self.optimizer.lr,
+                refresh=False,
             )
 
             # --------------------------------------------------
@@ -693,33 +648,24 @@ class SupervisedTrainer:
 
             if should_save:
                 best_rate = total_succ_rate
-                snapshot_path = os.path.join(
-                    self.snapshot_dir,
-                    f'snapshot_{epoch_num}_{total_succ_rate:.4f}'
-                )
-                os.makedirs(snapshot_path, exist_ok=True)
-                # Save weights
-                self.weight_manager.save(
-                    os.path.join(snapshot_path, "weights.joblib")
-                )
-                # Save optimizer state
-                opt_vars = self.optimizer.variables()
-                if opt_vars:
-                    joblib.dump(
-                        [v.numpy() for v in opt_vars],
-                        os.path.join(snapshot_path, "optimizer.joblib"),
-                        compress=True
-                    )
-                shutil.copytree(
-                    snapshot_path,
-                    os.path.join(self.dk, os.path.basename(snapshot_path)),
-                    dirs_exist_ok=True
-                )
+                snapshot_name = f"snapshot_{epoch_num}_{total_succ_rate:.4f}"
 
+                save_checkpoint_dir(
+                    snapshot_dir=self.snapshot_dir,
+                    snapshot_name=snapshot_name,
+                    weight_manager=self.weight_manager,
+                    optimizer=self.optimizer,
+                    trainer_state={
+                        "epoch_num": epoch_num,
+                        "best_rate": best_rate,
+                        "time_since_best": time_since_best,
+                    },
+                )
             tf.summary.flush()
             elapsed_time = time() - self.start_time
             if self.timeout and elapsed_time > self.timeout * 0.95:
                 LOGGER.info('[TIMING_TERMINATION] Timeout reached')
+                tr.refresh()  # this guarantees tqdm display of last iteration
                 break
 
             if (
@@ -729,6 +675,7 @@ class SupervisedTrainer:
                     and best_rate >= solve_thresh
             ):
                 LOGGER.info('Terminating early (early stop condition met)')
+                tr.refresh()  # this guarantees tqdm display of last iteration
                 break
 
             if good_epoch_cap:
@@ -766,7 +713,7 @@ class SupervisedTrainer:
 
         mean_grads = [g / total for g in grads_sum]
         mean_grads_tf = [tf.convert_to_tensor(g, dtype=v.dtype) for g, v in zip(mean_grads, params)]
-        self.optimiser.apply_gradients(zip(mean_grads_tf, params))
+        self.optimizer.apply_gradients(zip(mean_grads_tf, params))
 
         return float(sum(losses) / len(losses)), float(sum(succs) / len(succs)), int(total)
 
@@ -798,6 +745,354 @@ class SupervisedTrainer:
         return tuple(rates)
 
 
+class OriginalSupervisedTrainer(BaseTrainer):
+    def __init__(self,
+                 problems,
+                 weight_manager,
+                 summary_writer,
+                 explorer,
+                 validator,
+                 start_time,
+                 scratch_dir,
+                 snapshot_dir,
+                 *,
+                 batch_size=64,
+                 lr=0.001,
+                 lr_steps=[],
+                 opt_batches_per_epoch=300,
+                 l1_reg_coeff,
+                 l2_reg_coeff,
+                 l1_l2_reg_coeff,
+                 save_training_set=None,
+                 use_saved_training_set=None,
+                 resume_from=None,
+                 hide_progress=False,
+                 time_out=1000,
+                 early_stop=20,
+                 save_every=20,
+                 ):
+        super().__init__(weight_manager, summary_writer, explorer, validator, lr, l1_reg_coeff, l2_reg_coeff,
+                         l1_l2_reg_coeff, lr_steps)
+        # gets incremented to deal with TF
+        self.batches_seen = 0
+        self.problems = problems
+        self.batch_size_per_problem = max(batch_size // len(problems), 1)
+        self.opt_batches_per_epoch = opt_batches_per_epoch
+        self.hide_progress = hide_progress
+        self.timer = TimerContext()
+        self.save_training_set = save_training_set
+        self.use_saved_training_set = use_saved_training_set
+        if use_saved_training_set:
+            LOGGER.info("Loading saved training set from '%s'",
+                        use_saved_training_set)
+            self.loaded_training_set = joblib.load(use_saved_training_set)
+        self.start_time = start_time
+        self.timeout = time_out
+        self.early_stop = early_stop
+        self.save_every = save_every
+        self.scratch_dir = scratch_dir
+        self.snapshot_dir = snapshot_dir
+        self.resume_from = resume_from
+        self._init_tf()
+
+    def _get_replay_sizes(self):
+        """Get the sizes of replay buffers for each problem."""
+        rv = []
+        for problem in self.problems:
+            rv.append(len(problem.replay))
+        return rv
+
+    def train(self, max_epochs):
+        best_rate = None
+        keep_going = True
+        iter_num = 0
+        time_since_best = 0
+        # fraction of rollouts that have to reach goal in order for problem
+        # to be considered "solved"
+        solve_thresh = 0.999
+        tr = tqdm.trange(max_epochs, desc='epoch', leave=True)
+        mean_loss = None
+        elapsed_time = time() - self.start_time
+
+        # set up tensorboard logging
+        epoch = tf.Variable(0, dtype=tf.int64)
+        self.summary_writer.set_as_default(step=epoch)
+
+        for epoch_num in tr:
+            # update the epoch variable
+            epoch.assign(epoch_num)
+
+            # only extend replay by a bit each time
+            succs_probs = self.explorer.extend_replay(weights_np=self.weight_manager.export_numpy(),
+                                                      epoch_num=epoch_num)
+            total_succ_rate = np.mean([s for _, s in succs_probs])
+            replay_sizes = self._get_replay_sizes()
+            replay_size = sum(replay_sizes)
+
+            tf.summary.scalar('lr', self.optimizer.lr)
+            # update output
+            tr.set_postfix(
+                succ_rate=total_succ_rate,
+                net_loss=mean_loss,
+                states=replay_size,
+                lr=self.optimizer.lr,
+                refresh=False,
+                )
+            tf.summary.scalar('succ-rate/mean', total_succ_rate)
+
+            for prob, prob_succ_rate in succs_probs:
+                tf.summary.scalar('succ-rate/%s' % prob.name, prob_succ_rate)
+
+            tf.summary.scalar('replay-size', replay_size)
+            mean_loss = self._optimize(self.opt_batches_per_epoch)
+            iter_num += 1
+            # update output again
+            tr.set_postfix(
+                succ_rate=total_succ_rate,
+                net_loss=mean_loss,
+                states=replay_size,
+                lr=self.optimizer.lr,
+                refresh=False,
+                )
+            # caller might want us to terminate
+            if best_rate is None or total_succ_rate > best_rate + 1e-4:
+                time_since_best = 0
+            elif total_succ_rate < best_rate and total_succ_rate < solve_thresh:
+                # also reset to 0 if our success rate goes back down again
+                time_since_best = 0
+            else:
+                time_since_best += 1
+                if self.early_stop \
+                        and time_since_best >= self.early_stop \
+                        and best_rate >= solve_thresh:
+                    LOGGER.info('Terminating (early stopping condition met with'
+                                '%d epochs since loss %f)',
+                                time_since_best, best_rate)
+                    keep_going = False
+
+            should_save = best_rate is None or total_succ_rate >= best_rate \
+                          or (self.save_every and iter_num % self.save_every == 0) \
+                          or iter_num == 1  # always save on first iter
+            if should_save:
+                best_rate = total_succ_rate
+                # snapshot!
+                snapshot_name = f"snapshot_{iter_num}_{total_succ_rate:.4f}"
+                save_checkpoint_dir(
+                    snapshot_dir=self.snapshot_dir,
+                    snapshot_name=snapshot_name,
+                    weight_manager=self.weight_manager,
+                    optimizer=self.optimizer,
+                    trainer_state={
+                        "epoch_num": epoch_num,
+                        "iter_num": iter_num,
+                        "best_rate": best_rate,
+                        "time_since_best": time_since_best,
+                    },
+                )            # also, always save timing data
+            with open(os.path.join(self.scratch_dir, 'timing.json'), 'w') as fp:
+                fp.write(self.timer.to_json())
+
+            tf.summary.flush()
+
+            if self.timeout:
+                keep_going = keep_going and elapsed_time <= self.timeout
+
+            if not keep_going:
+                LOGGER.info('Terminating early')
+                tr.refresh() #this guarantees tqdm display of last iteration
+                break
+
+        return best_rate, elapsed_time, iter_num
+
+    def _init_tf(self):
+        """Do setup necessary for network (e.g. initialising weights)."""
+        assert not self.tf_init_done, \
+            "this class is not designed to be initialised twice"
+
+        LOGGER.info('Initialising network structure')
+
+        if len(self.lr_steps) > 1:
+            # using a scheduler to control the learning rate
+            boundaries = [i[0] for i in self.lr_steps[1:]]
+            values = [i[1] for i in self.lr_steps]
+            lr_scheduler = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+                boundaries, values)
+            self.optimizer = tf.keras.optimizers.Adam(
+                learning_rate=lr_scheduler)
+        else:
+            self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
+
+        self.loss_fn = ManualLoss(
+            problems=self.problems,
+            weight_manager=self.weight_manager,
+            summary_writer=self.summary_writer,
+            l1_reg_coeff=self.l1_reg_coeff,
+            l2_reg_coeff=self.l2_reg_coeff,
+            l1_l2_reg_coeff=self.l1_l2_reg_coeff,
+            name="loss_fn",
+            strategy=SupervisedObjective.ANY_GOOD_ACTION
+        )
+
+        trainable_vars = list(self.weight_manager.all_weights)
+        self.optimizer.build(trainable_vars)
+
+        self._maybe_restore_optimizer()
+        # tensorboard ops
+        self._log_ops = {}
+        self.tf_init_done = True
+
+    def _maybe_restore_optimizer(self):
+        """Restore optimizer state if resuming training."""
+        if not hasattr(self, "resume_from") or not self.resume_from:
+            return
+
+        opt_path = resolve_optimizer_path(self.resume_from)
+
+        if opt_path is None:
+            print("[RESUME] No optimizer state found")
+            return
+
+        print(f"[RESUME] Restoring optimizer from {opt_path}")
+
+        opt_weights = joblib.load(opt_path)
+        opt_vars = self.optimizer.variables()
+
+        assert len(opt_vars) == len(opt_weights), \
+            f"Optimizer variable mismatch: {len(opt_vars)} vs {len(opt_weights)}"
+        try:
+            for var, val in zip(opt_vars, opt_weights):
+                var.assign(val)
+            print("[RESUME] Optimizer restored successfully")
+        except Exception as e:
+            print("[RESUME WARNING] Failed to restore optimizer:", e)
+
+    def _make_batches(self, n_batches: int):
+        """A generator yielding batches of data for training.
+
+        Args:
+            n_batches: Number of batches to yield.
+
+        Yields:
+            A batch of data as a list, where each element is a batch of data for
+            a single problem of the form (obs_tensor, qvs_tensor). The batches
+            are order in the same order as the problems in self.problems.
+        """
+        batch_iters = []
+
+        if self.save_training_set:
+            to_save = {}
+        cached_shapes = self.explorer.get_cached_shapes_per_problem()
+        for problem in self.problems:
+            if self.use_saved_training_set:
+                assert not self.save_training_set, \
+                    "saving training set & using a saved set are mutually " \
+                    "exclusive options (doesn't make sense to write same " \
+                    "dataset back out to disk!)"
+                prob_obs_tensor, prob_qv_tensor, prob_counts \
+                    = self.loaded_training_set[problem.name]
+                it = weighted_batch_iter(
+                    (prob_obs_tensor, prob_qv_tensor),
+                    prob_counts,
+                    self.batch_size_per_problem,
+                    n_batches,
+                )
+                batch_iters.append(it)
+                continue
+            if len(problem.replay) == 0:
+                LOGGER.warning("No data for problem '%s' yet (teacher time-out?)",
+                               problem.name)
+                batch_iters.append(repeat(None))
+                if self.save_training_set:
+                    to_save[problem.name] = None
+            else:
+                prob_obs_tensor, prob_qv_tensor, prob_counts \
+                    = problem.weighted_dataset()
+                it = weighted_batch_iter(
+                    (prob_obs_tensor, prob_qv_tensor),
+                    prob_counts,
+                    self.batch_size_per_problem,
+                    n_batches,
+                )
+                batch_iters.append(it)
+                if self.save_training_set:
+                    to_save[problem.name] \
+                        = (prob_obs_tensor, prob_qv_tensor, prob_counts)
+        if self.save_training_set:
+            LOGGER.info("Saving training set to disk'%s'",
+                        self.save_training_set)
+            dirname = os.path.dirname(self.save_training_set)
+            if dirname:
+                os.makedirs(dirname, exist_ok=True)
+            joblib.dump(to_save, self.save_training_set)
+        combined = zip(*batch_iters)
+        # yield a complete feed dict
+        for combined_batch in combined:
+            assert len(combined_batch) == len(self.problems)
+            yield_val = []
+            have_batch = False
+            for problem, batch in zip(self.problems, combined_batch):
+                if batch is None:
+                    yield_val.append(empty_feed_value(
+                        *cached_shapes[problem.name]))
+                else:
+                    yield_val.append(batch)
+                    have_batch = True
+            assert have_batch, \
+                "don't have any batches at all for training problems"
+            yield yield_val
+
+    def _optimize(self, n_batches):
+        params = self.weight_manager.all_weights
+
+        param_set = set(map(lambda v: v.ref(), params))
+        tf_param_set = set(map(
+            lambda v: v.ref(),
+            self.problems[0].network.trainable_weights))
+
+        assert param_set == tf_param_set, \
+            "network has weird variables---debug this"
+
+        all_batches_iter = self._make_batches(n_batches)
+        tr = tqdm.tqdm(all_batches_iter, desc='batch', total=n_batches)
+
+        start_time = time()
+        losses = []
+        for feed_dict in tr:
+            # Each feed_dict is a list of batched data sets for each problem.
+            # Each data set is a tuple of obs_tensor and q-value tensor.
+            #
+            # The obs_tensor has shape [batch_size, obs_dim]
+            # The q-value tensor has shape [batch_size, num_actions]
+            #
+            # Second axis of he q-values are ordered in the same order as action
+            # in bound_acts_ordered for the ProblemMeta.
+
+            with tf.name_scope('grads_opt'):
+                with tf.GradientTape() as tape:
+                    obs_by_prob, qv_by_prob = list(zip(*feed_dict))
+                    preds_by_prob = []
+                    for i, problem in enumerate(self.problems):
+                        preds_by_prob.append(problem.network(obs_by_prob[i]))
+                    loss, loss_parts = self.loss_fn(preds_by_prob, qv_by_prob)
+                    grads = tape.gradient(loss, params)
+                self.optimizer.apply_gradients(
+                    grads_and_vars=zip(grads, params))
+            postfix_dict = {
+                "loss": float(loss),
+                **{name: float(val) for name, val in loss_parts},
+            }
+            tr.set_postfix(postfix_dict, refresh=False)
+            losses.append(float(loss))
+
+            if (self.batches_seen % 10) == 0:
+                tf.summary.scalar('train-loss', loss)
+
+            self.batches_seen += 1
+
+        self.explorer.update_learning_time(time() - start_time)
+        return np.mean(losses)
+
+
 class ManualLoss:
     def __init__(self,
                  problems,
@@ -820,7 +1115,7 @@ class ManualLoss:
         self.strategy = strategy
 
     def __call__(self, act_dist_pred: List[tf.Tensor], act_dist: List[tf.Tensor], target_values=None, pred_values=None) \
-            -> float:
+            -> tuple[float, list]:
         assert len(self.problems) == len(act_dist_pred), \
             "inconsistent input data size with num. problems"
         assert len(act_dist) == len(act_dist_pred), \
@@ -844,7 +1139,11 @@ class ManualLoss:
                 losses.append(this_loss)
                 batch_sizes.append(tf.cast(this_batch_size, tf.float32))
                 if loss_parts is None:
-                    loss_parts = this_loss_parts
+                    loss_parts = [
+                        (name, val * tf.cast(this_batch_size, tf.float32))
+                        for name, val in this_loss_parts
+                    ]
+                    # loss_parts = this_loss_parts
                 else:
                     # we care about these parts because we want to display them to
                     # the user (e.g. how much of my loss is L2 regularisation
@@ -870,10 +1169,16 @@ class ManualLoss:
         # components of the loss
         assert loss_parts is not None
 
-        for part_loss_name, part_loss in loss_parts:
+        # for part_loss_name, part_loss in loss_parts:
             # tf.summary.scalar('loss-%s' % part_loss_name, part_loss)
-            tf_and_log('loss-%s' % part_loss_name, part_loss)
-        return op_loss
+            # tf_and_log('loss-%s' % part_loss_name, part_loss)
+        total_batch = sum(batch_sizes)
+
+        loss_parts = [
+            (name, val / total_batch)
+            for name, val in loss_parts
+        ]
+        return op_loss, loss_parts
 
     @can_profile
     def _set_up_losses(self, problem, act_dist_pred, act_dist, target_values=0, pred_values=0):
@@ -892,8 +1197,7 @@ class ManualLoss:
                 act_label_dist = act_labels / tf.math.maximum(label_sum, 1.0)
 
                 # zero out disabled or dead-end actions!
-                problem_service = problem.problem_service
-                dead_end_value = problem_service.get_ssipp_dead_end_value()
+                dead_end_value = problem.ssipp_dead_end_value
                 act_label_dist *= tf.cast(act_labels < dead_end_value,
                                           'float32')
                 # this tf.cond() call ensures that this still works when batch

@@ -3,13 +3,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, fields
 from time import time
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Tuple
 
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future, wait, ALL_COMPLETED
 
 from asnets.spawn_train_worker import WorkerInput, WorkerOutput, run_worker_opt_profile, run_worker_eval, \
     EvalWorkerInput, EvalWorkerOutput
+from asnets.supervised import SupervisedObjective
+from asnets.utils.generator_utils import InstanceDifficulty
+from asnets.utils.prof_utils import can_profile
 
 
 def run_epoch_spawn_grads(
@@ -131,10 +134,9 @@ def run_epoch_spawn_eval(specs, weights_np, max_workers=None) -> list[Optional[E
             outs[idx] = fut.result()
     return outs
 
-@dataclass
+@dataclass(frozen=True)
 class SpawnExploreSpec:
-    # minimal picklable config
-    pddls: List[str]
+    pddls: Tuple[str]
     domain_type: Any  # DomainType enum
     trainer_seed: Optional[int]
     slot_id: Optional[int]
@@ -185,7 +187,7 @@ class SpawnExploreSpec:
     action_policy_decay_rate: float = None
 
     # evaluation only attributes
-    evaluation_instance_index: Optional[int] = None
+    evaluation_mode: bool = False
 
     def __str__(self) -> str:
         """A stylized, grouped, and colorized representation of the spec."""
@@ -233,3 +235,79 @@ class SpawnExploreSpec:
                 output.append(f"    {f_name:<40} : {VAL}{val}{RST}")
 
         return "\n".join(output) + "\n"
+
+
+@can_profile
+def make_specs(args, specific_instances=None, evaluation_mode=False) -> list[SpawnExploreSpec]:
+    only_one_good_action = (
+        args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
+        or args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
+    )
+
+    num_slots = len(specific_instances) if specific_instances is not None else args.num_workers
+
+    specs = []
+    for slot_id in range(num_slots):
+        pddls = (
+            tuple(args.pddls)
+            if specific_instances is None
+            else (args.pddls[0], specific_instances[slot_id])
+        )
+
+        kwargs = dict(
+            pddls=pddls,
+            domain_type=args.domain_type,
+            trainer_seed=args.seed,
+            slot_id=slot_id,
+            evaluation_mode=evaluation_mode,
+            num_slots=num_slots,
+            ssipp_dg_heuristic=args.ssipp_dg_heuristic,
+            use_lm_cuts=args.use_lm_cuts,
+            use_numeric_landmarks=args.use_numeric_landmarks,
+            use_contributions=args.use_contributions,
+            use_act_history=args.use_act_history,
+            fd_heuristic=args.fd_teacher_heuristic,
+            ssipp_teacher_heuristic=args.ssipp_teacher_heuristic,
+            enhsp_config=args.enhsp_config,
+            estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
+            teacher_planner=args.teacher_planner,
+            teacher_timeout_s=args.teacher_timeout_s,
+            only_one_good_action=only_one_good_action,
+            use_teacher_envelope=args.use_teacher_envelope,
+            max_len=args.search_max_length,
+            mcts_iterations=args.mcts_iterations,
+            heuristic_bootstrapping=args.heuristic_bootstrapping,
+            mcts_her_strategy=args.mcts_her_strategy,
+            mcts_expansion_k=args.mcts_expansion_size,
+            use_fluents=args.use_fluents,
+            use_comps=args.use_comparisons,
+            difficulty=InstanceDifficulty.EASY,
+            fixed_instance_pddl=args.fixed_instance,
+            mcts_exploration_weight=args.mcts_exploration_weight,
+            action_policy=args.action_policy,
+            action_policy_epsilon=args.action_policy_epsilon,
+            action_policy_temperature=args.action_policy_temperature,
+            action_policy_decay_rate=args.action_policy_decay_rate,
+        )
+
+        if not evaluation_mode:
+            kwargs.update(
+                sample_k_additional_states=args.sample_k_additional_states,
+                goal_path_reconstruction=args.goal_path_reconstruction,
+                original_training_set=args.original_training_set,
+                estimator_decay=args.estimator_decay,
+                estimator_decay_coeff_start=args.estimator_decay_coeff_start,
+                estimator_decay_coeff_end=args.estimator_decay_coeff_end,
+                estimator_decay_epochs=(
+                    args.estimator_decay_epochs
+                    if args.estimator_decay_epochs is not None
+                    else int(args.max_opt_epochs / 3)
+                ),
+                action_policy_goal_chase_distance_threshold=(
+                    args.action_policy_goal_chase_distance_threshold
+                ),
+            )
+
+        specs.append(SpawnExploreSpec(**kwargs))
+
+    return specs

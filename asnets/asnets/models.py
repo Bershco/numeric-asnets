@@ -1,3 +1,6 @@
+import os
+
+from asnets.checkpointing import resolve_weights_path
 from asnets.prob_dom_meta import UnboundAction, UnboundComp, DomainMeta, \
     ProblemMeta
 from asnets.network_modules import ActionModule, CompModule, FlntModule, \
@@ -29,7 +32,7 @@ class PropNetworkWeights:
                  skip: bool,
                  use_fluents: bool,
                  use_comparisons: bool,
-                 value_head_enabled : bool = False):
+                 value_head_enabled: bool = False):
         """Initialises weights for a domain-specific problem network.
 
         Args:
@@ -112,16 +115,16 @@ class PropNetworkWeights:
                     #   goal
                     # - the value of the function and whether it is in the goal
                     in_size = len(preds) * 2 \
-                        + (len(funcs) * 2 if self.use_fluents else 0) \
-                        + (len(comps) * 2 if self.use_comparisons else 0) \
-                        + self.extra_dim
+                              + (len(funcs) * 2 if self.use_fluents else 0) \
+                              + (len(comps) * 2 if self.use_comparisons else 0) \
+                              + self.extra_dim
                 else:
                     # prop/func inputs + skip input from previous action layer
                     in_size = len(preds) * self.hidden_sizes[hid_idx - 1][1] \
-                        + (len(funcs) * self.hidden_sizes[hid_idx - 1][1]
-                           if self.use_fluents else 0) \
-                        + (len(comps) * self.hidden_sizes[hid_idx - 1][1]
-                           if self.use_comparisons else 0)
+                              + (len(funcs) * self.hidden_sizes[hid_idx - 1][1]
+                                 if self.use_fluents else 0) \
+                              + (len(comps) * self.hidden_sizes[hid_idx - 1][1]
+                                 if self.use_comparisons else 0)
                     if self.skip:
                         in_size = in_size + self.hidden_sizes[hid_idx - 1][0]
                 return in_size
@@ -211,15 +214,15 @@ class PropNetworkWeights:
             comps = self.dom_meta.rel_comps(unbound_act)
             if not self.hidden_sizes:
                 in_size = len(preds) * 2 \
-                    + (len(funcs) * 2 if self.use_fluents else 0) \
-                    + (len(comps) * 2 if self.use_comparisons else 0) \
-                    + self.extra_dim
+                          + (len(funcs) * 2 if self.use_fluents else 0) \
+                          + (len(comps) * 2 if self.use_comparisons else 0) \
+                          + self.extra_dim
             else:
                 in_size = len(preds) * self.hidden_sizes[-1][1] \
-                    + (len(funcs) * self.hidden_sizes[-1][1]
-                       if self.use_fluents else 0) \
-                    + (len(comps) * self.hidden_sizes[-1][1]
-                       if self.use_comparisons else 0)
+                          + (len(funcs) * self.hidden_sizes[-1][1]
+                             if self.use_fluents else 0) \
+                          + (len(comps) * self.hidden_sizes[-1][1]
+                             if self.use_comparisons else 0)
                 if self.skip:
                     in_size = in_size + self.hidden_sizes[-1][0]
 
@@ -259,7 +262,6 @@ class PropNetworkWeights:
             }) if num_comps > 0 else 0
 
             input_dim = (num_ground_props + num_ground_flnts + num_ground_comps) * hidden_dim
-
 
             # === value_module ===
             def value_mod_in_size(_: str, hid_idx: int) -> int:
@@ -316,7 +318,6 @@ class PropNetworkWeights:
                 )
             )
 
-
     def _make_modules_weights(self,
                               hid_idx: int,
                               hid_size: int,
@@ -356,8 +357,8 @@ class PropNetworkWeights:
                     trainable=True)
                 b = tf.Variable(
                     tf.constant_initializer(value=old_weights[hid_idx][key][1].numpy())(
-                        shape=(hid_size, )),
-                    shape=(hid_size, ),
+                        shape=(hid_size,)),
+                    shape=(hid_size,),
                     name=name_pfx + '/b',
                     trainable=True)
             else:
@@ -369,7 +370,7 @@ class PropNetworkWeights:
                     name=name_pfx + '/W',
                     trainable=True)
                 b = tf.Variable(
-                    tf.zeros_initializer()(shape=(hid_size, )),
+                    tf.zeros_initializer()(shape=(hid_size,)),
                     name=name_pfx + '/b',
                     trainable=True)
 
@@ -511,7 +512,6 @@ class PropNetwork(tf.keras.layers.Layer):
 
         self.dropout = dropout
 
-
         hidden_sizes = self._weight_manager.hidden_sizes
         dom_meta = self._weight_manager.dom_meta
 
@@ -528,7 +528,6 @@ class PropNetwork(tf.keras.layers.Layer):
         for hid_idx, hid_sizes in enumerate(hidden_sizes):
             act_dict = {}
             for unbound_act in dom_meta.unbound_acts:
-
                 weight, bias = self._weight_manager.act_weights[hid_idx][unbound_act]
                 act_dict[unbound_act] = ActionModule(
                     unbound_act=unbound_act,
@@ -547,7 +546,6 @@ class PropNetwork(tf.keras.layers.Layer):
 
             pred_dict = {}
             for pred_name in dom_meta.pred_names:
-
                 weight, bias = self._weight_manager.prop_weights[hid_idx][pred_name]
 
                 pred_dict[pred_name] = PropModule(
@@ -609,7 +607,6 @@ class PropNetwork(tf.keras.layers.Layer):
         # final (action) layer
         finals = {}
         for unbound_act in dom_meta.unbound_acts:
-
             weight, bias = self._weight_manager.act_weights[len(
                 hidden_sizes)][unbound_act]
 
@@ -665,7 +662,7 @@ class PropNetwork(tf.keras.layers.Layer):
             self.value_out_layer.build((None, value_hidden_dim))
             self.value_out_layer.kernel = val_out_W
             self.value_out_layer.bias = val_out_b
-        self._trainable_weights = list(self._weight_manager.all_weights) # Supposedly tells keras these are trainable
+        self._trainable_weights = list(self._weight_manager.all_weights)  # Supposedly tells keras these are trainable
 
     @property
     def value_head_enabled(self):
@@ -736,7 +733,7 @@ class PropNetwork(tf.keras.layers.Layer):
                                               tensor_inds,
                                               axis=1,
                                               name='split_extra/' +
-                                              unbound_act.schema_name)
+                                                   unbound_act.schema_name)
 
         return out_dict
 
@@ -767,6 +764,35 @@ class PropNetwork(tf.keras.layers.Layer):
         mask_size = prob_meta.num_acts
         extra_data_dim = self._weight_manager.extra_dim
         extra_size = extra_data_dim * prob_meta.num_acts
+        input_dim = tf.shape(inputs)[1]
+
+        # expected_dim = (
+        #         prob_meta.num_acts
+        #         + extra_size
+        #         + prob_meta.num_props
+        #         + (prob_meta.num_flnts if self.use_fluents else 0)
+        #         + (prob_meta.num_comps if self.use_comparisons else 0)
+        # )
+
+        # tf.print(
+        #     "\n[NETWORK INPUT DEBUG]",
+        #     "\ninput_dim =", input_dim,
+        #     "\nexpected_dim =", expected_dim,
+        #     "\nnum_acts =", prob_meta.num_acts,
+        #     "\nextra_data_dim =", extra_data_dim,
+        #     "\nextra_size =", extra_size,
+        #     "\nnum_props =", prob_meta.num_props,
+        #     "\nnum_flnts =", prob_meta.num_flnts,
+        #     "\nnum_comps =", prob_meta.num_comps,
+        #     "\nuse_fluents =", self.use_fluents,
+        #     "\nuse_comparisons =", self.use_comparisons,
+        # )
+        #
+        # tf.debugging.assert_equal(
+        #     input_dim,
+        #     expected_dim,
+        #     message="Network input vector length does not match expected ASNet layout"
+        # )
 
         # split up the input into its various components
         cur_index = 0
@@ -776,7 +802,12 @@ class PropNetwork(tf.keras.layers.Layer):
         cur_index += extra_size
         prop_truths = inputs[:, cur_index:cur_index + prob_meta.num_props]
         cur_index += prob_meta.num_props
-
+        # tf.print(
+        #     "[SLICES]",
+        #     "act_mask", tf.shape(act_mask),
+        #     "aux_data", tf.shape(aux_data),
+        #     "prop_truths", tf.shape(prop_truths),
+        # )
         flnt_values = None
         if self.use_fluents:
             flnt_values = inputs[:, cur_index:cur_index + prob_meta.num_flnts]
@@ -974,21 +1005,15 @@ def _merge_finals(prob_meta, final_acts):
                    np.array(gather_list),
                    axis=1,
                    name='merge_finals/reorder')
-
     return rv
+
 
 @can_profile
 def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
     hidden_sizes = [(args.hidden_size, args.hidden_size)] * args.num_layers
     if args.resume_from:
-        if args.resume_from.endswith(".pkl"):
-            # old-format checkpoint
-            wm = joblib.load(args.resume_from)
-        else:
-            # new-format checkpoint directory
-            wm = joblib.load(
-                os.path.join(args.resume_from, "weights.joblib")
-            )
+        weights_path = resolve_weights_path(args.resume_from)
+        wm = joblib.load(weights_path)
         assert wm.hidden_sizes == hidden_sizes
         assert len(wm.hidden_sizes) == args.num_layers
         assert wm.use_fluents == args.use_fluents
@@ -997,7 +1022,23 @@ def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
         assert wm.value_head_enabled == (not args.disable_value_head)
         assert wm.skip == args.skip
         assert wm.extra_dim == dg_extra_dim
-        print(f"[WM] Successfully loaded previous weight manager from {args.resume_from}")
+        print(f"[WM] Successfully loaded previous weight manager from {weights_path}")
+        w0 = wm.all_weights[0]
+        print(
+            "[WM LOAD CHECK]",
+            "mean/std/norm=",
+            float(tf.reduce_mean(w0)),
+            float(tf.math.reduce_std(w0)),
+            float(tf.linalg.norm(w0)),
+        )
+        debug_path = os.path.join(os.path.dirname(weights_path), "checkpoint_debug.joblib")
+        if os.path.exists(debug_path):
+            debug_data = joblib.load(debug_path)
+            saved_fp = debug_data["weight_fp"][0]
+            print(
+                "[WM LOAD VERIFY]",
+                f"W0 saved mean/std/norm={saved_fp}"
+            )
         return wm
     return PropNetworkWeights(
         dom_meta,
@@ -1009,10 +1050,32 @@ def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
         use_comparisons=args.use_comparisons,
         value_head_enabled=not args.disable_value_head)
 
-def configure_tf_gpu_memory_growth():
-    gpus = tf.config.list_physical_devices("GPU")
-    if not gpus:
-        return
-    for gpu in gpus:
-        tf.config.experimental.set_memory_growth(gpu, True)
-    print(f"[TF_GPU] memory growth enabled for {len(gpus)} GPUs")
+
+def make_network(args, problem, dg_extra_dim: int, weight_manager: Optional[PropNetworkWeights]):
+    # might be redundant
+
+    # can make normal FC MLP or an action/proposition network
+    hs = args.hidden_size
+    num_layers = args.num_layers
+    dropout = args.dropout
+    print('hidden_size: %d, num_layers: %d, dropout: %f' % (hs, num_layers,
+                                                            dropout))
+    if weight_manager is not None:
+        print('Re-using same weight manager')
+    else:
+        print('Creating new weight manager (not resuming)')
+        # TODO: should save all network metadata with the network weights or
+        # within a separate config class, INCLUDING heuristic configuration
+        weight_manager = PropNetworkWeights(
+            problem.dom_meta,
+            hidden_sizes=[(hs, hs)] * num_layers,
+            # extra inputs to each action module from data generators
+            extra_dim=dg_extra_dim,
+            skip=args.skip,
+            use_fluents=args.use_fluents,
+            use_comparisons=args.use_comparisons)
+    custom_network = PropNetwork(
+        weight_manager, problem.problem_meta, dropout=dropout, debug=args.net_debug)
+
+    # weight_manager will sometimes be None
+    return custom_network, weight_manager

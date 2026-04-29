@@ -94,7 +94,7 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
             mean_loss, acc, mean_kl, n_states = self._train_on_frozen_dataset_one_epoch()
 
             tf_and_log("train-loss", mean_loss)
-            tr.set_postfix(net_loss=mean_loss, acc=acc, kl=mean_kl, states=n_states, lr=self.optimiser.lr)
+            tr.set_postfix(net_loss=mean_loss, acc=acc, kl=mean_kl, states=n_states, lr=self.optimizer.lr)
 
             elapsed_time = time() - self.start_time
             if self.timeout and elapsed_time > self.timeout * 0.95:
@@ -305,7 +305,7 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
                     loss = xent_loss + mse_loss + reg_loss
 
                 grads = tape.gradient(loss, vars_)
-                self.optimiser.apply_gradients(zip(grads, vars_))
+                self.optimizer.apply_gradients(zip(grads, vars_))
 
                 total_loss += float(loss.numpy())
                 total_batches += 1
