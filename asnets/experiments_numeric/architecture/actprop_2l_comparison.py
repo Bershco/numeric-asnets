@@ -46,8 +46,8 @@ MAX_REPLAY_SIZE = 150000
 # want the ASNet to choose evenly between all actions that have minimal teacher
 # Q-value, or THERE_CAN_ONLY_BE_ONE to imitate the single action that the
 # planner would return if you just ran it on the current state
-# TRAINING_STRATEGY = 'THERE_CAN_ONLY_BE_ONE'
-TRAINING_STRATEGY = 'MCTS_POLICY_DIST'
+TRAINING_STRATEGY = 'THERE_CAN_ONLY_BE_ONE'
+# TRAINING_STRATEGY = 'MCTS_POLICY_DIST'
 # use 'ROLLOUT' to only accumulate optimal policy rollouts, or 'ENVELOPE' to
 # accumulate entire optimal policy envelopes
 TEACHER_EXPERIENCE_MODE = 'ROLLOUT'
