@@ -15,11 +15,6 @@ ENHSP_CONFIG = 'hmrmax-astar'
 
 SUPERVISED_LEARNING_RATE = 0.003  # EXPERIMENTAL
 
-#### Model settings ####
-NUM_LAYERS = 3
-HIDDEN_SIZE = 32
-SKIP = True
-
 #### MCTS settings ####
 SEARCH_MAX_LENGTH = 100
 
