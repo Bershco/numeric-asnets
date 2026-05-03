@@ -17,13 +17,15 @@ from pympler import muppy, summary, asizeof
 from typing import Set, Any, Optional
 from pympler.asizeof import asized
 
-from asnets.explorer_spawn_grads import ParallelMCTSExplorerGrads, ParallelMCTSExplorerEval
+from asnets.checkpointing import save_checkpoint_dir
+from asnets.explorer_spawn_grads import ParallelMCTSExplorerGrads, ParallelEvaluator
 from asnets.freeze_overfit_test import FrozenSupervisedTrainer
 from asnets.models import make_weight_manager, PropNetworkWeights, PropNetwork, make_network
 from asnets.parllel_explore_spawn_grads import make_specs
 from asnets.utils.tf_utils import configure_tf_gpu_memory_growth
 from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import CanonicalState
+from asnets.spawn_train_worker import run_worker_eval_policy_only, run_worker_eval_mcts
 
 import numpy as np
 import rpyc, gc
@@ -82,397 +84,6 @@ class CachingPolicyEvaluator(object):
 
     def get_action_from_cstate(self, cstate):
         return self.get_action(cstate.to_network_input())
-
-
-from post_training.monte_carlo_tree_search import MCTSNode, wrapInMCTSNode, MCTS, FixedChildMap
-
-
-class MonteCarloPolicyEvaluator(MCTS):
-
-    def __init__(self, network, problem_service, horizon=0, exploration_weight=1, iterations=10,
-                 num_cstates_to_generate_per_expansion=5, batch_expansion_call=True,
-                 progressive_widening=False, problem_server=None,
-                 debug_memory=False, debug_time_mcts_iterations=False,
-                 debug_comparison_exploration_exploitation=False, ):
-        super().__init__(exploration_weight, network=network,
-                         problem_service=problem_service,
-                         debug_memory=debug_memory,
-                         debug_time_mcts_iterations=debug_time_mcts_iterations,
-                         debug_comparison_exploration_exploitation=debug_comparison_exploration_exploitation)
-        self.iterations = iterations
-        self.horizon = horizon
-        self.k = num_cstates_to_generate_per_expansion
-        self.curr_tree_root = None
-        self.debug_orig_root = None
-        self.visited_cstates_hashes: Set[int] = set()
-        self.revisit_counter = 0
-        self.debug_memory = debug_memory
-        self.progressive_widening = progressive_widening
-        self.batch_expansion_call = batch_expansion_call
-
-    def is_comparing_exploration_exploitation(self):
-        return self._probe is not None
-
-    def sanitize_node(self, node):
-        """Deepcopy and strip aux_data from CanonicalState"""
-        try:
-            node_copy = deepcopy(node)
-            if hasattr(node_copy, "state") and hasattr(node_copy.state, "_aux_data"):
-                node_copy.state._aux_data = None
-            return node_copy
-        except Exception as e:
-            print(f"Error copying/sanitizing node: {e}")
-            return None
-
-    def profile_state_id_to_node(self):
-        total = 0
-        for i, node in enumerate(self.state_key_to_node.values()):
-            try:
-                node_copy = deepcopy(node)
-                node_copy.state._aux_data = None
-                total += asized(node_copy).size
-            except:
-                continue
-            if i >= 20:
-                break
-        estimated_total = total * len(self.state_key_to_node) / 20
-        print(f"Estimated total memory for all nodes in state_to_node dictionary: {estimated_total / 1024 ** 2:.2f} MB")
-
-    def print_memory_summary(self):
-        all_objects = muppy.get_objects()
-        sum1 = summary.summarize(all_objects)
-        summary.print_(sum1, limit=3)
-        self.profile_state_id_to_node()
-        self.safe_asizeof(self.visited_cstates_hashes, name="visited_cstates_hashes")
-
-    def safe_asizeof(self, obj, name):
-        try:
-            size = asizeof.asizeof(obj)
-            print(f"Size of {name}: {size / 1024 ** 2:.6f} MB")
-        except Exception as e:
-            print(f"Error sizing {name}: {e}")
-
-    def get_action(self, obs):
-        raise Exception("Sorry, wrong usage in code, try using get_action_from_cstate instead.")
-
-    def get_action_from_cstate_id_hash(self, cstate_id, cstate_hash, cost):  # cstate is non-terminal
-        if self.curr_tree_root is None:
-            self.curr_tree_root = wrapInMCTSNode(cstate_id=cstate_id, hashed_state=cstate_hash, cost_until_now=0,
-                                                 previous_action=None)
-            self.state_key_to_node[cstate_id] = self.curr_tree_root
-            self.debug_orig_root = self.curr_tree_root
-            self.visited_cstates_hashes.add(self.curr_tree_root.__hash__())
-        if self.use_value_based:
-            for i in range(self.iterations):
-                if i % 5 == 0:
-                    gc.collect()
-                self.mcts_iteration_value_based(self.curr_tree_root)
-        else:
-            for i in range(self.iterations):
-                if self.path_until_goal is None:
-                    self.mcts_iteration_classic(self.curr_tree_root, self.horizon)
-            if self.path_until_goal is not None:
-                next_action, next_mcts_node = self.path_until_goal[0]
-                self.path_until_goal = self.path_until_goal[1:]
-                # if self.state_to_node[cstate] not in self.children:
-                #     self.children[self.state_to_node[cstate]] = dict()
-                # self.children[self.state_to_node[cstate]][next_action] = next_mcts_node
-                self.state_key_to_node[cstate_id].children = FixedChildMap([next_action], [next_mcts_node])
-                self.state_key_to_node[next_mcts_node.state_id] = next_mcts_node
-                return next_action
-
-        def node_priority_by_n(node):
-            return node.visit_count
-
-        def tiebreak_by_q(node):
-            # return self.Q.get(node,0.0)
-            return node.Q_value
-
-        best_action, best_node = max(
-            # self.children[self.curr_tree_root].items(),
-            self.curr_tree_root.children.items(),
-            key=lambda item: (node_priority_by_n(item[1]), tiebreak_by_q(item[1]))
-        )
-        # LOGGER.info(f'chosen action: {best_action}')
-        self.visited_cstates_hashes.add(best_node.__hash__())
-        if self.debug_memory:
-            self.print_memory_summary()
-        return best_action
-
-    def progress_to(self, action_id, cstate, cost):
-        next_node = self.get_corresponding_mcts_node(cstate)
-        # assert next_node in self.children[self.curr_tree_root].values(), \
-        assert self.curr_tree_root.children is not None
-        assert next_node in self.curr_tree_root.children.values(), \
-            f"Assertion failed: next_node ({next_node}) is not one of current root's children"
-        # assert next_node == self.children[self.curr_tree_root][action_id], \
-        # f"Assertion failed: next_node ({next_node}) != expected ({self.children[self.curr_tree_root][action_id]})"
-        assert next_node == self.curr_tree_root.children[action_id], \
-            f"Assertion failed: next_node ({next_node} != expected ({self.curr_tree_root.children[action_id]})"
-        # TODO: these two assertions above might be redundant
-        self.prune_children_except(self.curr_tree_root, action_id)
-        if next_node is None:
-            LOGGER.info('Next node is not available, creating a new tree.')
-            self.curr_tree_root = wrapInMCTSNode(cstate, cost_until_now=cost, previous_action=action_id)
-        else:
-            _temp = self.curr_tree_root
-            self.curr_tree_root = next_node
-            # This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
-            self._delete_subtree(_temp, recursive=False)
-
-    def progress_to_without_cstate(self, action_id, cost):
-        # next_node = self.children[self.curr_tree_root][action_id]
-        next_node = self.curr_tree_root.children[action_id]
-        # self.prune_children_except(self.curr_tree_root, action_id) TODO: check if memory explodes again, or if this is ok to drop entirely
-        assert next_node is not None, "Somehow need to progress to a non-generated node."
-        _temp = self.curr_tree_root
-        self.curr_tree_root = next_node
-        # This explicit 'recursive=False' means that only the node would be properly deleted, subtree left as-is
-        self._delete_subtree(_temp, recursive=False)
-        return self.curr_tree_root.state_id, hash(
-            self.curr_tree_root), 1, self.curr_tree_root.goal_state, self.curr_tree_root.terminal_state
-
-    def get_corresponding_mcts_node(self, cstate):
-        return self.state_key_to_node.get(cstate, None)
-
-    def _expand(self, node):
-        if node.children is not None:
-            return
-        node.children = self.find_children(node)
-        self.state_key_to_node[node.state_id] = node
-        if self._probe:
-            try:
-                act_dim = None
-                try:
-                    pri = self.get_act_dist_from_mcts_node(node)
-                    act_dim = len(pri) if pri is not None else None
-                except Exception:
-                    pass
-                self._probe.log_expand(act_dim=act_dim, children_created=len(node.children))
-            except Exception:
-                pass
-        for child_node in node.children.values():
-            assert isinstance(child_node, MCTSNode)
-            self.state_key_to_node[child_node.state_id] = child_node
-        if self.debug_time_mcts_iterations:
-            self.after_expansion_times.append(time())
-
-    def _rollout(self, mcts_node, horizon=10):
-        """Returns the reward for a random simulation (to a certain horizon) of `node`"""
-        action_following_state_path = []
-        for _ in range(horizon):
-            if mcts_node.is_goal():
-                print(
-                    "\n\n============================================\nGoal was found during rollout\n============================================\n")
-                action_path = []
-                curr_mcts_node = self.curr_tree_root
-                for action_from_path, mcts_node_from_path in action_following_state_path:
-                    # if curr_mcts_node not in self.children:
-                    # if curr_mcts_node.children is None:
-                    # self.children[curr_mcts_node] = dict()
-                    # curr_mcts_node.children = None
-                    # self.children[curr_mcts_node][action_from_path] = mcts_node_from_path
-                    curr_mcts_node.children = FixedChildMap([action_from_path], [mcts_node_from_path])
-                    self.state_key_to_node[curr_mcts_node.state_id] = curr_mcts_node
-                    curr_mcts_node = mcts_node_from_path
-                    action_path.append(action_from_path)
-                print(f"Next actions are: {action_path}")
-                self.path_until_goal = action_following_state_path
-                break
-            best_action, mcts_node = self.find_child_by_policy(mcts_node)
-            action_following_state_path.append((best_action, mcts_node))
-        return mcts_node.reward()
-
-    def find_children(self, parent_node: MCTSNode) -> FixedChildMap:
-        """Find up to k successors of parent_node that are applicable and not yet visited"""
-        act_dist = self.get_act_dist_from_mcts_node(parent_node).numpy()
-        mask = self.get_applicable_action_mask(parent_node)
-        # Rank actions by descending policy probability
-        sorted_indices = sorted(range(len(act_dist)), key=lambda i: act_dist[i], reverse=True)
-        keys, values = self.get_actions_and_nodes(parent_node, sorted_indices, mask, act_dist)
-        return FixedChildMap(keys, values)
-
-    def get_actions_and_nodes(self, parent_node, sorted_indices, mask, act_dist) -> tuple[list[Any], list[Any]]:
-        actions = []
-        nodes = []
-        if self.batch_expansion_call:
-            selected_actions = []
-            for i in sorted_indices:
-                if len(selected_actions) >= self.k:
-                    break
-                if not mask[i] or act_dist[i] == 0.0:
-                    continue
-                selected_actions.append(i)
-
-            # Single RPC for all k selected actions
-            results = self.problem_service.env_simulate_batch_steps(*parent_node.get_identifiers(), selected_actions)
-
-            generated_ids = []
-            for (action_id, cstate_after_action_i_id, cstate_after_action_i_hash,
-                 step_cost, is_goal, is_terminal,
-                 network_ready_repr, applicable_action_mask
-                 ) in results:
-                generated_ids.append(cstate_after_action_i_id)
-                wrapped_output_cstate = wrapInMCTSNode(
-                    cstate_id=cstate_after_action_i_id,
-                    cost_until_now=parent_node.cost_until_now + step_cost,
-                    previous_action=action_id,
-                    is_goal=is_goal,
-                    is_terminal=is_terminal,
-                    as_network_input=network_ready_repr, applicable_action_mask=applicable_action_mask,
-                    hashed_state=cstate_after_action_i_hash,
-                    parent=parent_node,
-                )
-                self.state_key_to_node[cstate_after_action_i_id] = wrapped_output_cstate
-                actions.append(action_id)
-                nodes.append(wrapped_output_cstate)
-            ids = ",".join([str(i) for i in generated_ids])
-            print(f"Generated nodes with ids: {ids}")
-
-        else:
-            selected = 0
-            for i in sorted_indices:
-                if selected >= self.k:
-                    break
-                if not mask[i] or act_dist[i] == 0.0:
-                    continue
-                if self.problem_service is None:
-                    raise RuntimeError("problem_service is None — was it shut down?")
-                # Simulate step only now (expensive!)
-                cstate_after_action_id, step_cost, is_goal, is_terminal, network_ready_repr, \
-                    applicable_action_mask, state_hash = parent_node.simulate_step(i, self.problem_service)
-                wrapped_output_cstate = wrapInMCTSNode(
-                    cstate_after_action_id,
-                    cost_until_now=parent_node.cost_until_now + step_cost,
-                    previous_action=i,
-                    is_goal=is_goal,
-                    is_terminal=is_terminal,
-                    as_network_input=network_ready_repr,
-                    applicable_action_mask=applicable_action_mask,
-                    hashed_state=state_hash,
-                    parent=parent_node,
-                )
-                self.state_key_to_node[cstate_after_action_id] = wrapped_output_cstate
-                # output[i] = wrapped_output_cstate
-                actions.append(i)
-                nodes.append(wrapped_output_cstate)
-                selected += 1
-        return actions, nodes
-
-    def find_child_by_policy(self, parent_node: MCTSNode):
-        """Random successor of this board state (for more efficient simulation)"""
-        act_dist = self.get_act_dist_from_mcts_node(parent_node)
-        mask = self.get_applicable_action_mask(parent_node)
-        masked_act_dist = tf.where(mask, act_dist, tf.zeros_like(act_dist))
-        total = tf.reduce_sum(masked_act_dist)
-        normalized_act_dist = tf.cond(
-            tf.greater(total, 0),
-            lambda: masked_act_dist / total,
-            lambda: tf.zeros_like(act_dist)
-        )
-        norm_act_dist_np = normalized_act_dist.numpy()
-        next_action_ind = np.random.choice(len(norm_act_dist_np), p=norm_act_dist_np)
-        if self.problem_service is None:
-            raise RuntimeError("problem_service is None — was it shut down?")
-        best_cstate, step_cost = parent_node.simulate_step(next_action_ind, self.problem_service)
-        return next_action_ind, wrapInMCTSNode(best_cstate, cost_until_now=parent_node.cost_until_now + step_cost,
-                                               previous_action=next_action_ind, parent=parent_node)
-
-    def print_exploration_exploitation_comparison(self):
-        self._probe.print_exploration_exploitation_comparison()
-
-
-@can_profile
-def run_trial(policy_evaluator, problem_server, limit=1000, det_sample=False, graceful_timeout=300):
-    """Run policy on problem. Returns (cost, path), where cost may be None if
-    goal not reached before horizon."""
-    print(f'\n-------------> Graceful_timeout is set to {graceful_timeout}\n')
-    print(f'\n-------------> Limit is set to {limit}\n')
-    trial_start_time = time()
-    problem_service = problem_server.service
-    curr_state_id, curr_state_hash = problem_service.env_reset()
-
-    # total cost of this run
-    cost = 0
-    path = []
-    for i in range(1, limit):
-        if time() - trial_start_time > graceful_timeout:
-            print('Graceful_timeout has been reached :)')
-            break
-        action = policy_evaluator.get_action_from_cstate_id_hash(curr_state_id, curr_state_hash, cost)
-        path.append(problem_service.action_name(action))
-        curr_state_id, curr_sate_hash, step_cost, is_goal, is_terminal = move_to_next_state(problem_service,
-                                                                                            policy_evaluator, action,
-                                                                                            cost, current_code=False)
-        cost += step_cost
-        if is_goal:
-            if policy_evaluator.is_comparing_exploration_exploitation():
-                print("Exploration-Exploitation comparison:")
-                policy_evaluator.print_exploration_exploitation_comparison()
-            return cost, True, path
-        # we can run out of time or run out of actions to take
-        if is_terminal:
-            break
-        if i == limit - 1:
-            print(
-                " I actually reached the end, something weird is happening, only some actions were chosen but limit was reached? ")
-    # path.append('FAIL! D:')
-    if policy_evaluator.is_comparing_exploration_exploitation():
-        print("Exploration-Exploitation comparison:")
-        policy_evaluator.print_exploration_exploitation_comparison()
-    return cost, False, path
-
-
-def move_to_next_state(problem_service, policy_evaluator, action, cost, current_code=True):
-    if current_code:
-        curr_state, step_cost = problem_service.env_step(action)
-        policy_evaluator.progress_to(action, curr_state, cost + step_cost)
-        return curr_state, step_cost  # FIXME: this currently does not work, must return also if the curr_state is goal
-    else:
-        assert isinstance(policy_evaluator, MonteCarloPolicyEvaluator)
-        return policy_evaluator.progress_to_without_cstate(action,
-                                                           cost)  # TODO: env_step on the problem_service is irrelevant
-
-
-def run_trials(network, problem_server, trials, iterations, horizon=None, limit=1000, det_sample=False,
-               single_trial_graceful_timeout_sec=300, num_cstates_to_expand=5,
-               debug_memory=False, mcts_exploration_weight=1, mcts_smart_expansions=False):
-    # policy_evaluator = CachingPolicyEvaluator(policy=network, det_sample=det_sample)
-    k = min(iterations - 1, num_cstates_to_expand)
-    policy_evaluator = MonteCarloPolicyEvaluator(network=network, problem_service=problem_server.service,
-                                                 problem_server=problem_server,
-                                                 iterations=iterations, horizon=horizon,
-                                                 num_cstates_to_generate_per_expansion=k,
-                                                 debug_memory=debug_memory,
-                                                 exploration_weight=mcts_exploration_weight,
-                                                 progressive_widening=mcts_smart_expansions,
-                                                 )
-    all_exec_times = []
-    all_costs = []
-    all_goal_reached = []
-    paths = []
-    print(f'\n-------------> MCTS iterations number: {iterations}\n')
-    # print(f'\n-------------> MCTS rollout horizon length: {horizon}\n')
-    for _ in tqdm.trange(trials, desc='trials', leave=True):
-        start = time()
-        cost, goal_reached, path = run_trial(policy_evaluator, problem_server,
-                                             limit, det_sample, graceful_timeout=single_trial_graceful_timeout_sec)
-        elapsed = time() - start
-        paths.append(path)
-        all_exec_times.append(elapsed)
-        all_costs.append(cost)
-        all_goal_reached.append(goal_reached)
-        print("%d trials of length %d took %fs" % (trials, limit, elapsed))
-
-    meta_dict = {
-        'turn_limit': limit,
-        'trials': trials,
-        'all_goal_reached': all_goal_reached,
-        'all_exec_times': all_exec_times,
-        'all_costs': all_costs,
-    }
-    return meta_dict, paths
-
 
 def unique_name(args, digits=6):
     rand_num = random.randint(1, (1 << (4 * (digits + 1)) - 1))
@@ -740,11 +351,6 @@ parser.add_argument(
     default=100,
     help='max turns per round')
 parser.add_argument(
-    '--search-max-length',
-    type=int,
-    default=50,
-    help='Maximum number of action decision steps.')
-parser.add_argument(
     '-e', '--expt-dir',
     default=None,
     help='path to store experiments in')
@@ -753,11 +359,6 @@ parser.add_argument(
     default='dk',
     help='prefix of the domain knowledge file'
 )
-parser.add_argument(
-    '--debug',
-    default=False,
-    action='store_true',
-    help='enable tensorflow debugger')
 parser.add_argument(
     '--no-train',
     default=False,
@@ -794,11 +395,6 @@ parser.add_argument(
     default=1000,
     type=int,
     help='number of batches of optimisation per epoch')
-parser.add_argument(
-    '--net-debug',
-    action='store_true',
-    default=False,
-    help='put in place additional assertions etc. to help debug network')
 parser.add_argument(
     '--exploration-algorithm',
     choices=('static', 'dynamic', 'mcts'),
@@ -890,10 +486,6 @@ parser.add_argument(
     choices=list(ENHSP_CONFIGS.keys()),
     default='hadd-gbfs',
     help='When value-based mcts runs, this would be the state-value heuristic function.')
-parser.add_argument(
-    '--debug-memory',
-    default=False,
-    help='Enable memory debugging.')
 parser.add_argument(
     '--mcts-exploration-weight',
     type=float,
@@ -1036,7 +628,7 @@ parser.add_argument(
     help='Set "k" coefficient for e^{-k*h(s)} in conversion from estimator h value to canonical state value.'
 )
 parser.add_argument(
-    '--estimator-decay',
+    '--use-estimator',
     action='store_true',
     default=False,
     help='Enable estimator decay, when on, each node will be estimated by an estimator (ENHSP) during training,'
@@ -1061,55 +653,6 @@ parser.add_argument(
     default=0.2,
     help='Set est_coeff_end value.'
 )
-
-
-def eval_single(args, network, problem_server, unique_prefix, elapsed_time,
-                iter_num, weight_manager, scratch_dir):
-    # now we evaluate the learned network
-    LOGGER.info('Evaluating network')
-    trial_results, paths = run_trials(
-        network,
-        problem_server,
-        args.rounds_eval,
-        limit=args.limit_turns,
-        det_sample=args.det_eval,
-        iterations=args.mcts_iterations,
-        horizon=args.mcts_rollout_horizon,
-        single_trial_graceful_timeout_sec=args.graceful_timeout,
-        num_cstates_to_expand=args.mcts_expansion_size,
-        debug_memory=args.debug_memory,
-        mcts_exploration_weight=args.mcts_exploration_weight,
-        mcts_smart_expansions=args.mcts_smart_expansions,
-    )
-
-    LOGGER.info('Trial results')
-    LOGGER.info('\n'.join('%s: %s' % (k, v) for k, v in trial_results.items()))
-    out_dict = {
-        'no_train': args.no_train,
-        'args_problems': args.problems,
-        'problem': problem_server.service.get_current_problem_name(),
-        'timeout': args.timeout,
-        'hidden_size': args.hidden_size,
-        'num_layers': args.num_layers,
-        'all_args': sys.argv[1:],
-        # elapsed_* also includes time/iterations spent looking for better
-        # results after converging
-        'elapsed_opt_time': elapsed_time,
-        'elapsed_opt_iters': iter_num,
-        'trial_paths': paths
-    }
-    out_dict.update(trial_results)
-    result_path = path.join(scratch_dir, 'results.json')
-    with open(result_path, 'w') as fp:
-        dump(out_dict, fp, indent=2)
-    # also write out lists of actions taken during final trial
-    actions_path = path.join(args.plan_file_name)
-    for i, alist in enumerate(paths):
-        if trial_results["all_goal_reached"][i]:
-            with open(f'{actions_path}.{i}', 'w') as fp:
-                fp.write('(')
-                fp.write(')\n('.join(alist))
-                fp.write(')')
 
 
 @can_profile
@@ -1170,8 +713,6 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
         specs = make_specs(args)
         explorer = ParallelMCTSExplorerGrads(
             specs=specs,
-            dropout=args.dropout,
-            debug=args.debug_memory,
             log=args.worker_logs,
             PROFILE_DIR=args.profile_dir,
             corrupt_pi=args.corrupt_pi,
@@ -1184,14 +725,13 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
         )
         instances = args.pddls[1:]
         validation_specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
-        validator = ParallelMCTSExplorerEval(specs=validation_specs, max_workers=min(args.num_workers, len(instances)))
+        validator = ParallelEvaluator(specs=validation_specs, max_workers=min(args.num_workers, len(instances)), worker_fn=run_worker_eval_mcts)
         if not args.freeze_train:
             sup_trainer = SupervisedTrainer(
                 weight_manager=weight_manager,
                 summary_writer=sample_writer,
                 explorer=explorer,
                 validator=validator,
-                batch_size=args.supervised_bs,
                 lr=args.supervised_lr,
                 lr_steps=args.lr_steps,
                 l1_reg_coeff=args.l1_reg,
@@ -1246,9 +786,10 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
 
     specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
     weights_np = weight_manager.export_numpy()
-    eval_explorer = ParallelMCTSExplorerEval(
+    eval_explorer = ParallelEvaluator(
         specs=specs,
         max_workers=args.num_workers,
+        worker_fn=run_worker_eval_mcts,
     )
     eval_start_time = time()
     success_rate, outs = eval_explorer.evaluate(weights_np)
@@ -1290,40 +831,40 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
     weight_manager = make_weight_manager(
         args, p.domain_meta, dg_extra_dim
     )
-    specs = make_specs(args)
-    problems = [SingleProblem(spec) for spec in specs]
-    before_dim_init = time()
-    init_data = run_parallel_problem_init_data_collection(
-        specs=[problem.spec for problem in problems], max_workers=args.num_workers
-    )
-
-    for id in init_data:
-        problem = problems[id.slot_id]
-        problem.name = id.name
-        problem.obs_dim = id.obs_dim
-        problem.act_dim = id.act_dim
-        problem.dom_meta = id.dom_meta
-        problem.problem_meta = id.prob_meta
-        problem.ssipp_dead_end_value = id.ssipp_dead_end_value
-    print(f"[EXPLORER_DIM_CACHE] dimension initialization done, took {time() - before_dim_init} seconds")
-
-    for problem in problems:
-        problem.network, weight_manager = make_network(
-            args, problem, dg_extra_dim, weight_manager,
-        )
-
-    # need to create FileWriter *after* creating the policy network itself, or
-    # the network will not show up in TB (I assume that the `Graph` view is
-    # just a snapshot of the global TF op graph at the time a given
-    # `FileWriter` is instantiated)
-    summary_path = path.join(scratch_dir, 'tensorboard')
-    LOGGER.info(f'Tensorboard summary path: {summary_path}')
-    if args.minimal_file_saves:
-        sample_writer = None
-    else:
-        sample_writer = tf.summary.create_file_writer(summary_path)
 
     if not args.no_train:
+        specs = make_specs(args)
+        problems = [SingleProblem(spec) for spec in specs]
+        before_dim_init = time()
+        init_data = run_parallel_problem_init_data_collection(
+            specs=[problem.spec for problem in problems], max_workers=args.num_workers
+        )
+
+        for id in init_data:
+            problem = problems[id.slot_id]
+            problem.name = id.name
+            problem.obs_dim = id.obs_dim
+            problem.act_dim = id.act_dim
+            problem.dom_meta = id.dom_meta
+            problem.problem_meta = id.prob_meta
+            problem.ssipp_dead_end_value = id.ssipp_dead_end_value
+        print(f"[EXPLORER_DIM_CACHE] dimension initialization done, took {time() - before_dim_init} seconds")
+
+        for problem in problems:
+            problem.network, weight_manager = make_network(
+                args, problem, dg_extra_dim, weight_manager,
+            )
+
+        # need to create FileWriter *after* creating the policy network itself, or
+        # the network will not show up in TB (I assume that the `Graph` view is
+        # just a snapshot of the global TF op graph at the time a given
+        # `FileWriter` is instantiated)
+        summary_path = path.join(scratch_dir, 'tensorboard')
+        LOGGER.info(f'Tensorboard summary path: {summary_path}')
+        if args.minimal_file_saves:
+            sample_writer = None
+        else:
+            sample_writer = tf.summary.create_file_writer(summary_path)
         print('Training supervised with strategy %r and heuristic %r' %
               (args.sup_objective, args.fd_teacher_heuristic))
         if args.exploration_algorithm == 'static':
@@ -1342,8 +883,8 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
             raise ValueError(
                 f'Unknown exploration algorithm: {args.exploration_algorithm}')
         instances = args.pddls[1:]
-        validation_specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
-        validator = ParallelMCTSExplorerEval(specs=validation_specs, max_workers=min(args.num_workers, len(instances)))
+        evaluation_specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
+        validator = ParallelEvaluator(specs=evaluation_specs, max_workers=min(args.num_workers, len(instances)), worker_fn=run_worker_eval_policy_only)
         # we maintain the old loss for usage of policy network only (instead of dual-head using the new loss)
         sup_trainer = OriginalSupervisedTrainer(
             problems=problems,
@@ -1385,12 +926,29 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
 
     # evaluate
     if weight_manager is not None and not args.minimal_file_saves:
-        weight_manager.save(path.join(snapshot_dir, 'snapshot_final.pkl'))
-    for problem in tqdm.tqdm(problems, desc='Evaluation'):
-        print('Solving %s' % problem.name)
-        eval_single(args, problem.network, problem.problem_server,
-                    unique_prefix + '-' + problem.name, elapsed_time,
-                    iter_num, weight_manager, scratch_dir)
+        save_checkpoint_dir(
+            snapshot_dir=snapshot_dir,
+            snapshot_name="snapshot_final",
+            weight_manager=weight_manager,
+            optimizer=sup_trainer.optimizer if not args.no_train else None,
+        )
+    print("\n[EVAL] Running final evaluation (parallel)")
+    instances = args.pddls[1:]
+    evaluation_specs = make_specs(
+        args,
+        specific_instances=instances,
+        evaluation_mode=True,
+    )
+    weights_np = weight_manager.export_numpy()
+    eval_explorer = ParallelEvaluator(
+        specs=evaluation_specs,
+        max_workers=min(args.num_workers, len(evaluation_specs)),
+        worker_fn=run_worker_eval_policy_only
+    )
+
+    success_rate, outs = eval_explorer.evaluate(weights_np)
+
+    print(f"\n[EVAL FINAL] success={success_rate:.3f}")
 
 
 def parent_death_pact(signal: signal.Signals = signal.SIGINT) -> None:

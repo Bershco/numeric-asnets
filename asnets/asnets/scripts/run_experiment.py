@@ -27,6 +27,7 @@ def extract_by_prefix(lines, prefix):
         if line.startswith(prefix):
             return line[len(prefix):]
 
+
 def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
                      cwd, profiling=False, train_only=False, memory_profiling=False):
     assert not profiling or not memory_profiling, "Cannot profile memory and efficiency at the same time."
@@ -254,31 +255,27 @@ def build_arch_flags(arch_mod, is_train, override_enhsp_config=None, override_ms
     if hasattr(arch_mod, 'MAX_REPLAY_SIZE'):
         assert isinstance(arch_mod.MAX_REPLAY_SIZE, int)
         flags.extend(['--max-replay-size', str(arch_mod.MAX_REPLAY_SIZE)])
-    if hasattr(arch_mod, 'SEARCH_MAX_LENGTH'):
-        assert isinstance(arch_mod.SEARCH_MAX_LENGTH, int)
-        flags.extend(['--search-max-length',
-                      str(arch_mod.SEARCH_MAX_LENGTH)])
 
-    # mcts flags
+    # action policy flags
     if hasattr(arch_mod, 'ACTION_POLICY'):
-        assert isinstance(arch_mod.ACTION_POLICY, str) and arch_mod.ACTION_POLICY in ( "argmax", "sample", "visit")
+        assert isinstance(arch_mod.ACTION_POLICY, str) and arch_mod.ACTION_POLICY in ("argmax", "sample", "visit")
         flags.extend(['--action-policy', arch_mod.ACTION_POLICY])
     if hasattr(arch_mod, 'ACTION_POLICY_GOAL_CHASE_DISTANCE_THRESHOLD'):
         assert isinstance(arch_mod.ACTION_POLICY_GOAL_CHASE_DISTANCE_THRESHOLD, int)
-        flags.extend(['--action-policy-goal-chase-distance-threshold', str(arch_mod.ACTION_POLICY_GOAL_CHASE_DISTANCE_THRESHOLD)])
+        flags.extend(['--action-policy-goal-chase-distance-threshold',
+                      str(arch_mod.ACTION_POLICY_GOAL_CHASE_DISTANCE_THRESHOLD)])
     if hasattr(arch_mod, 'ACTION_POLICY_EPSILON'):
-        assert isinstance(arch_mod.ACTION_POLICY_EPSILON, float|None)
+        assert isinstance(arch_mod.ACTION_POLICY_EPSILON, float | None)
         if arch_mod.ACTION_POLICY_EPSILON is not None:
             flags.extend(['--action-policy-epsilon', str(arch_mod.ACTION_POLICY_EPSILON)])
     if hasattr(arch_mod, 'ACTION_POLICY_TEMPERATURE'):
-        assert isinstance(arch_mod.ACTION_POLICY_TEMPERATURE, float|None)
+        assert isinstance(arch_mod.ACTION_POLICY_TEMPERATURE, float | None)
         if arch_mod.ACTION_POLICY_TEMPERATURE is not None:
             flags.extend(['--action-policy-temperature', str(arch_mod.ACTION_POLICY_TEMPERATURE)])
     if hasattr(arch_mod, 'ACTION_POLICY_DECAY_RATE'):
-        assert isinstance(arch_mod.ACTION_POLICY_DECAY_RATE, float|None)
+        assert isinstance(arch_mod.ACTION_POLICY_DECAY_RATE, float | None)
         if arch_mod.ACTION_POLICY_DECAY_RATE is not None:
             flags.extend(['--action-policy-decay-rate', str(arch_mod.ACTION_POLICY_DECAY_RATE)])
-
 
     # compulsory flags
     flags.extend([
@@ -374,7 +371,7 @@ parser.add_argument(
     '--profiling',
     default=False,
     action='store_true',
-    help='run cProfile on subprocesses running "run_asnets.py"')
+    help='run cProfile on subprocesses running "run_asnets.py - do not confuse with --profile-dir which profiles exploration workers"')
 parser.add_argument(
     '--memory-profiling',
     default=False,
@@ -427,11 +424,6 @@ parser.add_argument(
     choices=list(ENHSP_CONFIGS.keys()),
     default='hadd-gbfs',
     help='When value-based mcts runs, this would be the state-value heuristic function.')
-parser.add_argument(
-    '--debug-memory',
-    action='store_true',
-    default=False,
-    help='Enable memory debugging.')
 parser.add_argument(
     '--mcts-exploration-weight',
     type=float,
@@ -535,7 +527,7 @@ parser.add_argument(
     help='Set "k" coefficient for e^{-k*h(s)} in conversion from estimator h value to canonical state value.'
 )
 parser.add_argument(
-    '--estimator-decay',
+    '--use-estimator',
     action='store_true',
     default=False,
     help='Enable estimator decay, when on, each node will be estimated by an estiamtor (ENHSP) during training,'
@@ -567,6 +559,7 @@ parser.add_argument(
     help='Resume training instead of only evaluation when using --resume-from'
 )
 
+
 def main():
     args = parser.parse_args()
 
@@ -591,7 +584,6 @@ def main():
                mcts_expansion_size=args.mcts_expansion_size,
                train_only=args.no_eval,
                mcts_heuristic=args.mcts_heuristic,
-               debug_memory=args.debug_memory,
                mcts_exploration_weight=args.mcts_exploration_weight,
                mcts_smart_expansions=args.mcts_smart_expansions,
                disable_value_head=args.disable_value_head,
@@ -606,13 +598,14 @@ def main():
                sample_k_additional_states=args.sample_k_additional_states,
                profile_dir=args.profile_dir,
                estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
-               estimator_decay=args.estimator_decay,
+               use_estimator=args.use_estimator,
                estimator_decay_coeff_start=args.estimator_decay_coeff_start,
                estimator_decay_coeff_end=args.estimator_decay_coeff_end,
                estimator_decay_epochs=args.estimator_decay_epochs,
                original_training_set=args.original_training_set,
                )
     print('Fin :-)')
+
 
 def main_inner(*,
                arch_mod,
@@ -630,7 +623,6 @@ def main_inner(*,
                mcts_expansion_size=None,
                train_only=False,
                mcts_heuristic=None,
-               debug_memory=False,
                mcts_exploration_weight=1,
                mcts_smart_expansions=False,
                disable_value_head=False,
@@ -645,7 +637,7 @@ def main_inner(*,
                sample_k_additional_states=0,
                profile_dir=None,
                estimator_h_to_v_coeff=None,
-               estimator_decay=False,
+               use_estimator=False,
                estimator_decay_coeff_start=None,
                estimator_decay_coeff_end=None,
                estimator_decay_epochs=None,
@@ -713,8 +705,8 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend(['--profile-dir', str(profile_dir)])
         if estimator_h_to_v_coeff:
             train_flags.extend(['--estimator-h-to-v-coeff', str(estimator_h_to_v_coeff)])
-        if estimator_decay:
-            train_flags.append('--estimator-decay')
+        if use_estimator:
+            train_flags.append('--use-estimator')
         if estimator_decay_coeff_start:
             train_flags.extend(['--estimator-decay-coeff-start', str(estimator_decay_coeff_start)])
         if estimator_decay_coeff_end:
@@ -768,8 +760,6 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.extend(['--mcts-expansion-size', str(mcts_expansion_size)])
     if mcts_heuristic is not None:
         main_test_flags.extend(['--mcts-heuristic', str(mcts_heuristic)])
-    if debug_memory:
-        main_test_flags.append('--debug-memory')
     if mcts_exploration_weight != 1:
         main_test_flags.extend(['--mcts-exploration-weight', str(mcts_exploration_weight)])
     if mcts_smart_expansions:
@@ -780,7 +770,6 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.extend(['--num-workers', str(num_workers)])
     if mcts_iterations:
         main_test_flags.extend(['--mcts-iterations', str(mcts_iterations)])
-
 
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:
@@ -801,6 +790,7 @@ evaluation = {"off" if no_eval else "on"}
                 # give it some slack
                 timeout=arch_mod.EVAL_TIME_LIMIT_SECONDS + 30,
                 profiling=profiling,
+                memory_profiling=memory_profiling,
             )
     else:
         all_test_flags = list(main_test_flags)
@@ -823,6 +813,8 @@ evaluation = {"off" if no_eval else "on"}
             need_snapshot=False,
             is_train=False,
             timeout=arch_mod.EVAL_TIME_LIMIT_SECONDS + 30,
+            profiling=profiling,
+            memory_profiling=memory_profiling,
         )
     # return the prefix_dir because hype.py needs that to figure out where to
     # point collate_results at

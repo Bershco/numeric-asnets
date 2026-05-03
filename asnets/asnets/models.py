@@ -489,7 +489,6 @@ class PropNetwork(tf.keras.layers.Layer):
                  weight_manager: PropNetworkWeights,
                  problem_meta: ProblemMeta,
                  dropout: float = 0.0,
-                 debug: bool = False,
                  trainable: bool = True,
                  name: Optional[str] = None,
                  dtype=None,
@@ -499,7 +498,6 @@ class PropNetwork(tf.keras.layers.Layer):
 
         self._weight_manager: PropNetworkWeights = weight_manager
         self._prob_meta = problem_meta
-        self._debug = debug
         # I tried ReLU, tanh, softplus, & leaky ReLU before settling on ELU for
         # best combination of numeric stability + sample efficiency
         self.nonlinearity = getattr(tf.nn, NONLINEARITY)
@@ -766,34 +764,6 @@ class PropNetwork(tf.keras.layers.Layer):
         extra_size = extra_data_dim * prob_meta.num_acts
         input_dim = tf.shape(inputs)[1]
 
-        # expected_dim = (
-        #         prob_meta.num_acts
-        #         + extra_size
-        #         + prob_meta.num_props
-        #         + (prob_meta.num_flnts if self.use_fluents else 0)
-        #         + (prob_meta.num_comps if self.use_comparisons else 0)
-        # )
-
-        # tf.print(
-        #     "\n[NETWORK INPUT DEBUG]",
-        #     "\ninput_dim =", input_dim,
-        #     "\nexpected_dim =", expected_dim,
-        #     "\nnum_acts =", prob_meta.num_acts,
-        #     "\nextra_data_dim =", extra_data_dim,
-        #     "\nextra_size =", extra_size,
-        #     "\nnum_props =", prob_meta.num_props,
-        #     "\nnum_flnts =", prob_meta.num_flnts,
-        #     "\nnum_comps =", prob_meta.num_comps,
-        #     "\nuse_fluents =", self.use_fluents,
-        #     "\nuse_comparisons =", self.use_comparisons,
-        # )
-        #
-        # tf.debugging.assert_equal(
-        #     input_dim,
-        #     expected_dim,
-        #     message="Network input vector length does not match expected ASNet layout"
-        # )
-
         # split up the input into its various components
         cur_index = 0
         act_mask = inputs[:, cur_index:cur_index + mask_size]
@@ -802,12 +772,6 @@ class PropNetwork(tf.keras.layers.Layer):
         cur_index += extra_size
         prop_truths = inputs[:, cur_index:cur_index + prob_meta.num_props]
         cur_index += prob_meta.num_props
-        # tf.print(
-        #     "[SLICES]",
-        #     "act_mask", tf.shape(act_mask),
-        #     "aux_data", tf.shape(aux_data),
-        #     "prop_truths", tf.shape(prop_truths),
-        # )
         flnt_values = None
         if self.use_fluents:
             flnt_values = inputs[:, cur_index:cur_index + prob_meta.num_flnts]
@@ -1057,9 +1021,8 @@ def make_network(args, problem, dg_extra_dim: int, weight_manager: Optional[Prop
     # can make normal FC MLP or an action/proposition network
     hs = args.hidden_size
     num_layers = args.num_layers
-    dropout = args.dropout
     print('hidden_size: %d, num_layers: %d, dropout: %f' % (hs, num_layers,
-                                                            dropout))
+                                                            args.dropout))
     if weight_manager is not None:
         print('Re-using same weight manager')
     else:
@@ -1075,7 +1038,7 @@ def make_network(args, problem, dg_extra_dim: int, weight_manager: Optional[Prop
             use_fluents=args.use_fluents,
             use_comparisons=args.use_comparisons)
     custom_network = PropNetwork(
-        weight_manager, problem.problem_meta, dropout=dropout, debug=args.net_debug)
+        weight_manager, problem.problem_meta, dropout=args.dropout)
 
     # weight_manager will sometimes be None
     return custom_network, weight_manager

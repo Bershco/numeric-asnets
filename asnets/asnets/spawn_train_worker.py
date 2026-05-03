@@ -43,19 +43,11 @@ LOGGER = logging.getLogger(__name__)
 # Data structures
 # -----------------------------
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class WorkerInput:
     spec: Any  # SpawnExploreSpec
     weights_np: dict  # PropNetworkWeights.export_numpy() result
     epoch: Optional[int]
-    dropout: float
-    debug: bool
-
-    # loss cfg
-    mse_coeff: float
-    l2_reg_coeff: float
-    l1_reg_coeff: float
-    l1_l2_reg_coeff: float
 
     # logging
     log: bool = False
@@ -64,22 +56,40 @@ class WorkerInput:
     # profiling
     PROFILE_DIR: Optional[str] = None
 
+    @property
+    def seed(self):
+        epoch_term = 0 if self.epoch is None else self.epoch * 128
+        return self.spec.trainer_seed + self.spec.slot_id + epoch_term  # assuming max(workers) >>> 128
+
+
+@dataclass(frozen=True)
+class PolicyDrivenWorkerInput(WorkerInput):
+    num_trajectories: int
+    dynamic: bool
+    min_new_pairs: Optional[int]
+    max_new_pairs: Optional[int]
+    recent_learning_time: Optional[int]
+    expl_learn_ratio: Optional[int]
+
+@dataclass(frozen=True)
+class MCTSWorkerInput(WorkerInput):
+    # loss cfg
+    mse_coeff: float
+    l2_reg_coeff: float
+    l1_reg_coeff: float
+    l1_l2_reg_coeff: float
+
     # run corruption settings for corruption testing
     corrupt_pi: Optional[str] = None  # "shuffle" | "random" | "zero" | None
     corrupt_z: Optional[str] = None  # "shuffle" | "random" | "zero" | None
 
     @property
-    def seed(self):
-        return self.spec.trainer_seed + self.spec.slot_id + self.epoch * 128  # assuming max(workers) >>> 128
-
-    @property
     def estimator_coeff(self):
-        if not self.spec.estimator_decay:
+        if not self.spec.use_estimator:
             return 0.0
         return self.spec.estimator_decay_coeff_start + (
                 self.spec.estimator_decay_coeff_end - self.spec.estimator_decay_coeff_start) * min(
             self.epoch / self.spec.estimator_decay_epochs, 1)
-
 
 @dataclass
 class WorkerOutput:
@@ -204,7 +214,6 @@ class EvalWorkerInput:
     spec: Any  # SpawnExploreSpec
     weights_np: dict
     epoch: Optional[int]
-    debug: bool
 
     @property
     def seed(self):
@@ -215,7 +224,6 @@ class EvalWorkerInput:
 class EvalWorkerOutput:
     hit_goal: float
     steps: int
-    cost: float
     instance_name: Optional[str] = None
 
 
@@ -272,11 +280,10 @@ def _rebuild_weight_manager_local(prob_meta, weights_np: dict):
     return wm
 
 
-def _build_network_local(weight_manager_local, prob_meta, debug):
+def _build_network_local(weight_manager_local, prob_meta):
     net = PropNetwork(
         weight_manager=weight_manager_local,
         problem_meta=prob_meta,
-        debug=debug,
     )
     return net
 
@@ -442,7 +449,7 @@ def _dbg_tf_threads(tag=""):
 # -----------------------------
 # Worker main
 # -----------------------------
-def run_worker(inp: WorkerInput) -> WorkerOutput:
+def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
     """
     This runs fully inside a spawned process.
     It returns grads as numpy arrays aligned to local weight_manager_local.all_weights order.
@@ -465,11 +472,13 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         epoch=inp.epoch,
     )
     act_dim = planner_exts.problem_meta.num_acts
-    if not hasattr(inp.spec, "mcts_iterations") or inp.spec.mcts_iterations == 0:
+    if hasattr(inp.spec, "mcts_iterations") and inp.spec.mcts_iterations > 0:
+        mcts_iter = inp.spec.mcts_iterations
+    else:
         branching_f = min(act_dim, inp.spec.mcts_expansion_k)
-        inp.spec.mcts_iterations = _compute_mcts_iterations(branching_f)
+        mcts_iter = _compute_mcts_iterations(branching_f)
         if inp.log:
-            print(f"{worker_tag} mcts_iterations was not set manually, calculated to be:{inp.spec.mcts_iterations}")
+            print(f"{worker_tag} mcts_iterations was not set manually, calculated to be:{mcts_iter}")
 
     # local weight vars
     wm_local = _rebuild_weight_manager_local(planner_exts.problem_meta, inp.weights_np)
@@ -479,7 +488,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
         print(f"{worker_tag} after rebuild:", float(tf.reduce_mean(w)), float(tf.math.reduce_std(w)),
               float(tf.linalg.norm(w)))
     # local network for THIS instance
-    net = _build_network_local(wm_local, planner_exts.problem_meta, inp.debug)
+    net = _build_network_local(wm_local, planner_exts.problem_meta)
 
     # ctx for TrainingMCTS
     ctx = LocalExploreContext(
@@ -495,7 +504,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     mcts = TrainingMCTS(
         network=net,
         ctx=ctx,
-        iterations=inp.spec.mcts_iterations,
+        iterations=mcts_iter,
         expansion_k=inp.spec.mcts_expansion_k,
         exploration_weight=inp.spec.mcts_exploration_weight,
         sharpen_pi=0.1,
@@ -848,7 +857,7 @@ def run_worker(inp: WorkerInput) -> WorkerOutput:
     )
 
 
-def run_worker_opt_profile(inp: WorkerInput) -> WorkerOutput:
+def run_worker_opt_profiled(inp: WorkerInput, worker_fn=run_worker) -> WorkerOutput:
     # Make sure this directory exists (spawn safe)
     prof = None
     t0 = time.time()
@@ -859,8 +868,7 @@ def run_worker_opt_profile(inp: WorkerInput) -> WorkerOutput:
         prof.enable()
 
     try:
-        out = run_worker(inp)
-        return out
+        return worker_fn(inp)
     finally:
         if prof is not None:
             prof.disable()
@@ -868,11 +876,11 @@ def run_worker_opt_profile(inp: WorkerInput) -> WorkerOutput:
             seed = getattr(inp, "seed", None)
             spec_name = getattr(getattr(inp, "spec", None), "name", None)
             tag = f"pid{pid}_seed{seed}_spec{spec_name}"
-            path = os.path.join(inp.PROFILE_DIR, f"worker_{tag}.prof")
+            path = os.path.join(inp.PROFILE_DIR, f"{worker_fn.__name__}_{tag}.prof")
             prof.dump_stats(path)
 
             # Optional: also write a tiny human-readable "top 30" alongside it
-            txt_path = os.path.join(inp.PROFILE_DIR, f"worker_{tag}.top.txt")
+            txt_path = os.path.join(inp.PROFILE_DIR, f"{worker_fn.__name__}_{tag}.top.txt")
             with open(txt_path, "w", encoding="utf-8") as f:
                 ps = pstats.Stats(prof, stream=f).sort_stats("cumtime")
                 ps.print_stats(30)
@@ -881,7 +889,7 @@ def run_worker_opt_profile(inp: WorkerInput) -> WorkerOutput:
         print(f"[WORKER TIMING] pid={os.getpid()} total={time.time() - t0:.2f}s", flush=True)
 
 
-def run_worker_eval(inp: EvalWorkerInput) -> EvalWorkerOutput:
+def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
     worker_tag = f"[EVAL|{os.getpid()}]"
     instance_name = f"[{str(inp.spec.slot_id)}] {inp.spec.pddls[1]}"
     set_random_seeds(inp.seed, worker_tag=worker_tag)
@@ -908,21 +916,22 @@ def run_worker_eval(inp: EvalWorkerInput) -> EvalWorkerOutput:
     net = _build_network_local(
         wm_local,
         planner_exts.problem_meta,
-        inp.debug,
     )
     ctx = LocalExploreContext(
         planner_exts=planner_exts,
         estimator=estimator,
         estimator_h_to_v_coeff=inp.spec.estimator_h_to_v_coeff,
     )
-    if not hasattr(inp.spec, "mcts_iterations") or inp.spec.mcts_iterations == 0:
+    if hasattr(inp.spec, "mcts_iterations") and inp.spec.mcts_iterations > 0:
+        mcts_iter = inp.spec.mcts_iterations
+    else:
         branching_f = min(act_dim, inp.spec.mcts_expansion_k)
-        inp.spec.mcts_iterations = _compute_mcts_iterations(branching_f)
-        print(f"{worker_tag} mcts_iterations was not set manually, calculated to be:{inp.spec.mcts_iterations}")
+        mcts_iter = _compute_mcts_iterations(branching_f)
+        print(f"{worker_tag} mcts_iterations was not set manually, calculated to be:{mcts_iter}")
     mcts = TrainingMCTS(
         network=net,
         ctx=ctx,
-        iterations=inp.spec.mcts_iterations,
+        iterations=mcts_iter,
         expansion_k=inp.spec.mcts_expansion_k,
         exploration_weight=inp.spec.mcts_exploration_weight,
         sharpen_pi=0.1,
@@ -932,7 +941,6 @@ def run_worker_eval(inp: EvalWorkerInput) -> EvalWorkerOutput:
     )
     cstate = ctx.get_init_state()
     max_len = inp.spec.max_len
-    cost = 0
     mcts.initialise_tree(cstate)
 
     for step in range(max_len):
@@ -940,7 +948,6 @@ def run_worker_eval(inp: EvalWorkerInput) -> EvalWorkerOutput:
             return EvalWorkerOutput(
                 hit_goal=float(cstate.is_goal),
                 steps=step,
-                cost=cost,
                 instance_name=instance_name,
             )
         pi, _ = mcts.run_search()
@@ -963,14 +970,114 @@ def run_worker_eval(inp: EvalWorkerInput) -> EvalWorkerOutput:
     return EvalWorkerOutput(
         hit_goal=float(cstate.is_goal),
         steps=max_len,
-        cost=cost,
         instance_name=instance_name,
     )
 
 
-def run_multiple_trajectory_collection(spec, epoch_num: int, weights_np, num_trajectories: int, dynamic: bool,
-                                       min_new_pairs: Optional[int], max_new_pairs: Optional[int],
-                                       recent_learning_time: Optional[int], expl_learn_ratio: Optional[int]):
+def run_worker_eval_policy_only(inp: EvalWorkerInput) -> EvalWorkerOutput:
+    worker_tag = f"[EVAL_POLICY|{os.getpid()}]"
+    instance_name = f"[{str(inp.spec.slot_id)}] {inp.spec.pddls[1]}"
+    set_random_seeds(inp.seed, worker_tag=worker_tag)
+    configure_tf_gpu_memory_growth()
+    CanonicalState.network_input_config(
+        use_fluents=inp.spec.use_fluents,
+        use_comparisons=inp.spec.use_comps,
+    )
+    planner_exts = _build_planner_exts_from_spec(
+        inp.spec,
+        inp.epoch,
+    )
+    action_policy_str = inp.spec.action_policy
+    assert action_policy_str in ["argmax",
+                                 "sample"], f"Cannot use visit proportional action policy on non-mcts evaluation ({action_policy_str})"
+    action_policy = build_action_policy(
+        base_policy=action_policy_str,
+        worker_tag=worker_tag,
+        epsilon=inp.spec.action_policy_epsilon,
+        temperature=inp.spec.action_policy_temperature,
+    )
+    # --------------------------------------------------
+    # Rebuild network locally
+    # --------------------------------------------------
+    wm_local = _rebuild_weight_manager_local(
+        planner_exts.problem_meta,
+        inp.weights_np,
+    )
+    net = _build_network_local(
+        wm_local,
+        planner_exts.problem_meta,
+    )
+    ctx = LocalExploreContext(
+        planner_exts=planner_exts,
+        estimator=None,
+    )
+    cstate = ctx.get_init_state()
+    max_len = inp.spec.max_len
+    cost = 0
+    for step in range(max_len):
+        if cstate.is_terminal:
+            return EvalWorkerOutput(
+                hit_goal=float(cstate.is_goal),
+                steps=step,
+                instance_name=instance_name,
+            )
+        obs = cstate.to_network_input()
+        if net.value_head_enabled:
+            pi, _ = net(obs[None], training=False)
+            pi = pi.numpy()[0]
+        else:
+            pi = net(obs[None], training=False).numpy()[0]
+        # mask invalid actions exactly like MCTS worker
+        mask = cstate.get_applicable_action_mask()
+        masked_pi = pi * mask
+        s = masked_pi.sum()
+        if s > 0:
+            masked_pi /= s
+        else:
+            valid = np.where(mask)[0]
+            if len(valid) == 0:
+                break
+            masked_pi = np.zeros_like(pi)
+            masked_pi[valid] = 1 / len(valid)
+        action_id = action_policy.select_action(
+            mcts=None,  # intentionally None
+            pi=masked_pi,
+        )
+        cstate = ctx.env_simulate_step(cstate, action_id)
+    return EvalWorkerOutput(
+        hit_goal=float(cstate.is_goal),
+        steps=max_len,
+        instance_name=instance_name,
+    )
+
+
+def make_enhsp_value_target_fn(estimator, h_to_v_coeff: float = 1.0):
+    """
+    Returns a callable mapping CanonicalState -> scalar value target.
+
+    Uses ENHSP heuristic estimate converted into value signal.
+    """
+
+    def value_target_fn(cstate: CanonicalState, distance_to_goal: int):
+        h = estimator.evaluate_state(cstate)
+
+        if h is None:
+            return 0.0
+
+        # Convert heuristic distance into bounded value
+        # smaller h = better → larger value
+        return 1.0 / (1.0 + h_to_v_coeff * h)
+
+    return value_target_fn
+
+
+def distance_to_goal_value_target(cstate: CanonicalState, distance_to_goal: int) -> float:
+    return 1.0 / (1.0 + float(distance_to_goal))
+
+
+def run_multiple_trajectory_collection(inp: PolicyDrivenWorkerInput):
+    spec = inp.spec
+    epoch_num = inp.epoch
     start_time = time.time()
     # Stage 1 - collect trajectories by current policy
     CanonicalState.network_input_config(
@@ -980,26 +1087,32 @@ def run_multiple_trajectory_collection(spec, epoch_num: int, weights_np, num_tra
     pe = _build_planner_exts_from_spec(spec, epoch_num)
     wm_local = _rebuild_weight_manager_local(
         pe.problem_meta,
-        weights_np,
+        inp.weights_np,
     )
     net = _build_network_local(
         wm_local,
         pe.problem_meta,
-        debug=False,
     )
+    value_target_fn = None
+    if net.value_head_enabled:
+        if spec.use_estimator:
+            estimator = _build_estimator(pe, spec)
+            value_target_fn = make_enhsp_value_target_fn(estimator, spec.estimator_h_to_v_coeff)
+        else:
+            value_target_fn = distance_to_goal_value_target
     teacher_timeout_s = 15
     teacher = ENHSPTeacher(planner_exts=pe, teacher_timeout_s=teacher_timeout_s, enhsp_config=spec.enhsp_config)
     model_cache = {}
     trajectories = []
-    for _ in range(num_trajectories):
+    for _ in range(inp.num_trajectories):
         path, hit_goal = collect_single_trajectory(spec, pe, net,
                                                    model_cache)  # model_cache might be useless - in hit rate and in speed of network, both cpu and gpu
         trajectories.append((path, hit_goal))
     # Stage 2 - collect expert trajectories by planner from either dynamic (with _terminate) or static (just grab all of them) explorer
     expert_trajectories = []
     first_explore = epoch_num == 0
-    if dynamic:
-        t = tqdm.tqdm(desc='dynamic explore', total=max_new_pairs)
+    if inp.dynamic:
+        t = tqdm.tqdm(desc='dynamic explore', total=inp.max_new_pairs)
         last_progress_time = int(time.time())
         total_new_pairs = 0
         cont = RandomPopContainer()
@@ -1007,26 +1120,37 @@ def run_multiple_trajectory_collection(spec, epoch_num: int, weights_np, num_tra
             for state, act in path:
                 cont.add(state)
         while True:
-            terminate, last_progress_time = _terminate(start_time, total_new_pairs, min_new_pairs, max_new_pairs, last_progress_time, t,
-                             first_explore, recent_learning_time, expl_learn_ratio)
+            terminate, last_progress_time = _terminate(start_time, total_new_pairs, inp.min_new_pairs, inp.max_new_pairs,
+                                                       last_progress_time, t,
+                                                       first_explore, inp.recent_learning_time, inp.expl_learn_ratio)
             if terminate or len(cont) == 0:
                 break
             cstate = cont.pop_random()
-            new_pairs = explore_from_state(spec=spec, epoch_num=epoch_num, cstate=cstate, pe=pe, teacher=teacher,
-                                   only_one_good_action=spec.only_one_good_action,
-                                   use_teacher_envelope=spec.use_teacher_envelope)
-            if new_pairs: # to avoid crashing the exploration process over teacher failure
-                expert_trajectories.extend(new_pairs)
-            total_new_pairs += len(new_pairs)
+            tup_output = explore_from_state(spec=spec, epoch_num=epoch_num, cstate=cstate, pe=pe, teacher=teacher,
+                                            only_one_good_action=spec.only_one_good_action,
+                                            use_teacher_envelope=spec.use_teacher_envelope,
+                                            value_target_fn=value_target_fn)
+            if tup_output:  # to avoid crashing the exploration process over teacher failure
+                expert_trajectories.extend(tup_output)
+                total_new_pairs += len(tup_output)
 
     else:
+        total_states = sum(len(path) for path, _ in trajectories)
+        pbar = tqdm.tqdm(total=total_states, desc='static explore')
+        added_tuples = 0
         for path, _ in trajectories:
             for cstate, act in path:
-                expert_trajectories.extend(
-                    explore_from_state(spec=spec, epoch_num=epoch_num, cstate=cstate, pe=pe, teacher=teacher,
-                                       only_one_good_action=spec.only_one_good_action,
-                                       use_teacher_envelope=spec.use_teacher_envelope))
+                tup_output = explore_from_state(spec=spec, epoch_num=epoch_num, cstate=cstate, pe=pe, teacher=teacher,
+                                                only_one_good_action=spec.only_one_good_action,
+                                                use_teacher_envelope=spec.use_teacher_envelope,
+                                                value_target_fn=value_target_fn)
+                if tup_output:  # to avoid crashing the exploration process over teacher failure
+                    expert_trajectories.extend(tup_output)
+                    added_tuples += len(tup_output)
+                pbar.set_postfix({"new expert knowledge": added_tuples}, refresh=False)
+                pbar.update(1)
     return expert_trajectories, trajectories
+
 
 def collect_single_trajectory(spec, pe, net, model_cache):
     hit_goal = False
@@ -1060,28 +1184,51 @@ def collect_single_trajectory(spec, pe, net, model_cache):
     return path, hit_goal
 
 
-def explore_from_state(spec, epoch_num, cstate: CanonicalState, pe, teacher: Teacher,
-                       only_one_good_action: bool = True,
-                       use_teacher_envelope: bool = True):
+def explore_from_state(
+        spec,
+        epoch_num,
+        cstate: CanonicalState,
+        pe,
+        teacher: Teacher,
+        only_one_good_action: bool = True,
+        use_teacher_envelope: bool = True,
+        value_target_fn=None,
+):
+    """
+    Returns planner envelope as:
+
+        [(state, action)]
+    OR
+        [(state, action, value_target)]
+
+    depending on whether value_target_fn is provided.
+    """
+
     if pe is None:
         pe = _build_planner_exts_from_spec(spec, epoch_num)
     try:
-        teacher_experience = planner_trace(planner=teacher, planner_exts=pe, root_cstate=cstate,
-                                           only_one_good_action=only_one_good_action,
-                                           use_teacher_envelope=use_teacher_envelope)
+        teacher_experience = planner_trace(
+            planner=teacher,
+            planner_exts=pe,
+            root_cstate=cstate,
+            only_one_good_action=only_one_good_action,
+            use_teacher_envelope=use_teacher_envelope,
+        )
     except TeacherException as ex:
-        LOGGER.warning(f'Teacher error on problem \
-                        {pe.problem_name} ({ex})')
+        LOGGER.warning(f"Teacher error on problem {pe.problem_name} ({ex})")
         return None
-    filtered_envelope = []
-    for env_cstate, act in teacher_experience:
+    filtered_reversed = []
+    distance_to_goal = 0
+    for env_cstate, act in reversed(teacher_experience):
         nactions = sum(p[1] for p in env_cstate.acts_enabled)
-
-        if nactions <= 1:
-            # skip states
-            continue
-        filtered_envelope.append((env_cstate, act))
-    return filtered_envelope
+        if nactions > 1:
+            if value_target_fn is None:
+                filtered_reversed.append((env_cstate, act))
+            else:
+                z = value_target_fn(env_cstate, distance_to_goal)
+                filtered_reversed.append((env_cstate, act, z))
+        distance_to_goal += 1
+    return list(reversed(filtered_reversed))
 
 
 def _terminate(start_time: float, total_new_pairs: int, min_new_pairs: int, max_new_pairs: int, last_progress_time: int,
@@ -1109,18 +1256,19 @@ def _terminate(start_time: float, total_new_pairs: int, min_new_pairs: int, max_
         return time.time() - start_time >= expl_learn_ratio * recent_learning_time, last_progress_time
     return False, last_progress_time
 
+
 @dataclass(frozen=True)
 class ProblemInitData:
     slot_id: int
     name: str
     obs_dim: int
     act_dim: int
-    dom_meta: DomainMeta #might cause circular imports
-    prob_meta: ProblemMeta #might cause circular imports
+    dom_meta: DomainMeta  # might cause circular imports
+    prob_meta: ProblemMeta  # might cause circular imports
     ssipp_dead_end_value: int
 
 
-def collect_problem_dims_worker(spec: Any) -> ProblemInitData:
+def collect_problem_dims_worker(inp: Any) -> ProblemInitData:
     """
     Runs in a fresh spawn process.
 
@@ -1130,6 +1278,7 @@ def collect_problem_dims_worker(spec: Any) -> ProblemInitData:
 
     Must avoid importing TensorFlow here if possible.
     """
+    spec = inp.spec
     CanonicalState.network_input_config(
         use_fluents=spec.use_fluents,
         use_comparisons=spec.use_comps,

@@ -4,13 +4,13 @@ import logging
 import random
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future
 
-
 import numpy as np
 from typing import List, Optional, Tuple, Any, Iterable
 from collections import Counter, deque
 import multiprocessing as mp
 
-from asnets.spawn_train_worker import run_multiple_trajectory_collection, ProblemInitData, collect_problem_dims_worker
+from asnets.spawn_train_worker import run_multiple_trajectory_collection, ProblemInitData, collect_problem_dims_worker, \
+    PolicyDrivenWorkerInput, run_worker_opt_profiled, WorkerInput
 
 LOGGER = logging.getLogger(__name__)
 
@@ -30,34 +30,34 @@ class SingleProblem(object):
         self.ssipp_dead_end_value = None
         self.network = None
 
-    def flatten_obs_qvs(self, rich_obs_qvs):
-        cstates, rich_qvs = zip(*rich_obs_qvs)
-        obs_tensor = np.stack(
-            [s.to_network_input() for s in cstates], axis=0)
+    def flatten_obs_qvs(self, rich_targets):
+        if self.network.value_head_enabled:
+            cstates, rich_qvs, values = zip(*rich_targets)
+        else:
+            cstates, rich_qvs = zip(*rich_targets)
+        obs_tensor = np.stack([s.to_network_input() for s in cstates], axis=0, )
         qv_lists = []
         for qv_pairs in rich_qvs:
             qv_dict = dict(qv_pairs)
             qv_list = [qv_dict[ba] for ba in self.problem_meta.bound_acts_ordered]
             qv_lists.append(qv_list)
         qv_tensor = np.array(qv_lists, dtype=float)
+        if self.network.value_head_enabled:
+            value_tensor = np.array(values, dtype=float)
+            return obs_tensor, qv_tensor, value_tensor
         return obs_tensor, qv_tensor
 
-    def weighted_dataset(self):  # FIXME: this might be off - no proper value tensor, only policy
-        """Return weighted dataset.
-
-        Returns:
-            Tuple[np.ndarray, np.ndarray, np.ndarray]: The dataset.
-            The first element is tensor of observations (cstates as
-            network inputs). The second element is tensor of Q-values at
-            each cstate, ordered in the same way as bound_acts_ordered. The
-            third element is the weight of each cstate, which is really just
-            a count of how many times we saw that cstate.
-        """
-        rich_obs_qvs, counts = self.replay.get_full_dataset()
-        assert len(rich_obs_qvs) > 0, "Empty replay %s" % (self.replay,)
-        counts = np.asarray(counts, dtype='float32')
-        obs_tensor, qv_tensor = self.flatten_obs_qvs(rich_obs_qvs)
-        return obs_tensor, qv_tensor, counts
+    def weighted_dataset(self):
+        rich_targets, counts = self.replay.get_full_dataset()
+        assert len(rich_targets) > 0, f"Empty replay {self.replay}"
+        counts = np.asarray(counts, dtype="float32")
+        flattened = self.flatten_obs_qvs(rich_targets)
+        if self.network.value_head_enabled:
+            obs_tensor, qv_tensor, value_tensor = flattened
+            return obs_tensor, qv_tensor, value_tensor, counts
+        else:
+            obs_tensor, qv_tensor = flattened
+            return obs_tensor, qv_tensor, counts
 
 
 class WeightedReplayBuffer:
@@ -265,9 +265,11 @@ def run_parallel_multiple_traj_collection(specs, epoch_num, weights_np, num_traj
         spec_map = {spec.slot_id: spec for spec in specs}
         fut_to_idx: dict[Future[Any], int] = {}
         for spec in specs:
-            fut: Future[Any] = ex.submit(run_multiple_trajectory_collection, spec, epoch_num, weights_np, num_traj,
-                                         dynamic,
-                                         min_new_pairs, max_new_pairs, recent_learning_time, expl_learn_ratio)
+            inp = PolicyDrivenWorkerInput(spec=spec, weights_np=weights_np, epoch=epoch_num, log=False,
+                                          log_weights=False, PROFILE_DIR=None, num_trajectories=num_traj,
+                                          dynamic=dynamic, min_new_pairs=min_new_pairs, max_new_pairs=max_new_pairs,
+                                          recent_learning_time=recent_learning_time, expl_learn_ratio=expl_learn_ratio)
+            fut: Future[Any] = ex.submit(run_worker_opt_profiled, inp, run_multiple_trajectory_collection)
             fut_to_idx[fut] = spec.slot_id
         outs: list[Optional[Any]] = [None] * len(specs)
         for fut in as_completed(fut_to_idx):
@@ -279,6 +281,7 @@ def run_parallel_multiple_traj_collection(specs, epoch_num, weights_np, num_traj
 def run_parallel_problem_init_data_collection(
         specs: list[Any],
         max_workers: int | None = None,
+        PROFILE_DIR = None,
 ) -> list[ProblemInitData]:
     ctx = mp.get_context("forkserver")
 
@@ -290,7 +293,7 @@ def run_parallel_problem_init_data_collection(
             mp_context=ctx,
     ) as ex:
         fut_to_slot = {
-            ex.submit(collect_problem_dims_worker, spec): spec.slot_id
+            ex.submit(run_worker_opt_profiled, WorkerInput(spec=spec, weights_np={}, epoch=0, log=False, log_weights=False, PROFILE_DIR=PROFILE_DIR), collect_problem_dims_worker): spec.slot_id
             for spec in specs
         }
 

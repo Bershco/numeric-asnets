@@ -18,7 +18,7 @@ class LocalExploreContext:
     This holds the env, estimator, and the state cache that MCTS expects.
     """
     planner_exts: "PlannerExtensions"
-    estimator: ENHSPEstimator
+    estimator: ENHSPEstimator | None
     estimator_h_to_v_coeff: float = 1
 
     # ----- API that TrainingMCTS currently calls on problem_service -----

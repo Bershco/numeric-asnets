@@ -4,20 +4,18 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass
 from time import time
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 import numpy as np
 
-from asnets.parllel_explore_spawn_grads import run_epoch_spawn_grads, run_epoch_spawn_eval
-from asnets.spawn_train_worker import WorkerOutput
+from asnets.parllel_explore_spawn_grads import run_epoch_spawn_grads, run_epoch_spawn_eval, SpawnExploreSpec
+from asnets.spawn_train_worker import WorkerOutput, EvalWorkerInput, EvalWorkerOutput
 from asnets.utils.generator_utils import ProgressionLevel
 
 
 @dataclass
 class ParallelMCTSExplorerGrads:
     specs: list[Any]
-    dropout: float
-    debug: bool
     log: bool
 
     # loss cfg
@@ -67,8 +65,6 @@ class ParallelMCTSExplorerGrads:
             specs=self.specs,
             curr_epoch=self.curr_epoch - 1,  # first epoch is 0
             weights_np=weights_np,
-            dropout=self.dropout,
-            debug=self.debug,
             log=self.log,
             PROFILE_DIR=self.PROFILE_DIR,
             corrupt_pi=self.corrupt_pi,
@@ -115,7 +111,7 @@ class ParallelMCTSExplorerGrads:
         return len(self.specs)
 
     def estimator_decay_end_epoch(self):
-        return self.specs[0].estimator_decay_epochs if self.specs[0].estimator_decay else 0
+        return self.specs[0].estimator_decay_epochs if self.specs[0].use_estimator else 0
 
     def advance_progression_level(self):
         if self.progression_level == ProgressionLevel.LEVEL5:
@@ -131,18 +127,21 @@ class ParallelMCTSExplorerGrads:
         diff_seq = self.progression_level.generate_difficulty_sequence(len(self.specs))
         assert len(diff_seq) == len(self.specs)
         for i, diff in enumerate(diff_seq):
-            self.specs[i].difficulty = diff
+            self.specs[i] = self.specs[i].change_diff_to(diff)
 
 @dataclass
-class ParallelMCTSExplorerEval:
-    specs: list[Any]
+class ParallelEvaluator:
+    specs: list[SpawnExploreSpec]
+    worker_fn: Callable[[EvalWorkerInput],EvalWorkerOutput]
     max_workers: Optional[int] = None
 
     def evaluate(self, weights_np):
+        print(f"[EVAL] worker_fn={self.worker_fn.__name__}")
         outs = run_epoch_spawn_eval(
             specs=self.specs,
             weights_np=weights_np,
             max_workers=self.max_workers,
+            worker_fn=self.worker_fn,
         )
         solved = [o.hit_goal for o in outs]
         success_rate = float(np.mean(solved))

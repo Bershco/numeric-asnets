@@ -226,7 +226,6 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
             weight_manager_local=self.weight_manager,
             prob_meta=prob_meta,
             dropout=dropout,
-            debug=debug,
             policy_only=policy_only,
         )
 
@@ -384,7 +383,6 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
             weight_manager_local=self.weight_manager,  # <<<<< THIS is the change
             prob_meta=planner_exts.problem_meta,
             dropout=0,  # whatever you use
-            debug=False,
         )
 
         self._frozen_bundle = FrozenInstanceBundle(planner_exts, estimator, ctx, net, act_dim)

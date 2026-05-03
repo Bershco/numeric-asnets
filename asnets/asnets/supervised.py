@@ -1,5 +1,4 @@
 from abc import abstractmethod, ABC
-from collections import Counter, deque
 from enum import Enum
 from functools import lru_cache
 from itertools import repeat
@@ -8,12 +7,11 @@ import joblib
 import logging
 import numpy as np
 import os
-import shutil
 import tensorflow as tf
 from time import time
 import tqdm.auto as tqdm
 from types import ModuleType
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import datetime
 
 from asnets.checkpointing import save_checkpoint_dir, resolve_optimizer_path
@@ -104,7 +102,6 @@ class PlannerExtensions(object):
 
         Args:
             pddl_files (List[str]): The PDDL files to load.
-            init_problem_name (str): The name of the problem to load.
             domain_type (DomainType): The type of the domain.
             dg_ssipp_heuristic_name (str, optional): The heuristic feature
             generator to use. Defaults to None.
@@ -409,7 +406,7 @@ class BaseTrainer(ABC):
     def __init__(self, weight_manager, summary_writer, explorer, validator, lr, l1_reg_coeff, l2_reg_coeff,
                  l1_l2_reg_coeff, lr_steps
                  ):
-        self.weight_manager = weight_manager
+        self._weight_manager = weight_manager
         # may be None if no summaries tuple()should be written
         self.summary_writer = summary_writer
         self.explorer = explorer
@@ -478,7 +475,7 @@ class SupervisedTrainer(BaseTrainer):
         if resume_from is not None and not resume_from.endswith(".pkl"):
             opt_path = os.path.join(resume_from, "optimizer.joblib")
             if os.path.exists(opt_path):
-                trainable_vars = self.weight_manager.all_weights
+                trainable_vars = self._weight_manager.all_weights
                 assert len(trainable_vars) > 0
                 # Force Adam slot variable creation
                 self.optimizer.apply_gradients([
@@ -536,7 +533,7 @@ class SupervisedTrainer(BaseTrainer):
             # 1. EXPLORE (spawn workers, compute grads there)
             # --------------------------------------------------
             t_explore = time()
-            worker_outs = self.explorer.explore(self.weight_manager.export_numpy())
+            worker_outs = self.explorer.explore(self._weight_manager.export_numpy())
             print(f"[EXPLORE TIMING] pid={os.getpid()} total={time() - t_explore:.2f}s", flush=True)
 
             if not worker_outs:
@@ -577,17 +574,17 @@ class SupervisedTrainer(BaseTrainer):
             # --------------------------------------------------
             # 2. APPLY GRADIENTS (MAIN PROCESS ONLY)
             # --------------------------------------------------
-            W0 = [w.numpy().copy() for w in self.weight_manager.all_weights]
+            W0 = [w.numpy().copy() for w in self._weight_manager.all_weights]
             mean_loss, total_succ_rate, n_states = self.apply_worker_grads(worker_outs)
             succ_rate_easy, succ_rate_medium, succ_rate_hard = self.calculate_balanced_succ_rate(worker_outs)
             if getattr(self.explorer, "log", False):
-                w = self.weight_manager.all_weights[0]
+                w = self._weight_manager.all_weights[0]
                 # print("MAIN after update:", float(tf.reduce_mean(w)), float(tf.math.reduce_std(w)),
                 #       float(tf.linalg.norm(w)))
                 print(f"Trainer first weight (logging for update in between epochs): "
                       f"μ±σ: {float(tf.reduce_mean(w))}±{float(tf.math.reduce_std(w))},"
                       f"weight norm: {float(tf.linalg.norm(w))}")
-            W1 = self.weight_manager.all_weights
+            W1 = self._weight_manager.all_weights
             deltas = [np.mean(np.abs(w1.numpy() - w0)) for w0, w1 in zip(W0, W1)]
             tf_and_log("weight-delta/mean", np.mean(deltas))
             tf_and_log("weight-delta/max", np.max(deltas))
@@ -627,7 +624,7 @@ class SupervisedTrainer(BaseTrainer):
             # 2.1 validation
             # --------------------------------------------------
             if epoch_num % 10 == 0:
-                succ_rate, validation_outs = self.validator.evaluate(self.weight_manager.export_numpy())
+                succ_rate, validation_outs = self.validator.evaluate(self._weight_manager.export_numpy())
                 print(f"[VALIDATION] Current network validation success rate: {succ_rate}")
                 for i, val_worker_out in enumerate(validation_outs):
                     print(f"[{val_worker_out.instance_name}] - {'PASS' if val_worker_out.hit_goal else 'FAIL'}")
@@ -653,7 +650,7 @@ class SupervisedTrainer(BaseTrainer):
                 save_checkpoint_dir(
                     snapshot_dir=self.snapshot_dir,
                     snapshot_name=snapshot_name,
-                    weight_manager=self.weight_manager,
+                    weight_manager=self._weight_manager,
                     optimizer=self.optimizer,
                     trainer_state={
                         "epoch_num": epoch_num,
@@ -688,7 +685,7 @@ class SupervisedTrainer(BaseTrainer):
         return best_rate, elapsed_time, int(epoch)
 
     def apply_worker_grads(self, worker_outs):
-        params = self.weight_manager.all_weights
+        params = self._weight_manager.all_weights
         if not worker_outs:
             raise RuntimeError("No worker outputs.")
 
@@ -795,6 +792,10 @@ class OriginalSupervisedTrainer(BaseTrainer):
         self.resume_from = resume_from
         self._init_tf()
 
+    @property
+    def value_head_enabled(self):
+        return self._weight_manager.value_head_enabled
+
     def _get_replay_sizes(self):
         """Get the sizes of replay buffers for each problem."""
         rv = []
@@ -823,7 +824,7 @@ class OriginalSupervisedTrainer(BaseTrainer):
             epoch.assign(epoch_num)
 
             # only extend replay by a bit each time
-            succs_probs = self.explorer.extend_replay(weights_np=self.weight_manager.export_numpy(),
+            succs_probs = self.explorer.extend_replay(weights_np=self._weight_manager.export_numpy(),
                                                       epoch_num=epoch_num)
             total_succ_rate = np.mean([s for _, s in succs_probs])
             replay_sizes = self._get_replay_sizes()
@@ -837,7 +838,7 @@ class OriginalSupervisedTrainer(BaseTrainer):
                 states=replay_size,
                 lr=self.optimizer.lr,
                 refresh=False,
-                )
+            )
             tf.summary.scalar('succ-rate/mean', total_succ_rate)
 
             for prob, prob_succ_rate in succs_probs:
@@ -853,7 +854,7 @@ class OriginalSupervisedTrainer(BaseTrainer):
                 states=replay_size,
                 lr=self.optimizer.lr,
                 refresh=False,
-                )
+            )
             # caller might want us to terminate
             if best_rate is None or total_succ_rate > best_rate + 1e-4:
                 time_since_best = 0
@@ -880,7 +881,7 @@ class OriginalSupervisedTrainer(BaseTrainer):
                 save_checkpoint_dir(
                     snapshot_dir=self.snapshot_dir,
                     snapshot_name=snapshot_name,
-                    weight_manager=self.weight_manager,
+                    weight_manager=self._weight_manager,
                     optimizer=self.optimizer,
                     trainer_state={
                         "epoch_num": epoch_num,
@@ -888,7 +889,7 @@ class OriginalSupervisedTrainer(BaseTrainer):
                         "best_rate": best_rate,
                         "time_since_best": time_since_best,
                     },
-                )            # also, always save timing data
+                )  # also, always save timing data
             with open(os.path.join(self.scratch_dir, 'timing.json'), 'w') as fp:
                 fp.write(self.timer.to_json())
 
@@ -899,7 +900,7 @@ class OriginalSupervisedTrainer(BaseTrainer):
 
             if not keep_going:
                 LOGGER.info('Terminating early')
-                tr.refresh() #this guarantees tqdm display of last iteration
+                tr.refresh()  # this guarantees tqdm display of last iteration
                 break
 
         return best_rate, elapsed_time, iter_num
@@ -924,7 +925,7 @@ class OriginalSupervisedTrainer(BaseTrainer):
 
         self.loss_fn = ManualLoss(
             problems=self.problems,
-            weight_manager=self.weight_manager,
+            weight_manager=self._weight_manager,
             summary_writer=self.summary_writer,
             l1_reg_coeff=self.l1_reg_coeff,
             l2_reg_coeff=self.l2_reg_coeff,
@@ -933,7 +934,7 @@ class OriginalSupervisedTrainer(BaseTrainer):
             strategy=SupervisedObjective.ANY_GOOD_ACTION
         )
 
-        trainable_vars = list(self.weight_manager.all_weights)
+        trainable_vars = list(self._weight_manager.all_weights)
         self.optimizer.build(trainable_vars)
 
         self._maybe_restore_optimizer()
@@ -988,14 +989,23 @@ class OriginalSupervisedTrainer(BaseTrainer):
                     "saving training set & using a saved set are mutually " \
                     "exclusive options (doesn't make sense to write same " \
                     "dataset back out to disk!)"
-                prob_obs_tensor, prob_qv_tensor, prob_counts \
-                    = self.loaded_training_set[problem.name]
-                it = weighted_batch_iter(
-                    (prob_obs_tensor, prob_qv_tensor),
-                    prob_counts,
-                    self.batch_size_per_problem,
-                    n_batches,
-                )
+                dataset = self.loaded_training_set[problem.name]
+                if self.value_head_enabled:
+                    prob_obs_tensor, prob_policy_target_tensor, prob_value_target_tensor, prob_counts = dataset
+                    it = weighted_batch_iter(
+                        (prob_obs_tensor, prob_policy_target_tensor, prob_value_target_tensor),
+                        prob_counts,
+                        self.batch_size_per_problem,
+                        n_batches,
+                    )
+                else:
+                    prob_obs_tensor, prob_policy_target_tensor, prob_counts = dataset
+                    it = weighted_batch_iter(
+                        (prob_obs_tensor, prob_policy_target_tensor),
+                        prob_counts,
+                        self.batch_size_per_problem,
+                        n_batches,
+                    )
                 batch_iters.append(it)
                 continue
             if len(problem.replay) == 0:
@@ -1005,18 +1015,38 @@ class OriginalSupervisedTrainer(BaseTrainer):
                 if self.save_training_set:
                     to_save[problem.name] = None
             else:
-                prob_obs_tensor, prob_qv_tensor, prob_counts \
-                    = problem.weighted_dataset()
-                it = weighted_batch_iter(
-                    (prob_obs_tensor, prob_qv_tensor),
-                    prob_counts,
-                    self.batch_size_per_problem,
-                    n_batches,
-                )
+                dataset = problem.weighted_dataset()
+                if self.value_head_enabled:
+                    prob_obs_tensor, prob_policy_target_tensor, prob_value_target_tensor, prob_counts = dataset
+                    it = weighted_batch_iter(
+                        (prob_obs_tensor, prob_policy_target_tensor, prob_value_target_tensor),
+                        prob_counts,
+                        self.batch_size_per_problem,
+                        n_batches,
+                    )
+                else:
+                    prob_obs_tensor, prob_policy_target_tensor, prob_counts = dataset
+                    it = weighted_batch_iter(
+                        (prob_obs_tensor, prob_policy_target_tensor),
+                        prob_counts,
+                        self.batch_size_per_problem,
+                        n_batches,
+                    )
                 batch_iters.append(it)
                 if self.save_training_set:
-                    to_save[problem.name] \
-                        = (prob_obs_tensor, prob_qv_tensor, prob_counts)
+                    if self.value_head_enabled:
+                        to_save[problem.name] = (
+                            prob_obs_tensor,
+                            prob_policy_target_tensor,
+                            prob_value_target_tensor,
+                            prob_counts,
+                        )
+                    else:
+                        to_save[problem.name] = (
+                            prob_obs_tensor,
+                            prob_policy_target_tensor,
+                            prob_counts,
+                        )
         if self.save_training_set:
             LOGGER.info("Saving training set to disk'%s'",
                         self.save_training_set)
@@ -1042,7 +1072,7 @@ class OriginalSupervisedTrainer(BaseTrainer):
             yield yield_val
 
     def _optimize(self, n_batches):
-        params = self.weight_manager.all_weights
+        params = self._weight_manager.all_weights
 
         param_set = set(map(lambda v: v.ref(), params))
         tf_param_set = set(map(
@@ -1069,11 +1099,22 @@ class OriginalSupervisedTrainer(BaseTrainer):
 
             with tf.name_scope('grads_opt'):
                 with tf.GradientTape() as tape:
-                    obs_by_prob, qv_by_prob = list(zip(*feed_dict))
-                    preds_by_prob = []
-                    for i, problem in enumerate(self.problems):
-                        preds_by_prob.append(problem.network(obs_by_prob[i]))
-                    loss, loss_parts = self.loss_fn(preds_by_prob, qv_by_prob)
+                    dataset = list(zip(*feed_dict))
+                    policy_pred_by_prob = []
+                    value_pred_by_prob = []
+                    if self.value_head_enabled:
+                        obs_by_prob, policy_target_by_prob, value_target_by_prob = dataset
+                        for i, problem in enumerate(self.problems):
+                            policy_pred, value_pred = problem.network(obs_by_prob[i])
+                            policy_pred_by_prob.append(policy_pred)
+                            value_pred_by_prob.append(value_pred)
+                        loss, loss_parts = self.loss_fn(policy_pred_by_prob, policy_target_by_prob,
+                                                        value_pred_by_prob, value_target_by_prob)
+                    else:
+                        obs_by_prob, policy_target_by_prob = dataset
+                        for i, problem in enumerate(self.problems):
+                            policy_pred_by_prob.append(problem.network(obs_by_prob[i]))
+                        loss, loss_parts = self.loss_fn(policy_pred_by_prob, policy_target_by_prob)
                     grads = tape.gradient(loss, params)
                 self.optimizer.apply_gradients(
                     grads_and_vars=zip(grads, params))
@@ -1114,7 +1155,7 @@ class ManualLoss:
         self.mse_coeff = mse_coeff
         self.strategy = strategy
 
-    def __call__(self, act_dist_pred: List[tf.Tensor], act_dist: List[tf.Tensor], target_values=None, pred_values=None) \
+    def __call__(self, act_dist_pred: List[tf.Tensor], act_dist: List[tf.Tensor], pred_values=None, target_values=None) \
             -> tuple[float, list]:
         assert len(self.problems) == len(act_dist_pred), \
             "inconsistent input data size with num. problems"
@@ -1170,8 +1211,8 @@ class ManualLoss:
         assert loss_parts is not None
 
         # for part_loss_name, part_loss in loss_parts:
-            # tf.summary.scalar('loss-%s' % part_loss_name, part_loss)
-            # tf_and_log('loss-%s' % part_loss_name, part_loss)
+        # tf.summary.scalar('loss-%s' % part_loss_name, part_loss)
+        # tf_and_log('loss-%s' % part_loss_name, part_loss)
         total_batch = sum(batch_sizes)
 
         loss_parts = [
@@ -1181,7 +1222,7 @@ class ManualLoss:
         return op_loss, loss_parts
 
     @can_profile
-    def _set_up_losses(self, problem, act_dist_pred, act_dist, target_values=0, pred_values=0):
+    def _set_up_losses(self, problem, act_dist_pred, act_dist, target_values=None, pred_values=None):
         loss_parts = []
         # now the loss ops
         with tf.name_scope('loss'):
@@ -1210,6 +1251,10 @@ class ManualLoss:
                                    0.0, dtype=tf.float32, name='xent_ph'),
                                name='xent_cond')
                 loss_parts.append(('xent', xent))
+                if target_values is not None and pred_values is not None:
+                    mse = tf.reduce_mean(mean_squared_error(pred_values, target_values))
+                    mse *= self.mse_coeff
+                    loss_parts.append(('mse', mse))
             elif self.strategy == SupervisedObjective.MAX_ADVANTAGE:
                 state_values = tf.reduce_min(input_tensor=act_dist, axis=-1)
                 exp_q = act_dist_pred * act_dist

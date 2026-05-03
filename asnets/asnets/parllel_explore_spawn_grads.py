@@ -1,14 +1,14 @@
 # asnets/parallel_explore_spawn_grads.py
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, replace
 from time import time
 from typing import Any, Optional, List, Tuple
 
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future, wait, ALL_COMPLETED
 
-from asnets.spawn_train_worker import WorkerInput, WorkerOutput, run_worker_opt_profile, run_worker_eval, \
+from asnets.spawn_train_worker import MCTSWorkerInput, WorkerOutput, run_worker_opt_profiled, run_worker_eval_mcts, \
     EvalWorkerInput, EvalWorkerOutput
 from asnets.supervised import SupervisedObjective
 from asnets.utils.generator_utils import InstanceDifficulty
@@ -18,8 +18,6 @@ from asnets.utils.prof_utils import can_profile
 def run_epoch_spawn_grads(
         specs: list[Any],
         weights_np: dict,
-        dropout: float,
-        debug: bool,
         mse_coeff: float,
         l2_reg_coeff: float,
         l1_reg_coeff: float,
@@ -43,8 +41,6 @@ def run_epoch_spawn_grads(
     Args:
         specs: Worker specifications for this epoch.
         weights_np: Network weights passed to each worker.
-        dropout: Dropout rate used by workers.
-        debug: Whether debug mode is enabled.
         mse_coeff: MSE loss coefficient.
         l2_reg_coeff: L2 regularization coefficient.
         l1_reg_coeff: L1 regularization coefficient.
@@ -68,13 +64,11 @@ def run_epoch_spawn_grads(
     ) as ex:
         futs: list[Future[WorkerOutput]] = [
             ex.submit(
-                run_worker_opt_profile,
-                WorkerInput(
+                run_worker_opt_profiled,
+                MCTSWorkerInput(
                     spec=spec,
                     epoch=curr_epoch,
                     weights_np=weights_np,
-                    dropout=dropout,
-                    debug=debug,
                     log=log,
                     PROFILE_DIR=PROFILE_DIR,
                     corrupt_pi=corrupt_pi,
@@ -112,27 +106,76 @@ def run_epoch_spawn_grads(
     return outs
 
 
-def run_epoch_spawn_eval(specs, weights_np, max_workers=None) -> list[Optional[EvalWorkerOutput]]:
-    ctx = mp.get_context("forkserver")
-    with ProcessPoolExecutor(
-        max_workers=max_workers or len(specs),
-        mp_context=ctx,
-    ) as ex:
-        fut_to_idx: dict[Future[EvalWorkerOutput],int] = {}
-        for i, spec in enumerate(specs):
-            inp = EvalWorkerInput(
-                spec=spec,
-                epoch=None,
-                weights_np=weights_np,
-                debug=False,
-            )
-            fut: Future[EvalWorkerOutput] = ex.submit(run_worker_eval, inp)
-            fut_to_idx[fut] = i
-        outs: list[Optional[EvalWorkerOutput]] = [None] * len(specs)
-        for fut in as_completed(fut_to_idx):
-            idx = fut_to_idx[fut]
-            outs[idx] = fut.result()
+def run_epoch_spawn_eval(
+        specs,
+        weights_np,
+        max_workers=None,
+        worker_fn=run_worker_eval_mcts,
+) -> list[EvalWorkerOutput]:
+    if max_workers is None:
+        max_workers = len(specs)
+    max_workers = min(max_workers, len(specs))
+    outs: list[Optional[EvalWorkerOutput]] = [None] * len(specs)
+    total_success = 0
+    total_done = 0
+    for wave_start in range(0, len(specs), max_workers):
+        wave_idx = wave_start // max_workers + 1
+        wave_specs = specs[wave_start:wave_start + max_workers]
+        print(
+            f"\n[EVAL] starting wave {wave_idx}: "
+            f"specs {wave_start}..{wave_start + len(wave_specs) - 1}"
+        )
+        ctx = mp.get_context("forkserver")
+        running_success = 0
+        running_done = 0
+        with ProcessPoolExecutor(
+                max_workers=len(wave_specs),
+                mp_context=ctx,
+        ) as ex:
+            fut_to_idx: dict[Future[EvalWorkerOutput], int] = {}
+            for local_i, spec in enumerate(wave_specs):
+                global_i = wave_start + local_i
+                inp = EvalWorkerInput(
+                    spec=spec,
+                    epoch=None,
+                    weights_np=weights_np,
+                )
+                fut = ex.submit(worker_fn, inp)
+                fut_to_idx[fut] = global_i
+            for fut in as_completed(fut_to_idx):
+                idx = fut_to_idx[fut]
+                result = fut.result()
+                outs[idx] = result
+                # Per-instance print + rolling stats (within wave)
+                running_done += 1
+                running_success += result.hit_goal
+                total_done += 1
+                total_success += result.hit_goal
+                status = "PASS" if result.hit_goal else "FAIL"
+                print(
+                    f"[EVAL] {status} | {result.instance_name} | steps={result.steps} | wave={running_success}/"
+                    f"{running_done}={running_success / running_done:.3f} | total={total_success}/{total_done}="
+                    f"{total_success / total_done:.3f}")
+        # Wave summary
+        wave_success = sum(
+            outs[i].hit_goal
+            for i in range(wave_start, wave_start + len(wave_specs))
+        )
+        print(f"[EVAL] wave {wave_idx} summary: {wave_success}/{len(wave_specs)}={wave_success / len(wave_specs):.3f}")
+        print(f"[EVAL] cumulative success: {total_success}/{total_done}={total_success / total_done:.3f}")
+        print(f"[EVAL] finished wave {wave_idx}")
+    # Final sorted instance report
+    print("\n[EVAL] FINAL INSTANCE RESULTS")
+    for o in sorted(outs, key=lambda x: x.instance_name):
+        status = "PASS" if o.hit_goal else "FAIL"
+        print(f"{status} | {o.instance_name} | steps={o.steps}")
+    # Final summary line
+    print(
+        f"\n[EVAL FINAL] success={total_success}/{len(specs)}={total_success / len(specs):.3f}"
+    )
+    assert all(o is not None for o in outs)
     return outs
+
 
 @dataclass(frozen=True)
 class SpawnExploreSpec:
@@ -162,7 +205,7 @@ class SpawnExploreSpec:
     mcts_expansion_k: int
     use_fluents: bool
     use_comps: bool
-    difficulty: Any  # InstanceDifficulty enum
+    difficulty: InstanceDifficulty
     fixed_instance_pddl: bool = False
     original_training_set: bool = False
     mcts_exploration_weight: float = 1.0
@@ -174,7 +217,7 @@ class SpawnExploreSpec:
     est_plan_z: bool = False
 
     # estimator decay
-    estimator_decay: bool = False
+    use_estimator: bool = False
     estimator_decay_coeff_start: float = 1.0
     estimator_decay_coeff_end: float = 0.2
     estimator_decay_epochs: int = 0
@@ -200,7 +243,7 @@ class SpawnExploreSpec:
                            "use_numeric_landmarks", "use_contributions"],
             "MCTS & EXPLORATION": ["training_mcts_iterations", "mcts_expansion_k", "mcts_exploration_weight",
                                    "mcts_her_strategy", "sample_k_additional_states"],
-            "ESTIMATOR & DECAY": ["estimator_h_to_v_coeff", "estimator_decay", "estimator_decay_coeff_start",
+            "ESTIMATOR & DECAY": ["estimator_h_to_v_coeff", "use_estimator", "estimator_decay_coeff_start",
                                   "estimator_decay_coeff_end", "estimator_decay_epochs"],
             "ACTION POLICY": ["action_policy", "action_policy_epsilon", "action_policy_temperature",
                               "action_policy_decay_rate"],
@@ -236,12 +279,26 @@ class SpawnExploreSpec:
 
         return "\n".join(output) + "\n"
 
+    def change_diff_to(self, diff: InstanceDifficulty) -> SpawnExploreSpec:
+        return self.duplicate({"difficulty": diff})
+
+    def duplicate(self, to_update: dict | None = None):
+        """
+        Return a copy of this SpawnExploreSpec, optionally overriding fields.
+
+        Example:
+            new_spec = spec.duplicate({"max_len": 200})
+        """
+        if not to_update:
+            return replace(self)
+
+        return replace(self, **to_update)
 
 @can_profile
 def make_specs(args, specific_instances=None, evaluation_mode=False) -> list[SpawnExploreSpec]:
     only_one_good_action = (
-        args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
-        or args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
+            args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
+            or args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
     )
 
     num_slots = len(specific_instances) if specific_instances is not None else args.num_workers
@@ -274,7 +331,7 @@ def make_specs(args, specific_instances=None, evaluation_mode=False) -> list[Spa
             teacher_timeout_s=args.teacher_timeout_s,
             only_one_good_action=only_one_good_action,
             use_teacher_envelope=args.use_teacher_envelope,
-            max_len=args.search_max_length,
+            max_len=args.limit_turns,
             mcts_iterations=args.mcts_iterations,
             heuristic_bootstrapping=args.heuristic_bootstrapping,
             mcts_her_strategy=args.mcts_her_strategy,
@@ -295,7 +352,7 @@ def make_specs(args, specific_instances=None, evaluation_mode=False) -> list[Spa
                 sample_k_additional_states=args.sample_k_additional_states,
                 goal_path_reconstruction=args.goal_path_reconstruction,
                 original_training_set=args.original_training_set,
-                estimator_decay=args.estimator_decay,
+                use_estimator=args.use_estimator,
                 estimator_decay_coeff_start=args.estimator_decay_coeff_start,
                 estimator_decay_coeff_end=args.estimator_decay_coeff_end,
                 estimator_decay_epochs=(
