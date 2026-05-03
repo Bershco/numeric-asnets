@@ -233,7 +233,8 @@ class PlannerExtensions(object):
 
     def __del__(self):
         import jpype, os
-        print(f"[DEBUG GC] JVM running at del? {jpype.isJVMStarted()} PID={os.getpid()}")
+        if not jpype.isJVMStarted():
+            print(f"[DEBUG GC] JVM not running at del | PID={os.getpid()}")
 
     def update_difficulty(self, difficulty: int):
         assert 0 <= difficulty <= 2

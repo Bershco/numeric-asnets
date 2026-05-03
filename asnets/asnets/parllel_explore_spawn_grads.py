@@ -125,6 +125,7 @@ def run_epoch_spawn_eval(
             f"\n[EVAL] starting wave {wave_idx}: "
             f"specs {wave_start}..{wave_start + len(wave_specs) - 1}"
         )
+        start_wave_time = time()
         ctx = mp.get_context("forkserver")
         running_success = 0
         running_done = 0
@@ -156,6 +157,7 @@ def run_epoch_spawn_eval(
                     f"[EVAL] {status} | {result.instance_name} | steps={result.steps} | wave={running_success}/"
                     f"{running_done}={running_success / running_done:.3f} | total={total_success}/{total_done}="
                     f"{total_success / total_done:.3f}")
+            print(f"[EVAL TIMING] Wave {wave_idx} took {start_wave_time - time()} seconds.")
         # Wave summary
         wave_success = sum(
             outs[i].hit_goal
