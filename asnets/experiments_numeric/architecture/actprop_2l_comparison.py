@@ -85,3 +85,10 @@ USE_CONTRIBUTIONS = False
 TEACHER_PLANNER = 'enhsp'
 DOMAIN_TYPE = 'numeric'
 ENHSP_CONFIG = 'hadd-gbfs'
+
+
+#### Action Policy Settings ####
+ACTION_POLICY = "sample"
+ACTION_POLICY_EPSILON = 0.05
+ACTION_POLICY_TEMPERATURE = None
+ACTION_POLICY_DECAY_RATE = None

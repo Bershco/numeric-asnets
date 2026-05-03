@@ -85,6 +85,7 @@ class CachingPolicyEvaluator(object):
     def get_action_from_cstate(self, cstate):
         return self.get_action(cstate.to_network_input())
 
+
 def unique_name(args, digits=6):
     rand_num = random.randint(1, (1 << (4 * (digits + 1)) - 1))
     suffix = '{:x}'.format(rand_num).zfill(digits)
@@ -725,7 +726,8 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
         )
         instances = args.pddls[1:]
         validation_specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
-        validator = ParallelEvaluator(specs=validation_specs, max_workers=min(args.num_workers, len(instances)), worker_fn=run_worker_eval_mcts)
+        validator = ParallelEvaluator(specs=validation_specs, max_workers=min(args.num_workers, len(instances)),
+                                      worker_fn=run_worker_eval_mcts)
         if not args.freeze_train:
             sup_trainer = SupervisedTrainer(
                 weight_manager=weight_manager,
@@ -884,7 +886,8 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
                 f'Unknown exploration algorithm: {args.exploration_algorithm}')
         instances = args.pddls[1:]
         evaluation_specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
-        validator = ParallelEvaluator(specs=evaluation_specs, max_workers=min(args.num_workers, len(instances)), worker_fn=run_worker_eval_policy_only)
+        validator = ParallelEvaluator(specs=evaluation_specs, max_workers=min(args.num_workers, len(instances)),
+                                      worker_fn=run_worker_eval_policy_only)
         # we maintain the old loss for usage of policy network only (instead of dual-head using the new loss)
         sup_trainer = OriginalSupervisedTrainer(
             problems=problems,

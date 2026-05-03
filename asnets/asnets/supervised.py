@@ -856,6 +856,12 @@ class OriginalSupervisedTrainer(BaseTrainer):
                 lr=self.optimizer.lr,
                 refresh=False,
             )
+            if epoch_num % 10 == 0:
+                succ_rate, validation_outs = self.validator.evaluate(self._weight_manager.export_numpy())
+                print(f"[VALIDATION] Current network validation success rate: {succ_rate}")
+                for i, val_worker_out in enumerate(validation_outs):
+                    print(f"[{val_worker_out.instance_name}] - {'PASS' if val_worker_out.hit_goal else 'FAIL'}")
+
             # caller might want us to terminate
             if best_rate is None or total_succ_rate > best_rate + 1e-4:
                 time_since_best = 0
