@@ -280,13 +280,7 @@ def run_parallel_problem_init_data_collection(
         specs: list[Any],
         max_workers: int | None = None,
 ) -> list[ProblemInitData]:
-    """
-    Parent-side function.
-
-    Uses spawn context deliberately so it does not inherit / use the
-    forkserver TensorFlow preload configured in run_asnets.
-    """
-    ctx = mp.get_context("spawn")
+    ctx = mp.get_context("forkserver")
 
     max_workers = max_workers or min(len(specs), mp.cpu_count())
     outs: list[ProblemInitData | None] = [None] * len(specs)
