@@ -654,6 +654,23 @@ parser.add_argument(
     default=0.2,
     help='Set est_coeff_end value.'
 )
+parser.add_argument(
+    '--validation-pddls-easy',
+    nargs='+',
+    default=[],
+)
+
+parser.add_argument(
+    '--validation-pddls-medium',
+    nargs='+',
+    default=[],
+)
+
+parser.add_argument(
+    '--validation-pddls-hard',
+    nargs='+',
+    default=[],
+)
 
 
 @can_profile
@@ -725,8 +742,23 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             max_workers=args.num_workers,
         )
         instances = args.pddls[1:]
-        validation_specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
-        validator = ParallelEvaluator(specs=validation_specs, max_workers=min(args.num_workers, len(instances)),
+        validation_sets = {
+            "easy": args.validation_pddls_easy,
+            "medium": args.validation_pddls_medium,
+            "hard": args.validation_pddls_hard,
+        }
+        validation_sets = {k: v for k, v in validation_sets.items() if v}
+        all_validation_specs = []
+        for diff_name, instances in validation_sets.items():
+            diff_enum = InstanceDifficulty[diff_name.upper()]
+            specs = make_specs(
+                args,
+                specific_instances=instances,
+                evaluation_mode=True,
+                difficulty=diff_enum,
+            )
+            all_validation_specs.extend(specs)
+        validator = ParallelEvaluator(specs=all_validation_specs, max_workers=min(args.num_workers, len(all_validation_specs)),
                                       worker_fn=run_worker_eval_mcts)
         if not args.freeze_train:
             sup_trainer = SupervisedTrainer(
@@ -794,7 +826,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
         worker_fn=run_worker_eval_mcts,
     )
     eval_start_time = time()
-    success_rate, outs = eval_explorer.evaluate(weights_np)
+    _, success_rate, outs = eval_explorer.evaluate(weights_np)
     print("spec: ", specs[0])
     print(f"Inference success rate: {success_rate}, took: {time() - eval_start_time}s")
 
@@ -884,9 +916,24 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
         else:
             raise ValueError(
                 f'Unknown exploration algorithm: {args.exploration_algorithm}')
-        instances = args.pddls[1:]
-        evaluation_specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
-        validator = ParallelEvaluator(specs=evaluation_specs, max_workers=min(args.num_workers, len(instances)),
+        validation_sets = {
+            "easy": args.validation_pddls_easy,
+            "medium": args.validation_pddls_medium,
+            "hard": args.validation_pddls_hard,
+        }
+        validation_sets = {k: v for k, v in validation_sets.items() if v}
+        all_validation_specs = []
+        for diff_name, instances in validation_sets.items():
+            diff_enum = InstanceDifficulty[diff_name.upper()]
+            specs = make_specs(
+                args,
+                specific_instances=instances,
+                evaluation_mode=True,
+                difficulty=diff_enum,
+            )
+            all_validation_specs.extend(specs)
+        validator = ParallelEvaluator(specs=all_validation_specs,
+                                      max_workers=min(args.num_workers, len(all_validation_specs)),
                                       worker_fn=run_worker_eval_policy_only)
         # we maintain the old loss for usage of policy network only (instead of dual-head using the new loss)
         sup_trainer = OriginalSupervisedTrainer(
@@ -949,7 +996,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
         worker_fn=run_worker_eval_policy_only
     )
 
-    success_rate, outs = eval_explorer.evaluate(weights_np)
+    _, success_rate, outs = eval_explorer.evaluate(weights_np)
 
     print(f"\n[EVAL FINAL] success={success_rate:.3f}")
 

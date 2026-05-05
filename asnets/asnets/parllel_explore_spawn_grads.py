@@ -1,9 +1,10 @@
 # asnets/parallel_explore_spawn_grads.py
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass, fields, replace
 from time import time
-from typing import Any, Optional, List, Tuple
+from typing import Any, Optional, Tuple
 
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future, wait, ALL_COMPLETED
@@ -105,79 +106,82 @@ def run_epoch_spawn_grads(
             )
     return outs
 
-
 def run_epoch_spawn_eval(
-        specs,
-        weights_np,
-        max_workers=None,
-        worker_fn=run_worker_eval_mcts,
+    specs,
+    weights_np,
+    max_workers=None,
+    worker_fn=run_worker_eval_mcts,
 ) -> list[EvalWorkerOutput]:
+    if not specs:
+        return []
     if max_workers is None:
         max_workers = len(specs)
     max_workers = min(max_workers, len(specs))
     outs: list[Optional[EvalWorkerOutput]] = [None] * len(specs)
+    spec_to_idx = {id(spec): i for i, spec in enumerate(specs)}
+    grouped_specs = defaultdict(list)
+    for spec in specs:
+        grouped_specs[spec.difficulty].append(spec)
     total_success = 0
     total_done = 0
-    for wave_start in range(0, len(specs), max_workers):
-        wave_idx = wave_start // max_workers + 1
-        wave_specs = specs[wave_start:wave_start + max_workers]
-        print(
-            f"\n[EVAL] starting wave {wave_idx}: "
-            f"specs {wave_start}..{wave_start + len(wave_specs) - 1}"
-        )
-        start_wave_time = time()
-        ctx = mp.get_context("forkserver")
-        running_success = 0
-        running_done = 0
-        with ProcessPoolExecutor(
+    for diff, diff_specs in grouped_specs.items():
+        print(f"\n[EVAL] === {diff.name} ({len(diff_specs)} instances) ===")
+        for wave_start in range(0, len(diff_specs), max_workers):
+            wave_specs = diff_specs[wave_start:wave_start + max_workers]
+            wave_idx = wave_start // max_workers + 1
+            print(
+                f"[EVAL] {diff.name} wave {wave_idx}: "
+                f"{len(wave_specs)} instances"
+            )
+            start_wave_time = time()
+            ctx = mp.get_context("forkserver")
+            wave_success = 0
+            wave_done = 0
+            with ProcessPoolExecutor(
                 max_workers=len(wave_specs),
                 mp_context=ctx,
-        ) as ex:
-            fut_to_idx: dict[Future[EvalWorkerOutput], int] = {}
-            for local_i, spec in enumerate(wave_specs):
-                global_i = wave_start + local_i
-                inp = EvalWorkerInput(
-                    spec=spec,
-                    epoch=None,
-                    weights_np=weights_np,
-                )
-                fut = ex.submit(worker_fn, inp)
-                fut_to_idx[fut] = global_i
-            for fut in as_completed(fut_to_idx):
-                idx = fut_to_idx[fut]
-                result = fut.result()
-                outs[idx] = result
-                # Per-instance print + rolling stats (within wave)
-                running_done += 1
-                running_success += result.hit_goal
-                total_done += 1
-                total_success += result.hit_goal
-                status = "PASS" if result.hit_goal else "FAIL"
-                print(
-                    f"[EVAL] {status} | {result.instance_name} | steps={result.steps} | wave={running_success}/"
-                    f"{running_done}={running_success / running_done:.3f} | total={total_success}/{total_done}="
-                    f"{total_success / total_done:.3f}")
-            print(f"[EVAL TIMING] Wave {wave_idx} took {time() - start_wave_time} seconds.")
-        # Wave summary
-        wave_success = sum(
-            outs[i].hit_goal
-            for i in range(wave_start, wave_start + len(wave_specs))
+            ) as ex:
+                fut_to_idx: dict[Future, int] = {}
+                for spec in wave_specs:
+                    idx = spec_to_idx[id(spec)]
+                    inp = EvalWorkerInput(
+                        spec=spec,
+                        epoch=None,
+                        weights_np=weights_np,
+                    )
+                    fut = ex.submit(worker_fn, inp)
+                    fut_to_idx[fut] = idx
+                for fut in as_completed(fut_to_idx):
+                    idx = fut_to_idx[fut]
+                    result = fut.result()
+                    outs[idx] = result
+                    # update stats
+                    wave_done += 1
+                    wave_success += result.hit_goal
+                    total_done += 1
+                    total_success += result.hit_goal
+            wave_rate = wave_success / wave_done if wave_done else 0.0
+            print(
+                f"[EVAL] {diff.name} wave {wave_idx}: "
+                f"{wave_success}/{wave_done} = {wave_rate:.3f} | "
+                f"time={time() - start_wave_time:.2f}s"
+            )
+        diff_total = len(diff_specs)
+        diff_success = sum(
+            outs[spec_to_idx[id(spec)]].hit_goal
+            for spec in diff_specs
         )
-        print(f"[EVAL] wave {wave_idx} summary: {wave_success}/{len(wave_specs)}={wave_success / len(wave_specs):.3f}")
-        print(f"[EVAL] cumulative success: {total_success}/{total_done}={total_success / total_done:.3f}")
-        print(f"[EVAL] finished wave {wave_idx}")
-    # Final sorted instance report
-    print("\n[EVAL] FINAL INSTANCE RESULTS")
-    for o in sorted(outs, key=lambda x: x.instance_name):
-        status = "PASS" if o.hit_goal else "FAIL"
-        print(f"{status} | {o.instance_name} | steps={o.steps}")
-    # Final summary line
+        diff_rate = diff_success / diff_total if diff_total else 0.0
+        print(
+            f"[EVAL] {diff.name} TOTAL: "
+            f"{diff_success}/{diff_total} = {diff_rate:.3f}"
+        )
     print(
-        f"\n[EVAL FINAL] success={total_success}/{len(specs)}={total_success / len(specs):.3f}"
+        f"\n[EVAL FINAL] success={total_success}/{len(specs)}="
+        f"{total_success / len(specs):.3f}"
     )
     assert all(o is not None for o in outs)
     return outs
-
 
 @dataclass(frozen=True)
 class SpawnExploreSpec:
@@ -235,7 +239,7 @@ class SpawnExploreSpec:
     evaluation_mode: bool = False
 
     def __str__(self) -> str:
-        """A stylized, grouped, and colorized representation of the spec."""
+        """A stylized and grouped representation of the spec."""
         # Define groupings for visual clarity
         groups = {
             "CORE": ["domain_type", "pddls", "difficulty", "trainer_seed", "slot_id", "num_slots"],
@@ -253,31 +257,26 @@ class SpawnExploreSpec:
                                 "freeze_train_steps", "freeze_batch_size"]
         }
 
-        # ANSI Color Codes (Optional - remove if you want plain text)
-        CLR = "\033[94m"  # Blue
-        VAL = "\033[92m"  # Green
-        RST = "\033[0m"  # Reset
-
-        header = f"\n{CLR}=== SpawnExploreSpec ==={RST}"
+        header = f"\n=== SpawnExploreSpec ==="
         output = [header]
 
         # Track which fields we've already categorized
         seen_fields = set()
         for group_name, field_list in groups.items():
-            output.append(f"\n  {CLR}[ {group_name} ]{RST}")
+            output.append(f"\n  [ {group_name} ]")
             for f_name in field_list:
                 if hasattr(self, f_name):
                     val = getattr(self, f_name)
-                    output.append(f"    {f_name:<40} : {VAL}{val}{RST}")
+                    output.append(f"    {f_name:<40} : {val}")
                     seen_fields.add(f_name)
 
         # Catch-all for any fields not explicitly grouped
         remaining = [f.name for f in fields(self) if f.name not in seen_fields]
         if remaining:
-            output.append(f"\n  {CLR}[ OTHER ]{RST}")
+            output.append(f"\n  [ OTHER ]")
             for f_name in remaining:
                 val = getattr(self, f_name)
-                output.append(f"    {f_name:<40} : {VAL}{val}{RST}")
+                output.append(f"    {f_name:<40} : {val}")
 
         return "\n".join(output) + "\n"
 
@@ -297,7 +296,7 @@ class SpawnExploreSpec:
         return replace(self, **to_update)
 
 @can_profile
-def make_specs(args, specific_instances=None, evaluation_mode=False) -> list[SpawnExploreSpec]:
+def make_specs(args, specific_instances=None, evaluation_mode=False, difficulty: Optional[InstanceDifficulty] = None) -> list[SpawnExploreSpec]:
     only_one_good_action = (
             args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
             or args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
@@ -340,7 +339,7 @@ def make_specs(args, specific_instances=None, evaluation_mode=False) -> list[Spa
             mcts_expansion_k=args.mcts_expansion_size,
             use_fluents=args.use_fluents,
             use_comps=args.use_comparisons,
-            difficulty=InstanceDifficulty.EASY,
+            difficulty=difficulty if difficulty is not None else InstanceDifficulty.EASY,
             fixed_instance_pddl=args.fixed_instance,
             mcts_exploration_weight=args.mcts_exploration_weight,
             action_policy=args.action_policy,

@@ -321,6 +321,19 @@ def build_prob_flags_train(prob_mod):
             other_flags.extend(['-p', tn])
     return other_flags + pddls
 
+def build_prob_flags_validation(prob_mod):
+    """Build validation PDDL flags grouped by difficulty."""
+    flags = []
+
+    if not hasattr(prob_mod, "VALIDATION_PDDLS"):
+        return flags
+
+    for diff, pddls in prob_mod.VALIDATION_PDDLS.items():
+        prefixed = add_prefix(prob_mod.PDDL_DIR, pddls)
+        flags.append(f'--validation-pddls-{diff}')
+        flags.extend(prefixed)
+    return flags
+
 
 def build_prob_flags_test(prob_mod, allowed_idxs=None):
     """Build a list of flag sets, with one flag set for each requested
@@ -617,6 +630,7 @@ def main_inner(*,
                override_mse_coeff=None,
                serial_test=None,
                no_eval=None,
+               no_valid=None,
                profiling=False,
                memory_profiling=False,
                random_seed=None,
@@ -668,6 +682,8 @@ def main_inner(*,
             override_mse_coeff=override_mse_coeff
         ))
         train_flags.extend(build_prob_flags_train(prob_mod))
+        if not no_valid:
+            train_flags.extend(build_prob_flags_validation(prob_mod))
         print(f'''
 ========================================================
 Starting to train network with the following parameters:

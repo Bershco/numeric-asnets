@@ -1,7 +1,7 @@
 # asnets/explorer_spawn_grads.py
 from __future__ import annotations
 
-from collections import deque
+from collections import deque, defaultdict
 from dataclasses import dataclass
 from time import time
 from typing import Any, Optional, Callable
@@ -143,6 +143,18 @@ class ParallelEvaluator:
             max_workers=self.max_workers,
             worker_fn=self.worker_fn,
         )
-        solved = [o.hit_goal for o in outs]
-        success_rate = float(np.mean(solved))
-        return success_rate, outs
+        # --- group by difficulty ---
+        grouped = defaultdict(list)
+        for spec, out in zip(self.specs, outs):
+            grouped[spec.difficulty].append(out.hit_goal)
+        # --- compute per-difficulty success ---
+        success_rates = {}
+        for diff, results in grouped.items():
+            if results:
+                success_rates[diff] = float(np.mean(results))
+        for diff, rate in success_rates.items():
+            print(f"[EVAL] {diff.name}: {rate:.3f} ({len(grouped[diff])} instances)")
+        # --- overall (optional, keep old behavior if needed) ---
+        all_solved = [o.hit_goal for o in outs]
+        overall_success = float(np.mean(all_solved))
+        return success_rates, overall_success, outs

@@ -71,6 +71,7 @@ class PolicyDrivenWorkerInput(WorkerInput):
     recent_learning_time: Optional[int]
     expl_learn_ratio: Optional[int]
 
+
 @dataclass(frozen=True)
 class MCTSWorkerInput(WorkerInput):
     # loss cfg
@@ -90,6 +91,7 @@ class MCTSWorkerInput(WorkerInput):
         return self.spec.estimator_decay_coeff_start + (
                 self.spec.estimator_decay_coeff_end - self.spec.estimator_decay_coeff_start) * min(
             self.epoch / self.spec.estimator_decay_epochs, 1)
+
 
 @dataclass
 class WorkerOutput:
@@ -889,15 +891,22 @@ def run_worker_opt_profiled(inp: WorkerInput, worker_fn=run_worker) -> WorkerOut
         print(f"[WORKER TIMING] pid={os.getpid()} total={time.time() - t0:.2f}s", flush=True)
 
 
-def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
-    worker_tag = f"[EVAL|{os.getpid()}]"
+def init_eval_worker(inp: EvalWorkerInput, worker_tag_addon: Optional[str] = None) -> tuple[str, str]:
+    worker_tag_prefix = f"EVAL{'_'+worker_tag_addon if worker_tag_addon else ''}"
+    difficulty_str = str(inp.spec.difficulty)
+    full_worker_tag = f"[{worker_tag_prefix}|{difficulty_str}|{os.getpid()}]"
     instance_name = f"[{str(inp.spec.slot_id)}] {inp.spec.pddls[1]}"
-    set_random_seeds(inp.seed, worker_tag=worker_tag)
+    set_random_seeds(inp.seed, worker_tag=full_worker_tag)
     configure_tf_gpu_memory_growth()
     CanonicalState.network_input_config(
         use_fluents=inp.spec.use_fluents,
         use_comparisons=inp.spec.use_comps,
     )
+    return full_worker_tag, instance_name
+
+
+def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
+    worker_tag, instance_name = init_eval_worker(inp)
     planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
     act_dim = planner_exts.problem_meta.num_acts
     estimator = _build_estimator(planner_exts, inp.spec)
@@ -975,14 +984,8 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
 
 
 def run_worker_eval_policy_only(inp: EvalWorkerInput) -> EvalWorkerOutput:
-    worker_tag = f"[EVAL_POLICY|{os.getpid()}]"
-    instance_name = f"[{str(inp.spec.slot_id)}] {inp.spec.pddls[1]}"
-    set_random_seeds(inp.seed, worker_tag=worker_tag)
-    configure_tf_gpu_memory_growth()
-    CanonicalState.network_input_config(
-        use_fluents=inp.spec.use_fluents,
-        use_comparisons=inp.spec.use_comps,
-    )
+    worker_tag, instance_name = init_eval_worker(inp,"POLICY")
+
     planner_exts = _build_planner_exts_from_spec(
         inp.spec,
         inp.epoch,
@@ -1120,7 +1123,8 @@ def run_multiple_trajectory_collection(inp: PolicyDrivenWorkerInput):
             for state, act in path:
                 cont.add(state)
         while True:
-            terminate, last_progress_time = _terminate(start_time, total_new_pairs, inp.min_new_pairs, inp.max_new_pairs,
+            terminate, last_progress_time = _terminate(start_time, total_new_pairs, inp.min_new_pairs,
+                                                       inp.max_new_pairs,
                                                        last_progress_time, t,
                                                        first_explore, inp.recent_learning_time, inp.expl_learn_ratio)
             if terminate or len(cont) == 0:
