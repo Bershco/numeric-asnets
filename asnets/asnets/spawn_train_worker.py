@@ -84,13 +84,18 @@ class MCTSWorkerInput(WorkerInput):
     corrupt_pi: Optional[str] = None  # "shuffle" | "random" | "zero" | None
     corrupt_z: Optional[str] = None  # "shuffle" | "random" | "zero" | None
 
+    max_estimator_coeff: float = 1.0
+
     @property
     def estimator_coeff(self):
         if not self.spec.use_estimator:
             return 0.0
-        return self.spec.estimator_decay_coeff_start + (
-                self.spec.estimator_decay_coeff_end - self.spec.estimator_decay_coeff_start) * min(
-            self.epoch / self.spec.estimator_decay_epochs, 1)
+        return min(
+            self.max_estimator_coeff,
+            self.spec.estimator_decay_coeff_start +
+            (self.spec.estimator_decay_coeff_end - self.spec.estimator_decay_coeff_start) *
+                        min(self.epoch / self.spec.estimator_decay_epochs, 1)
+        )
 
 
 @dataclass
@@ -892,7 +897,7 @@ def run_worker_opt_profiled(inp: WorkerInput, worker_fn=run_worker) -> WorkerOut
 
 
 def init_eval_worker(inp: EvalWorkerInput, worker_tag_addon: Optional[str] = None) -> tuple[str, str]:
-    worker_tag_prefix = f"EVAL{'_'+worker_tag_addon if worker_tag_addon else ''}"
+    worker_tag_prefix = f"EVAL{'_' + worker_tag_addon if worker_tag_addon else ''}"
     difficulty_str = str(inp.spec.difficulty)
     full_worker_tag = f"[{worker_tag_prefix}|{difficulty_str}|{os.getpid()}]"
     instance_name = f"[{str(inp.spec.slot_id)}] {inp.spec.pddls[1]}"
@@ -984,7 +989,7 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
 
 
 def run_worker_eval_policy_only(inp: EvalWorkerInput) -> EvalWorkerOutput:
-    worker_tag, instance_name = init_eval_worker(inp,"POLICY")
+    worker_tag, instance_name = init_eval_worker(inp, "POLICY")
 
     planner_exts = _build_planner_exts_from_spec(
         inp.spec,

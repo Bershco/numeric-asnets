@@ -519,9 +519,14 @@ class SupervisedTrainer(BaseTrainer):
         time_since_best = 0
         solve_thresh = 0.8
         early_stop_first_epoch = self.explorer.estimator_decay_end_epoch() + self.early_stop if self.early_stop else 0
-        good_epoch_thresh = 0.6
-        good_epoch_num = 0
-        good_epoch_cap = 30
+
+        patience_counter = 0
+        cooldown_counter = 0
+
+        PATIENCE = 2  # consecutive validations
+        COOLDOWN_EPOCHS = 10
+        VALIDATE_EVERY = 5
+        THRESHOLD_EASY = 0.85
 
         tr = tqdm.trange(max_epochs, desc='epoch', leave=True)
         epoch = tf.Variable(0, dtype=tf.int64)
@@ -622,13 +627,38 @@ class SupervisedTrainer(BaseTrainer):
             )
 
             # --------------------------------------------------
-            # 2.1 validation
+            # 2.1 validation + decay + progression
             # --------------------------------------------------
-            if epoch_num % 10 == 0:
-                success_rates, overall_succ_rate, validation_outs = self.validator.evaluate(self._weight_manager.export_numpy())
+            if epoch_num % VALIDATE_EVERY == 0:
+                success_rates, overall_succ_rate, validation_outs = \
+                    self.validator.evaluate(self._weight_manager.export_numpy())
                 print(f"[VALIDATION] Current network validation success rate: {overall_succ_rate}")
-                for i, val_worker_out in enumerate(validation_outs):
-                    print(f"[{val_worker_out.instance_name}] - {'PASS' if val_worker_out.hit_goal else 'FAIL'}")
+                # -------------------------
+                # 1. Estimator decay
+                # -------------------------
+                if cooldown_counter == 0:
+                    if success_rates.get(InstanceDifficulty.EASY, 0.0) >= THRESHOLD_EASY:
+                        patience_counter += 1
+                    else:
+                        patience_counter = 0
+
+                    if patience_counter >= PATIENCE:
+                        self.explorer.decay_estimator_coefficient()
+                        print("[VALIDATION] Estimator coefficient decayed")
+
+                        patience_counter = 0
+                        cooldown_counter = COOLDOWN_EPOCHS
+                else:
+                    cooldown_counter -= VALIDATE_EVERY
+
+                # -------------------------
+                # 2. Progression (NEW)
+                # -------------------------
+
+                if self.can_progress(success_rates):
+                    if self.explorer.advance_progression_level():
+                        # this progresses the progression level and returns true if advanced, if current progression level is max - returns false
+                        cooldown_counter = max(cooldown_counter, int(COOLDOWN_EPOCHS / 2))
             # --------------------------------------------------
             # 3. EARLY STOP / SNAPSHOT LOGIC (unchanged)
             # --------------------------------------------------
@@ -676,14 +706,24 @@ class SupervisedTrainer(BaseTrainer):
                 tr.refresh()  # this guarantees tqdm display of last iteration
                 break
 
-            if good_epoch_cap:
-                if total_succ_rate > good_epoch_thresh:
-                    good_epoch_num += 1
-                if good_epoch_num >= good_epoch_cap:
-                    self.explorer.advance_progression_level()
-                    good_epoch_num = 0
-
         return best_rate, elapsed_time, int(epoch)
+
+    def can_progress(self, success_rates):
+        thresholds = {
+            InstanceDifficulty.EASY: 0.90,
+            InstanceDifficulty.MEDIUM: 0.65,
+            InstanceDifficulty.HARD: 0.50,
+        }
+
+        active = self.explorer.progression_level.get_active_difficulties()
+
+        for d in active:
+            if d not in success_rates:
+                return False
+            if success_rates[d] < thresholds[d]:
+                return False
+
+        return True
 
     def apply_worker_grads(self, worker_outs):
         params = self._weight_manager.all_weights
@@ -857,7 +897,8 @@ class OriginalSupervisedTrainer(BaseTrainer):
                 refresh=False,
             )
             if epoch_num % 10 == 0:
-                success_rates, overall_succ_rate, validation_outs = self.validator.evaluate(self._weight_manager.export_numpy())
+                success_rates, overall_succ_rate, validation_outs = self.validator.evaluate(
+                    self._weight_manager.export_numpy())
                 print(f"[VALIDATION] Current network validation success rate: {overall_succ_rate}")
                 for i, val_worker_out in enumerate(validation_outs):
                     print(f"[{val_worker_out.instance_name}] - {'PASS' if val_worker_out.hit_goal else 'FAIL'}")

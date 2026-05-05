@@ -33,6 +33,7 @@ class ParallelMCTSExplorerGrads:
     max_epoch_timeout_s = 3600
 
     progression_level: ProgressionLevel = ProgressionLevel.LEVEL1
+    max_curr_est_coeff: float = 1.0
 
     #corruption testing settings
     corrupt_pi: Optional[str] = None
@@ -53,7 +54,6 @@ class ParallelMCTSExplorerGrads:
         Returns:
             A list of successful worker outputs for this epoch.
         """
-        self.curr_epoch += 1
         epoch_timeout = self._compute_epoch_timeout()
         effective_max_workers = (
             self.max_workers
@@ -63,19 +63,21 @@ class ParallelMCTSExplorerGrads:
         start_time = time()
         outputs = run_epoch_spawn_grads(
             specs=self.specs,
-            curr_epoch=self.curr_epoch - 1,  # first epoch is 0
+            curr_epoch=self.curr_epoch,
             weights_np=weights_np,
             log=self.log,
             PROFILE_DIR=self.PROFILE_DIR,
             corrupt_pi=self.corrupt_pi,
             corrupt_z=self.corrupt_z,
             mse_coeff=self.mse_coeff,
+            max_estimator_coeff=self.max_curr_est_coeff,
             l2_reg_coeff=self.l2_reg_coeff,
             l1_reg_coeff=self.l1_reg_coeff,
             l1_l2_reg_coeff=self.l1_l2_reg_coeff,
             max_workers=effective_max_workers,
             epoch_timeout=epoch_timeout,
         )
+        self.curr_epoch += 1
         self.rolling_epoch_times.append(time() - start_time)
         return outputs
 
@@ -115,19 +117,23 @@ class ParallelMCTSExplorerGrads:
 
     def advance_progression_level(self):
         if self.progression_level == ProgressionLevel.LEVEL5:
-            return
+            return False
         print(f"Starting to advance progression level from {self.progression_level} to {self.progression_level.next()}")
         self.progression_level = self.progression_level.next()
         self.set_specs_according_to_progression_level()
         print(f"Current progression level is {self.progression_level}, specs were given the following difficulties:")
         diff_list_from_specs = [str(self.specs[i].difficulty) for i in range(len(self.specs))]
         print(",".join(diff_list_from_specs))
+        return True
 
     def set_specs_according_to_progression_level(self):
         diff_seq = self.progression_level.generate_difficulty_sequence(len(self.specs))
         assert len(diff_seq) == len(self.specs)
         for i, diff in enumerate(diff_seq):
             self.specs[i] = self.specs[i].change_diff_to(diff)
+
+    def decay_estimator_coefficient(self):
+        self.max_curr_est_coeff *= 0.7
 
 @dataclass
 class ParallelEvaluator:

@@ -121,6 +121,16 @@ class ProgressionLevel(Enum):
 
         return result
 
+    def get_active_difficulties(self) -> list["InstanceDifficulty"]:
+        """Return difficulties that have non-zero ratio."""
+        counts = self.value.percentages
+        difficulty_types = list(InstanceDifficulty)
+
+        return [
+            diff for diff, pct in zip(difficulty_types, counts)
+            if pct > 0
+        ]
+
 @dataclass(frozen=True)
 class GeneratorParams:
     kwargs: dict
