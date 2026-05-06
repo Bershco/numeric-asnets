@@ -9,6 +9,8 @@ from typing import Any, Optional, Tuple
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future, wait, ALL_COMPLETED
 
+import numpy as np
+
 from asnets.spawn_train_worker import MCTSWorkerInput, WorkerOutput, run_worker_opt_profiled, run_worker_eval_mcts, \
     EvalWorkerInput, EvalWorkerOutput
 from asnets.supervised import SupervisedObjective
@@ -126,7 +128,42 @@ def run_epoch_spawn_eval(
         grouped_specs[spec.difficulty].append(spec)
     total_success = 0
     total_done = 0
+    difficulty_gate = {
+        InstanceDifficulty.MEDIUM: (
+            InstanceDifficulty.EASY,
+            0.4,
+        ),
+        InstanceDifficulty.HARD: (
+            InstanceDifficulty.MEDIUM,
+            0.4,
+        ),
+    }
     for diff, diff_specs in grouped_specs.items():
+        # --------------------------------------------------
+        # Difficulty gating
+        # --------------------------------------------------
+        if diff in difficulty_gate:
+            required_diff, threshold = difficulty_gate[diff]
+
+            prev_results = [
+                outs[spec_to_idx[id(spec)]].hit_goal
+                for spec in grouped_specs[required_diff]
+                if outs[spec_to_idx[id(spec)]] is not None
+            ]
+
+            prev_rate = (
+                float(np.mean(prev_results))
+                if prev_results else 0.0
+            )
+
+            if prev_rate < threshold:
+                print(
+                    f"\n[EVAL] Skipping {diff.name}: "
+                    f"{required_diff.name} success "
+                    f"{prev_rate:.3f} < {threshold:.3f}"
+                )
+
+                continue
         print(f"\n[EVAL] === {diff.name} ({len(diff_specs)} instances) ===")
         for wave_start in range(0, len(diff_specs), max_workers):
             wave_specs = diff_specs[wave_start:wave_start + max_workers]
