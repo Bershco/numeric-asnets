@@ -617,7 +617,6 @@ class SupervisedTrainer(BaseTrainer):
 
             if active_rates:
                 total_succ_rate = balanced_rate  # if we want to balance rates, this is the real deal
-                # TODO: make sure this doesnt fuck up later
             tr.set_postfix(
                 succ_rate=total_succ_rate,
                 net_loss=mean_loss,

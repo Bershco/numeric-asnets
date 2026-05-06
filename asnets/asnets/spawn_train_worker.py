@@ -910,6 +910,14 @@ def init_eval_worker(inp: EvalWorkerInput, worker_tag_addon: Optional[str] = Non
     return full_worker_tag, instance_name
 
 
+def eval_max_len_coeff_by_diff(diff: InstanceDifficulty) -> float:
+    coeff_dict = {
+        InstanceDifficulty.EASY: 1.0,
+        InstanceDifficulty.MEDIUM: 5.0,
+        InstanceDifficulty.HARD: 10.0,
+    }
+    return coeff_dict[diff]
+
 def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
     worker_tag, instance_name = init_eval_worker(inp)
     planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
@@ -954,7 +962,7 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
         estimator_coeff=0.0,  # IMPORTANT difference vs training, estimator must not be used
     )
     cstate = ctx.get_init_state()
-    max_len = inp.spec.max_len
+    max_len = inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty)
     mcts.initialise_tree(cstate)
 
     for step in range(max_len):
@@ -1020,8 +1028,7 @@ def run_worker_eval_policy_only(inp: EvalWorkerInput) -> EvalWorkerOutput:
         estimator=None,
     )
     cstate = ctx.get_init_state()
-    max_len = inp.spec.max_len
-    cost = 0
+    max_len = inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty)
     for step in range(max_len):
         if cstate.is_terminal:
             return EvalWorkerOutput(
