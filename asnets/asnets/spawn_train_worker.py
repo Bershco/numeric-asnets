@@ -962,7 +962,7 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
         estimator_coeff=0.0,  # IMPORTANT difference vs training, estimator must not be used
     )
     cstate = ctx.get_init_state()
-    max_len = inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty)
+    max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
     mcts.initialise_tree(cstate)
 
     for step in range(max_len):
@@ -1028,7 +1028,7 @@ def run_worker_eval_policy_only(inp: EvalWorkerInput) -> EvalWorkerOutput:
         estimator=None,
     )
     cstate = ctx.get_init_state()
-    max_len = inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty)
+    max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
     for step in range(max_len):
         if cstate.is_terminal:
             return EvalWorkerOutput(
