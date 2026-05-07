@@ -859,6 +859,15 @@ class OriginalSupervisedTrainer(BaseTrainer):
         epoch = tf.Variable(0, dtype=tf.int64)
         self.summary_writer.set_as_default(step=epoch)
 
+        patience_counter = 0
+        cooldown_counter = 0
+
+        PATIENCE = 2  # consecutive validations
+        COOLDOWN_EPOCHS = 10
+        VALIDATE_EVERY = 5
+        THRESHOLD_EASY = 0.85
+
+
         for epoch_num in tr:
             # update the epoch variable
             epoch.assign(epoch_num)
@@ -895,13 +904,42 @@ class OriginalSupervisedTrainer(BaseTrainer):
                 lr=self.optimizer.lr,
                 refresh=False,
             )
-            if epoch_num % 10 == 0:
-                success_rates, overall_succ_rate, validation_outs = self.validator.evaluate(
-                    self._weight_manager.export_numpy())
+            # if epoch_num % 10 == 0:
+            #     success_rates, overall_succ_rate, validation_outs = self.validator.evaluate(
+            #         self._weight_manager.export_numpy())
+            #     print(f"[VALIDATION] Current network validation success rate: {overall_succ_rate}")
+            #     for i, val_worker_out in enumerate(validation_outs):
+            #         print(f"[{val_worker_out.instance_name}] - {'PASS' if val_worker_out.hit_goal else 'FAIL'}")
+            if epoch_num % VALIDATE_EVERY == 0:
+                success_rates, overall_succ_rate, validation_outs = \
+                    self.validator.evaluate(self._weight_manager.export_numpy())
                 print(f"[VALIDATION] Current network validation success rate: {overall_succ_rate}")
-                for i, val_worker_out in enumerate(validation_outs):
-                    print(f"[{val_worker_out.instance_name}] - {'PASS' if val_worker_out.hit_goal else 'FAIL'}")
+                # -------------------------
+                # 1. Estimator decay
+                # -------------------------
+                if cooldown_counter == 0:
+                    if success_rates.get(InstanceDifficulty.EASY, 0.0) >= THRESHOLD_EASY:
+                        patience_counter += 1
+                    else:
+                        patience_counter = 0
 
+                    if patience_counter >= PATIENCE:
+                        self.explorer.decay_estimator_coefficient()
+                        print("[VALIDATION] Estimator coefficient decayed")
+
+                        patience_counter = 0
+                        cooldown_counter = COOLDOWN_EPOCHS
+                else:
+                    cooldown_counter -= VALIDATE_EVERY
+
+                # -------------------------
+                # 2. Progression (NEW)
+                # -------------------------
+
+                if self.can_progress(success_rates):
+                    if self.explorer.advance_progression_level():
+                        # this progresses the progression level and returns true if advanced, if current progression level is max - returns false
+                        cooldown_counter = max(cooldown_counter, int(COOLDOWN_EPOCHS / 2))
             # caller might want us to terminate
             if best_rate is None or total_succ_rate > best_rate + 1e-4:
                 time_since_best = 0

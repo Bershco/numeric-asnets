@@ -162,7 +162,14 @@ def run_epoch_spawn_eval(
                     f"{required_diff.name} success "
                     f"{prev_rate:.3f} < {threshold:.3f}"
                 )
+                for spec in diff_specs:
+                    idx = spec_to_idx[id(spec)]
 
+                    outs[idx] = EvalWorkerOutput(
+                        hit_goal=False,
+                        steps=-1,
+                        instance_name=f"[SKIPPED] {spec.pddls[1]}",
+                    )
                 continue
         print(f"\n[EVAL] === {diff.name} ({len(diff_specs)} instances) ===")
         for wave_start in range(0, len(diff_specs), max_workers):
