@@ -168,7 +168,7 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
         return final_checkpoint_path
 
 
-def build_arch_flags(arch_mod, is_train, override_enhsp_config=None, override_mse_coeff=None):
+def build_arch_flags(arch_mod, is_train, override_enhsp_config=None, override_mse_coeff=None, override_epoch_num=None, override_sup_lr=None):
     """Build flags which control model arch and training strategy."""
     flags = []
     assert arch_mod.SUPERVISED, "only supervised training supported atm"
@@ -209,8 +209,12 @@ def build_arch_flags(arch_mod, is_train, override_enhsp_config=None, override_ms
 
     # optional flags
     if hasattr(arch_mod, 'MAX_OPT_EPOCHS'):
-        assert isinstance(arch_mod.MAX_OPT_EPOCHS, int)
-        flags.extend(['--max-opt-epochs', str(arch_mod.MAX_OPT_EPOCHS)])
+        max_opt_epochs = override_epoch_num if override_epoch_num is not None else arch_mod.MAX_OPT_EPOCHS
+        assert isinstance(max_opt_epochs, int)
+        flags.extend(['--max-opt-epochs', str(max_opt_epochs)])
+    elif override_epoch_num is not None:
+        assert isinstance(override_epoch_num, int)
+        flags.extend(['--max-opt-epochs', str(override_epoch_num)])
     if hasattr(arch_mod, 'TEACHER_TIMEOUT_S'):
         assert isinstance(arch_mod.TEACHER_TIMEOUT_S, int)
         flags.extend(['--teacher-timeout-s', str(arch_mod.TEACHER_TIMEOUT_S)])
@@ -278,6 +282,7 @@ def build_arch_flags(arch_mod, is_train, override_enhsp_config=None, override_ms
             flags.extend(['--action-policy-decay-rate', str(arch_mod.ACTION_POLICY_DECAY_RATE)])
 
     # compulsory flags
+    sup_lr_flag = override_sup_lr if override_sup_lr is not None else arch_mod.SUPERVISED_LEARNING_RATE
     flags.extend([
         '--domain-type', str(arch_mod.DOMAIN_TYPE),
         '--num-layers', str(arch_mod.NUM_LAYERS),
@@ -288,7 +293,7 @@ def build_arch_flags(arch_mod, is_train, override_enhsp_config=None, override_ms
         '-R', str(arch_mod.EVAL_ROUNDS),
         '-L', str(arch_mod.ROUND_TURN_LIMIT) if is_train else str(arch_mod.EVAL_ROUND_TURN_LIMIT),
         '-t', str(arch_mod.TIME_LIMIT_SECONDS),
-        '--supervised-lr', str(arch_mod.SUPERVISED_LEARNING_RATE),
+        '--supervised-lr', str(sup_lr_flag),
         '--supervised-bs', str(arch_mod.SUPERVISED_BATCH_SIZE),
         '--supervised-early-stop', str(arch_mod.SUPERVISED_EARLY_STOP),
         '--save-every', str(arch_mod.SAVE_EVERY_N_EPOCHS),
@@ -463,6 +468,18 @@ parser.add_argument(
     help='Override architecture mse coefficient.'
 )
 parser.add_argument(
+    '--max-opt-epochs',
+    type=int,
+    default=None,
+    help='Override architecture maximum epoch count.'
+)
+parser.add_argument(
+    '--supervised-lr',
+    type=float,
+    default=None,
+    help='Override architecture supervised learning rate.'
+)
+parser.add_argument(
     '--mcts-iterations',
     type=int,
     default=0,
@@ -589,6 +606,8 @@ def main():
                restrict_test_probs=args.restrict_test_probs,
                override_enhsp_config=args.override_enhsp_config,
                override_mse_coeff=args.override_mse_coeff,
+               override_epoch_num=args.max_opt_epochs,
+               override_sup_lr=args.supervised_lr,
                serial_test=args.serial_test,
                no_eval=args.no_eval,
                profiling=args.profiling,
@@ -628,6 +647,8 @@ def main_inner(*,
                restrict_test_probs=None,
                override_enhsp_config=None,
                override_mse_coeff=None,
+               override_epoch_num=None,
+               override_sup_lr=None,
                serial_test=None,
                no_eval=None,
                no_valid=None,
@@ -679,7 +700,9 @@ def main_inner(*,
         train_flags.extend(build_arch_flags(
             arch_mod, is_train=True,
             override_enhsp_config=override_enhsp_config,
-            override_mse_coeff=override_mse_coeff
+            override_mse_coeff=override_mse_coeff,
+            override_epoch_num=override_epoch_num,
+            override_sup_lr=override_sup_lr,
         ))
         train_flags.extend(build_prob_flags_train(prob_mod))
         if not no_valid:
