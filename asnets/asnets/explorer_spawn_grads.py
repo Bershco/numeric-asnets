@@ -150,16 +150,18 @@ class ParallelEvaluator:
             worker_fn=self.worker_fn,
         )
         # --- group by difficulty ---
-        grouped = defaultdict(list)
+        grouped_succ_rate = defaultdict(list)
+        grouped_plan_length = defaultdict(list)
         for spec, out in zip(self.specs, outs):
-            grouped[spec.difficulty].append(out.hit_goal)
+            grouped_succ_rate[spec.difficulty].append(out.hit_goal)
+            grouped_plan_length[spec.difficulty].append(out.steps)
         # --- compute per-difficulty success ---
         success_rates = {}
-        for diff, results in grouped.items():
+        for diff, results in grouped_succ_rate.items():
             if results:
                 success_rates[diff] = float(np.mean(results))
         for diff, rate in success_rates.items():
-            print(f"[EVAL] {diff.name}: {rate:.3f} ({len(grouped[diff])} instances)")
+            print(f"[EVAL] {diff.name}: {rate:.3f} ({len(grouped_succ_rate[diff])} instances) ({np.mean(grouped_plan_length[diff])} average plan length)")
         # --- overall (optional, keep old behavior if needed) ---
         all_solved = [o.hit_goal for o in outs]
         overall_success = float(np.mean(all_solved))

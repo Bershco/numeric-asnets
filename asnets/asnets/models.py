@@ -648,7 +648,7 @@ class PropNetwork(tf.keras.layers.Layer):
             value_input_dim = val_hidden_W.shape[0]
 
             self.value_hidden_layer = tf.keras.layers.Dense(
-                value_hidden_dim, activation='relu', name='value_hidden'
+                value_hidden_dim, activation=NONLINEARITY, name='value_hidden'
             )
             self.value_hidden_layer.build((None, value_input_dim))
             self.value_hidden_layer.kernel = val_hidden_W

@@ -25,7 +25,7 @@ from asnets.parllel_explore_spawn_grads import make_specs
 from asnets.utils.tf_utils import configure_tf_gpu_memory_growth
 from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import CanonicalState
-from asnets.spawn_train_worker import run_worker_eval_policy_only, run_worker_eval_mcts
+from asnets.spawn_train_worker import run_worker_eval_policy_only, run_worker_eval_mcts, run_worker_eval_enhsp
 
 import numpy as np
 import rpyc, gc
@@ -398,7 +398,7 @@ parser.add_argument(
     help='number of batches of optimisation per epoch')
 parser.add_argument(
     '--exploration-algorithm',
-    choices=('static', 'dynamic', 'mcts'),
+    choices=('static', 'dynamic', 'mcts', 'enhsp'),
     default='static',
     help='The exploration algorithm to use. Static exploration is the '
          'original ASNets algorithm. Dynamic exploration is the algorithm '
@@ -758,7 +758,8 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
                 difficulty=diff_enum,
             )
             all_validation_specs.extend(specs)
-        validator = ParallelEvaluator(specs=all_validation_specs, max_workers=min(args.num_workers, len(all_validation_specs)),
+        validator = ParallelEvaluator(specs=all_validation_specs,
+                                      max_workers=min(args.num_workers, len(all_validation_specs)),
                                       worker_fn=run_worker_eval_mcts)
         if not args.freeze_train:
             sup_trainer = SupervisedTrainer(
@@ -830,9 +831,39 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     print("spec: ", specs[0])
     print(f"Inference success rate: {success_rate}, took: {time() - eval_start_time}s")
 
+def validating_validation(args):
+    print("Validating validation instances using ENHSP proper planning")
+    validation_sets = {
+        "easy": args.validation_pddls_easy,
+        "medium": args.validation_pddls_medium,
+        "hard": args.validation_pddls_hard,
+    }
+    validation_sets = {k: v for k, v in validation_sets.items() if v}
+    all_validation_specs = []
+    for diff_name, instances in validation_sets.items():
+        diff_enum = InstanceDifficulty[diff_name.upper()]
+        specs = make_specs(
+            args,
+            specific_instances=instances,
+            evaluation_mode=True,
+            difficulty=diff_enum,
+        )
+        all_validation_specs.extend(specs)
+    eval_explorer = ParallelEvaluator(
+        specs=all_validation_specs,
+        max_workers=args.num_workers,
+        worker_fn=run_worker_eval_enhsp,
+    )
+    eval_start_time = time()
+    _, success_rate, outs = eval_explorer.evaluate(None)
+    print(f"ENHSP success rate on validation set: {success_rate}, took: {time() - eval_start_time}s")
+
 
 @can_profile
 def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
+    if args.exploration_algorithm == 'enhsp':
+        validating_validation(args)
+        return
     if args.exploration_algorithm == 'mcts':
         main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir)
         return

@@ -918,6 +918,45 @@ def eval_max_len_coeff_by_diff(diff: InstanceDifficulty) -> float:
     }
     return coeff_dict[diff]
 
+def run_worker_eval_enhsp(inp: EvalWorkerInput) -> EvalWorkerOutput:
+    worker_tag, instance_name = init_eval_worker(inp, "ENHSP")
+    planner_exts = _build_planner_exts_from_spec(
+        inp.spec,
+        inp.epoch,
+    )
+    act_dim = planner_exts.problem_meta.num_acts
+    estimator = _build_estimator(planner_exts, inp.spec)
+
+    ctx = LocalExploreContext(
+        planner_exts=planner_exts,
+        estimator=estimator,
+    )
+    cstate = ctx.get_init_state()
+    print(f"{worker_tag} Beginning planning on instance {instance_name}")
+    plan_as_traj = plan_to_trajectory(enhsp_config=inp.spec.enhsp_config,
+                                      pddl_files=planner_exts.pddl_files,
+                                      act_ident_to_ind=planner_exts.act_ident_to_ind,
+                                      act_dim=act_dim,
+                                      init_state=cstate,
+                                      ctx=ctx, estimator=estimator,
+                                      enhsp_timeout=15 # maybe change this if some validation instances do not work
+                                      )
+    if plan_as_traj:
+        plan_states, plan_states_pi, plan_states_z = plan_as_traj
+        print(f"Planner success in instance {instance_name}, took {len(plan_states)} steps")
+        return EvalWorkerOutput(
+            hit_goal=True,
+            steps=len(plan_states),
+            instance_name=instance_name,
+        )
+    else:
+        return EvalWorkerOutput(
+            hit_goal=float(cstate.is_goal),
+            steps=-1,
+            instance_name=instance_name,
+        )
+
+
 def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
     worker_tag, instance_name = init_eval_worker(inp)
     planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
