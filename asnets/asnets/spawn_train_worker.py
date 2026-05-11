@@ -796,6 +796,15 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
     if inp.corrupt_pi is not None or inp.corrupt_z is not None:
         pi_tgt, z_tgt = _corrupt_targets(inp, pi_tgt, z_tgt)
 
+    if inp.spec.only_one_good_action:
+        pi_onehot = np.zeros_like(pi_tgt, dtype=np.float32)
+
+        best_actions = np.argmax(pi_tgt, axis=1)
+
+        pi_onehot[np.arange(pi_tgt.shape[0]), best_actions] = 1.0
+
+        pi_tgt = pi_onehot
+
     # --- compute grads locally ---
     vars_ = wm_local.all_weights
 

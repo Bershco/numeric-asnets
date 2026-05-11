@@ -13,7 +13,7 @@ class MiniNet(tf.keras.Model):
 
 net = MiniNet(act_dim=4)
 loss_fn = ManualLoss([], net.trainable_variables, None, 0, 0, 0,
-                     SupervisedObjective.MCTS_POLICY_DIST)
+                     SupervisedObjective.MCTS_VISIT_DIST)
 
 x = tf.random.normal((3, 5))
 pi_targets = tf.nn.softmax(tf.random.normal((3, 4)), axis=-1)

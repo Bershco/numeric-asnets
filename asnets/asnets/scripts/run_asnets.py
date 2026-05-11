@@ -637,6 +637,12 @@ parser.add_argument(
          ' this "help" will decay in favor of the network output along the run.'
 )
 parser.add_argument(
+    '--discard-failed-runs',
+    action='store_true',
+    default=False,
+    help='Discard failed runs from training data, only use successful runs (important only in mcts exploration)'
+)
+parser.add_argument(
     '--estimator-decay-epochs',
     type=int,
     default=None,
@@ -687,11 +693,6 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
         use_comparisons=args.use_comparisons
     )
     configure_tf_gpu_memory_growth()
-
-    only_one_good_action = (
-            args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
-            or args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
-    )
 
     # ------------------------------------------------------------
     # Build planner ONCE (for shapes / network construction)
@@ -778,6 +779,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
                 save_every=args.save_every,
                 snapshot_dir=snapshot_dir,
                 time_out=args.timeout,
+                discard_failed_runs=args.discard_failed_runs,
                 resume_from=args.resume_from,
             )
         else:

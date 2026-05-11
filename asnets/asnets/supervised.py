@@ -398,8 +398,8 @@ class SupervisedObjective(Enum):
     # get the teacher to give you an arbitrary good action and use xent loss to
     # match exactly that action (& not the others); makes planning faster!
     THERE_CAN_ONLY_BE_ONE = 2
-    # Use MCTS policy distribution instead of a teacher altogether
-    MCTS_POLICY_DIST = 3
+    # Use MCTS visit distribution instead of a teacher altogether
+    MCTS_VISIT_DIST = 3
 
 
 class BaseTrainer(ABC):
@@ -458,6 +458,7 @@ class SupervisedTrainer(BaseTrainer):
                  early_stop=20,
                  save_every=20,
                  balanced_success_rate=True,
+                 discard_failed_runs=False,
                  resume_from=None,
                  ):
         super().__init__(weight_manager, summary_writer, explorer, validator, lr, l1_reg_coeff, l2_reg_coeff,
@@ -472,6 +473,7 @@ class SupervisedTrainer(BaseTrainer):
         self.early_stop = early_stop
         self.save_every = save_every
         self.snapshot_dir = snapshot_dir
+        self.discard_failed_runs = discard_failed_runs
         self._init_tf()
         if resume_from is not None and not resume_from.endswith(".pkl"):
             opt_path = os.path.join(resume_from, "optimizer.joblib")
@@ -736,6 +738,9 @@ class SupervisedTrainer(BaseTrainer):
         succs = []
 
         for out in worker_outs:
+            if self.discard_failed_runs:
+                if not out.hit_goal_mean:
+                    continue
             losses.append(out.loss_mean)
             succs.append(out.hit_goal_mean)
             if out.n_samples <= 0:
@@ -1348,7 +1353,7 @@ class ManualLoss:
                 # because it ensures that zero loss = optimal policy
                 q_loss = tf.reduce_mean(input_tensor=exp_vs - state_values)
                 loss_parts.append(('qloss', q_loss))
-            elif self.strategy == SupervisedObjective.MCTS_POLICY_DIST:
+            elif self.strategy == SupervisedObjective.MCTS_VISIT_DIST:
                 pi_targets = tf.convert_to_tensor(act_dist, dtype=tf.float32)
                 # pi_targets = tf.maximum(pi_targets, 0.0)
 

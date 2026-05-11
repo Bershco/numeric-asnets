@@ -343,10 +343,7 @@ class SpawnExploreSpec:
 
 @can_profile
 def make_specs(args, specific_instances=None, evaluation_mode=False, difficulty: Optional[InstanceDifficulty] = None) -> list[SpawnExploreSpec]:
-    only_one_good_action = (
-            args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
-            or args.sup_objective == SupervisedObjective.MCTS_POLICY_DIST
-    )
+    only_one_good_action = args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
 
     num_slots = len(specific_instances) if specific_instances is not None else args.num_workers
 

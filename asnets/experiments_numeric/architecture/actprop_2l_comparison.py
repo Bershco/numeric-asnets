@@ -47,7 +47,6 @@ MAX_REPLAY_SIZE = 10000
 # Q-value, or THERE_CAN_ONLY_BE_ONE to imitate the single action that the
 # planner would return if you just ran it on the current state
 TRAINING_STRATEGY = 'THERE_CAN_ONLY_BE_ONE'
-# TRAINING_STRATEGY = 'MCTS_POLICY_DIST'
 # use 'ROLLOUT' to only accumulate optimal policy rollouts, or 'ENVELOPE' to
 # accumulate entire optimal policy envelopes
 TEACHER_EXPERIENCE_MODE = 'ROLLOUT'
