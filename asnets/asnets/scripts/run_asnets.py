@@ -834,7 +834,10 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     print(f"Inference success rate: {success_rate}, took: {time() - eval_start_time}s")
 
 def validating_validation(args):
-    print("Validating validation instances using ENHSP proper planning")
+    if args.exploration_algorithm == 'enhsp':
+        print("Validating validation instances using ENHSP proper planning")
+    else:
+        print(f"Validating validation instances using {args.exploration_algorithm} algorithm")
     validation_sets = {
         "easy": args.validation_pddls_easy,
         "medium": args.validation_pddls_medium,
@@ -851,19 +854,43 @@ def validating_validation(args):
             difficulty=diff_enum,
         )
         all_validation_specs.extend(specs)
+    assert args.exploration_algorithm in ['enhsp', 'mcts_valid', 'policy_valid']
+    weights_np = None
+    if args.exploration_algorithm == 'enhsp':
+        curr_worker_fn = run_worker_eval_enhsp
+    else:
+        if args.exploration_algorithm == 'mcts_valid':
+            curr_worker_fn = run_worker_eval_mcts
+        else:
+            curr_worker_fn = run_worker_eval_policy_only
+        p = PlannerExtensions(
+            args.pddls,
+            args.domain_type,
+            dg_ssipp_heuristic_name=args.ssipp_dg_heuristic,
+            dg_use_lm_cuts=args.use_lm_cuts,
+            dg_use_numeric_landmarks=args.use_numeric_landmarks,
+            dg_use_contributions=args.use_contributions,
+            dg_use_act_history=args.use_act_history,
+        )
+        dg_extra_dim = sum(g.extra_dim for g in p.data_gens)
+        weight_manager = make_weight_manager(
+            args, p.domain_meta, dg_extra_dim
+        )
+        weights_np = weight_manager.export_numpy()
+
     eval_explorer = ParallelEvaluator(
         specs=all_validation_specs,
         max_workers=args.num_workers,
-        worker_fn=run_worker_eval_enhsp,
+        worker_fn=curr_worker_fn,
     )
     eval_start_time = time()
-    _, success_rate, outs = eval_explorer.evaluate(None)
+    _, success_rate, outs = eval_explorer.evaluate(weights_np)
     print(f"ENHSP success rate on validation set: {success_rate}, took: {time() - eval_start_time}s")
 
 
 @can_profile
 def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
-    if args.exploration_algorithm == 'enhsp':
+    if args.exploration_algorithm in ['enhsp', 'mcts_valid', 'policy_valid']:
         validating_validation(args)
         return
     if args.exploration_algorithm == 'mcts':

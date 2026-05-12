@@ -970,7 +970,6 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
     worker_tag, instance_name = init_eval_worker(inp)
     planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
     act_dim = planner_exts.problem_meta.num_acts
-    estimator = _build_estimator(planner_exts, inp.spec)
     action_policy = build_action_policy(
         base_policy=inp.spec.action_policy,
         worker_tag=worker_tag,
@@ -989,7 +988,7 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
     )
     ctx = LocalExploreContext(
         planner_exts=planner_exts,
-        estimator=estimator,
+        estimator=None,
         estimator_h_to_v_coeff=inp.spec.estimator_h_to_v_coeff,
     )
     if hasattr(inp.spec, "mcts_iterations") and inp.spec.mcts_iterations > 0:
