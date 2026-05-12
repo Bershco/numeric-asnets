@@ -983,7 +983,7 @@ def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
         assert wm.use_fluents == args.use_fluents
         assert wm.use_comparisons == args.use_comparisons
         assert wm.dom_meta == dom_meta
-        assert wm.value_head_enabled == (not args.disable_value_head)
+        assert not hasattr(wm,'value_head_enabled') or wm.value_head_enabled == (not args.disable_value_head)
         assert wm.skip == args.skip
         assert wm.extra_dim == dg_extra_dim
         print(f"[WM] Successfully loaded previous weight manager from {weights_path}")
