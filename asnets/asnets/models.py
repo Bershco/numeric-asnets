@@ -58,13 +58,87 @@ class PropNetworkWeights:
         self._make_weights()
 
     def __getstate__(self):
-        # Everything you need to persist (TF vars included)
-        state = self.__dict__.copy()
-        return state
+        return {
+            "dom_meta": self.dom_meta,
+            "hidden_sizes": self.hidden_sizes,
+            "extra_dim": self.extra_dim,
+            "skip": self.skip,
+            "use_fluents": self.use_fluents,
+            "use_comparisons": self.use_comparisons,
+            "value_head_enabled": self.value_head_enabled,
 
+            "prop_weights": self.prop_weights,
+            "flnt_weights": self.flnt_weights,
+            "act_weights": self.act_weights,
+            "comp_weights": self.comp_weights,
+            "value_weights": self.value_weights,
+        }
+
+    
     def __setstate__(self, state):
-        # Just restore the dict; don't rebuild variables
-        self.__dict__.update(state)
+        """
+        Backward-compatible restore.
+
+        Supports:
+        - old ASNets pickle format
+        - new full joblib snapshots
+        """
+
+        # ---------------------------------------------------------
+        # OLD FORMAT
+        # ---------------------------------------------------------
+        if 'prop_weights_np' in state:
+            self.dom_meta = state['dom_meta']
+            self.hidden_sizes = state['hidden_sizes']
+            self.extra_dim = state['extra_dim']
+
+            # old snapshots defaulted to True
+            self.skip = state.get('skip', True)
+
+            self.use_fluents = state.get('use_fluents', False)
+            self.use_comparisons = state.get('use_comparisons', False)
+
+            # value head did not exist
+            self.value_head_enabled = state.get('value_head_enabled', False)
+
+            # rebuild TF variables + derived structures
+            self._make_weights(
+                old_prop_weights=state['prop_weights_np'],
+                old_flnt_weight=state.get('flnt_weights_np', None),
+                old_act_weights=state['act_weights_np'],
+                old_comp_weights=state.get('comp_weights_np', None),
+                old_value_weights=state.get('value_weights_np', None),
+            )
+
+        # ---------------------------------------------------------
+        # NEW FORMAT
+        # ---------------------------------------------------------
+        else:
+            self.__dict__.update(state)
+
+            # ultra-defensive future-proofing
+            if not hasattr(self, 'value_weights'):
+                self.value_weights = []
+
+            if not hasattr(self, 'all_weights'):
+                self.all_weights = []
+
+                def collect(weight_list):
+                    for d in weight_list:
+                        for W, b in d.values():
+                            self.all_weights.extend([W, b])
+
+                collect(self.prop_weights)
+                collect(self.flnt_weights)
+                collect(self.act_weights)
+                collect(self.comp_weights)
+
+                if hasattr(self, 'value_weights'):
+                    collect(self.value_weights)
+
+            if not hasattr(self, 'value_head_enabled'):
+                self.value_head_enabled = False
+
 
     @staticmethod
     def _serialise_weight_list(weight_list):
