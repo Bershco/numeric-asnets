@@ -978,6 +978,7 @@ def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
     if args.resume_from:
         weights_path = resolve_weights_path(args.resume_from)
         wm = joblib.load(weights_path)
+        print(wm.__dict__)
         assert wm.hidden_sizes == hidden_sizes
         assert len(wm.hidden_sizes) == args.num_layers
         assert wm.use_fluents == args.use_fluents
