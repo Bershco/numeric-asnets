@@ -398,7 +398,7 @@ parser.add_argument(
     help='number of batches of optimisation per epoch')
 parser.add_argument(
     '--exploration-algorithm',
-    choices=('static', 'dynamic', 'mcts', 'enhsp'),
+    choices=('static', 'dynamic', 'mcts', 'enhsp','mcts_valid','policy_valid'),
     default='static',
     help='The exploration algorithm to use. Static exploration is the '
          'original ASNets algorithm. Dynamic exploration is the algorithm '
