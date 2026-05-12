@@ -149,20 +149,52 @@ class ParallelEvaluator:
             max_workers=self.max_workers,
             worker_fn=self.worker_fn,
         )
-        # --- group by difficulty ---
-        grouped_succ_rate = defaultdict(list)
-        grouped_plan_length = defaultdict(list)
+        # ------------------------------------------------------------
+        # Aggregate metrics per difficulty
+        # ------------------------------------------------------------
+        metrics = defaultdict(lambda: {
+            "hits": [],
+            "steps_success": [],
+            "steps_fail": [],
+        })
         for spec, out in zip(self.specs, outs):
-            grouped_succ_rate[spec.difficulty].append(out.hit_goal)
-            grouped_plan_length[spec.difficulty].append(out.steps)
-        # --- compute per-difficulty success ---
+            diff_metrics = metrics[spec.difficulty]
+
+            diff_metrics["hits"].append(out.hit_goal)
+
+            if out.hit_goal:
+                diff_metrics["steps_success"].append(out.steps)
+            else:
+                diff_metrics["steps_fail"].append(out.steps)
+        # ------------------------------------------------------------
+        # Compute + print metrics
+        # ------------------------------------------------------------
         success_rates = {}
-        for diff, results in grouped_succ_rate.items():
-            if results:
-                success_rates[diff] = float(np.mean(results))
-        for diff, rate in success_rates.items():
-            print(f"[EVAL] {diff.name}: {rate:.3f} ({len(grouped_succ_rate[diff])} instances) ({np.mean(grouped_plan_length[diff])} average plan length)")
-        # --- overall (optional, keep old behavior if needed) ---
-        all_solved = [o.hit_goal for o in outs]
-        overall_success = float(np.mean(all_solved))
+        for diff, diff_metrics in metrics.items():
+            hits = diff_metrics["hits"]
+            success_rate = float(np.mean(hits)) if hits else 0.0
+            success_rates[diff] = success_rate
+            success_steps = diff_metrics["steps_success"]
+            fail_steps = diff_metrics["steps_fail"]
+            avg_success_len = (
+                float(np.mean(success_steps))
+                if success_steps else float("nan")
+            )
+            avg_fail_len = (
+                float(np.mean(fail_steps))
+                if fail_steps else float("nan")
+            )
+            print(
+                f"[EVAL] {diff.name:<10} | "
+                f"success={success_rate:.3f} | "
+                f"instances={len(hits):>3} | "
+                f"avg_len_success={avg_success_len:.2f} | "
+                f"avg_len_fail={avg_fail_len:.2f}"
+            )
+        # ------------------------------------------------------------
+        # Overall metrics
+        # ------------------------------------------------------------
+        all_hits = [out.hit_goal for out in outs]
+        overall_success = float(np.mean(all_hits)) if all_hits else 0.0
+        print(f"[EVAL] OVERALL success={overall_success:.3f}")
         return success_rates, overall_success, outs
