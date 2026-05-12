@@ -386,6 +386,11 @@ parser.add_argument(
     action='store_true',
     help='do not run evaluation (only train)')
 parser.add_argument(
+    '--no-valid',
+    default=False,
+    action='store_true',
+    help='do not run validation during training')
+parser.add_argument(
     '--profiling',
     default=False,
     action='store_true',
@@ -616,6 +621,7 @@ def main():
                override_sup_lr=args.supervised_lr,
                serial_test=args.serial_test,
                no_eval=args.no_eval,
+               no_valid=args.no_valid,
                profiling=args.profiling,
                memory_profiling=args.memory_profiling,
                random_seed=args.random_seed,
@@ -854,6 +860,8 @@ evaluation = {"off" if no_eval else "on"}
 
         all_test_flags.append(domain)
         all_test_flags.extend(instances)
+        if not no_valid:
+            all_test_flags.extend(build_prob_flags_validation(prob_mod))
 
         run_asnets_local(
             flags=all_test_flags,

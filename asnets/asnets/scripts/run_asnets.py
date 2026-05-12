@@ -742,7 +742,6 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             l1_l2_reg_coeff=args.l1_l2_reg,
             max_workers=args.num_workers,
         )
-        instances = args.pddls[1:]
         validation_sets = {
             "easy": args.validation_pddls_easy,
             "medium": args.validation_pddls_medium,

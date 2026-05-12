@@ -872,7 +872,6 @@ class OriginalSupervisedTrainer(BaseTrainer):
         VALIDATE_EVERY = 5
         THRESHOLD_EASY = 0.85
 
-
         for epoch_num in tr:
             # update the epoch variable
             epoch.assign(epoch_num)
