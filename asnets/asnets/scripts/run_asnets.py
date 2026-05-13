@@ -665,19 +665,22 @@ parser.add_argument(
     nargs='+',
     default=[],
 )
-
 parser.add_argument(
     '--validation-pddls-medium',
     nargs='+',
     default=[],
 )
-
 parser.add_argument(
     '--validation-pddls-hard',
     nargs='+',
     default=[],
 )
-
+parser.add_argument(
+    '--validation-is-test',
+    action='store_true',
+    default=False,
+    help='Have the test set also be the validation set'
+)
 
 @can_profile
 def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
@@ -979,6 +982,8 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
             "easy": args.validation_pddls_easy,
             "medium": args.validation_pddls_medium,
             "hard": args.validation_pddls_hard,
+        } if not args.validation_is_test else {
+            "test_instances": args.pddls[1:]
         }
         validation_sets = {k: v for k, v in validation_sets.items() if v}
         all_validation_specs = []
