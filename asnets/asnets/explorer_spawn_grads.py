@@ -143,20 +143,26 @@ class ParallelEvaluator:
 
     def evaluate(self, weights_np):
         print(f"[EVAL] worker_fn={self.worker_fn.__name__}")
+
         outs = run_epoch_spawn_eval(
             specs=self.specs,
             weights_np=weights_np,
             max_workers=self.max_workers,
             worker_fn=self.worker_fn,
         )
+
         # ------------------------------------------------------------
         # Aggregate metrics per difficulty
         # ------------------------------------------------------------
+
         metrics = defaultdict(lambda: {
             "hits": [],
             "steps_success": [],
             "steps_fail": [],
         })
+
+        successful_plans = []
+
         for spec, out in zip(self.specs, outs):
             diff_metrics = metrics[spec.difficulty]
 
@@ -164,26 +170,42 @@ class ParallelEvaluator:
 
             if out.hit_goal:
                 diff_metrics["steps_success"].append(out.steps)
+
+                successful_plans.append({
+                    "instance": Path(spec.pddls[1]).name,
+                    "plan": out.plan,
+                    "steps": out.steps,
+                    "difficulty": spec.difficulty.name,
+                })
+
             else:
                 diff_metrics["steps_fail"].append(out.steps)
+
         # ------------------------------------------------------------
         # Compute + print metrics
         # ------------------------------------------------------------
+
         success_rates = {}
+
         for diff, diff_metrics in metrics.items():
             hits = diff_metrics["hits"]
+
             success_rate = float(np.mean(hits)) if hits else 0.0
             success_rates[diff] = success_rate
+
             success_steps = diff_metrics["steps_success"]
             fail_steps = diff_metrics["steps_fail"]
+
             avg_success_len = (
                 float(np.mean(success_steps))
                 if success_steps else float("nan")
             )
+
             avg_fail_len = (
                 float(np.mean(fail_steps))
                 if fail_steps else float("nan")
             )
+
             print(
                 f"[EVAL] {diff.name:<10} | "
                 f"success={success_rate:.3f} | "
@@ -191,10 +213,33 @@ class ParallelEvaluator:
                 f"avg_len_success={avg_success_len:.2f} | "
                 f"avg_len_fail={avg_fail_len:.2f}"
             )
+
+        # ------------------------------------------------------------
+        # Successful plans logging
+        # ------------------------------------------------------------
+
+        print("\n[EVAL] SUCCESSFUL PLANS")
+
+        if successful_plans:
+            for entry in successful_plans:
+                print(
+                    f"[EVAL][PLAN] "
+                    f"{entry['difficulty']:<10} | "
+                    f"{entry['instance']} | "
+                    f"steps={entry['steps']} | "
+                    f"plan={entry['plan']}"
+                )
+        else:
+            print("[EVAL][PLAN] No successful plans.")
+
         # ------------------------------------------------------------
         # Overall metrics
         # ------------------------------------------------------------
+
         all_hits = [out.hit_goal for out in outs]
         overall_success = float(np.mean(all_hits)) if all_hits else 0.0
-        print(f"[EVAL] OVERALL success={overall_success:.3f}")
+
+        print(f"\n[EVAL] OVERALL success={overall_success:.3f}")
+
         return success_rates, overall_success, outs
+

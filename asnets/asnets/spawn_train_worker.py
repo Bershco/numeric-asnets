@@ -232,6 +232,7 @@ class EvalWorkerOutput:
     hit_goal: float
     steps: int
     instance_name: Optional[str] = None
+    plan: Optional[list[int]] = None
 
 
 def _build_planner_exts_from_spec(spec, epoch_num):
@@ -431,7 +432,8 @@ def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_ident_to_in
         assert plan_states[-1].is_goal, "Somehow planner found a plan that is successful but does not reach the goal"
         plan_states = plan_states[:-1]
         assert len(plan_states) == len(plan_states_pi) == len(plan_states_z)
-        return plan_states, plan_states_pi, plan_states_z
+        return plan_states, plan_states_pi, plan_states_z, plan_actions_int
+    return None
 
 
 def _dbg_tf_threads(tag=""):
@@ -638,7 +640,7 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
                                           init_state=mcts.original_tree_root.state,
                                           ctx=ctx, estimator=estimator)
         if plan_as_traj:
-            plan_states, plan_states_pi, plan_states_z = plan_as_traj
+            plan_states, plan_states_pi, plan_states_z, _ = plan_as_traj
             for state, pi, z in zip(plan_states, plan_states_pi, plan_states_z):
                 collector.add_sample(
                     cstate=state,
@@ -951,12 +953,13 @@ def run_worker_eval_enhsp(inp: EvalWorkerInput) -> EvalWorkerOutput:
                                       enhsp_timeout=15 # maybe change this if some validation instances do not work
                                       )
     if plan_as_traj:
-        plan_states, plan_states_pi, plan_states_z = plan_as_traj
+        plan_states, plan_states_pi, plan_states_z, plan_actions_ints = plan_as_traj
         print(f"Planner success in instance {instance_name}, took {len(plan_states)} steps")
         return EvalWorkerOutput(
             hit_goal=True,
             steps=len(plan_states),
             instance_name=instance_name,
+            plan=plan_actions_ints,
         )
     else:
         return EvalWorkerOutput(
@@ -1011,13 +1014,14 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
     cstate = ctx.get_init_state()
     max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
     mcts.initialise_tree(cstate)
-
+    plan = []
     for step in range(max_len):
         if cstate.is_terminal:
             return EvalWorkerOutput(
                 hit_goal=float(cstate.is_goal),
                 steps=step,
                 instance_name=instance_name,
+                plan=plan
             )
         pi, _ = mcts.run_search()
         mask = mcts.get_children_mask(act_dim=act_dim)
@@ -1036,10 +1040,12 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
             pi=masked_pi,
         )
         cstate = mcts.step_forward(action)
+        plan.append(action)
     return EvalWorkerOutput(
         hit_goal=float(cstate.is_goal),
         steps=max_len,
         instance_name=instance_name,
+        plan=plan
     )
 
 
@@ -1076,12 +1082,14 @@ def run_worker_eval_policy_only(inp: EvalWorkerInput) -> EvalWorkerOutput:
     )
     cstate = ctx.get_init_state()
     max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
+    plan = []
     for step in range(max_len):
         if cstate.is_terminal:
             return EvalWorkerOutput(
                 hit_goal=float(cstate.is_goal),
                 steps=step,
                 instance_name=instance_name,
+                plan=plan
             )
         obs = cstate.to_network_input()
         if net.value_head_enabled:
@@ -1106,10 +1114,12 @@ def run_worker_eval_policy_only(inp: EvalWorkerInput) -> EvalWorkerOutput:
             pi=masked_pi,
         )
         cstate = ctx.env_simulate_step(cstate, action_id)
+        plan.append(action_id)
     return EvalWorkerOutput(
         hit_goal=float(cstate.is_goal),
         steps=max_len,
         instance_name=instance_name,
+        plan=plan
     )
 
 
