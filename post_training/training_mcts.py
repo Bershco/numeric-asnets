@@ -20,7 +20,7 @@ class TrainingMCTS(MCTS):
     def __init__(self, network, ctx: LocalExploreContext,
                  iterations=10, expansion_k=5,
                  exploration_weight=1.0, sharpen_pi=1.0, one_hot_distance_gamma=0.999, use_batched_inference=True,
-                 log_visitations=False, select_logging=False, estimator_coeff=0.0, ):
+                 select_logging=False, estimator_coeff=0.0, ):
         super().__init__(exploration_weight, network=network, select_logging=select_logging)
         self.use_batched_inference = use_batched_inference
         self.ctx = ctx
@@ -28,7 +28,6 @@ class TrainingMCTS(MCTS):
         self.k = expansion_k
         self.sharpen_pi_T = sharpen_pi
         self.one_hot_distance_gamma = one_hot_distance_gamma
-        self.log_visitations = log_visitations
         self.estimator_coeff = estimator_coeff
         self.estimator_mode = EstimatorMode.V_ONLY
 
@@ -157,8 +156,6 @@ class TrainingMCTS(MCTS):
         Optionally refines with estimator (once per state).
         """
         if node.goal_state:
-            if self.debug_time_mcts_iterations:
-                self.after_eval_times.append(time())
             return 1.0
         net_v = node.pred_value
         alpha = self.estimator_coeff
@@ -185,8 +182,6 @@ class TrainingMCTS(MCTS):
             node.pred_value = value  # overwrite prior with refined estimate
         else:
             value = net_v
-        if self.debug_time_mcts_iterations:
-            self.after_eval_times.append(time())
         return value
 
     def _rollout(self, node, horizon=0):

@@ -1,6 +1,8 @@
 # asnets/spawn_train_worker.py
 from __future__ import annotations
 
+import math
+
 import tqdm
 from enhsp_wrapper.enhsp import ENHSP, PlanningResult, PlanningStatus
 from .interfaces.enhsp_interface import ENHSP_CONFIGS
@@ -517,7 +519,6 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
         expansion_k=inp.spec.mcts_expansion_k,
         exploration_weight=inp.spec.mcts_exploration_weight,
         sharpen_pi=0.1,
-        log_visitations=False,
         select_logging=select_logging,
         estimator_coeff=inp.estimator_coeff,
     )
@@ -1007,7 +1008,6 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
         expansion_k=inp.spec.mcts_expansion_k,
         exploration_weight=inp.spec.mcts_exploration_weight,
         sharpen_pi=0.1,
-        log_visitations=False,
         select_logging=False,
         estimator_coeff=0.0,  # IMPORTANT difference vs training, estimator must not be used
     )
@@ -1026,19 +1026,50 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
         pi, _ = mcts.run_search()
         mask = mcts.get_children_mask(act_dim=act_dim)
         masked_pi = pi * mask
-        s = masked_pi.sum()
-        if s > 0:
-            masked_pi /= s
-        else:
-            valid = np.where(mask)[0]
-            if len(valid) == 0:
-                break
-            masked_pi = np.zeros_like(pi)
-            masked_pi[valid] = 1 / len(valid)
+        # ------------------------------------------------------------
+        # Root PUCT diagnostics
+        # ------------------------------------------------------------
+        print(f"Current masked policy distribution: {[(act, p) for act, p in enumerate(masked_pi)]}")
+        root = mcts.curr_tree_root
+        children = root.children
+        if children is not None:
+            actions = children.actions_np
+            child_list = children._values
+            edge_visits = children.visits
+            priors = children.priors
+            sqrtN = math.sqrt(max(1.0, root.visit_count))
+            c = mcts.exploration_weight
+            total_child_visits = sum(child.visit_count for child in child_list)
+            print("Root PUCT debug:")
+            print("action | prior(P) | visit_pi | edge_N | child_N |        Q |        U |     Q+U")
+            for i, child in enumerate(child_list):
+                action_i = int(actions[i])
+                P = float(priors[i])
+                edge_N = int(edge_visits[i])
+                child_N = int(child.visit_count)
+                visit_pi = (
+                    child_N / total_child_visits
+                    if total_child_visits > 0
+                    else 0.0
+                )
+                Q = float(child.Q_value)
+                U = float(c * P * (sqrtN / (1.0 + edge_N)))
+                S = Q + U
+                print(
+                    f"{action_i:>6} | "
+                    f"{P:>8.5f} | "
+                    f"{visit_pi:>8.5f} | "
+                    f"{edge_N:>6} | "
+                    f"{child_N:>7} | "
+                    f"{Q:>8.5f} | "
+                    f"{U:>8.5f} | "
+                    f"{S:>8.5f}"
+                )
         action = action_policy.select_action(
             mcts=mcts,
             pi=masked_pi,
         )
+        print(f"Chosen action: {action} with action policy: {action_policy}")
         cstate = mcts.step_forward(action)
         plan.append(action)
     return EvalWorkerOutput(

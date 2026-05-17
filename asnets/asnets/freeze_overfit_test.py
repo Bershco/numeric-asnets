@@ -118,7 +118,6 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
             expansion_k=spec.mcts_expansion_k,
             exploration_weight=spec.mcts_exploration_weight,
             sharpen_pi=0.1,
-            log_visitations=False,
         )
         mcts.initialise_tree(cstate)
 
