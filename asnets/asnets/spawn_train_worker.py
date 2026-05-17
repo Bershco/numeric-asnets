@@ -1007,7 +1007,7 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
         iterations=mcts_iter,
         expansion_k=inp.spec.mcts_expansion_k,
         exploration_weight=inp.spec.mcts_exploration_weight,
-        sharpen_pi=0.1,
+        sharpen_pi=0.5,
         select_logging=False,
         estimator_coeff=0.0,  # IMPORTANT difference vs training, estimator must not be used
     )

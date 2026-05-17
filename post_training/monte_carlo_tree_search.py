@@ -150,6 +150,15 @@ class FixedChildMap:
     def is_empty(self) -> bool:
         return len(self._keys) == 0
 
+    def get_qsa_nsa_list(self) -> list[tuple[int, float, int]]:
+        return [
+            (act, child.Q_value, edge_Nsa)
+            for act, child, edge_Nsa in sorted(
+                zip(self._keys, self._values, self._visits),
+                key=lambda x: x[0],
+            )
+        ]
+
 
 class MCTS:
     """Monte Carlo tree searcher. First rollout the tree then choose a move."""

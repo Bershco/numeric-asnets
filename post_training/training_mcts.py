@@ -199,10 +199,13 @@ class TrainingMCTS(MCTS):
         assert node.children is not None
         pi = np.zeros(act_dim, dtype=np.float32)
         z_partial = np.zeros(act_dim, dtype=np.float32)
-        for action, child in node.children.items():
-            visits = child.visit_count
-            pi[action] = visits
-            z_partial[action] = visits * child.Q_value
+        # for action, child in node.children.items():
+        #     visits = child.visit_count
+        #     pi[action] = visits
+        #     z_partial[action] = visits * child.Q_value
+        for act, Qsa, Nsa in node.children.get_qsa_nsa_list():
+            pi[act] = Nsa
+            z_partial[act] = Nsa * Qsa
         pi_sum = pi.sum()
         if pi_sum > 0:
             pi /= pi_sum
