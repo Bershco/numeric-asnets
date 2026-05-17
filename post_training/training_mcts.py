@@ -20,7 +20,7 @@ class TrainingMCTS(MCTS):
     def __init__(self, network, ctx: LocalExploreContext,
                  iterations=10, expansion_k=5,
                  exploration_weight=1.0, sharpen_pi=1.0, one_hot_distance_gamma=0.999, use_batched_inference=True,
-                 select_logging=False, estimator_coeff=0.0, ):
+                 select_logging=False, estimator_coeff=0.0, puct_debug=False ):
         super().__init__(exploration_weight, network=network, select_logging=select_logging)
         self.use_batched_inference = use_batched_inference
         self.ctx = ctx
@@ -30,6 +30,7 @@ class TrainingMCTS(MCTS):
         self.one_hot_distance_gamma = one_hot_distance_gamma
         self.estimator_coeff = estimator_coeff
         self.estimator_mode = EstimatorMode.V_ONLY
+        self.puct_debug = puct_debug
 
     def get_single_node_policy_value(self, node, training=False):
         if self.network.value_network_enabled:
@@ -103,12 +104,13 @@ class TrainingMCTS(MCTS):
                     state=cstate,
                     cost_until_now=node.cost_until_now + step_cost
                 )
-
                 self.state_key_to_node[state_key] = wrapped_output_cstate
 
             else:
 
                 wrapped_output_cstate = node_entry
+            if self.puct_debug:
+                wrapped_output_cstate.add_parent(node, action_id)
 
             actions.append(action_id)
             edge_priors.append(float(act_dist[action_id]))

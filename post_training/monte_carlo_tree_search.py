@@ -20,18 +20,17 @@ LOGGER.setLevel(logging.INFO)
 class MCTSNode:
     delete_counter = 0
     __slots__ = (
-        "state", "cost_until_now", "reward_weight", "children", "goal_state", "terminal_state", "as_network_input",
+        "state", "cost_until_now", "children", "goal_state", "terminal_state", "as_network_input",
         "applicable_action_mask", "act_dist", "pred_value", "Q_value", "known_distance_to_goal", "best_goal_child",
-        "visit_count", "last_select_id"
+        "visit_count", "last_select_id", "parents", "root_visit_count"
     )
 
     def __init__(self,
                  state,
-                 cost_until_now, reward_weight=1000,
+                 cost_until_now,
                  is_goal=False, is_terminal=False, as_network_input=None, applicable_action_mask=None):
         self.state = state
         self.cost_until_now = cost_until_now
-        self.reward_weight = reward_weight  # FIXME: this is not used
         self.children = None
         self.goal_state = is_goal
         self.terminal_state = is_terminal
@@ -43,12 +42,9 @@ class MCTSNode:
         self.known_distance_to_goal = 0 if is_goal else np.inf
         self.best_goal_child = None
         self.visit_count = 0
+        self.root_visit_count = 0
         self.last_select_id = -1
-
-    def simulate_step(self, action_id, problem_service):
-        if hasattr(problem_service, "env_simulate_step"):
-            return problem_service.env_simulate_step(self.state_id, self._hash, int(action_id))
-        return problem_service.exposed_env_simulate_step(self.state_id, self._hash, int(action_id))
+        self.parents: list[tuple["MCTSNode", int]] = [] # list of tuples of (parent, action)
 
     def is_terminal(self):
         """Returns True if the node has no children"""
@@ -57,11 +53,6 @@ class MCTSNode:
     def is_goal(self):
         """Return True if the current not is a goal"""
         return self.goal_state
-
-    def reward(self):
-        if self.is_goal():
-            return self.reward_weight / self.cost_until_now
-        return 0
 
     def to_network_input(self):
         """Make the cstate represented by 'this' MCTSNode to be compatible for the policy network, and transposes it"""
@@ -75,6 +66,9 @@ class MCTSNode:
     def state_key(self) -> bytes:
         return self.state.state_key
 
+    def add_parent(self, node: "MCTSNode", act: int):
+        if not any(parent is node and parent_act == act for parent, parent_act in self.parents):
+            self.parents.append((node, act))
 
 class FixedChildMap:
     __slots__ = ("_keys", "_values", "_visits", "_actions_np", "_priors")
@@ -136,6 +130,13 @@ class FixedChildMap:
 
     def increment_visit(self, key: int):
         self._visits[self._index_of(key)] += 1
+
+    def increment_visit_by_child(self, child: Any):
+        for i, value in enumerate(self._values):
+            if value is child:
+                self._visits[i] += 1
+                return
+        raise KeyError("Child not found in FixedChildMap")
 
     def __len__(self) -> int:
         return len(self._keys)
@@ -298,6 +299,7 @@ class MCTS:
             self.path_until_goal = self.reconstructSelectionPath(path) + self.path_until_goal
 
     def mcts_iteration_value_based(self, node):
+        node.root_visit_count += 1
         path = self._select(node)
         if self.select_logging:
             self.select_depths.append(len(path))
@@ -348,7 +350,7 @@ class MCTS:
                     self.select_stop_cycle_blocked += 1
                     self.cycle_blocked_depths.append(depth)
                 return node_path
-            childmap.increment_visit(action)
+            # childmap.increment_visit(action)
             node = child
 
     def _expand(self, node):
@@ -360,13 +362,17 @@ class MCTS:
         raise NotImplemented
 
     def _backpropagate(self, path: list[MCTSNode], reward: float, subtree_contains_goal: bool):
+        for parent, child in zip(path, path[1:]):
+            if parent.children is None:
+                raise RuntimeError("Backprop path contains parent with no children")
+
+            parent.children.increment_visit_by_child(child)
         distance_from_goal = 0 if subtree_contains_goal else None
         child_toward_goal = None
         for node in reversed(path):
-            n = node.visit_count + 1
-            node.visit_count = n
+            node.visit_count += 1
             q_old = node.Q_value
-            node.Q_value = q_old + (reward - q_old) / n
+            node.Q_value = q_old + (reward - q_old) / node.visit_count
             if distance_from_goal is not None:
                 old_dist = node.known_distance_to_goal
                 update = False

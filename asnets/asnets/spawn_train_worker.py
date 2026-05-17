@@ -202,7 +202,6 @@ class WorkerCollectorWithLogging(WorkerCollector):
     # --------- summaries ---------
 
     def root_summary(self):
-        import numpy as np
         return {
             "root_target_entropy": np.mean(self.root_target_entropies) if self.root_target_entropies else None,
             "root_pred_entropy": np.mean(self.root_pred_entropies) if self.root_pred_entropies else None,
@@ -210,7 +209,6 @@ class WorkerCollectorWithLogging(WorkerCollector):
         }
 
     def loss_summary(self):
-        import numpy as np
         return {
             "xent_loss": np.mean(self.xent_losses) if self.xent_losses else None,
             "mse_loss": np.mean(self.mse_losses) if self.mse_losses else None,
@@ -518,7 +516,7 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
         iterations=mcts_iter,
         expansion_k=inp.spec.mcts_expansion_k,
         exploration_weight=inp.spec.mcts_exploration_weight,
-        sharpen_pi=0.1,
+        sharpen_pi=0.5,
         select_logging=select_logging,
         estimator_coeff=inp.estimator_coeff,
     )
@@ -969,6 +967,231 @@ def run_worker_eval_enhsp(inp: EvalWorkerInput) -> EvalWorkerOutput:
             instance_name=instance_name,
         )
 
+def _get_edge_visit_from_parent(parent, act: int) -> int:
+    """
+    Return N(parent, act), i.e. edge visit count from parent to its child via act.
+    """
+    children = getattr(parent, "children", None)
+    if children is None:
+        return 0
+    actions = getattr(children, "actions_np", None)
+    visits = getattr(children, "visits", None)
+    if actions is None or visits is None:
+        return 0
+    matches = np.where(actions == act)[0]
+    if len(matches) == 0:
+        return 0
+    return int(visits[int(matches[0])])
+
+
+def _incoming_edge_visit_sum(child) -> tuple[int, int, list[tuple[int, int, int]]]:
+    """
+    Returns:
+        incoming_sum:
+            Sum of edge_N over all registered parents.
+        n_missing:
+            Number of registered parents where the action edge was not found.
+        incoming_details:
+            List of (parent_id, action, edge_N) for printing/debugging.
+    """
+    parents = getattr(child, "parents", [])
+    incoming_sum = 0
+    n_missing = 0
+    incoming_details = []
+    for parent, act in parents:
+        act = int(act)
+        edge_N = _get_edge_visit_from_parent(parent, act)
+        children = getattr(parent, "children", None)
+        edge_exists = False
+        if children is not None and getattr(children, "actions_np", None) is not None:
+            edge_exists = bool(np.any(children.actions_np == act))
+        if not edge_exists:
+            n_missing += 1
+        incoming_sum += edge_N
+        incoming_details.append((id(parent), act, int(edge_N)))
+    return incoming_sum, n_missing, incoming_details
+
+def _build_puct_debug_rows(mcts) -> tuple[list[dict], list[dict], int, int]:
+    """
+    Builds all rows needed for PUCT debug printing.
+
+    Returns:
+        rows:
+            All root-child rows.
+        suspicious_rows:
+            Rows worth printing in the detailed section.
+        total_edge_visits:
+            Sum of root outgoing edge_N values.
+        total_child_visits:
+            Sum of root children visit_count values.
+    """
+    root = mcts.curr_tree_root
+    children = root.children
+    if children is None:
+        return [], [], 0, 0
+    actions = children.actions_np
+    child_list = children._values
+    edge_visits = children.visits
+    priors = children.priors
+    sqrtN = math.sqrt(max(1.0, root.visit_count))
+    c = mcts.exploration_weight
+    total_edge_visits = int(np.sum(edge_visits)) if len(edge_visits) > 0 else 0
+    total_child_visits = sum(int(child.visit_count) for child in child_list)
+    rows = []
+    suspicious_rows = []
+    for i, child in enumerate(child_list):
+        action_i = int(actions[i])
+        P = float(priors[i])
+        edge_N = int(edge_visits[i])
+        child_N = int(child.visit_count)
+        edge_pi = edge_N / total_edge_visits if total_edge_visits > 0 else 0.0
+        child_pi = child_N / total_child_visits if total_child_visits > 0 else 0.0
+        parent_in_N, missing_edges, incoming_details = _incoming_edge_visit_sum(child)
+        root_extra = int(getattr(child, "root_visit_count", 0))
+        raw_diff = child_N - parent_in_N
+        adjusted_diff = raw_diff - root_extra
+        ratio = child_N / max(edge_N, 1)
+        n_parents = len(getattr(child, "parents", []))
+        Q = float(child.Q_value)
+        U = float(c * P * (sqrtN / (1.0 + edge_N)))
+        S = Q + U
+        row = {
+            "action": action_i,
+            "prior": P,
+            "edge_pi": edge_pi,
+            "child_pi": child_pi,
+            "edge_N": edge_N,
+            "child_N": child_N,
+            "parent_in_N": parent_in_N,
+            "root_extra": root_extra,
+            "raw_diff": raw_diff,
+            "adjusted_diff": adjusted_diff,
+            "ratio": ratio,
+            "n_parents": n_parents,
+            "missing_edges": missing_edges,
+            "incoming_details": incoming_details,
+            "Q": Q,
+            "U": U,
+            "S": S,
+        }
+        rows.append(row)
+        if adjusted_diff != 0 or ratio >= 10.0 or missing_edges > 0 or raw_diff != 0:
+            suspicious_rows.append(row)
+    return rows, suspicious_rows, total_edge_visits, total_child_visits
+
+def _print_masked_policy_distribution(masked_pi) -> None:
+    print(f"Current masked policy distribution: {[(act, float(p)) for act, p in enumerate(masked_pi)]}")
+
+def _print_puct_main_table(rows: list[dict]) -> None:
+    print("Root PUCT debug:")
+    print(
+        "action | prior(P) | edge_pi  | child_pi | edge_N | child_N | parent_in_N | root_N | adj_diff | ratio | n_par | miss |        Q |        U |     Q+U"
+    )
+    print("-" * 165)
+    for row in rows:
+        print(
+            f"{row['action']:>6} | "
+            f"{row['prior']:>8.5f} | "
+            f"{row['edge_pi']:>8.5f} | "
+            f"{row['child_pi']:>8.5f} | "
+            f"{row['edge_N']:>6} | "
+            f"{row['child_N']:>7} | "
+            f"{row['parent_in_N']:>11} | "
+            f"{row['root_extra']:>6} | "
+            f"{row['adjusted_diff']:>8} | "
+            f"{row['ratio']:>5.1f} | "
+            f"{row['n_parents']:>5} | "
+            f"{row['missing_edges']:>4} | "
+            f"{row['Q']:>8.5f} | "
+            f"{row['U']:>8.5f} | "
+            f"{row['S']:>8.5f}"
+        )
+
+def _print_puct_details_table(suspicious_rows: list[dict]) -> None:
+    if not suspicious_rows:
+        return
+    print("Root child parent-edge consistency details:")
+    print(
+        "action | edge_N | child_N | parent_in_N | root_N | raw_diff | adj_diff | ratio | n_parents | missing_edges"
+    )
+    print("-" * 115)
+    for row in suspicious_rows:
+        print(
+            f"{row['action']:>6} | "
+            f"{row['edge_N']:>6} | "
+            f"{row['child_N']:>7} | "
+            f"{row['parent_in_N']:>11} | "
+            f"{row['root_extra']:>6} | "
+            f"{row['raw_diff']:>8} | "
+            f"{row['adjusted_diff']:>8} | "
+            f"{row['ratio']:>5.1f} | "
+            f"{row['n_parents']:>9} | "
+            f"{row['missing_edges']:>13}"
+        )
+        if row["adjusted_diff"] != 0 or row["missing_edges"] > 0 or row["ratio"] >= 10.0:
+            print("    incoming parents:")
+            for parent_id, parent_act, parent_edge_N in row["incoming_details"]:
+                print(
+                    f"      parent_id={parent_id} "
+                    f"act={parent_act} "
+                    f"edge_N={parent_edge_N}"
+                )
+
+def _print_puct_summary(
+    *,
+    root,
+    suspicious_rows: list[dict],
+    total_edge_visits: int,
+    total_child_visits: int,
+) -> None:
+    n_bad = sum(
+        1 for row in suspicious_rows
+        if row["adjusted_diff"] != 0 or row["missing_edges"] > 0
+    )
+    n_transposition_like = sum(
+        1 for row in suspicious_rows
+        if row["adjusted_diff"] == 0
+        and row["missing_edges"] == 0
+        and row["ratio"] >= 10.0
+    )
+    n_root_explained = sum(
+        1 for row in suspicious_rows
+        if row["raw_diff"] != 0
+        and row["adjusted_diff"] == 0
+        and row["missing_edges"] == 0
+    )
+    print(
+        f"PUCT parent consistency summary: "
+        f"bad={n_bad}, "
+        f"root_explained={n_root_explained}, "
+        f"transposition_like={n_transposition_like}, "
+        f"root_N={root.visit_count}, "
+        f"root_root_N={getattr(root, 'root_visit_count', 0)}, "
+        f"sum_edge_N={total_edge_visits}, "
+        f"sum_child_N={total_child_visits}"
+    )
+
+def print_puct_debug(mcts, masked_pi) -> None:
+    """
+    Single public-ish debug entry point.
+
+    Call this only under:
+        if inp.spec.puct_debug:
+            print_puct_debug(mcts, masked_pi)
+    """
+    _print_masked_policy_distribution(masked_pi)
+    root = mcts.curr_tree_root
+    if root.children is None:
+        return
+    rows, suspicious_rows, total_edge_visits, total_child_visits = _build_puct_debug_rows(mcts)
+    _print_puct_main_table(rows)
+    _print_puct_details_table(suspicious_rows)
+    _print_puct_summary(
+        root=root,
+        suspicious_rows=suspicious_rows,
+        total_edge_visits=total_edge_visits,
+        total_child_visits=total_child_visits,
+    )
 
 def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
     worker_tag, instance_name = init_eval_worker(inp)
@@ -1010,6 +1233,7 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
         sharpen_pi=0.5,
         select_logging=False,
         estimator_coeff=0.0,  # IMPORTANT difference vs training, estimator must not be used
+        puct_debug=inp.spec.puct_debug,
     )
     cstate = ctx.get_init_state()
     max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
@@ -1021,64 +1245,30 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
                 hit_goal=float(cstate.is_goal),
                 steps=step,
                 instance_name=instance_name,
-                plan=plan
+                plan=plan,
             )
         pi, _ = mcts.run_search()
         mask = mcts.get_children_mask(act_dim=act_dim)
         masked_pi = pi * mask
-        # ------------------------------------------------------------
-        # Root PUCT diagnostics
-        # ------------------------------------------------------------
-        print(f"Current masked policy distribution: {[(act, p) for act, p in enumerate(masked_pi)]}")
-        root = mcts.curr_tree_root
-        children = root.children
-        if children is not None:
-            actions = children.actions_np
-            child_list = children._values
-            edge_visits = children.visits
-            priors = children.priors
-            sqrtN = math.sqrt(max(1.0, root.visit_count))
-            c = mcts.exploration_weight
-            total_child_visits = sum(child.visit_count for child in child_list)
-            print("Root PUCT debug:")
-            print("action | prior(P) | visit_pi | edge_N | child_N |        Q |        U |     Q+U")
-            for i, child in enumerate(child_list):
-                action_i = int(actions[i])
-                P = float(priors[i])
-                edge_N = int(edge_visits[i])
-                child_N = int(child.visit_count)
-                visit_pi = (
-                    child_N / total_child_visits
-                    if total_child_visits > 0
-                    else 0.0
-                )
-                Q = float(child.Q_value)
-                U = float(c * P * (sqrtN / (1.0 + edge_N)))
-                S = Q + U
-                print(
-                    f"{action_i:>6} | "
-                    f"{P:>8.5f} | "
-                    f"{visit_pi:>8.5f} | "
-                    f"{edge_N:>6} | "
-                    f"{child_N:>7} | "
-                    f"{Q:>8.5f} | "
-                    f"{U:>8.5f} | "
-                    f"{S:>8.5f}"
-                )
+        if inp.spec.puct_debug:
+            print_puct_debug(
+                mcts=mcts,
+                masked_pi=masked_pi,
+            )
         action = action_policy.select_action(
             mcts=mcts,
             pi=masked_pi,
         )
-        print(f"Chosen action: {action} with action policy: {action_policy}")
+        if inp.spec.puct_debug:
+            print(f"Chosen action: {action} with action policy: {action_policy}")
         cstate = mcts.step_forward(action)
         plan.append(action)
     return EvalWorkerOutput(
         hit_goal=float(cstate.is_goal),
         steps=max_len,
         instance_name=instance_name,
-        plan=plan
+        plan=plan,
     )
-
 
 def run_worker_eval_policy_only(inp: EvalWorkerInput) -> EvalWorkerOutput:
     worker_tag, instance_name = init_eval_worker(inp, "POLICY")

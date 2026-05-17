@@ -268,6 +268,9 @@ class SpawnExploreSpec:
     ENHSP_plan_bootstrap: bool = True
     est_plan_z: bool = False
 
+    # puct debug
+    puct_debug: bool = False
+
     # estimator decay
     use_estimator: bool = False
     estimator_decay_coeff_start: float = 1.0
