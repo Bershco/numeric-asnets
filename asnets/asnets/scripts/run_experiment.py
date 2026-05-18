@@ -33,7 +33,7 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
     assert not profiling or not memory_profiling, "Cannot profile memory and efficiency at the same time."
     cmdline = []
     if profiling:
-        print("[run_experiment_setup] timing profiling is on.")
+        print(f"[run_experiment_setup] timing profiling is on, timeout set to {timeout-300}")
         cmdline.extend([
                            sys.executable, '-m', 'cProfile', '-o', 'profile_output.prof',
                            '-m', 'asnets.scripts.run_asnets'
@@ -852,7 +852,7 @@ evaluation = {"off" if no_eval else "on"}
                 is_train=False,
                 # run_asnets.py has its own timeout which it should obey, so
                 # give it some slack
-                timeout=arch_mod.EVAL_TIME_LIMIT_SECONDS + 30,
+                timeout=arch_mod.EVAL_TIME_LIMIT_SECONDS,
                 profiling=profiling,
                 memory_profiling=memory_profiling,
             )
@@ -880,7 +880,7 @@ evaluation = {"off" if no_eval else "on"}
             cwd=root_cwd,
             need_snapshot=False,
             is_train=False,
-            timeout=arch_mod.EVAL_TIME_LIMIT_SECONDS + 30,
+            timeout=arch_mod.EVAL_TIME_LIMIT_SECONDS,
             profiling=profiling,
             memory_profiling=memory_profiling,
         )

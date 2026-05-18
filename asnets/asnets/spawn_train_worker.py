@@ -906,7 +906,8 @@ def run_worker_opt_profiled(inp: WorkerInput, worker_fn=run_worker) -> WorkerOut
         print(f"[WORKER TIMING] pid={os.getpid()} total={time.time() - t0:.2f}s", flush=True)
 
 
-def init_eval_worker(inp: EvalWorkerInput, worker_tag_addon: Optional[str] = None) -> tuple[str, str]:
+def init_eval_worker(inp: EvalWorkerInput, worker_tag_addon: Optional[str] = None) -> tuple[str, str, float]:
+    start_time = time.time()
     worker_tag_prefix = f"EVAL{'_' + worker_tag_addon if worker_tag_addon else ''}"
     difficulty_str = str(inp.spec.difficulty)
     full_worker_tag = f"[{worker_tag_prefix}|{difficulty_str}|{os.getpid()}]"
@@ -917,7 +918,8 @@ def init_eval_worker(inp: EvalWorkerInput, worker_tag_addon: Optional[str] = Non
         use_fluents=inp.spec.use_fluents,
         use_comparisons=inp.spec.use_comps,
     )
-    return full_worker_tag, instance_name
+    print(f"Starting {full_worker_tag} on instance {instance_name}")
+    return full_worker_tag, instance_name, start_time
 
 
 def eval_max_len_coeff_by_diff(diff: InstanceDifficulty) -> float:
@@ -929,7 +931,7 @@ def eval_max_len_coeff_by_diff(diff: InstanceDifficulty) -> float:
     return coeff_dict[diff]
 
 def run_worker_eval_enhsp(inp: EvalWorkerInput) -> EvalWorkerOutput:
-    worker_tag, instance_name = init_eval_worker(inp, "ENHSP")
+    worker_tag, instance_name, start_time = init_eval_worker(inp, "ENHSP")
     planner_exts = _build_planner_exts_from_spec(
         inp.spec,
         inp.epoch,
@@ -949,7 +951,7 @@ def run_worker_eval_enhsp(inp: EvalWorkerInput) -> EvalWorkerOutput:
                                       act_dim=act_dim,
                                       init_state=cstate,
                                       ctx=ctx, estimator=estimator,
-                                      enhsp_timeout=15 # maybe change this if some validation instances do not work
+                                      enhsp_timeout=inp.spec.timeout
                                       )
     if plan_as_traj:
         plan_states, plan_states_pi, plan_states_z, plan_actions_ints = plan_as_traj
@@ -1194,7 +1196,7 @@ def print_puct_debug(mcts, masked_pi) -> None:
     )
 
 def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
-    worker_tag, instance_name = init_eval_worker(inp)
+    worker_tag, instance_name, start_time = init_eval_worker(inp)
     planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
     act_dim = planner_exts.problem_meta.num_acts
     action_policy = build_action_policy(
@@ -1239,8 +1241,14 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
     max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
     mcts.initialise_tree(cstate)
     plan = []
+    timed_out = False
     for step in range(max_len):
-        if cstate.is_terminal:
+        step_start_time = time.time()
+        if inp.spec.timeout:
+            timed_out = step_start_time - start_time > inp.spec.timeout
+        if cstate.is_terminal or timed_out:
+            if timed_out:
+                print(f"{worker_tag} timed out after {inp.spec.timeout} seconds")
             return EvalWorkerOutput(
                 hit_goal=float(cstate.is_goal),
                 steps=step,
@@ -1271,7 +1279,7 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
     )
 
 def run_worker_eval_policy_only(inp: EvalWorkerInput) -> EvalWorkerOutput:
-    worker_tag, instance_name = init_eval_worker(inp, "POLICY")
+    worker_tag, instance_name, start_time = init_eval_worker(inp, "POLICY")
 
     planner_exts = _build_planner_exts_from_spec(
         inp.spec,

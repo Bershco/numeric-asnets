@@ -267,6 +267,7 @@ class SpawnExploreSpec:
     goal_path_reconstruction: Optional[str] = None
     ENHSP_plan_bootstrap: bool = True
     est_plan_z: bool = False
+    timeout: Optional[float] = None
 
     # puct debug
     puct_debug: bool = False
@@ -392,6 +393,7 @@ def make_specs(args, specific_instances=None, evaluation_mode=False, difficulty:
             action_policy_epsilon=args.action_policy_epsilon,
             action_policy_temperature=args.action_policy_temperature,
             action_policy_decay_rate=args.action_policy_decay_rate,
+            timeout=args.graceful_timeout,
         )
 
         if not evaluation_mode:

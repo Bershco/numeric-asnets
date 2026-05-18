@@ -1,13 +1,10 @@
 import gc
 import logging
 import random
-from abc import ABC, abstractmethod
 from array import array
 import bisect
-from collections import defaultdict
 import math
 from typing import Any, List, Optional, Iterator, Tuple
-from time import time
 import numpy as np
 from rpyc import BaseNetref
 
@@ -321,6 +318,12 @@ class MCTS:
         depth = 0
         while True:
             node_path.append(node)
+            self.maybe_log_puct_on_selection_path(
+                node,
+                selection_depth=depth,
+                max_depth=2,
+                every=25,
+            )
             depth += 1
             if self.select_logging and depth > self.select_depth_limit:
                 self.deep_select_applicable_actions.append(sum(node.applicable_action_mask))
@@ -643,6 +646,287 @@ class MCTS:
         idx = np.flatnonzero(valid_mask)[idx_local]
 
         return int(actions[idx]), child_list[idx]
+
+    def log_puct_snapshot(
+            self,
+            node: "MCTSNode",
+            *,
+            label: str = "",
+            iteration: int | None = None,
+            selection_depth: int | None = None,
+            top_k: int = 10,
+            print_rows: bool = True,
+            return_dict: bool = False,
+            skip_zero_q_range: bool = False,
+            q_range_eps: float = 1e-8,
+    ):
+        """
+        Log a compact PUCT diagnostic snapshot for a single node.
+
+        Designed for realistic use:
+          - call on root every K MCTS iterations
+          - optionally call on selected-path nodes by local selection depth
+
+        Uses FixedChildMap fields:
+          - children.actions_np
+          - children._values
+          - children.visits
+          - children.priors
+        """
+
+        children = node.children
+
+        if children is None or children.is_empty():
+            msg = (
+                f"[PUCT] label={label} iter={iteration} depth={selection_depth} "
+                f"EMPTY children | node_N={getattr(node, 'visit_count', None)}"
+            )
+            print(msg)
+            if return_dict:
+                return {
+                    "label": label,
+                    "iteration": iteration,
+                    "selection_depth": selection_depth,
+                    "num_children": 0,
+                    "node_N": getattr(node, "visit_count", None),
+                }
+            return None
+
+        eps = 1e-8
+
+        actions = children.actions_np
+        child_list = children._values
+        edge_visits = children.visits
+        priors = children.priors
+
+        node_N = int(getattr(node, "visit_count", 0))
+        root_N = int(getattr(node, "root_visit_count", 0)) if hasattr(node, "root_visit_count") else None
+        sum_Nsa = int(np.sum(edge_visits))
+
+        sqrtN = math.sqrt(max(1.0, node_N))
+        c = float(self.exploration_weight)
+
+        Q = np.empty(len(actions), dtype=np.float32)
+
+        for i, child in enumerate(child_list):
+            Q[i] = float(child.Q_value)
+
+        U = c * priors * (sqrtN / (1.0 + edge_visits))
+        score = Q + U
+
+        q_min = float(np.min(Q))
+        q_max = float(np.max(Q))
+        q_mean = float(np.mean(Q))
+        q_std = float(np.std(Q))
+        q_range = q_max - q_min
+        if skip_zero_q_range and q_range <= q_range_eps:
+            return None
+
+        u_min = float(np.min(U))
+        u_max = float(np.max(U))
+        u_mean = float(np.mean(U))
+        u_std = float(np.std(U))
+        u_range = u_max - u_min
+
+        score_min = float(np.min(score))
+        score_max = float(np.max(score))
+        score_mean = float(np.mean(score))
+        score_std = float(np.std(score))
+        score_range = score_max - score_min
+
+        p_min = float(np.min(priors))
+        p_max = float(np.max(priors))
+        p_mean = float(np.mean(priors))
+        p_std = float(np.std(priors))
+
+        best_q_idx = int(np.argmax(Q))
+        best_u_idx = int(np.argmax(U))
+        best_score_idx = int(np.argmax(score))
+
+        best_by_Q = int(actions[best_q_idx])
+        best_by_U = int(actions[best_u_idx])
+        best_by_score = int(actions[best_score_idx])
+
+        U_changed_Q_choice = best_by_score != best_by_Q
+
+        def _top_margin(arr: np.ndarray) -> float:
+            if len(arr) < 2:
+                return 0.0
+            # cheaper than full sort
+            top2 = np.partition(arr, -2)[-2:]
+            return float(np.max(top2) - np.min(top2))
+
+        q_margin = _top_margin(Q)
+        u_margin = _top_margin(U)
+        score_margin = _top_margin(score)
+
+        mean_abs_U_over_mean_abs_Q = float(np.mean(np.abs(U)) / (np.mean(np.abs(Q)) + eps))
+        U_range_over_Q_range = float(u_range / (q_range + eps))
+
+        selected_Q = float(Q[best_score_idx])
+        selected_U = float(U[best_score_idx])
+        selected_score = float(score[best_score_idx])
+        selected_P = float(priors[best_score_idx])
+        selected_Nsa = int(edge_visits[best_score_idx])
+        selected_abs_U_over_abs_Q = float(abs(selected_U) / (abs(selected_Q) + eps))
+
+        summary = {
+            "label": label,
+            "iteration": iteration,
+            "selection_depth": selection_depth,
+            "num_children": int(len(actions)),
+
+            "node_N": node_N,
+            "root_N": root_N,
+            "sum_Nsa": sum_Nsa,
+            "node_N_minus_sum_Nsa": int(node_N - sum_Nsa),
+
+            "c": c,
+
+            "Q_min": q_min,
+            "Q_max": q_max,
+            "Q_mean": q_mean,
+            "Q_std": q_std,
+            "Q_range": q_range,
+
+            "U_min": u_min,
+            "U_max": u_max,
+            "U_mean": u_mean,
+            "U_std": u_std,
+            "U_range": u_range,
+
+            "score_min": score_min,
+            "score_max": score_max,
+            "score_mean": score_mean,
+            "score_std": score_std,
+            "score_range": score_range,
+
+            "P_min": p_min,
+            "P_max": p_max,
+            "P_mean": p_mean,
+            "P_std": p_std,
+
+            "U_range_over_Q_range": U_range_over_Q_range,
+            "mean_abs_U_over_mean_abs_Q": mean_abs_U_over_mean_abs_Q,
+
+            "best_by_Q": best_by_Q,
+            "best_by_U": best_by_U,
+            "best_by_score": best_by_score,
+            "U_changed_Q_choice": U_changed_Q_choice,
+
+            "Q_margin": q_margin,
+            "U_margin": u_margin,
+            "score_margin": score_margin,
+
+            "selected_Q": selected_Q,
+            "selected_U": selected_U,
+            "selected_score": selected_score,
+            "selected_P": selected_P,
+            "selected_Nsa": selected_Nsa,
+            "selected_abs_U_over_abs_Q": selected_abs_U_over_abs_Q,
+        }
+
+        root_part = f" root_N={root_N}" if root_N is not None else ""
+
+        print(
+            f"[PUCT] label={label} iter={iteration} depth={selection_depth} "
+            f"children={len(actions)} node_N={node_N}{root_part} "
+            f"sum_Nsa={sum_Nsa} node_N-sum_Nsa={node_N - sum_Nsa} c={c:.4g}"
+        )
+
+        print(
+            f"  ranges: "
+            f"Q={q_range:.6f} "
+            f"U={u_range:.6f} "
+            f"score={score_range:.6f} "
+            f"U_range/Q_range={U_range_over_Q_range:.4f} "
+            f"mean|U|/mean|Q|={mean_abs_U_over_mean_abs_Q:.4f}"
+        )
+
+        print(
+            f"  choices: "
+            f"best_Q={best_by_Q} "
+            f"best_U={best_by_U} "
+            f"best_score={best_by_score} "
+            f"U_changed_Q_choice={U_changed_Q_choice} "
+            f"Q_margin={q_margin:.6f} "
+            f"U_margin={u_margin:.6f} "
+            f"score_margin={score_margin:.6f}"
+        )
+
+        print(
+            f"  selected: "
+            f"act={best_by_score} "
+            f"Nsa={selected_Nsa} "
+            f"P={selected_P:.6f} "
+            f"Q={selected_Q:.6f} "
+            f"U={selected_U:.6f} "
+            f"Q+U={selected_score:.6f} "
+            f"|U|/|Q|={selected_abs_U_over_abs_Q:.4f}"
+        )
+
+        if print_rows and top_k > 0:
+            order = np.argsort(-score)
+            order = order[:min(top_k, len(order))]
+
+            print(f"  top_{len(order)}_by_score:")
+            print("    act      Nsa          P          Q          U        Q+U    |U|/|Q|")
+            print("    --------------------------------------------------------------------")
+
+            for idx in order:
+                q = float(Q[idx])
+                u = float(U[idx])
+                s = float(score[idx])
+                p = float(priors[idx])
+                nsa = int(edge_visits[idx])
+                act = int(actions[idx])
+                ratio = abs(u) / (abs(q) + eps)
+
+                print(
+                    f"    {act:>3} "
+                    f"{nsa:>8d} "
+                    f"{p:>10.6f} "
+                    f"{q:>10.6f} "
+                    f"{u:>10.6f} "
+                    f"{s:>10.6f} "
+                    f"{ratio:>10.4f}"
+                )
+
+        if return_dict:
+            return summary
+
+        return None
+
+    def maybe_log_puct_on_selection_path(
+            self,
+            node: "MCTSNode",
+            *,
+            selection_depth: int,
+            max_depth: int = 2,
+            every: int = 25,
+    ):
+        if not getattr(self, "puct_debug", False):
+            return
+
+        if selection_depth > max_depth:
+            return
+
+        if self._select_counter % every != 0:
+            return
+
+        if node.children is None or node.children.is_empty():
+            return
+
+        self.log_puct_snapshot(
+            node,
+            label=f"select_depth_{selection_depth}",
+            iteration=self._select_counter,
+            selection_depth=selection_depth,
+            top_k=0,
+            print_rows=False,
+            return_dict=False,
+            skip_zero_q_range=True,
+        )
 
 def wrapInMCTSNode(state: CanonicalState, cost_until_now=float('inf')):
     return MCTSNode(state=state, cost_until_now=cost_until_now, is_goal=state.is_goal,

@@ -470,7 +470,7 @@ parser.add_argument(
 parser.add_argument(
     '--graceful-timeout',
     type=int,
-    default=3000000,
+    default=86400, # 1 day is the default
     help='Number of seconds to gracefully timeout after.')
 parser.add_argument(
     '--mcts-expansion-size',

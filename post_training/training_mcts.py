@@ -249,8 +249,25 @@ class TrainingMCTS(MCTS):
     def run_search(self) -> tuple[np.ndarray, float]:
         """Run N simulations on current root and return π."""
         root = self.curr_tree_root
-        for _ in range(self.iterations):
+        for iteration in range(self.iterations):
             self.mcts_iteration_value_based(root)
+
+            if (
+                    self.puct_debug
+                    and root.children is not None
+                    and not root.children.is_empty()
+                    and iteration % 10 == 0
+            ):
+                self.log_puct_snapshot(
+                    root,
+                    label="root",
+                    iteration=iteration,
+                    selection_depth=0,
+                    top_k=10,
+                    print_rows=True,
+                    return_dict=False,
+                    skip_zero_q_range=True,
+                )
 
         act_dim = self.ctx.get_act_dim()
         return self.compute_pi_z_for_node(root, act_dim)
