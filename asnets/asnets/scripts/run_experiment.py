@@ -33,13 +33,13 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
     assert not profiling or not memory_profiling, "Cannot profile memory and efficiency at the same time."
     cmdline = []
     if profiling:
-        print(f"[run_experiment_setup] timing profiling is on, timeout set to {timeout-300}")
+        print(f"[run_experiment_setup] timing profiling is on, timeout set to {timeout}")
         cmdline.extend([
                            sys.executable, '-m', 'cProfile', '-o', 'profile_output.prof',
                            '-m', 'asnets.scripts.run_asnets'
                        ] + flags)
         # for graceful timeout of a single trial - this is specifically for profiling, but can obviously be used otherwise
-        cmdline.extend(['--graceful-timeout', str(timeout - 300)])
+        cmdline.extend(['--graceful-timeout', str(timeout)])
     elif memory_profiling:
         # If MEMRAY=1 in the environment, wrap run_asnets with memray and save to a stable dir
         print("[run_experiment_setup] memory profiling is on.")
@@ -89,8 +89,10 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
         # twiddle, twiddle, twiddle
         timed_out = False
         bad_retcode = False
+        # timeout = max(timeout * 1.25, timeout + 300)
+        timeout = 60 * 60 * 24 * 7
         try:
-            dfpg_proc.wait(timeout=max(timeout * 1.25, timeout + 300))
+            dfpg_proc.wait(timeout=timeout)
         except TimeoutExpired:
             # uh, oops; better kill everything
             print('Run timed out after %ss!' % timeout)
