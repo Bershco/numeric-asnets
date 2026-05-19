@@ -602,7 +602,7 @@ parser.add_argument(
     help='Resume training instead of only evaluation when using --resume-from'
 )
 parser.add_argument(
-    '--validation-is-test',
+    '--validation-on-test-instances',
     action='store_true',
     default=False,
     help='Have the test set also be the validation set'
@@ -655,7 +655,7 @@ def main():
                estimator_decay_epochs=args.estimator_decay_epochs,
                discard_failed_runs=args.discard_failed_runs,
                original_training_set=args.original_training_set,
-               validation_is_test=args.validation_is_test,
+               validation_on_test_instances=args.validation_on_test_instances,
                )
     print('Fin :-)')
 
@@ -699,7 +699,7 @@ def main_inner(*,
                estimator_decay_epochs=None,
                discard_failed_runs=False,
                original_training_set=False,
-               validation_is_test=False,
+               validation_on_test_instances=False,
                ):
     root_cwd = getcwd()
 
@@ -781,8 +781,8 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.append('--disable-value-head')
         if original_training_set:
             train_flags.append('--original-training-set')
-        if validation_is_test:
-            train_flags.append('--validation-is-test')
+        if validation_on_test_instances:
+            train_flags.append('--validation-on-test-instances')
         if resume_from is not None:
             train_flags.extend(['--resume-from', resume_from])
         final_checkpoint = run_asnets_local(
@@ -873,8 +873,8 @@ evaluation = {"off" if no_eval else "on"}
         all_test_flags.extend(instances)
         if not no_valid:
             all_test_flags.extend(build_prob_flags_validation(prob_mod))
-            if validation_is_test:
-                all_test_flags.append('--validation-is-test')
+            if validation_on_test_instances:
+                all_test_flags.append('--validation-on-test-instances')
 
         run_asnets_local(
             flags=all_test_flags,

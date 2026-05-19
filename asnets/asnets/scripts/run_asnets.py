@@ -676,7 +676,7 @@ parser.add_argument(
     default=[],
 )
 parser.add_argument(
-    '--validation-is-test',
+    '--validation-on-test-instances',
     action='store_true',
     default=False,
     help='Have the test set also be the validation set'
@@ -885,9 +885,7 @@ def validating_validation(args):
         max_workers=args.num_workers,
         worker_fn=curr_worker_fn,
     )
-    eval_start_time = time()
     _, success_rate, outs = eval_explorer.evaluate(weights_np)
-    print(f"ENHSP success rate on validation set: {success_rate}, took: {time() - eval_start_time}s")
 
 
 @can_profile
@@ -898,7 +896,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
     if args.exploration_algorithm == 'mcts':
         main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir)
         return
-    print('Training supervised - not mcts')
+    print('Training/Testing supervised - not mcts')
 
     start_time = time()
 
@@ -982,7 +980,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
             "easy": args.validation_pddls_easy,
             "medium": args.validation_pddls_medium,
             "hard": args.validation_pddls_hard,
-        } if not args.validation_is_test else {
+        } if not args.validation_on_test_instances else {
             "test_instances": args.pddls[1:]
         }
         validation_sets = {k: v for k, v in validation_sets.items() if v}
@@ -1062,7 +1060,6 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
 
     _, success_rate, outs = eval_explorer.evaluate(weights_np)
 
-    print(f"\n[EVAL FINAL] success={success_rate:.3f}")
 
 
 def parent_death_pact(signal: signal.Signals = signal.SIGINT) -> None:

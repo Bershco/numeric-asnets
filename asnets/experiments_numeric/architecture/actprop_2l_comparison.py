@@ -66,7 +66,7 @@ SKIP = True
 
 #### Time limits ####
 TIME_LIMIT_SECONDS = int(60 * 60 * 24 * 6)
-EVAL_TIME_LIMIT_SECONDS = int(60 * 60 * 24)
+EVAL_TIME_LIMIT_SECONDS = int(60 * 60 * 2)
 ROUND_TURN_LIMIT = 100
 EVAL_ROUND_TURN_LIMIT = 10000
 
@@ -87,7 +87,7 @@ ENHSP_CONFIG = 'hadd-gbfs'
 
 
 #### Action Policy Settings ####
-ACTION_POLICY = "sample"
+ACTION_POLICY = "argmax"
 ACTION_POLICY_EPSILON = 0.05
 ACTION_POLICY_TEMPERATURE = None
 ACTION_POLICY_DECAY_RATE = None

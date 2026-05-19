@@ -1283,11 +1283,7 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
                 f"policy_argmax={policy_argmax} ({argmax_action_prob:.4f}) | "
                 f"mcts_selected={action} ({selected_action_prob:.4f}) | "
                 f"selected_rank={policy_rank_selected}"
-            )
-            print(
-                f"[ROOT_COMPARE_VERBOSE] "
-                f"top5_policy_actions="
-                f"{[(int(a), float(masked_pi[a])) for a in ranked_actions[:5]]}"
+                f"top5_policy_actions={[(int(a), float(masked_pi[a])) for a in ranked_actions[:5]]}"
             )
         cstate = mcts.step_forward(action)
         plan.append(action)
