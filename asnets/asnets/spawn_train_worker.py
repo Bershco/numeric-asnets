@@ -1267,8 +1267,28 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
             mcts=mcts,
             pi=masked_pi,
         )
-        if inp.spec.puct_debug:
-            print(f"Chosen action: {action} with action policy: {action_policy}")
+        if inp.spec.action_debug:
+            policy_argmax = int(np.argmax(masked_pi))
+            # descending sort of actions by policy probability
+            ranked_actions = np.argsort(masked_pi)[::-1]
+            policy_rank_selected = (
+                    int(np.where(ranked_actions == action)[0][0]) + 1
+            )
+            selected_action_prob = float(masked_pi[action])
+            argmax_action_prob = float(masked_pi[policy_argmax])
+            print(
+                f"[ROOT_COMPARE] "
+                f"step={step} | "
+                f"instance={instance_name} | "
+                f"policy_argmax={policy_argmax} ({argmax_action_prob:.4f}) | "
+                f"mcts_selected={action} ({selected_action_prob:.4f}) | "
+                f"selected_rank={policy_rank_selected}"
+            )
+            print(
+                f"[ROOT_COMPARE_VERBOSE] "
+                f"top5_policy_actions="
+                f"{[(int(a), float(masked_pi[a])) for a in ranked_actions[:5]]}"
+            )
         cstate = mcts.step_forward(action)
         plan.append(action)
     return EvalWorkerOutput(
@@ -1312,8 +1332,14 @@ def run_worker_eval_policy_only(inp: EvalWorkerInput) -> EvalWorkerOutput:
     cstate = ctx.get_init_state()
     max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
     plan = []
+    timed_out = False
     for step in range(max_len):
-        if cstate.is_terminal:
+        step_start_time = time.time()
+        if inp.spec.timeout:
+            timed_out = step_start_time - start_time > inp.spec.timeout
+        if cstate.is_terminal or timed_out:
+            if timed_out:
+                print(f"{worker_tag} timed out after {inp.spec.timeout} seconds")
             return EvalWorkerOutput(
                 hit_goal=float(cstate.is_goal),
                 steps=step,

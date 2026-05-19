@@ -269,8 +269,9 @@ class SpawnExploreSpec:
     est_plan_z: bool = False
     timeout: Optional[float] = None
 
-    # puct debug
+    # mcts debugging options
     puct_debug: bool = False
+    action_debug: bool = True
 
     # estimator decay
     use_estimator: bool = False
