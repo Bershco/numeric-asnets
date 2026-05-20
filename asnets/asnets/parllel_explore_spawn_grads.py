@@ -7,7 +7,7 @@ from time import time
 from typing import Any, Optional, Tuple
 
 import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor, as_completed, Future, wait, ALL_COMPLETED
+from concurrent.futures import ProcessPoolExecutor, as_completed, Future, wait, ALL_COMPLETED, FIRST_COMPLETED
 
 import numpy as np
 
@@ -183,6 +183,20 @@ def run_epoch_spawn_eval(
             ctx = mp.get_context("forkserver")
             wave_success = 0
             wave_done = 0
+
+            spec_timeouts = [
+                spec.timeout
+                for spec in wave_specs
+                if spec.timeout is not None
+            ]
+
+            hard_timeout = (
+                max(spec_timeouts) * 1.5
+                if spec_timeouts
+                else None
+            )
+            wave_deadline = time() + hard_timeout
+
             with ProcessPoolExecutor(
                 max_workers=len(wave_specs),
                 mp_context=ctx,
@@ -197,15 +211,63 @@ def run_epoch_spawn_eval(
                     )
                     fut = ex.submit(worker_fn, inp)
                     fut_to_idx[fut] = idx
-                for fut in as_completed(fut_to_idx):
-                    idx = fut_to_idx[fut]
-                    result = fut.result()
-                    outs[idx] = result
-                    # update stats
-                    wave_done += 1
-                    wave_success += result.hit_goal
-                    total_done += 1
-                    total_success += result.hit_goal
+                pending = set(fut_to_idx.keys())
+                while pending:
+                    remaining = wave_deadline - time()
+                    # --------------------------------------------------
+                    # Hard timeout triggered
+                    # --------------------------------------------------
+                    if remaining <= 0:
+                        print(
+                            f"[EVAL] HARD TIMEOUT | "
+                            f"{diff.name} wave {wave_idx}"
+                        )
+                        for fut in pending:
+                            idx = fut_to_idx[fut]
+                            fut.cancel()
+                            outs[idx] = EvalWorkerOutput(
+                                hit_goal=False,
+                                steps=-2,
+                                instance_name=f"[{specs[idx].pddls[1]}]:[HARD_TIMEOUT]",
+                            )
+                            wave_done += 1
+                            total_done += 1
+                        ex.shutdown(
+                            wait=False,
+                            cancel_futures=True,
+                        )
+                        break
+                    # --------------------------------------------------
+                    # Wait for completed futures
+                    # --------------------------------------------------
+                    done, pending = wait(
+                        pending,
+                        timeout=min(remaining, 5.0),
+                        return_when=FIRST_COMPLETED,
+                    )
+
+                    for fut in done:
+                        idx = fut_to_idx[fut]
+                        try:
+                            result = fut.result()
+                        except Exception as e:
+                            print(
+                                f"[EVAL] Worker crashed | "
+                                f"{diff.name} wave {wave_idx} | "
+                                f"idx={idx} | "
+                                f"error={repr(e)}"
+                            )
+                            result = EvalWorkerOutput(
+                                hit_goal=False,
+                                steps=-3,
+                                instance_name="[CRASH]",
+                            )
+                        outs[idx] = result
+                        # update stats
+                        wave_done += 1
+                        wave_success += result.hit_goal
+                        total_done += 1
+                        total_success += result.hit_goal
             wave_rate = wave_success / wave_done if wave_done else 0.0
             print(
                 f"[EVAL] {diff.name} wave {wave_idx}: "
