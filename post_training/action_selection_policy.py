@@ -7,7 +7,6 @@ import numpy as np
 
 class ActionSelectionPolicy:
 
-
     def __init__(self, worker_tag="WORKER", **kwargs):
         self.worker_tag = worker_tag
         if "epoch" not in kwargs or kwargs["epoch"] is None or kwargs["epoch"] == 0:
@@ -19,6 +18,7 @@ class ActionSelectionPolicy:
                 "epsilon",
                 "temperature",
                 "decay_rate",
+                "duplicate_penalty",
             ]:
                 if hasattr(self, attr):
                     print(f"{self.worker_tag} {attr} = {getattr(self, attr)}")
@@ -122,6 +122,7 @@ class EpsilonGreedyMixin:
 
         return super().select_action(mcts, pi)
 
+
 class ExplorationDecayMixin:
 
     def __init__(self, decay_rate=0.999, **kwargs):
@@ -135,6 +136,37 @@ class ExplorationDecayMixin:
 
         if hasattr(self, "temperature"):
             self.temperature *= self.decay_rate
+
+
+class PathDuplicatePenaltyMixin:
+
+    def __init__(self, duplicate_penalty=0.0, **kwargs):
+        self.duplicate_penalty = duplicate_penalty
+        # the name penalty is reversed, the value 0.0 means the highest penalty - a ban.
+        super().__init__(**kwargs)
+
+    def select_action(self, mcts, pi):
+        root = mcts.curr_tree_root
+        if root.children is None or root.children.is_empty():
+            return super().select_action(mcts, pi)
+        traj_mask = root.get_child_on_trajectory_mask()
+        if traj_mask.size == 0:
+            return super().select_action(mcts, pi)
+        orig_pi = pi
+        pi = pi.copy()
+        child_actions = root.children.actions_np
+        penalties = np.where(
+            traj_mask > 0,
+            self.duplicate_penalty,
+            1.0,
+        )
+        pi[child_actions] *= penalties
+        s = pi.sum()
+        if s > 0:
+            pi /= s
+        else:
+            pi = orig_pi
+        return super().select_action(mcts, pi)
 
 
 # ============================================================
@@ -156,10 +188,14 @@ def build_action_policy(
         temperature=None,
         decay_rate=None,
         epoch=None,
+        duplicate_penalty=None,
 ):
     base = BASE_POLICIES[base_policy]
 
     mixins = []
+
+    if distance_threshold is not None:
+        mixins.append(GoalChaseMixin)
 
     if decay_rate is not None:
         mixins.append(ExplorationDecayMixin)
@@ -170,8 +206,8 @@ def build_action_policy(
     if temperature is not None:
         mixins.append(TemperatureMixin)
 
-    if distance_threshold is not None:
-        mixins.append(GoalChaseMixin)
+    if duplicate_penalty is not None:
+        mixins.append(PathDuplicatePenaltyMixin)
 
     bases = tuple(mixins + [base])
 
@@ -192,6 +228,7 @@ def build_action_policy(
         temperature=temperature,
         decay_rate=decay_rate,
         epoch=epoch,
+        duplicate_penalty=duplicate_penalty,
     )
 # ============================================================
 # Example

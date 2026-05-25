@@ -347,6 +347,7 @@ class SpawnExploreSpec:
     action_policy_epsilon: float = None
     action_policy_temperature: float = None
     action_policy_decay_rate: float = None
+    action_policy_duplicate_penalty: float = None
 
     # evaluation only attributes
     evaluation_mode: bool = False
@@ -365,7 +366,7 @@ class SpawnExploreSpec:
             "ESTIMATOR & DECAY": ["estimator_h_to_v_coeff", "use_estimator", "estimator_decay_coeff_start",
                                   "estimator_decay_coeff_end", "estimator_decay_epochs"],
             "ACTION POLICY": ["action_policy", "action_policy_epsilon", "action_policy_temperature",
-                              "action_policy_decay_rate"],
+                              "action_policy_decay_rate", "action_policy_duplicate_penalty"],
             "MISC / TRAINING": ["use_fluents", "use_comps", "fixed_instance_pddl", "original_training_set",
                                 "freeze_train_steps", "freeze_batch_size"]
         }
@@ -456,6 +457,7 @@ def make_specs(args, specific_instances=None, evaluation_mode=False, difficulty:
             action_policy_epsilon=args.action_policy_epsilon,
             action_policy_temperature=args.action_policy_temperature,
             action_policy_decay_rate=args.action_policy_decay_rate,
+            action_policy_duplicate_penalty=args.action_policy_duplicate_penalty,
             timeout=args.graceful_timeout,
         )
 

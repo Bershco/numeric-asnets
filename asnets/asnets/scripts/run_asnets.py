@@ -623,6 +623,12 @@ parser.add_argument(
     help='Set decay rate mixin for MCTS action policy.'
 )
 parser.add_argument(
+    '--action-policy-duplicate-penalty',
+    type=float,
+    default=0.0,
+    help='Set duplicate penalty rate (for trajectory cycle skipping) mixin for MCTS action policy.'
+)
+parser.add_argument(
     '--estimator-h-to-v-coeff',
     type=float,
     default=1.0,

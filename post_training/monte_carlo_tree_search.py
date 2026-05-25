@@ -19,7 +19,7 @@ class MCTSNode:
     __slots__ = (
         "state", "cost_until_now", "children", "goal_state", "terminal_state", "as_network_input",
         "applicable_action_mask", "act_dist", "pred_value", "Q_value", "known_distance_to_goal", "best_goal_child",
-        "visit_count", "last_select_id", "parents", "root_visit_count"
+        "visit_count", "last_select_id", "parents", "root_visit_count", "on_trajectory",
     )
 
     def __init__(self,
@@ -42,6 +42,7 @@ class MCTSNode:
         self.root_visit_count = 0
         self.last_select_id = -1
         self.parents: list[tuple["MCTSNode", int]] = [] # list of tuples of (parent, action)
+        self.on_trajectory = False
 
     def is_terminal(self):
         """Returns True if the node has no children"""
@@ -66,6 +67,23 @@ class MCTSNode:
     def add_parent(self, node: "MCTSNode", act: int):
         if not any(parent is node and parent_act == act for parent, parent_act in self.parents):
             self.parents.append((node, act))
+
+    def get_child_on_trajectory_mask(self) -> np.ndarray:
+        """
+        Returns a float32 mask aligned with children.actions_np:
+            1.0 -> child is on trajectory
+            0.0 -> child is not on trajectory
+        """
+        if self.children is None or self.children.is_empty():
+            return np.empty(0, dtype=np.float32)
+
+        return np.asarray(
+            [
+                float(child is not None and child.on_trajectory)
+                for child in self.children.values()
+            ],
+            dtype=np.float32,
+        )
 
 class FixedChildMap:
     __slots__ = ("_keys", "_values", "_visits", "_actions_np", "_priors")

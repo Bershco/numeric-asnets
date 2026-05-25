@@ -478,6 +478,7 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
         epsilon=inp.spec.action_policy_epsilon,
         temperature=inp.spec.action_policy_temperature,
         decay_rate=inp.spec.action_policy_decay_rate,
+        duplicate_penalty=inp.spec.action_policy_duplicate_penalty,
         epoch=inp.epoch,
     )
     act_dim = planner_exts.problem_meta.num_acts
@@ -1206,6 +1207,7 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
         epsilon=inp.spec.action_policy_epsilon,
         temperature=inp.spec.action_policy_temperature,
         decay_rate=inp.spec.action_policy_decay_rate,
+        duplicate_penalty=inp.spec.action_policy_duplicate_penalty,
     )
     wm_local = _rebuild_weight_manager_local(
         planner_exts.problem_meta,
@@ -1309,6 +1311,7 @@ def run_worker_eval_policy_only(inp: EvalWorkerInput) -> EvalWorkerOutput:
         worker_tag=worker_tag,
         epsilon=inp.spec.action_policy_epsilon,
         temperature=inp.spec.action_policy_temperature,
+        duplicate_penalty=inp.spec.action_policy_duplicate_penalty,
     )
     # --------------------------------------------------
     # Rebuild network locally

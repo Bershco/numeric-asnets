@@ -282,6 +282,10 @@ def build_arch_flags(arch_mod, is_train, override_enhsp_config=None, override_ms
         assert isinstance(arch_mod.ACTION_POLICY_DECAY_RATE, float | None)
         if arch_mod.ACTION_POLICY_DECAY_RATE is not None:
             flags.extend(['--action-policy-decay-rate', str(arch_mod.ACTION_POLICY_DECAY_RATE)])
+    if hasattr(arch_mod, 'ACTION_POLICY_DUPLICATE_PENALTY'):
+        assert isinstance(arch_mod.ACTION_POLICY_DUPLICATE_PENALTY, float | None)
+        if arch_mod.ACTION_POLICY_DUPLICATE_PENALTY is not None:
+            flags.extend(['--action-policy-duplicate-penalty', str(arch_mod.ACTION_POLICY_DUPLICATE_PENALTY)])
 
     # compulsory flags
     sup_lr_flag = override_sup_lr if override_sup_lr is not None else arch_mod.SUPERVISED_LEARNING_RATE
