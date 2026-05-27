@@ -1284,7 +1284,7 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
                 f"instance={instance_name} | "
                 f"policy_argmax={policy_argmax} ({argmax_action_prob:.4f}) | "
                 f"mcts_selected={action} ({selected_action_prob:.4f}) | "
-                f"selected_rank={policy_rank_selected}"
+                f"selected_rank={policy_rank_selected} | "
                 f"top5_policy_actions={[(int(a), float(masked_pi[a])) for a in ranked_actions[:5]]}"
             )
         cstate = mcts.step_forward(action)
