@@ -127,6 +127,9 @@ class ParallelMCTSExplorerGrads:
         print(",".join(diff_list_from_specs))
         return True
 
+    def can_early_stop(self):
+        return self.progression_level in (ProgressionLevel.LEVEL5, ProgressionLevel.LEVEL4)
+
     def set_specs_according_to_progression_level(self):
         diff_seq = self.progression_level.generate_difficulty_sequence(len(self.specs))
         assert len(diff_seq) == len(self.specs)

@@ -527,7 +527,7 @@ class SupervisedTrainer(BaseTrainer):
 
         PATIENCE = 2  # consecutive validations
         COOLDOWN_EPOCHS = 10
-        VALIDATE_EVERY = 5
+        VALIDATE_EVERY = 20
         THRESHOLD_EASY = 0.85
 
         tr = tqdm.trange(max_epochs, desc='epoch', leave=True)
@@ -653,9 +653,8 @@ class SupervisedTrainer(BaseTrainer):
                     cooldown_counter -= VALIDATE_EVERY
 
                 # -------------------------
-                # 2. Progression (NEW)
+                # 2. Instance Progression
                 # -------------------------
-
                 if self.can_progress(success_rates):
                     if self.explorer.advance_progression_level():
                         # this progresses the progression level and returns true if advanced, if current progression level is max - returns false
@@ -699,7 +698,8 @@ class SupervisedTrainer(BaseTrainer):
 
             if (
                     self.early_stop
-                    and epoch_num >= early_stop_first_epoch
+                    # and epoch_num >= early_stop_first_epoch
+                    and self.explorer.can_early_stop()
                     and time_since_best >= self.early_stop
                     and best_rate >= solve_thresh
             ):
