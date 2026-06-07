@@ -338,6 +338,7 @@ class SpawnExploreSpec:
     # estimator decay
     use_estimator: bool = False
     full_estimator: bool = False
+    half_estimator: bool = False
     estimator_decay_coeff_start: float = 1.0
     estimator_decay_coeff_end: float = 0.2
     estimator_decay_epochs: int = 0
@@ -461,6 +462,7 @@ def make_specs(args, specific_instances=None, evaluation_mode=False, difficulty:
             action_policy_duplicate_penalty=args.action_policy_duplicate_penalty,
             timeout=args.graceful_timeout,
             full_estimator=args.full_estimator,
+            half_estimator=args.half_estimator,
         )
 
         if not evaluation_mode:

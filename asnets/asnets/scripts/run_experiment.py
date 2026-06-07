@@ -582,6 +582,12 @@ parser.add_argument(
     help='Enable estimator 100%, never decay, use as heuristic service'
 )
 parser.add_argument(
+    '--half-estimator',
+    action='store_true',
+    default=False,
+    help='Enable estimator 50%, never decay, use as heuristic service'
+)
+parser.add_argument(
     '--discard-failed-runs',
     action='store_true',
     default=False,
@@ -661,6 +667,7 @@ def main():
                estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
                use_estimator=args.use_estimator,
                full_estimator=args.full_estimator,
+               half_estimator=args.half_estimator,
                estimator_decay_coeff_start=args.estimator_decay_coeff_start,
                estimator_decay_coeff_end=args.estimator_decay_coeff_end,
                estimator_decay_epochs=args.estimator_decay_epochs,
@@ -706,6 +713,7 @@ def main_inner(*,
                estimator_h_to_v_coeff=None,
                use_estimator=False,
                full_estimator=False,
+               half_estimator=False,
                estimator_decay_coeff_start=None,
                estimator_decay_coeff_end=None,
                estimator_decay_epochs=None,
@@ -783,6 +791,8 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.append('--use-estimator')
         if full_estimator:
             train_flags.append('--full-estimator')
+        if half_estimator:
+            train_flags.append('--half-estimator')
         if estimator_decay_coeff_start:
             train_flags.extend(['--estimator-decay-coeff-start', str(estimator_decay_coeff_start)])
         if estimator_decay_coeff_end:
@@ -852,6 +862,9 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.extend(['--mcts-iterations', str(mcts_iterations)])
     if full_estimator:
         main_test_flags.append('--full-estimator')
+    if half_estimator:
+        main_test_flags.append('--half-estimator')
+
 
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:

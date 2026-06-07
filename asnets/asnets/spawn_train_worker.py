@@ -72,6 +72,8 @@ class WorkerInput:
     def estimator_coeff(self):
         if self.spec.full_estimator:
             return 1.0
+        if self.spec.half_estimator:
+            return 0.5
         if not self.spec.use_estimator:
             return 0.0
         return min(
@@ -1310,9 +1312,10 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
         wm_local,
         planner_exts.problem_meta,
     )
+    estimator = _build_estimator(planner_exts, inp.spec)
     ctx = LocalExploreContext(
         planner_exts=planner_exts,
-        estimator=None,
+        estimator=estimator,
     )
     cstate = ctx.get_init_state()
     max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))

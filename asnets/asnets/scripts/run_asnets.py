@@ -649,6 +649,12 @@ parser.add_argument(
     help='Enable estimator 100%, never decay, use as heuristic service'
 )
 parser.add_argument(
+    '--half-estimator',
+    action='store_true',
+    default=False,
+    help='Enable estimator 50%, never decay, use as heuristic service'
+)
+parser.add_argument(
     '--discard-failed-runs',
     action='store_true',
     default=False,
@@ -1132,6 +1138,8 @@ def main():
         # runs, where checkpoints are always written anyway (they have to be!)
         assert args.no_train, \
             "--minimal-file-saves without --no-train is weird; is this a bug?"
+
+    assert not (args.half_estimator and args.full_estimator)
 
     if args.expt_dir is None:
         args.expt_dir = 'experiment-results'
