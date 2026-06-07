@@ -851,7 +851,7 @@ evaluation = {"off" if no_eval else "on"}
     if mcts_iterations:
         main_test_flags.extend(['--mcts-iterations', str(mcts_iterations)])
     if use_estimator:
-        main_test_flags.append(['--use-estimator',str(use_estimator)])
+        main_test_flags.extend(['--use-estimator',str(use_estimator)])
 
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:
