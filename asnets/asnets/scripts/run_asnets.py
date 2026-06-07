@@ -643,6 +643,12 @@ parser.add_argument(
          ' this "help" will decay in favor of the network output along the run.'
 )
 parser.add_argument(
+    '--full-estimator',
+    action='store_true',
+    default=False,
+    help='Enable estimator 100%, never decay, use as heuristic service'
+)
+parser.add_argument(
     '--discard-failed-runs',
     action='store_true',
     default=False,

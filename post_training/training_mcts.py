@@ -19,10 +19,9 @@ class TrainingMCTS(MCTS):
 
     def __init__(self, network, ctx: LocalExploreContext,
                  iterations=10, expansion_k=5,
-                 exploration_weight=1.0, sharpen_pi=1.0, one_hot_distance_gamma=0.999, use_batched_inference=True,
-                 select_logging=False, estimator_coeff=0.0, puct_debug=False ):
-        super().__init__(exploration_weight, network=network, select_logging=select_logging)
-        self.use_batched_inference = use_batched_inference
+                 exploration_weight=1.0, sharpen_pi=1.0, one_hot_distance_gamma=0.999,
+                 select_logging=False, estimator_coeff=0.0, puct_debug=False, minimization=True, ):
+        super().__init__(exploration_weight, network=network, select_logging=select_logging, minimization=minimization)
         self.ctx = ctx
         self.iterations = iterations
         self.k = expansion_k
@@ -118,7 +117,7 @@ class TrainingMCTS(MCTS):
             children_network_repr.append(wrapped_output_cstate.as_network_input)
 
         # Network inference only (no estimator here anymore)
-        if self.use_batched_inference and len(children_network_repr) > 0:
+        if len(children_network_repr) > 0:
 
             batch_tensor = tf.stack(children_network_repr)
             if self.network.value_head_enabled:
@@ -134,31 +133,12 @@ class TrainingMCTS(MCTS):
                 pred_pi_batch = pred_pi_batch.numpy().astype(np.float32, copy=False)
                 for i, child in enumerate(children_nodes):
                     child.act_dist = pred_pi_batch[i]
-                    child.pred_value = 0.0 if not child.goal_state else 1.0
-
-        else:
-            # FIXME: this needs a fix (regarding the 'get_single_node_policy_value' method call) or else this will raise errors.
-            if self.network.value_head_enabled:
-                for child in children_nodes:
-                    act_dist, value = self.get_single_node_policy_value(child)
-
-                    child.act_dist = np.array(act_dist).flatten().astype(np.float32)
-                    child.pred_value = float(value)
-            else:
-                for child in children_nodes:
-                    act_dist = self.get_single_node_policy_value(child)
-                    child.act_dist = np.array(act_dist).flatten().astype(np.float32)
-                    child.pred_value = 0.0 if not child.goal_state else 1.0
+                    child.pred_value = self.worst_value() if not child.goal_state else self.best_value()
         node.children = FixedChildMap(actions, children_nodes, edge_priors)
 
     def _evaluate_node(self, node: MCTSNode) -> float:
-        """
-        Evaluate node value.
-        Uses network prediction as base value.
-        Optionally refines with estimator (once per state).
-        """
         if node.goal_state:
-            return 1.0
+            return self.best_value()
         net_v = node.pred_value
         alpha = self.estimator_coeff
         if alpha > 0.0 and self.estimator_mode in (EstimatorMode.V_ONLY, EstimatorMode.BOTH):
@@ -168,17 +148,7 @@ class TrainingMCTS(MCTS):
             if cached is not None:
                 est_v = cached[0]
             else:
-                problem_hlist = replace_init_state(
-                    estimator._problem_hlist,
-                    node.state.to_tup_state()
-                )
-                oneliner = hlist_to_sexprs(problem_hlist)
-                (h, _) = estimator.get_estimate_batched(
-                    [oneliner],
-                    EstimatorMode.V_ONLY
-                )[0]
-                coeff = self.ctx.estimator_h_to_v_coeff
-                est_v = float(np.exp(-coeff * h))
+                est_v = get_est_v(estimator, node.state.to_tup_state(), self.ctx.estimator_h_to_v_coeff, self.minimization)
                 estimator.state_key_cache[key] = (est_v, None)
             value = (1.0 - alpha) * net_v + alpha * est_v
             node.pred_value = value  # overwrite prior with refined estimate
@@ -413,5 +383,22 @@ class TrainingMCTS(MCTS):
             self.curr_tree_root.pred_value = float(value.numpy().squeeze())
         else:
             act_dist = self.network(self.curr_tree_root.as_network_input)
-            self.curr_tree_root.pred_value = 0.0 if not self.curr_tree_root.goal_state else 1.0
+            self.curr_tree_root.pred_value = self.worst_value() if not self.curr_tree_root.goal_state else self.best_value()
         self.curr_tree_root.act_dist = tf.squeeze(act_dist).numpy().astype(np.float32)
+
+def get_est_v(estimator, state_tup, est_h_to_v_coeff, minimization):
+    problem_hlist = replace_init_state(
+        estimator._problem_hlist,
+        state_tup
+    )
+    oneliner = hlist_to_sexprs(problem_hlist)
+    (h, _) = estimator.get_estimate_batched(
+        [oneliner],
+        EstimatorMode.V_ONLY
+    )[0]
+    if minimization:
+        est_v = h
+    else:
+        coeff = est_h_to_v_coeff
+        est_v = float(np.exp(-coeff * h))
+    return est_v

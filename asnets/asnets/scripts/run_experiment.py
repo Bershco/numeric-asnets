@@ -576,6 +576,12 @@ parser.add_argument(
          ' this "help" will decay in favor of the network output along the run.'
 )
 parser.add_argument(
+    '--full-estimator',
+    action='store_true',
+    default=False,
+    help='Enable estimator 100%, never decay, use as heuristic service'
+)
+parser.add_argument(
     '--discard-failed-runs',
     action='store_true',
     default=False,
@@ -654,6 +660,7 @@ def main():
                profile_dir=args.profile_dir,
                estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
                use_estimator=args.use_estimator,
+               full_estimator=args.full_estimator,
                estimator_decay_coeff_start=args.estimator_decay_coeff_start,
                estimator_decay_coeff_end=args.estimator_decay_coeff_end,
                estimator_decay_epochs=args.estimator_decay_epochs,
@@ -698,6 +705,7 @@ def main_inner(*,
                profile_dir=None,
                estimator_h_to_v_coeff=None,
                use_estimator=False,
+               full_estimator=False,
                estimator_decay_coeff_start=None,
                estimator_decay_coeff_end=None,
                estimator_decay_epochs=None,
@@ -773,6 +781,8 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend(['--estimator-h-to-v-coeff', str(estimator_h_to_v_coeff)])
         if use_estimator:
             train_flags.append('--use-estimator')
+        if full_estimator:
+            train_flags.append('--full-estimator')
         if estimator_decay_coeff_start:
             train_flags.extend(['--estimator-decay-coeff-start', str(estimator_decay_coeff_start)])
         if estimator_decay_coeff_end:
@@ -840,6 +850,8 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.extend(['--num-workers', str(num_workers)])
     if mcts_iterations:
         main_test_flags.extend(['--mcts-iterations', str(mcts_iterations)])
+    if full_estimator:
+        main_test_flags.append('--full-estimator')
 
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:

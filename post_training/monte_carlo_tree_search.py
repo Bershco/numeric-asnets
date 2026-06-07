@@ -185,6 +185,7 @@ class MCTS:
                  use_numpy_sampler=False,
                  select_logging=False,
                  puct_selection_mode='argmax',  # or 'sample'
+                 minimization=True,
                  ):
         self.curr_tree_root: Optional[MCTSNode] = None
         self.original_tree_root: Optional[MCTSNode] = None
@@ -192,6 +193,9 @@ class MCTS:
         self.path_until_goal = None
         self.state_key_to_node: dict[bytes, MCTSNode] = {}
         self.network = network
+
+        self.sign = -1 if minimization else 1 # This turns selection to argmax(U-Q) instead of argmax(Q+U) in the maximization setting
+        self.minimization = minimization
 
         self.debug_memory = debug_memory
         self._select_counter = -1
@@ -308,8 +312,8 @@ class MCTS:
         path = self._select(node)
         leaf = path[-1]
         self._expand(leaf)
-        reward = self._rollout(leaf, horizon=horizon)
-        self._backpropagate(path, reward, leaf.goal_state)
+        value = self._rollout(leaf, horizon=horizon)
+        self._backpropagate(path, value, leaf.goal_state)
         if self.path_until_goal is not None:
             self.path_until_goal = self.reconstructSelectionPath(path) + self.path_until_goal
 
@@ -320,10 +324,10 @@ class MCTS:
             self.select_depths.append(len(path))
         leaf = path[-1]
         self._expand(leaf)
-        reward = self._evaluate_node(leaf)
+        value = self._evaluate_node(leaf)
         # numbers might be too low or insignificant?? I think it would be okay...
         # theoretically and practically it SHOULD not be lower than 1/10001 which isn't that low.
-        self._backpropagate(path, reward, leaf.goal_state)
+        self._backpropagate(path, value, leaf.goal_state)
 
     def _select(self, node: MCTSNode):
         """Find an unexplored descendant of `node`."""
@@ -339,7 +343,7 @@ class MCTS:
             self.maybe_log_puct_on_selection_path(
                 node,
                 selection_depth=depth,
-                max_depth=2,
+                max_depth=-1,
                 every=25,
             )
             depth += 1
@@ -382,7 +386,7 @@ class MCTS:
         """Returns the reward for a random simulation (to a certain horizon) of `node`"""
         raise NotImplemented
 
-    def _backpropagate(self, path: list[MCTSNode], reward: float, subtree_contains_goal: bool):
+    def _backpropagate(self, path: list[MCTSNode], value: float, subtree_contains_goal: bool):
         for parent, child in zip(path, path[1:]):
             if parent.children is None:
                 raise RuntimeError("Backprop path contains parent with no children")
@@ -393,7 +397,7 @@ class MCTS:
         for node in reversed(path):
             node.visit_count += 1
             q_old = node.Q_value
-            node.Q_value = q_old + (reward - q_old) / node.visit_count
+            node.Q_value = q_old + ((value - q_old) / node.visit_count)
             if distance_from_goal is not None:
                 old_dist = node.known_distance_to_goal
                 update = False
@@ -407,7 +411,9 @@ class MCTS:
                     new_visits = new_child.visit_count
                     if new_visits > prev_visits:
                         update = True
-                    elif new_visits == prev_visits and new_child.Q_value > prev_child.Q_value:
+                    elif (new_visits == prev_visits and
+                          (new_child.Q_value > prev_child.Q_value if not self.minimization
+                          else new_child.Q_value < prev_child.Q_value)):
                         update = True
                 if update:
                     node.known_distance_to_goal = distance_from_goal
@@ -417,8 +423,7 @@ class MCTS:
 
     def _evaluate_node(self, node: MCTSNode) -> float:
         """Use the teacher's (or another) heuristic to evaluate a specific node, in order to use value-based mcts"""
-        value = self.get_value_from_mcts_node(node)
-        return value
+        return self.get_value_from_mcts_node(node)
 
     def reconstructSelectionPath(self, path):
         output_path = [(None, self.curr_tree_root)]
@@ -434,7 +439,7 @@ class MCTS:
 
     def get_value_from_mcts_node(self, node: MCTSNode) -> float:
         if node.goal_state:
-            return 1.0
+            return self.best_value()
         else:
             return node.pred_value
 
@@ -494,7 +499,7 @@ class MCTS:
         scores = []
         for i, child in enumerate(child_list):
             u = c * priors[i] * (sqrtN / (1.0 + edge_visits[i]))
-            s = child.Q_value + u
+            s = self.sign * child.Q_value + u
             scores.append(s)
             if child.last_select_id != sid:
                 any_valid = True
@@ -570,7 +575,7 @@ class MCTS:
         scores = [] if self.select_logging else None
         for i, child in enumerate(child_list):
             u = c * priors[i] * (sqrtN / (1.0 + edge_visits[i]))
-            s = child.Q_value + u
+            s = self.sign * child.Q_value + u
             if scores is not None:
                 scores.append(s)
             if child.last_select_id == sid:
@@ -606,7 +611,7 @@ class MCTS:
             cycle[i] = child.last_select_id == sid
         sqrtN = math.sqrt(max(1.0, node.visit_count))
         U = self.exploration_weight * priors * (sqrtN / (1.0 + edge_visits))
-        score = Q + U
+        score = self.sign * Q + U
         valid_mask = ~cycle
         if not valid_mask.any():
             return None, None
@@ -646,7 +651,7 @@ class MCTS:
 
         sqrtN = math.sqrt(max(1.0, node.visit_count))
         U = self.exploration_weight * priors * (sqrtN / (1.0 + edge_visits))
-        score = Q + U
+        score = self.sign * Q + U
 
         valid_mask = ~cycle
 
@@ -730,7 +735,7 @@ class MCTS:
             Q[i] = float(child.Q_value)
 
         U = c * priors * (sqrtN / (1.0 + edge_visits))
-        score = Q + U
+        score = self.sign * Q + U
 
         q_min = float(np.min(Q))
         q_max = float(np.max(Q))
@@ -945,6 +950,16 @@ class MCTS:
             return_dict=False,
             skip_zero_q_range=True,
         )
+
+    def best_value(self):
+        if self.minimization:
+            return 0.0
+        return 1.0
+
+    def worst_value(self):
+        if self.minimization:
+            return np.inf
+        return 0.0
 
 def wrapInMCTSNode(state: CanonicalState, cost_until_now=float('inf')):
     return MCTSNode(state=state, cost_until_now=cost_until_now, is_goal=state.is_goal,

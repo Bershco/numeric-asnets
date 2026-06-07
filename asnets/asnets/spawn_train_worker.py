@@ -34,7 +34,7 @@ from asnets.supervised import PlannerExtensions, planner_trace
 from asnets.utils.generator_utils import extract_domain_name_from_file, Domain, InstanceDifficulty
 from asnets.utils.py_utils import set_random_seeds, RandomPopContainer
 from post_training.enhspwrapper import ENHSPEstimator, EstimatorMode
-from post_training.training_mcts import TrainingMCTS
+from post_training.training_mcts import TrainingMCTS, get_est_v
 
 from enum import Enum, auto
 
@@ -51,6 +51,9 @@ class WorkerInput:
     weights_np: dict  # PropNetworkWeights.export_numpy() result
     epoch: Optional[int]
 
+    # WIP: turning the problem to a minimization problem
+    minimization: bool = True
+
     # logging
     log: bool = False
     log_weights: bool = False
@@ -61,7 +64,22 @@ class WorkerInput:
     @property
     def seed(self):
         epoch_term = 0 if self.epoch is None else self.epoch * 128
-        return self.spec.trainer_seed + self.spec.slot_id + epoch_term  # assuming max(workers) >>> 128
+        return self.spec.trainer_seed + self.spec.slot_id + epoch_term  # assuming max(workers) <<< 128
+
+    max_estimator_coeff: float = 1.0
+
+    @property
+    def estimator_coeff(self):
+        if self.spec.full_estimator:
+            return 1.0
+        if not self.spec.use_estimator:
+            return 0.0
+        return min(
+            self.max_estimator_coeff,
+            self.spec.estimator_decay_coeff_start +
+            (self.spec.estimator_decay_coeff_end - self.spec.estimator_decay_coeff_start) *
+            min(self.epoch / self.spec.estimator_decay_epochs, 1)
+        )
 
 
 @dataclass(frozen=True)
@@ -85,20 +103,6 @@ class MCTSWorkerInput(WorkerInput):
     # run corruption settings for corruption testing
     corrupt_pi: Optional[str] = None  # "shuffle" | "random" | "zero" | None
     corrupt_z: Optional[str] = None  # "shuffle" | "random" | "zero" | None
-
-    max_estimator_coeff: float = 1.0
-
-    @property
-    def estimator_coeff(self):
-        if not self.spec.use_estimator:
-            return 0.0
-        return min(
-            self.max_estimator_coeff,
-            self.spec.estimator_decay_coeff_start +
-            (self.spec.estimator_decay_coeff_end - self.spec.estimator_decay_coeff_start) *
-                        min(self.epoch / self.spec.estimator_decay_epochs, 1)
-        )
-
 
 @dataclass
 class WorkerOutput:
@@ -214,17 +218,6 @@ class WorkerCollectorWithLogging(WorkerCollector):
             "mse_loss": np.mean(self.mse_losses) if self.mse_losses else None,
             "reg_loss": np.mean(self.reg_losses) if self.reg_losses else None,
         }
-
-
-@dataclass(frozen=True)
-class EvalWorkerInput:
-    spec: Any  # SpawnExploreSpec
-    weights_np: dict
-    epoch: Optional[int]
-
-    @property
-    def seed(self):
-        return self.spec.trainer_seed + self.spec.slot_id
 
 
 @dataclass
@@ -388,7 +381,7 @@ def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalE
 
 def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_ident_to_ind, act_dim: int,
                        init_state: CanonicalState, ctx: LocalExploreContext, estimator: ENHSPEstimator,
-                       est_plan_z: bool = False, enhsp_timeout: int = 15):
+                       est_plan_z: bool = False, enhsp_timeout: int = 15, minimization: bool = False):
     params = ENHSP_CONFIGS[enhsp_config] + f" -timeout {enhsp_timeout}"
     planner = ENHSP(params)
     domain_path = pddl_files[0]
@@ -409,17 +402,7 @@ def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_ident_to_in
             if est_plan_z:
                 cached = estimator.state_key_cache.get(prev_state_key)
                 if cached is None:
-                    problem_hlist = replace_init_state(
-                        estimator._problem_hlist,
-                        curr_state.to_tup_state()
-                    )
-                    oneliner = hlist_to_sexprs(problem_hlist)
-                    (h, _) = estimator.get_estimate_batched(
-                        [oneliner],
-                        EstimatorMode.V_ONLY
-                    )[0]
-                    coeff = ctx.estimator_h_to_v_coeff
-                    est_v = float(np.exp(-coeff * h))
+                    est_v = get_est_v(estimator, curr_state.to_tup_state(), ctx.estimator_h_to_v_coeff, minimization)
                     estimator.state_key_cache[prev_state_key] = (est_v, None)
                 else:
                     est_v, _ = cached
@@ -520,6 +503,7 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
         sharpen_pi=0.5,
         select_logging=select_logging,
         estimator_coeff=inp.estimator_coeff,
+        minimization=inp.minimization,
     )
 
     mcts.initialise_tree(cstate)
@@ -907,7 +891,7 @@ def run_worker_opt_profiled(inp: WorkerInput, worker_fn=run_worker) -> WorkerOut
         print(f"[WORKER TIMING] pid={os.getpid()} total={time.time() - t0:.2f}s", flush=True)
 
 
-def init_eval_worker(inp: EvalWorkerInput, worker_tag_addon: Optional[str] = None) -> tuple[str, str, float]:
+def init_eval_worker(inp: WorkerInput, worker_tag_addon: Optional[str] = None) -> tuple[str, str, float]:
     start_time = time.time()
     worker_tag_prefix = f"EVAL{'_' + worker_tag_addon if worker_tag_addon else ''}"
     difficulty_str = str(inp.spec.difficulty)
@@ -931,7 +915,7 @@ def eval_max_len_coeff_by_diff(diff: InstanceDifficulty) -> float:
     }
     return coeff_dict[diff]
 
-def run_worker_eval_enhsp(inp: EvalWorkerInput) -> EvalWorkerOutput:
+def run_worker_eval_enhsp(inp: WorkerInput) -> EvalWorkerOutput:
     worker_tag, instance_name, start_time = init_eval_worker(inp, "ENHSP")
     planner_exts = _build_planner_exts_from_spec(
         inp.spec,
@@ -1057,7 +1041,7 @@ def _build_puct_debug_rows(mcts) -> tuple[list[dict], list[dict], int, int]:
         n_parents = len(getattr(child, "parents", []))
         Q = float(child.Q_value)
         U = float(c * P * (sqrtN / (1.0 + edge_N)))
-        S = Q + U
+        S = mcts.sign * Q + U
         row = {
             "action": action_i,
             "prior": P,
@@ -1196,7 +1180,7 @@ def print_puct_debug(mcts, masked_pi) -> None:
         total_child_visits=total_child_visits,
     )
 
-def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
+def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
     worker_tag, instance_name, start_time = init_eval_worker(inp)
     planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
     act_dim = planner_exts.problem_meta.num_acts
@@ -1217,9 +1201,10 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
         wm_local,
         planner_exts.problem_meta,
     )
+    estimator = _build_estimator(planner_exts, inp.spec)
     ctx = LocalExploreContext(
         planner_exts=planner_exts,
-        estimator=None,
+        estimator=estimator,
         estimator_h_to_v_coeff=inp.spec.estimator_h_to_v_coeff,
     )
     if hasattr(inp.spec, "mcts_iterations") and inp.spec.mcts_iterations > 0:
@@ -1236,8 +1221,9 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
         exploration_weight=inp.spec.mcts_exploration_weight,
         sharpen_pi=0.5,
         select_logging=False,
-        estimator_coeff=0.0,  # IMPORTANT difference vs training, estimator must not be used
+        estimator_coeff=inp.estimator_coeff,
         puct_debug=inp.spec.puct_debug,
+        minimization=inp.minimization,
     )
     cstate = ctx.get_init_state()
     max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
@@ -1296,7 +1282,7 @@ def run_worker_eval_mcts(inp: EvalWorkerInput) -> EvalWorkerOutput:
         plan=plan,
     )
 
-def run_worker_eval_policy_only(inp: EvalWorkerInput) -> EvalWorkerOutput:
+def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
     worker_tag, instance_name, start_time = init_eval_worker(inp, "POLICY")
 
     planner_exts = _build_planner_exts_from_spec(

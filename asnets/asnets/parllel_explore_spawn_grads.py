@@ -12,7 +12,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed, Future, wait, 
 import numpy as np
 
 from asnets.spawn_train_worker import MCTSWorkerInput, WorkerOutput, run_worker_opt_profiled, run_worker_eval_mcts, \
-    EvalWorkerInput, EvalWorkerOutput
+    WorkerInput, EvalWorkerOutput
 from asnets.supervised import SupervisedObjective
 from asnets.utils.generator_utils import InstanceDifficulty
 from asnets.utils.prof_utils import can_profile
@@ -204,7 +204,7 @@ def run_epoch_spawn_eval(
                 fut_to_idx: dict[Future, int] = {}
                 for spec in wave_specs:
                     idx = spec_to_idx[id(spec)]
-                    inp = EvalWorkerInput(
+                    inp = WorkerInput(
                         spec=spec,
                         epoch=None,
                         weights_np=weights_np,
@@ -332,11 +332,12 @@ class SpawnExploreSpec:
     timeout: Optional[float] = None
 
     # mcts debugging options
-    puct_debug: bool = False
+    puct_debug: bool = True
     action_debug: bool = True
 
     # estimator decay
     use_estimator: bool = False
+    full_estimator: bool = False
     estimator_decay_coeff_start: float = 1.0
     estimator_decay_coeff_end: float = 0.2
     estimator_decay_epochs: int = 0
@@ -459,6 +460,7 @@ def make_specs(args, specific_instances=None, evaluation_mode=False, difficulty:
             action_policy_decay_rate=args.action_policy_decay_rate,
             action_policy_duplicate_penalty=args.action_policy_duplicate_penalty,
             timeout=args.graceful_timeout,
+            full_estimator=args.full_estimator,
         )
 
         if not evaluation_mode:

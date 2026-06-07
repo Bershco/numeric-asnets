@@ -10,7 +10,7 @@ from typing import Any, Optional, Callable
 import numpy as np
 
 from asnets.parllel_explore_spawn_grads import run_epoch_spawn_grads, run_epoch_spawn_eval, SpawnExploreSpec
-from asnets.spawn_train_worker import WorkerOutput, EvalWorkerInput, EvalWorkerOutput
+from asnets.spawn_train_worker import WorkerOutput, WorkerInput, EvalWorkerOutput
 from asnets.utils.generator_utils import ProgressionLevel
 
 
@@ -142,7 +142,7 @@ class ParallelMCTSExplorerGrads:
 @dataclass
 class ParallelEvaluator:
     specs: list[SpawnExploreSpec]
-    worker_fn: Callable[[EvalWorkerInput],EvalWorkerOutput]
+    worker_fn: Callable[[WorkerInput],EvalWorkerOutput]
     max_workers: Optional[int] = None
 
     def evaluate(self, weights_np):
