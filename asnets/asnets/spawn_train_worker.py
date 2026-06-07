@@ -1297,7 +1297,8 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
         worker_tag=worker_tag,
         epsilon=inp.spec.action_policy_epsilon,
         temperature=inp.spec.action_policy_temperature,
-        duplicate_penalty=inp.spec.action_policy_duplicate_penalty,
+        # duplicate_penalty=inp.spec.action_policy_duplicate_penalty,
+        duplicate_penalty=None, # This is currently bugged on policy-driven search, will be fixed soon
     )
     # --------------------------------------------------
     # Rebuild network locally
