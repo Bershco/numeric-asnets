@@ -635,7 +635,7 @@ parser.add_argument(
     help='Set "k" coefficient for e^{-k*h(s)} in conversion from estimator h value to canonical state value.'
 )
 parser.add_argument(
-    '--use-estimator',
+    '--use-estimator-decay',
     action='store_true',
     default=False,
     help='Enable estimator decay, when on, each node will be estimated by an estimator (ENHSP) during training,'
@@ -643,16 +643,10 @@ parser.add_argument(
          ' this "help" will decay in favor of the network output along the run.'
 )
 parser.add_argument(
-    '--full-estimator',
-    action='store_true',
-    default=False,
-    help='Enable estimator 100%, never decay, use as heuristic service'
-)
-parser.add_argument(
-    '--half-estimator',
-    action='store_true',
-    default=False,
-    help='Enable estimator 50%, never decay, use as heuristic service'
+    '--use-estimator',
+    type=float,
+    default=0.0,
+    help='Enable estimator, input a floating point number from 0.0 to 1.0, never decay, use as heuristic service'
 )
 parser.add_argument(
     '--discard-failed-runs',
@@ -1138,8 +1132,6 @@ def main():
         # runs, where checkpoints are always written anyway (they have to be!)
         assert args.no_train, \
             "--minimal-file-saves without --no-train is weird; is this a bug?"
-
-    assert not (args.half_estimator and args.full_estimator)
 
     if args.expt_dir is None:
         args.expt_dir = 'experiment-results'

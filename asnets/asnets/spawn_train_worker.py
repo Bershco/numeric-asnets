@@ -70,11 +70,9 @@ class WorkerInput:
 
     @property
     def estimator_coeff(self):
-        if self.spec.full_estimator:
-            return 1.0
-        if self.spec.half_estimator:
-            return 0.5
-        if not self.spec.use_estimator:
+        if self.spec.use_estimator:
+            return self.spec.use_estimator
+        if not self.spec.use_estimator_decay:
             return 0.0
         return min(
             self.max_estimator_coeff,

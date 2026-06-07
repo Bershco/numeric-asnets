@@ -332,16 +332,17 @@ class SpawnExploreSpec:
     timeout: Optional[float] = None
 
     # mcts debugging options
-    puct_debug: bool = True
+    puct_debug: bool = False
     action_debug: bool = True
 
     # estimator decay
-    use_estimator: bool = False
-    full_estimator: bool = False
-    half_estimator: bool = False
+    use_estimator_decay: bool = False
     estimator_decay_coeff_start: float = 1.0
     estimator_decay_coeff_end: float = 0.2
     estimator_decay_epochs: int = 0
+
+    # estimator without decay
+    use_estimator: float = 0.0
 
     # action policy attributes
     action_policy: str = "argmax"
@@ -461,8 +462,7 @@ def make_specs(args, specific_instances=None, evaluation_mode=False, difficulty:
             action_policy_decay_rate=args.action_policy_decay_rate,
             action_policy_duplicate_penalty=args.action_policy_duplicate_penalty,
             timeout=args.graceful_timeout,
-            full_estimator=args.full_estimator,
-            half_estimator=args.half_estimator,
+            use_estimator=args.use_estimator,
         )
 
         if not evaluation_mode:
@@ -470,7 +470,7 @@ def make_specs(args, specific_instances=None, evaluation_mode=False, difficulty:
                 sample_k_additional_states=args.sample_k_additional_states,
                 goal_path_reconstruction=args.goal_path_reconstruction,
                 original_training_set=args.original_training_set,
-                use_estimator=args.use_estimator,
+                use_estimator_decay=args.use_estimator_decay,
                 estimator_decay_coeff_start=args.estimator_decay_coeff_start,
                 estimator_decay_coeff_end=args.estimator_decay_coeff_end,
                 estimator_decay_epochs=(

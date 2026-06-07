@@ -568,7 +568,7 @@ parser.add_argument(
     help='Set "k" coefficient for e^{-k*h(s)} in conversion from estimator h value to canonical state value.'
 )
 parser.add_argument(
-    '--use-estimator',
+    '--use-estimator-decay',
     action='store_true',
     default=False,
     help='Enable estimator decay, when on, each node will be estimated by an estiamtor (ENHSP) during training,'
@@ -576,16 +576,10 @@ parser.add_argument(
          ' this "help" will decay in favor of the network output along the run.'
 )
 parser.add_argument(
-    '--full-estimator',
-    action='store_true',
-    default=False,
-    help='Enable estimator 100%, never decay, use as heuristic service'
-)
-parser.add_argument(
-    '--half-estimator',
-    action='store_true',
-    default=False,
-    help='Enable estimator 50%, never decay, use as heuristic service'
+    '--use-estimator',
+    type=float,
+    default=0.0,
+    help='Enable estimator, input a floating point number from 0.0 to 1.0, never decay, use as heuristic service'
 )
 parser.add_argument(
     '--discard-failed-runs',
@@ -666,8 +660,7 @@ def main():
                profile_dir=args.profile_dir,
                estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
                use_estimator=args.use_estimator,
-               full_estimator=args.full_estimator,
-               half_estimator=args.half_estimator,
+               use_estimator_decay=args.use_estimator_decay,
                estimator_decay_coeff_start=args.estimator_decay_coeff_start,
                estimator_decay_coeff_end=args.estimator_decay_coeff_end,
                estimator_decay_epochs=args.estimator_decay_epochs,
@@ -711,9 +704,8 @@ def main_inner(*,
                sample_k_additional_states=0,
                profile_dir=None,
                estimator_h_to_v_coeff=None,
-               use_estimator=False,
-               full_estimator=False,
-               half_estimator=False,
+               use_estimator=0.0,
+               use_estimator_decay=False,
                estimator_decay_coeff_start=None,
                estimator_decay_coeff_end=None,
                estimator_decay_epochs=None,
@@ -788,11 +780,9 @@ evaluation = {"off" if no_eval else "on"}
         if estimator_h_to_v_coeff:
             train_flags.extend(['--estimator-h-to-v-coeff', str(estimator_h_to_v_coeff)])
         if use_estimator:
-            train_flags.append('--use-estimator')
-        if full_estimator:
-            train_flags.append('--full-estimator')
-        if half_estimator:
-            train_flags.append('--half-estimator')
+            train_flags.extend(['--use-estimator',str(use_estimator)])
+        if use_estimator_decay:
+            train_flags.append('--use-estimator-decay')
         if estimator_decay_coeff_start:
             train_flags.extend(['--estimator-decay-coeff-start', str(estimator_decay_coeff_start)])
         if estimator_decay_coeff_end:
@@ -860,11 +850,8 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.extend(['--num-workers', str(num_workers)])
     if mcts_iterations:
         main_test_flags.extend(['--mcts-iterations', str(mcts_iterations)])
-    if full_estimator:
-        main_test_flags.append('--full-estimator')
-    if half_estimator:
-        main_test_flags.append('--half-estimator')
-
+    if use_estimator:
+        main_test_flags.append(['--use-estimator',str(use_estimator)])
 
     prob_flag_list = build_prob_flags_test(prob_mod, restrict_test_probs)
     if serial_test:
