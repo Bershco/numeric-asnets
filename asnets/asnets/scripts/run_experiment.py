@@ -799,6 +799,8 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.append('--validation-on-test-instances')
         if resume_from is not None:
             train_flags.extend(['--resume-from', resume_from])
+        if random_seed is not None:
+            train_flags.extend(['--seed', str(random_seed)])
         final_checkpoint = run_asnets_local(
             flags=train_flags,
             cwd=root_cwd,

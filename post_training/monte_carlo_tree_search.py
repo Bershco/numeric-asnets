@@ -958,7 +958,7 @@ class MCTS:
 
     def worst_value(self):
         if self.minimization:
-            return np.inf
+            return 10000000.0 #np.inf raises warnings in multiplications and averaging
         return 0.0
 
 def wrapInMCTSNode(state: CanonicalState, cost_until_now=float('inf')):

@@ -255,7 +255,8 @@ def run_epoch_spawn_eval(
                                 f"[EVAL] Worker crashed | "
                                 f"{diff.name} wave {wave_idx} | "
                                 f"idx={idx} | "
-                                f"error={repr(e)}"
+                                f"base_error={repr(e)}"
+                                f"{e.__traceback__}"
                             )
                             result = EvalWorkerOutput(
                                 hit_goal=False,
