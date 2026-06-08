@@ -1325,6 +1325,10 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
         if inp.spec.timeout:
             timed_out = step_start_time - start_time > inp.spec.timeout
         if cstate.is_terminal or timed_out:
+            if cstate.is_goal or cstate.is_terminal:
+                print(f"{worker_tag} is_goal={cstate.is_goal} | is_terminal={cstate.is_terminal}")
+                print(f"fluents: {cstate.flnt_values}")
+                print(f"comps: {cstate.comps_true}")
             if timed_out:
                 print(f"{worker_tag} timed out after {inp.spec.timeout} seconds")
             return EvalWorkerOutput(
