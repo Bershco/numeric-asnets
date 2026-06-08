@@ -1357,6 +1357,10 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
         )
         cstate = ctx.env_simulate_step(cstate, action_id)
         plan.append((action_id, planner_exts.ind_to_act_ident[action_id]))
+    if cstate.is_goal or cstate.is_terminal:
+        print(f"{worker_tag} is_goal={cstate.is_goal} | is_terminal={cstate.is_terminal}")
+        print(f"fluents: {cstate.flnt_values}")
+        print(f"comps: {cstate.comps_true}")
     return EvalWorkerOutput(
         hit_goal=float(cstate.is_goal),
         steps=max_len,
