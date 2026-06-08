@@ -135,7 +135,10 @@ class PlannerExtensions(object):
             for a in self.mdpsim_problem.ground_actions
         }
         self.act_ident_to_ind: Dict[str, int] = {
-            "(" + a + ")": i for i, a in enumerate(self.act_ident_to_mdpsim_act.keys())
+            f"({a})": i for i, a in enumerate(self.act_ident_to_mdpsim_act)
+        }
+        self.ind_to_act_ident: Dict[int, str] = {
+            i: a for a,i in self.act_ident_to_ind.items()
         }
         LOGGER.debug(f'Python-side extra data')
         # Python-side extra data

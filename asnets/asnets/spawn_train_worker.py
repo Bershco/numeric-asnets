@@ -1356,7 +1356,7 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
             pi=masked_pi,
         )
         cstate = ctx.env_simulate_step(cstate, action_id)
-        plan.append(action_id)
+        plan.append((action_id, planner_exts.ind_to_act_ident[action_id]))
     return EvalWorkerOutput(
         hit_goal=float(cstate.is_goal),
         steps=max_len,
