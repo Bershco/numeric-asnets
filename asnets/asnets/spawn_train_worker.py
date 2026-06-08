@@ -1361,7 +1361,7 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
         )
         cstate = ctx.env_simulate_step(cstate, action_id)
         bound_act, _ = cstate.acts_enabled[action_id]
-        plan.append((action_id, bound_act.unique_ident))
+        plan.append(bound_act.unique_ident) # do not pass indices, you will be perplexed by misaligned ones..
     if cstate.is_goal or cstate.is_terminal:
         print(f"{worker_tag} is_goal={cstate.is_goal} | is_terminal={cstate.is_terminal}")
         print(f"fluents: {cstate.flnt_values}")

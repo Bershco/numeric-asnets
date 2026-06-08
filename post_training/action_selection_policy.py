@@ -230,21 +230,3 @@ def build_action_policy(
         epoch=epoch,
         duplicate_penalty=duplicate_penalty,
     )
-# ============================================================
-# Example
-# ============================================================
-
-# worker_tag = "W3531548953|45341"
-
-# policy = build_action_policy(
-#     base_policy="visit",
-#     worker_tag=worker_tag,
-#     epsilon=0.1,
-#     decay_rate=0.999,
-#     distance_threshold=3,
-# )
-
-# action = policy.select_action(mcts, pi)
-
-# if hasattr(policy, "step_decay"):
-#     policy.step_decay()
