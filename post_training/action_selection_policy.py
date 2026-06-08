@@ -117,8 +117,12 @@ class EpsilonGreedyMixin:
 
     def select_action(self, mcts, pi):
         if np.random.rand() < self.epsilon:
-            # random ***valid*** action using masked pi (by using p=pi all inapplicable actions have 0 probs)
-            return int(np.random.choice(len(pi), p=pi))
+            pi_sum = np.sum(pi)
+            if pi_sum > 0:
+                pi_norm = pi / pi_sum
+            else:
+                pi_norm = np.ones_like(pi) / len(pi)
+            return int(np.random.choice(len(pi), p=pi_norm))
 
         return super().select_action(mcts, pi)
 
