@@ -5,6 +5,7 @@ from collections import defaultdict
 from dataclasses import dataclass, fields, replace
 from time import time
 from typing import Any, Optional, Tuple
+import traceback
 
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future, wait, ALL_COMPLETED, FIRST_COMPLETED
@@ -256,7 +257,7 @@ def run_epoch_spawn_eval(
                                 f"{diff.name} wave {wave_idx} | "
                                 f"idx={idx} | "
                                 f"base_error={repr(e)}"
-                                f"{e.__traceback__}"
+                                f"{traceback.format_exc()}"
                             )
                             result = EvalWorkerOutput(
                                 hit_goal=False,
