@@ -1269,12 +1269,14 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
             root_net_policy = mcts.curr_tree_root.act_dist
             policy_argmax = int(np.argmax(root_net_policy))
             policy_argmax_action_prob = float(root_net_policy[policy_argmax])
+            dist = mcts.curr_tree_root.known_distance_to_goal
+            optional_goal_msg = f" because goal can be reached in {dist} steps" if dist < np.inf else ""
             print(
                 f"[ROOT_COMPARE] "
                 f"step={step} | "
                 f"instance={instance_name} | "
                 f"tree_policy_argmax={tree_policy_argmax} ({tree_argmax_action_prob:.4f}) | "
-                f"mcts_selected={action} ({selected_action_prob:.4f}) | "
+                f"mcts_selected={action} ({selected_action_prob:.4f}){optional_goal_msg} | "
                 f"selected_rank={policy_rank_selected} | "
                 f"actual_policy_argmax={policy_argmax} ({policy_argmax_action_prob}) | "
                 f"top5_policy_actions={[(int(a), float(masked_pi[a])) for a in ranked_actions[:5]]}"
