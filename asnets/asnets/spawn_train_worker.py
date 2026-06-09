@@ -52,7 +52,7 @@ class WorkerInput:
     epoch: Optional[int]
 
     # WIP: turning the problem to a minimization problem
-    minimization: bool = True
+    minimization: bool = False
 
     # logging
     log: bool = False
