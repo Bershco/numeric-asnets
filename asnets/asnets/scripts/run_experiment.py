@@ -137,7 +137,7 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
     if run_subdir is None:
         raise Exception("Couldn't find unique prefix for problem!")
     run_dir = path.join(root_dir, run_subdir)
-    copytree(dest_dir, path.join(run_dir, 'run-info'))
+    copytree(dest_dir, path.join(run_dir, 'run-info'), dirs_exist_ok=True)
 
     if need_snapshot:
         # parse output to figure out where it put the last checkpoint
