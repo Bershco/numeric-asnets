@@ -334,8 +334,8 @@ class SpawnExploreSpec:
     timeout: Optional[float] = None
 
     # mcts debugging options
-    puct_debug: bool = True
-    action_debug: bool = True
+    puct_debug: bool = False
+    action_debug: bool = False
 
     # estimator decay
     use_estimator_decay: bool = False
