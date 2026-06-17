@@ -112,10 +112,11 @@ def run_epoch_spawn_grads(
     return outs
 
 def run_epoch_spawn_eval(
-    specs,
-    weights_np,
-    max_workers=None,
-    worker_fn=run_worker_eval_mcts,
+        specs,
+        weights_np,
+        wave_threshold,
+        max_workers=None,
+        worker_fn=run_worker_eval_mcts,
 ) -> list[EvalWorkerOutput]:
     if not specs:
         return []
@@ -276,6 +277,19 @@ def run_epoch_spawn_eval(
                 f"{wave_success}/{wave_done} = {wave_rate:.3f} | "
                 f"time={time() - start_wave_time:.2f}s"
             )
+            if wave_rate < wave_threshold:
+                print(
+                    f"[EVAL] {diff.name} wave {wave_idx} is the last wave due to not hitting wave threshold: {wave_threshold}"
+                )
+                remaining_specs = diff_specs[wave_start + max_workers:]
+                for spec in remaining_specs:
+                    idx = spec_to_idx[id(spec)]
+                    outs[idx] = EvalWorkerOutput(
+                        hit_goal=False,
+                        steps=-1,
+                        instance_name=f"[{spec.pddls[1]}]:[WAVE_SKIPPED]",
+                    )
+                break
         diff_total = len(diff_specs)
         diff_success = sum(
             outs[spec_to_idx[id(spec)]].hit_goal

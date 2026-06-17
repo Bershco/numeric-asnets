@@ -144,6 +144,7 @@ class ParallelEvaluator:
     specs: list[SpawnExploreSpec]
     worker_fn: Callable[[WorkerInput],EvalWorkerOutput]
     max_workers: Optional[int] = None
+    wave_threshold: float = 0.5
 
     def evaluate(self, weights_np):
         print(f"[EVAL] worker_fn={self.worker_fn.__name__}")
@@ -153,6 +154,7 @@ class ParallelEvaluator:
             weights_np=weights_np,
             max_workers=self.max_workers,
             worker_fn=self.worker_fn,
+            wave_threshold=self.wave_threshold,
         )
 
         # ------------------------------------------------------------
