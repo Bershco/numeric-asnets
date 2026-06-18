@@ -1,10 +1,10 @@
 import logging
 import os
-import re
 import subprocess
 import tempfile
-
+import signal
 import numpy as np
+from enum import Enum
 
 from asnets.interfaces.enhsp_interface import ENHSPCache, ENHSP_CONFIGS
 from asnets.utils.pddl_utils import replace_init_state, hlist_to_sexprs
@@ -12,7 +12,6 @@ from asnets.utils.pddl_utils import replace_init_state, hlist_to_sexprs
 logger = logging.getLogger(__name__)
 JARPATH = f"{os.path.dirname(__file__)}/ENHSPHeuristicServer_v_pi_optional.jar"
 
-from enum import Enum
 
 class EstimatorMode(str, Enum):
     NONE = "NONE"
@@ -63,6 +62,16 @@ class ENHSPEstimator(ENHSPCache):
             self.initialise_heuristic_server(problem_pddl_oneliner_list[0]) # this is just for initialization
         return self.heuristic_client.get_estimate_batched(problem_pddl_oneliner_list, mode)
 
+    def close(self):
+        if getattr(self, "heuristic_client_initialised", False):
+            try:
+                self.heuristic_client.close()
+            except Exception:
+                logger.exception("Failed to close HeuristicClient")
+            finally:
+                self.heuristic_client_initialised = False
+                self.heuristic_client = None
+
 class HeuristicClient:
     def __init__(self, jar_path: str, domain_text: str, init_instance_text: str, enhsp_config: str, act_to_ind: dict[str,int],):
         # Create and name the domain temp file
@@ -91,7 +100,8 @@ class HeuristicClient:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            bufsize=1
+            bufsize=1,
+            start_new_session=False,
         )
         self.act_to_ind = act_to_ind
         self.act_dim = len(act_to_ind.keys())
@@ -186,14 +196,27 @@ class HeuristicClient:
         )
         return results
 
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
     def close(self):
         try:
             self._send_line("EXIT")
         except Exception:
             pass
-        self.proc.terminate()
-        self.proc.wait()
-
+        try:
+            if self.proc is not None and self.proc.poll() is None:
+                os.killpg(self.proc.pid, signal.SIGTERM)
+                try:
+                    self.proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    os.killpg(self.proc.pid, signal.SIGKILL)
+                    self.proc.wait(timeout=5)
+        except ProcessLookupError:
+            pass
         # Clean up temp files
         for f in [self._domain_temp.name, self._instance_temp.name]:
             try:
@@ -201,4 +224,3 @@ class HeuristicClient:
                 logger.info(f"Deleted temp file: {f}")
             except OSError as e:
                 logger.warning(f"Failed to delete temp file {f}: {e}")
-

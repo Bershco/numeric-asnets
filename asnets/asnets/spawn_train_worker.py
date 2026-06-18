@@ -1181,114 +1181,117 @@ def print_puct_debug(mcts, masked_pi) -> None:
     )
 
 def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
-    worker_tag, instance_name, start_time = init_eval_worker(inp)
-    planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
-    act_dim = planner_exts.problem_meta.num_acts
-    action_policy = build_action_policy(
-        base_policy=inp.spec.action_policy,
-        worker_tag=worker_tag,
-        distance_threshold=np.inf,  # on evaluation there is always a need to goal chase
-        epsilon=inp.spec.action_policy_epsilon,
-        temperature=inp.spec.action_policy_temperature,
-        decay_rate=inp.spec.action_policy_decay_rate,
-        duplicate_penalty=inp.spec.action_policy_duplicate_penalty,
-    )
-    wm_local = _rebuild_weight_manager_local(
-        planner_exts.problem_meta,
-        inp.weights_np,
-    )
-    net = _build_network_local(
-        wm_local,
-        planner_exts.problem_meta,
-    )
-    estimator = _build_estimator(planner_exts, inp.spec)
-    ctx = LocalExploreContext(
-        planner_exts=planner_exts,
-        estimator=estimator,
-        estimator_h_to_v_coeff=inp.spec.estimator_h_to_v_coeff,
-    )
-    if hasattr(inp.spec, "mcts_iterations") and inp.spec.mcts_iterations > 0:
-        mcts_iter = inp.spec.mcts_iterations
-    else:
-        branching_f = min(act_dim, inp.spec.mcts_expansion_k)
-        mcts_iter = _compute_mcts_iterations(branching_f)
-        print(f"{worker_tag} mcts_iterations was not set manually, calculated to be:{mcts_iter}")
-    mcts = TrainingMCTS(
-        network=net,
-        ctx=ctx,
-        iterations=mcts_iter,
-        expansion_k=inp.spec.mcts_expansion_k,
-        exploration_weight=inp.spec.mcts_exploration_weight,
-        sharpen_pi=0.5,
-        select_logging=False,
-        estimator_coeff=inp.estimator_coeff,
-        puct_debug=inp.spec.puct_debug,
-        minimization=inp.minimization,
-    )
-    cstate = ctx.get_init_state()
-    max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
-    mcts.initialise_tree(cstate)
-    plan = []
-    timed_out = False
-    for step in range(max_len):
-        step_start_time = time.time()
-        if inp.spec.timeout:
-            timed_out = step_start_time - start_time > inp.spec.timeout
-        if cstate.is_terminal or timed_out:
-            if timed_out:
-                print(f"{worker_tag} timed out after {inp.spec.timeout} seconds")
-            return EvalWorkerOutput(
-                hit_goal=float(cstate.is_goal),
-                steps=step,
-                instance_name=instance_name,
-                plan=plan,
-            )
-        pi, _ = mcts.run_search()
-        mask = mcts.get_children_mask(act_dim=act_dim)
-        masked_pi = pi * mask
-        if inp.spec.puct_debug:
-            print_puct_debug(
-                mcts=mcts,
-                masked_pi=masked_pi,
-            )
-        action = action_policy.select_action(
-            mcts=mcts,
-            pi=masked_pi,
+    estimator = None
+    try:
+        worker_tag, instance_name, start_time = init_eval_worker(inp)
+        planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
+        act_dim = planner_exts.problem_meta.num_acts
+        action_policy = build_action_policy(
+            base_policy=inp.spec.action_policy,
+            worker_tag=worker_tag,
+            distance_threshold=np.inf,  # on evaluation there is always a need to goal chase
+            epsilon=inp.spec.action_policy_epsilon,
+            temperature=inp.spec.action_policy_temperature,
+            decay_rate=inp.spec.action_policy_decay_rate,
+            duplicate_penalty=inp.spec.action_policy_duplicate_penalty,
         )
-        if inp.spec.action_debug:
-            tree_policy_argmax = int(np.argmax(masked_pi))
-            # descending sort of actions by policy probability
-            ranked_actions = np.argsort(masked_pi)[::-1]
-            policy_rank_selected = (
-                    int(np.where(ranked_actions == action)[0][0]) + 1
+        wm_local = _rebuild_weight_manager_local(
+            planner_exts.problem_meta,
+            inp.weights_np,
+        )
+        net = _build_network_local(
+            wm_local,
+            planner_exts.problem_meta,
+        )
+        estimator = _build_estimator(planner_exts, inp.spec)
+        ctx = LocalExploreContext(
+            planner_exts=planner_exts,
+            estimator=estimator,
+            estimator_h_to_v_coeff=inp.spec.estimator_h_to_v_coeff,
+        )
+        if hasattr(inp.spec, "mcts_iterations") and inp.spec.mcts_iterations > 0:
+            mcts_iter = inp.spec.mcts_iterations
+        else:
+            branching_f = min(act_dim, inp.spec.mcts_expansion_k)
+            mcts_iter = _compute_mcts_iterations(branching_f)
+            print(f"{worker_tag} mcts_iterations was not set manually, calculated to be:{mcts_iter}")
+        mcts = TrainingMCTS(
+            network=net,
+            ctx=ctx,
+            iterations=mcts_iter,
+            expansion_k=inp.spec.mcts_expansion_k,
+            exploration_weight=inp.spec.mcts_exploration_weight,
+            sharpen_pi=0.5,
+            select_logging=False,
+            estimator_coeff=inp.estimator_coeff,
+            puct_debug=inp.spec.puct_debug,
+            minimization=inp.minimization,
+        )
+        cstate = ctx.get_init_state()
+        max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
+        mcts.initialise_tree(cstate)
+        plan = []
+        for step in range(max_len):
+            step_start_time = time.time()
+            timed_out = bool(inp.spec.timeout and step_start_time - start_time > inp.spec.timeout)
+            if cstate.is_terminal or timed_out:
+                if timed_out:
+                    print(f"{worker_tag} timed out after {inp.spec.timeout} seconds")
+                return EvalWorkerOutput(
+                    hit_goal=float(cstate.is_goal),
+                    steps=step,
+                    instance_name=instance_name,
+                    plan=plan,
+                )
+            pi, _ = mcts.run_search()
+            mask = mcts.get_children_mask(act_dim=act_dim)
+            masked_pi = pi * mask
+            if inp.spec.puct_debug:
+                print_puct_debug(
+                    mcts=mcts,
+                    masked_pi=masked_pi,
+                )
+            action = action_policy.select_action(
+                mcts=mcts,
+                pi=masked_pi,
             )
-            if action == tree_policy_argmax:
-                policy_rank_selected = 1 # there is a weird behavior that if several actions have the same probability it orders by action id and then even if the actions (tree argmax and selected action) match it could still be ranked 17 or something
-            selected_action_prob = float(masked_pi[action])
-            tree_argmax_action_prob = float(masked_pi[tree_policy_argmax])
-            root_net_policy = mcts.curr_tree_root.act_dist
-            policy_argmax = int(np.argmax(root_net_policy))
-            policy_argmax_action_prob = float(root_net_policy[policy_argmax])
-            dist = mcts.curr_tree_root.known_distance_to_goal
-            optional_goal_msg = f" because goal can be reached in {dist} steps" if dist < np.inf else ""
-            print(
-                f"[ROOT_COMPARE] "
-                f"step={step} | "
-                f"instance={instance_name} | "
-                f"tree_policy_argmax={tree_policy_argmax} ({tree_argmax_action_prob:.4f}) | "
-                f"mcts_selected={action} ({selected_action_prob:.4f}){optional_goal_msg} | "
-                f"selected_rank={policy_rank_selected} | "
-                f"actual_policy_argmax={policy_argmax} ({policy_argmax_action_prob}) | "
-                f"top5_policy_actions={[(int(a), float(masked_pi[a])) for a in ranked_actions[:5]]}"
-            )
-        cstate = mcts.step_forward(action)
-        plan.append(action)
-    return EvalWorkerOutput(
-        hit_goal=float(cstate.is_goal),
-        steps=max_len,
-        instance_name=instance_name,
-        plan=plan,
-    )
+            if inp.spec.action_debug:
+                tree_policy_argmax = int(np.argmax(masked_pi))
+                # descending sort of actions by policy probability
+                ranked_actions = np.argsort(masked_pi)[::-1]
+                policy_rank_selected = (
+                        int(np.where(ranked_actions == action)[0][0]) + 1
+                )
+                if action == tree_policy_argmax:
+                    policy_rank_selected = 1 # there is a weird behavior that if several actions have the same probability it orders by action id and then even if the actions (tree argmax and selected action) match it could still be ranked 17 or something
+                selected_action_prob = float(masked_pi[action])
+                tree_argmax_action_prob = float(masked_pi[tree_policy_argmax])
+                root_net_policy = mcts.curr_tree_root.act_dist
+                policy_argmax = int(np.argmax(root_net_policy))
+                policy_argmax_action_prob = float(root_net_policy[policy_argmax])
+                dist = mcts.curr_tree_root.known_distance_to_goal
+                optional_goal_msg = f" because goal can be reached in {dist} steps" if dist < np.inf else ""
+                print(
+                    f"[ROOT_COMPARE] "
+                    f"step={step} | "
+                    f"instance={instance_name} | "
+                    f"tree_policy_argmax={tree_policy_argmax} ({tree_argmax_action_prob:.4f}) | "
+                    f"mcts_selected={action} ({selected_action_prob:.4f}){optional_goal_msg} | "
+                    f"selected_rank={policy_rank_selected} | "
+                    f"actual_policy_argmax={policy_argmax} ({policy_argmax_action_prob}) | "
+                    f"top5_policy_actions={[(int(a), float(masked_pi[a])) for a in ranked_actions[:5]]}"
+                )
+            cstate = mcts.step_forward(action)
+            plan.append(action)
+        return EvalWorkerOutput(
+            hit_goal=float(cstate.is_goal),
+            steps=max_len,
+            instance_name=instance_name,
+            plan=plan,
+        )
+    finally:
+        if estimator is not None:
+            estimator.close()
 
 def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
     worker_tag, instance_name, start_time = init_eval_worker(inp, "POLICY")

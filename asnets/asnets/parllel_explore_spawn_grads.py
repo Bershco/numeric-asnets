@@ -1,9 +1,12 @@
 # asnets/parallel_explore_spawn_grads.py
 from __future__ import annotations
 
+import os
+import signal
 from collections import defaultdict
 from dataclasses import dataclass, fields, replace
-from time import time
+from queue import Empty
+from time import time, monotonic, sleep
 from typing import Any, Optional, Tuple
 import traceback
 
@@ -111,6 +114,15 @@ def run_epoch_spawn_grads(
             )
     return outs
 
+
+def _eval_process_entry(idx, worker_fn, inp, out_q):
+    os.setsid()  # worker becomes leader of a new process group/session, this gives us a way to kill all subprocesses of said worker when something crashed inside
+    try:
+        result = worker_fn(inp)
+        out_q.put((idx, "ok", result, None))
+    except BaseException as e:
+        out_q.put((idx, "err", None, f"{repr(e)}\n{traceback.format_exc()}"))
+
 def run_epoch_spawn_eval(
         specs,
         weights_np,
@@ -131,33 +143,22 @@ def run_epoch_spawn_eval(
     total_success = 0
     total_done = 0
     difficulty_gate = {
-        InstanceDifficulty.MEDIUM: (
-            InstanceDifficulty.EASY,
-            0.4,
-        ),
-        InstanceDifficulty.HARD: (
-            InstanceDifficulty.MEDIUM,
-            0.4,
-        ),
+        InstanceDifficulty.MEDIUM: (InstanceDifficulty.EASY, 0.4),
+        InstanceDifficulty.HARD: (InstanceDifficulty.MEDIUM, 0.4),
     }
+    ctx = mp.get_context("forkserver")
     for diff, diff_specs in grouped_specs.items():
         # --------------------------------------------------
         # Difficulty gating
         # --------------------------------------------------
         if diff in difficulty_gate:
             required_diff, threshold = difficulty_gate[diff]
-
             prev_results = [
                 outs[spec_to_idx[id(spec)]].hit_goal
                 for spec in grouped_specs[required_diff]
                 if outs[spec_to_idx[id(spec)]] is not None
             ]
-
-            prev_rate = (
-                float(np.mean(prev_results))
-                if prev_results else 0.0
-            )
-
+            prev_rate = float(np.mean(prev_results)) if prev_results else 0.0
             if prev_rate < threshold:
                 print(
                     f"\n[EVAL] Skipping {diff.name}: "
@@ -166,7 +167,6 @@ def run_epoch_spawn_eval(
                 )
                 for spec in diff_specs:
                     idx = spec_to_idx[id(spec)]
-
                     outs[idx] = EvalWorkerOutput(
                         hit_goal=False,
                         steps=-1,
@@ -181,105 +181,153 @@ def run_epoch_spawn_eval(
                 f"[EVAL] {diff.name} wave {wave_idx}: "
                 f"{len(wave_specs)} instances"
             )
-            start_wave_time = time()
-            ctx = mp.get_context("forkserver")
+            start_wave_time = monotonic()
             wave_success = 0
             wave_done = 0
-
             spec_timeouts = [
                 spec.timeout
                 for spec in wave_specs
                 if spec.timeout is not None
             ]
-
             hard_timeout = (
                 max(spec_timeouts) * 1.5
                 if spec_timeouts
                 else None
             )
-            wave_deadline = time() + hard_timeout
-
-            with ProcessPoolExecutor(
-                max_workers=len(wave_specs),
-                mp_context=ctx,
-            ) as ex:
-                fut_to_idx: dict[Future, int] = {}
-                for spec in wave_specs:
-                    idx = spec_to_idx[id(spec)]
-                    inp = WorkerInput(
-                        spec=spec,
-                        epoch=None,
-                        weights_np=weights_np,
-                    )
-                    fut = ex.submit(worker_fn, inp)
-                    fut_to_idx[fut] = idx
-                pending = set(fut_to_idx.keys())
-                while pending:
-                    remaining = wave_deadline - time()
-                    # --------------------------------------------------
-                    # Hard timeout triggered
-                    # --------------------------------------------------
-                    if remaining <= 0:
-                        print(
-                            f"[EVAL] HARD TIMEOUT | "
-                            f"{diff.name} wave {wave_idx}"
-                        )
-                        for fut in pending:
-                            idx = fut_to_idx[fut]
-                            fut.cancel()
-                            outs[idx] = EvalWorkerOutput(
-                                hit_goal=False,
-                                steps=-2,
-                                instance_name=f"[{specs[idx].pddls[1]}]:[HARD_TIMEOUT]",
-                            )
-                            wave_done += 1
-                            total_done += 1
-                        ex.shutdown(
-                            wait=False,
-                            cancel_futures=True,
-                        )
+            wave_deadline = (
+                monotonic() + hard_timeout
+                if hard_timeout is not None
+                else np.inf
+            )
+            out_q = ctx.Queue()
+            processes: dict[int, mp.Process] = {}
+            # --------------------------------------------------
+            # Spawn wave processes
+            # --------------------------------------------------
+            for spec in wave_specs:
+                idx = spec_to_idx[id(spec)]
+                inp = WorkerInput(
+                    spec=spec,
+                    epoch=None,
+                    weights_np=weights_np,
+                )
+                p = ctx.Process(
+                    target=_eval_process_entry,
+                    args=(idx, worker_fn, inp, out_q),
+                )
+                p.start()
+                processes[idx] = p
+            pending = set(processes.keys())
+            # --------------------------------------------------
+            # Collect wave results / enforce hard timeout
+            # --------------------------------------------------
+            while pending:
+                # Drain completed queue messages first.
+                while True:
+                    try:
+                        idx, status, result, err_text = out_q.get_nowait()
+                    except Empty:
                         break
-                    # --------------------------------------------------
-                    # Wait for completed futures
-                    # --------------------------------------------------
-                    done, pending = wait(
-                        pending,
-                        timeout=min(remaining, 5.0),
-                        return_when=FIRST_COMPLETED,
-                    )
-
-                    for fut in done:
-                        idx = fut_to_idx[fut]
-                        try:
-                            result = fut.result()
-                        except Exception as e:
-                            print(
-                                f"[EVAL] Worker crashed | "
-                                f"{diff.name} wave {wave_idx} | "
-                                f"idx={idx} | "
-                                f"base_error={repr(e)}"
-                                f"{traceback.format_exc()}"
-                            )
-                            result = EvalWorkerOutput(
-                                hit_goal=False,
-                                steps=-3,
-                                instance_name="[CRASH]",
-                            )
+                    if idx not in pending:
+                        continue
+                    p = processes[idx]
+                    p.join(timeout=0)
+                    if status == "ok":
                         outs[idx] = result
-                        # update stats
+                    else:
+                        print(
+                            f"[EVAL] Worker crashed | "
+                            f"{diff.name} wave {wave_idx} | "
+                            f"idx={idx} | "
+                            f"base_error={err_text}"
+                        )
+                        outs[idx] = EvalWorkerOutput(
+                            hit_goal=False,
+                            steps=-3,
+                            instance_name=f"[{specs[idx].pddls[1]}]:[CRASH]",
+                        )
+                    pending.remove(idx)
+                    wave_done += 1
+                    wave_success += outs[idx].hit_goal
+                    total_done += 1
+                    total_success += outs[idx].hit_goal
+                # Also catch processes that died without putting a result.
+                dead_without_result = []
+                for idx in list(pending):
+                    p = processes[idx]
+                    if not p.is_alive() and p.exitcode is not None:
+                        dead_without_result.append(idx)
+                for idx in dead_without_result:
+                    p = processes[idx]
+                    p.join(timeout=0)
+                    print(
+                        f"[EVAL] Worker died without result | "
+                        f"{diff.name} wave {wave_idx} | "
+                        f"idx={idx} | exitcode={p.exitcode}"
+                    )
+                    outs[idx] = EvalWorkerOutput(
+                        hit_goal=False,
+                        steps=-3,
+                        instance_name=f"[{specs[idx].pddls[1]}]:[CRASH_EXIT_{p.exitcode}]",
+                    )
+                    pending.remove(idx)
+                    wave_done += 1
+                    total_done += 1
+                if not pending:
+                    break
+                remaining = wave_deadline - monotonic()
+                # --------------------------------------------------
+                # Hard timeout: actually kill processes
+                # --------------------------------------------------
+                if remaining <= 0:
+                    print(
+                        f"[EVAL] HARD TIMEOUT | "
+                        f"{diff.name} wave {wave_idx}"
+                    )
+                    for idx in list(pending):
+                        p = processes[idx]
+                        try:
+                            os.killpg(p.pid, signal.SIGTERM)
+                        except ProcessLookupError:
+                            pass
+                        p.join(timeout=3.0)
+                        if p.is_alive():
+                            try:
+                                os.killpg(p.pid, signal.SIGKILL)
+                            except ProcessLookupError:
+                                pass
+                            p.join(timeout=3.0)
+                        outs[idx] = EvalWorkerOutput(
+                            hit_goal=False,
+                            steps=-2,
+                            instance_name=f"[{specs[idx].pddls[1]}]:[HARD_TIMEOUT]",
+                        )
+                        pending.remove(idx)
                         wave_done += 1
-                        wave_success += result.hit_goal
                         total_done += 1
-                        total_success += result.hit_goal
+                    break
+                sleep(min(0.25, max(remaining, 0.0)))
+            # Clean up all processes.
+            for p in processes.values():
+                if p.is_alive():
+                    p.terminate()
+                    p.join(timeout=1.0)
+                if p.is_alive():
+                    p.kill()
+                    p.join(timeout=1.0)
+                p.close()
+            out_q.close()
+            out_q.join_thread()
             wave_rate = wave_success / wave_done if wave_done else 0.0
             print(
                 f"[EVAL] {diff.name} wave {wave_idx}: "
                 f"{wave_success}/{wave_done} = {wave_rate:.3f} | "
-                f"time={time() - start_wave_time:.2f}s"
+                f"time={monotonic() - start_wave_time:.2f}s"
             )
             if wave_rate < wave_threshold:
                 print(
-                    f"[EVAL] {diff.name} wave {wave_idx} is the last wave due to not hitting wave threshold: {wave_threshold}"
+                    f"[EVAL] {diff.name} wave {wave_idx} is the last wave "
+                    f"due to not hitting wave threshold: {wave_threshold}"
                 )
                 remaining_specs = diff_specs[wave_start + max_workers:]
                 for spec in remaining_specs:
@@ -306,6 +354,7 @@ def run_epoch_spawn_eval(
     )
     assert all(o is not None for o in outs)
     return outs
+
 
 @dataclass(frozen=True)
 class SpawnExploreSpec:
@@ -428,8 +477,10 @@ class SpawnExploreSpec:
 
         return replace(self, **to_update)
 
+
 @can_profile
-def make_specs(args, specific_instances=None, evaluation_mode=False, difficulty: Optional[InstanceDifficulty] = None) -> list[SpawnExploreSpec]:
+def make_specs(args, specific_instances=None, evaluation_mode=False, difficulty: Optional[InstanceDifficulty] = None) -> \
+list[SpawnExploreSpec]:
     only_one_good_action = args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
 
     num_slots = len(specific_instances) if specific_instances is not None else args.num_workers
