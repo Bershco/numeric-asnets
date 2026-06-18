@@ -415,7 +415,7 @@ def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_ident_to_in
         assert plan_states[-1].is_goal, "Somehow planner found a plan that is successful but does not reach the goal"
         plan_states = plan_states[:-1]
         assert len(plan_states) == len(plan_states_pi) == len(plan_states_z)
-        return plan_states, plan_states_pi, plan_states_z, plan_actions_int
+        return plan_states, plan_states_pi, plan_states_z, plan_res.plan
     return None
 
 
@@ -939,13 +939,13 @@ def run_worker_eval_enhsp(inp: WorkerInput) -> EvalWorkerOutput:
                                       enhsp_timeout=inp.spec.timeout
                                       )
     if plan_as_traj:
-        plan_states, plan_states_pi, plan_states_z, plan_actions_ints = plan_as_traj
+        plan_states, plan_states_pi, plan_states_z, plan = plan_as_traj
         print(f"Planner success in instance {instance_name}, took {len(plan_states)} steps")
         return EvalWorkerOutput(
             hit_goal=True,
             steps=len(plan_states),
             instance_name=instance_name,
-            plan=plan_actions_ints,
+            plan=plan,
         )
     else:
         return EvalWorkerOutput(
