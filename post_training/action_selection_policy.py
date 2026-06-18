@@ -201,13 +201,13 @@ def build_action_policy(
     if distance_threshold is not None:
         mixins.append(GoalChaseMixin)
 
-    if decay_rate is not None:
+    if decay_rate is not None and decay_rate != 0.0:
         mixins.append(ExplorationDecayMixin)
 
-    if epsilon is not None:
+    if epsilon is not None and epsilon != 0.0:
         mixins.append(EpsilonGreedyMixin)
 
-    if temperature is not None:
+    if temperature is not None and temperature != 0.0:
         mixins.append(TemperatureMixin)
 
     if duplicate_penalty is not None:
