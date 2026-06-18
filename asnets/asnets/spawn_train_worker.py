@@ -1251,7 +1251,7 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
                     mcts=mcts,
                     masked_pi=masked_pi,
                 )
-            action = action_policy.select_action(
+            action_id = action_policy.select_action(
                 mcts=mcts,
                 pi=masked_pi,
             )
@@ -1260,11 +1260,11 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
                 # descending sort of actions by policy probability
                 ranked_actions = np.argsort(masked_pi)[::-1]
                 policy_rank_selected = (
-                        int(np.where(ranked_actions == action)[0][0]) + 1
+                        int(np.where(ranked_actions == action_id)[0][0]) + 1
                 )
-                if action == tree_policy_argmax:
+                if action_id == tree_policy_argmax:
                     policy_rank_selected = 1 # there is a weird behavior that if several actions have the same probability it orders by action id and then even if the actions (tree argmax and selected action) match it could still be ranked 17 or something
-                selected_action_prob = float(masked_pi[action])
+                selected_action_prob = float(masked_pi[action_id])
                 tree_argmax_action_prob = float(masked_pi[tree_policy_argmax])
                 root_net_policy = mcts.curr_tree_root.act_dist
                 policy_argmax = int(np.argmax(root_net_policy))
@@ -1276,13 +1276,14 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
                     f"step={step} | "
                     f"instance={instance_name} | "
                     f"tree_policy_argmax={tree_policy_argmax} ({tree_argmax_action_prob:.4f}) | "
-                    f"mcts_selected={action} ({selected_action_prob:.4f}){optional_goal_msg} | "
+                    f"mcts_selected={action_id} ({selected_action_prob:.4f}){optional_goal_msg} | "
                     f"selected_rank={policy_rank_selected} | "
                     f"actual_policy_argmax={policy_argmax} ({policy_argmax_action_prob}) | "
                     f"top5_policy_actions={[(int(a), float(masked_pi[a])) for a in ranked_actions[:5]]}"
                 )
-            cstate = mcts.step_forward(action)
-            plan.append(action)
+            cstate = mcts.step_forward(action_id)
+            bound_act, _ = cstate.acts_enabled[action_id]
+            plan.append(bound_act.unique_ident)  # do not pass indices, you will be perplexed by misaligned ones..
         return EvalWorkerOutput(
             hit_goal=float(cstate.is_goal),
             steps=max_len,
