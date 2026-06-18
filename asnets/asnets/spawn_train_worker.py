@@ -20,7 +20,6 @@ from .utils.tf_utils import configure_tf_gpu_memory_growth
 from post_training.action_selection_policy import build_action_policy
 from .teacher import ENHSPTeacher, Teacher
 from .teacher_cache import TeacherException
-from .utils.pddl_utils import hlist_to_sexprs, replace_init_state
 
 import tensorflow as tf
 
@@ -103,6 +102,7 @@ class MCTSWorkerInput(WorkerInput):
     # run corruption settings for corruption testing
     corrupt_pi: Optional[str] = None  # "shuffle" | "random" | "zero" | None
     corrupt_z: Optional[str] = None  # "shuffle" | "random" | "zero" | None
+
 
 @dataclass
 class WorkerOutput:
@@ -915,6 +915,7 @@ def eval_max_len_coeff_by_diff(diff: InstanceDifficulty) -> float:
     }
     return coeff_dict[diff]
 
+
 def run_worker_eval_enhsp(inp: WorkerInput) -> EvalWorkerOutput:
     worker_tag, instance_name, start_time = init_eval_worker(inp, "ENHSP")
     planner_exts = _build_planner_exts_from_spec(
@@ -953,6 +954,7 @@ def run_worker_eval_enhsp(inp: WorkerInput) -> EvalWorkerOutput:
             steps=-1,
             instance_name=instance_name,
         )
+
 
 def _get_edge_visit_from_parent(parent, act: int) -> int:
     """
@@ -997,6 +999,7 @@ def _incoming_edge_visit_sum(child) -> tuple[int, int, list[tuple[int, int, int]
         incoming_sum += edge_N
         incoming_details.append((id(parent), act, int(edge_N)))
     return incoming_sum, n_missing, incoming_details
+
 
 def _build_puct_debug_rows(mcts) -> tuple[list[dict], list[dict], int, int]:
     """
@@ -1066,8 +1069,10 @@ def _build_puct_debug_rows(mcts) -> tuple[list[dict], list[dict], int, int]:
             suspicious_rows.append(row)
     return rows, suspicious_rows, total_edge_visits, total_child_visits
 
+
 def _print_masked_policy_distribution(masked_pi) -> None:
     print(f"Current masked policy distribution: {[(act, float(p)) for act, p in enumerate(masked_pi)]}")
+
 
 def _print_puct_main_table(rows: list[dict]) -> None:
     print("Root PUCT debug:")
@@ -1093,6 +1098,7 @@ def _print_puct_main_table(rows: list[dict]) -> None:
             f"{row['U']:>8.5f} | "
             f"{row['S']:>8.5f}"
         )
+
 
 def _print_puct_details_table(suspicious_rows: list[dict]) -> None:
     if not suspicious_rows:
@@ -1124,12 +1130,13 @@ def _print_puct_details_table(suspicious_rows: list[dict]) -> None:
                     f"edge_N={parent_edge_N}"
                 )
 
+
 def _print_puct_summary(
-    *,
-    root,
-    suspicious_rows: list[dict],
-    total_edge_visits: int,
-    total_child_visits: int,
+        *,
+        root,
+        suspicious_rows: list[dict],
+        total_edge_visits: int,
+        total_child_visits: int,
 ) -> None:
     n_bad = sum(
         1 for row in suspicious_rows
@@ -1158,6 +1165,7 @@ def _print_puct_summary(
         f"sum_child_N={total_child_visits}"
     )
 
+
 def print_puct_debug(mcts, masked_pi) -> None:
     """
     Single public-ish debug entry point.
@@ -1179,6 +1187,7 @@ def print_puct_debug(mcts, masked_pi) -> None:
         total_edge_visits=total_edge_visits,
         total_child_visits=total_child_visits,
     )
+
 
 def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
     estimator = None
@@ -1263,7 +1272,7 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
                         int(np.where(ranked_actions == action_id)[0][0]) + 1
                 )
                 if action_id == tree_policy_argmax:
-                    policy_rank_selected = 1 # there is a weird behavior that if several actions have the same probability it orders by action id and then even if the actions (tree argmax and selected action) match it could still be ranked 17 or something
+                    policy_rank_selected = 1  # there is a weird behavior that if several actions have the same probability it orders by action id and then even if the actions (tree argmax and selected action) match it could still be ranked 17 or something
                 selected_action_prob = float(masked_pi[action_id])
                 tree_argmax_action_prob = float(masked_pi[tree_policy_argmax])
                 root_net_policy = mcts.curr_tree_root.act_dist
@@ -1294,6 +1303,7 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
         if estimator is not None:
             estimator.close()
 
+
 def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
     worker_tag, instance_name, start_time = init_eval_worker(inp, "POLICY")
 
@@ -1310,7 +1320,7 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
         epsilon=inp.spec.action_policy_epsilon,
         temperature=inp.spec.action_policy_temperature,
         # duplicate_penalty=inp.spec.action_policy_duplicate_penalty,
-        duplicate_penalty=None, # This is currently bugged on policy-driven search, will be fixed soon
+        duplicate_penalty=None,  # This is currently bugged on policy-driven search, will be fixed soon
     )
     # --------------------------------------------------
     # Rebuild network locally
@@ -1373,7 +1383,7 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
         )
         cstate = ctx.env_simulate_step(cstate, action_id)
         bound_act, _ = cstate.acts_enabled[action_id]
-        plan.append(bound_act.unique_ident) # do not pass indices, you will be perplexed by misaligned ones..
+        plan.append(bound_act.unique_ident)  # do not pass indices, you will be perplexed by misaligned ones..
     if cstate.is_goal or cstate.is_terminal:
         print(f"{worker_tag} is_goal={cstate.is_goal} | is_terminal={cstate.is_terminal}")
         print(f"fluents: {cstate.flnt_values}")
