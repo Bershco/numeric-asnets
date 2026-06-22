@@ -775,7 +775,9 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             all_validation_specs.extend(specs)
         validator = ParallelEvaluator(specs=all_validation_specs,
                                       max_workers=min(args.num_workers, len(all_validation_specs)),
-                                      worker_fn=run_worker_eval_mcts)
+                                      worker_fn=run_worker_eval_policy_only)
+        # this is policy driven inference because validation checks how good the policy is
+        # and because mcts validation takes way too long
         if not args.freeze_train:
             sup_trainer = SupervisedTrainer(
                 weight_manager=weight_manager,

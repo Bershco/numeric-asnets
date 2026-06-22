@@ -11,7 +11,7 @@ import numpy as np
 
 from asnets.parllel_explore_spawn_grads import run_epoch_spawn_grads, run_epoch_spawn_eval, SpawnExploreSpec
 from asnets.spawn_train_worker import WorkerOutput, WorkerInput, EvalWorkerOutput
-from asnets.utils.generator_utils import ProgressionLevel
+from asnets.utils.generator_utils import ProgressionLevel, InstanceDifficulty
 
 
 @dataclass
@@ -146,7 +146,7 @@ class ParallelEvaluator:
     max_workers: Optional[int] = None
     wave_threshold: float = 0.5
 
-    def evaluate(self, weights_np):
+    def evaluate(self, weights_np) -> tuple[dict[InstanceDifficulty,float],float,list[EvalWorkerOutput]]:
         print(f"[EVAL] worker_fn={self.worker_fn.__name__}")
 
         outs = run_epoch_spawn_eval(
@@ -191,7 +191,7 @@ class ParallelEvaluator:
         # Compute + print metrics
         # ------------------------------------------------------------
 
-        success_rates = {}
+        success_rates: dict[InstanceDifficulty,float] = {}
 
         for diff, diff_metrics in metrics.items():
             hits = diff_metrics["hits"]
