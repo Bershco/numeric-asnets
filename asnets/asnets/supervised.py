@@ -911,12 +911,6 @@ class OriginalSupervisedTrainer(BaseTrainer):
                 lr=self.optimizer.lr,
                 refresh=False,
             )
-            # if epoch_num % 10 == 0:
-            #     success_rates, overall_succ_rate, validation_outs = self.validator.evaluate(
-            #         self._weight_manager.export_numpy())
-            #     print(f"[VALIDATION] Current network validation success rate: {overall_succ_rate}")
-            #     for i, val_worker_out in enumerate(validation_outs):
-            #         print(f"[{val_worker_out.instance_name}] - {'PASS' if val_worker_out.hit_goal else 'FAIL'}")
             if epoch_num % VALIDATE_EVERY == 0:
                 success_rates, overall_succ_rate, validation_outs = \
                     self.validator.evaluate(self._weight_manager.export_numpy())
@@ -940,7 +934,7 @@ class OriginalSupervisedTrainer(BaseTrainer):
                     cooldown_counter -= VALIDATE_EVERY
 
                 # -------------------------
-                # 2. Progression (NEW)
+                # 2. Progression
                 # -------------------------
 
                 if self.can_progress(success_rates):
@@ -1224,6 +1218,9 @@ class OriginalSupervisedTrainer(BaseTrainer):
 
         self.explorer.update_learning_time(time() - start_time)
         return np.mean(losses)
+
+    def can_progress(self, success_rates): #progression is not needed in  the original trainer - it works on the original training set
+        return False
 
 
 class ManualLoss:
