@@ -520,17 +520,18 @@ class SupervisedTrainer(BaseTrainer):
         self.tf_init_done = True
 
     def train(self, max_epochs):
-        best_rate = None
+        last_rate = None
         time_since_best = 0
-        solve_thresh = 0.8
-        early_stop_first_epoch = self.explorer.estimator_decay_end_epoch() + self.early_stop if self.early_stop else 0
 
         patience_counter = 0
         cooldown_counter = 0
 
+        best_valid_rate = None
+        best_valid_average_plan_length = None
+
         PATIENCE = 2  # consecutive validations
         COOLDOWN_EPOCHS = 10
-        VALIDATE_EVERY = 20
+        VALIDATE_EVERY = 5
         THRESHOLD_EASY = 0.85
 
         tr = tqdm.trange(max_epochs, desc='epoch', leave=True)
@@ -630,12 +631,43 @@ class SupervisedTrainer(BaseTrainer):
                 refresh=False,
             )
 
+            last_rate = total_succ_rate
+            snapshot_name = f"snapshot_{epoch_num}_{total_succ_rate:.4f}"
+
+
             # --------------------------------------------------
             # 2.1 validation + decay + progression
             # --------------------------------------------------
             if epoch_num % VALIDATE_EVERY == 0:
                 success_rates, overall_succ_rate, validation_outs = \
                     self.validator.evaluate(self._weight_manager.export_numpy())
+                solved_outs = [o for o in validation_outs if o.hit_goal]
+
+                avg_plan_len = (
+                    sum(len(o.plan) for o in solved_outs) / len(solved_outs)
+                    if solved_outs else float("inf")
+                )
+                tf_and_log("validation/success_rate", overall_succ_rate)
+                tf_and_log("validation/avg_plan_length", avg_plan_len)
+                is_better = (
+                        best_valid_rate is None
+                        or overall_succ_rate > best_valid_rate
+                        or (
+                                overall_succ_rate == best_valid_rate
+                                and avg_plan_len < best_valid_average_plan_length
+                        )
+                )
+                if is_better:
+                    best_valid_rate = overall_succ_rate
+                    best_valid_average_plan_length = avg_plan_len
+
+                    print(
+                        f"[VALIDATION] New best! "
+                        f"succ={best_valid_rate:.3f} "
+                        f"avg_len={best_valid_average_plan_length:.2f} "
+                        f"iter_num={epoch_num} "
+                        f"snapshot_name={snapshot_name}"
+                    )
                 print(f"[VALIDATION] Current network validation success rate: {overall_succ_rate}")
                 # -------------------------
                 # 1. Estimator decay
@@ -662,55 +694,25 @@ class SupervisedTrainer(BaseTrainer):
                     if self.explorer.advance_progression_level():
                         # this progresses the progression level and returns true if advanced, if current progression level is max - returns false
                         cooldown_counter = max(cooldown_counter, int(COOLDOWN_EPOCHS / 2))
-            # --------------------------------------------------
-            # 3. EARLY STOP / SNAPSHOT LOGIC (unchanged)
-            # --------------------------------------------------
-            if best_rate is None or total_succ_rate > best_rate + 1e-4:
-                time_since_best = 0
-            else:
-                time_since_best += 1
 
-            should_save = (
-                    best_rate is None
-                    or total_succ_rate >= best_rate
-                    or (self.save_every and epoch_num % self.save_every == 0)
-                    or epoch_num == 1
+            save_checkpoint_dir(
+                snapshot_dir=self.snapshot_dir,
+                snapshot_name=snapshot_name,
+                weight_manager=self._weight_manager,
+                optimizer=self.optimizer,
+                trainer_state={
+                    "epoch_num": epoch_num,
+                    "best_rate": last_rate,
+                    "time_since_best": time_since_best,
+                },
             )
-
-            if should_save:
-                best_rate = total_succ_rate
-                snapshot_name = f"snapshot_{epoch_num}_{total_succ_rate:.4f}"
-
-                save_checkpoint_dir(
-                    snapshot_dir=self.snapshot_dir,
-                    snapshot_name=snapshot_name,
-                    weight_manager=self._weight_manager,
-                    optimizer=self.optimizer,
-                    trainer_state={
-                        "epoch_num": epoch_num,
-                        "best_rate": best_rate,
-                        "time_since_best": time_since_best,
-                    },
-                )
             tf.summary.flush()
             elapsed_time = time() - self.start_time
             if self.timeout and elapsed_time > self.timeout * 0.95:
                 LOGGER.info('[TIMING_TERMINATION] Timeout reached')
                 tr.refresh()  # this guarantees tqdm display of last iteration
                 break
-
-            if (
-                    self.early_stop
-                    # and epoch_num >= early_stop_first_epoch
-                    and self.explorer.can_early_stop()
-                    and time_since_best >= self.early_stop
-                    and best_rate >= solve_thresh
-            ):
-                LOGGER.info('Terminating early (early stop condition met)')
-                tr.refresh()  # this guarantees tqdm display of last iteration
-                break
-
-        return best_rate, elapsed_time, int(epoch)
+        return last_rate, elapsed_time, int(epoch)
 
     def can_progress(self, success_rates):
         thresholds = {
@@ -852,7 +854,9 @@ class OriginalSupervisedTrainer(BaseTrainer):
         return rv
 
     def train(self, max_epochs):
-        best_rate = None
+        best_train_rate = None
+        best_valid_rate = None
+        best_valid_average_plan_length = None
         keep_going = True
         iter_num = 0
         time_since_best = 0
@@ -861,38 +865,37 @@ class OriginalSupervisedTrainer(BaseTrainer):
         solve_thresh = 0.999
         tr = tqdm.trange(max_epochs, desc='epoch', leave=True)
         mean_loss = None
-        elapsed_time = time() - self.start_time
 
         # set up tensorboard logging
         epoch = tf.Variable(0, dtype=tf.int64)
         self.summary_writer.set_as_default(step=epoch)
 
-        patience_counter = 0
-        cooldown_counter = 0
-
-        VALIDATE_EVERY = 5
+        validate_every = 1
+        consecutive_validations_best = 0
+        consecutive_validation_patience = 50
 
         for epoch_num in tr:
             # update the epoch variable
             epoch.assign(epoch_num)
+            elapsed_time = time() - self.start_time
 
             # only extend replay by a bit each time
             succs_probs = self.explorer.extend_replay(weights_np=self._weight_manager.export_numpy(),
                                                       epoch_num=epoch_num)
-            total_succ_rate = np.mean([s for _, s in succs_probs])
+            train_succ_rate = np.mean([s for _, s in succs_probs])
             replay_sizes = self._get_replay_sizes()
             replay_size = sum(replay_sizes)
 
             tf.summary.scalar('lr', self.optimizer.lr)
             # update output
             tr.set_postfix(
-                succ_rate=total_succ_rate,
+                succ_rate=train_succ_rate,
                 net_loss=mean_loss,
                 states=replay_size,
                 lr=self.optimizer.lr,
                 refresh=False,
             )
-            tf.summary.scalar('succ-rate/mean', total_succ_rate)
+            tf.summary.scalar('succ-rate/mean', train_succ_rate)
 
             for prob, prob_succ_rate in succs_probs:
                 tf.summary.scalar('succ-rate/%s' % prob.name, prob_succ_rate)
@@ -902,51 +905,48 @@ class OriginalSupervisedTrainer(BaseTrainer):
             iter_num += 1
             # update output again
             tr.set_postfix(
-                succ_rate=total_succ_rate,
+                succ_rate=train_succ_rate,
                 net_loss=mean_loss,
                 states=replay_size,
                 lr=self.optimizer.lr,
                 refresh=False,
             )
-            if epoch_num % VALIDATE_EVERY == 0:
-                success_rates, overall_succ_rate, validation_outs = \
+            snapshot_name = f"snapshot_{iter_num}_{train_succ_rate:.3f}"
+            if epoch_num % validate_every == 0:
+                _, validation_succ_rate, validation_outs = \
                     self.validator.evaluate(self._weight_manager.export_numpy())
-                print(f"[VALIDATION] Current network validation success rate: {overall_succ_rate}")
-            # caller might want us to terminate
-            if best_rate is None or total_succ_rate > best_rate + 1e-4:
-                time_since_best = 0
-            elif total_succ_rate < best_rate and total_succ_rate < solve_thresh:
-                # also reset to 0 if our success rate goes back down again
-                time_since_best = 0
-            else:
-                time_since_best += 1
-                if self.early_stop \
-                        and time_since_best >= self.early_stop \
-                        and best_rate >= solve_thresh:
-                    LOGGER.info('Terminating (early stopping condition met with'
-                                '%d epochs since loss %f)',
-                                time_since_best, best_rate)
-                    keep_going = False
+                solved_outs = [out for out in validation_outs if out.hit_goal]
+                num_validation_instances_success = len(solved_outs)
 
-            should_save = best_rate is None or total_succ_rate >= best_rate \
-                          or (self.save_every and iter_num % self.save_every == 0) \
-                          or iter_num == 1  # always save on first iter
-            if should_save:
-                best_rate = total_succ_rate
-                # snapshot!
-                snapshot_name = f"snapshot_{iter_num}_{total_succ_rate:.4f}"
-                save_checkpoint_dir(
-                    snapshot_dir=self.snapshot_dir,
-                    snapshot_name=snapshot_name,
-                    weight_manager=self._weight_manager,
-                    optimizer=self.optimizer,
-                    trainer_state={
-                        "epoch_num": epoch_num,
-                        "iter_num": iter_num,
-                        "best_rate": best_rate,
-                        "time_since_best": time_since_best,
-                    },
-                )  # also, always save timing data
+                average_plan_length = (
+                        sum(len(out.plan) for out in solved_outs)
+                        / num_validation_instances_success
+                ) if num_validation_instances_success > 0 else float("inf")
+                print(f"[VALIDATION] Current network validation success rate: {validation_succ_rate:.3f} with an average plan length of {average_plan_length:.3f}")
+                if best_valid_rate is None or validation_succ_rate > best_valid_rate or (validation_succ_rate == best_valid_rate and average_plan_length < best_valid_average_plan_length):
+                    best_valid_rate = validation_succ_rate
+                    best_valid_average_plan_length = average_plan_length
+                    consecutive_validations_best = 0
+                    print(f"[VALIDATION] New best reached! [success rate: {best_valid_rate} | average plan length: {best_valid_average_plan_length} | iteration {iter_num} | snapshot name: {snapshot_name}]")
+                else:
+                    consecutive_validations_best += 1
+                if consecutive_validations_best >= consecutive_validation_patience:
+                    keep_going = False
+            # save checkout for every epoch, it's cheap.
+            best_train_rate = train_succ_rate
+            # snapshot!
+            save_checkpoint_dir(
+                snapshot_dir=self.snapshot_dir,
+                snapshot_name=snapshot_name,
+                weight_manager=self._weight_manager,
+                optimizer=self.optimizer,
+                trainer_state={
+                    "epoch_num": epoch_num,
+                    "iter_num": iter_num,
+                    "best_rate": best_train_rate,
+                    "time_since_best": time_since_best,
+                },
+            )  # also, always save timing data
             with open(os.path.join(self.scratch_dir, 'timing.json'), 'w') as fp:
                 fp.write(self.timer.to_json())
 
@@ -960,7 +960,7 @@ class OriginalSupervisedTrainer(BaseTrainer):
                 tr.refresh()  # this guarantees tqdm display of last iteration
                 break
 
-        return best_rate, elapsed_time, iter_num
+        return best_train_rate, elapsed_time, iter_num
 
     def _init_tf(self):
         """Do setup necessary for network (e.g. initialising weights)."""
