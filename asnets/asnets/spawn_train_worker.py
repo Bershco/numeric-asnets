@@ -277,9 +277,29 @@ def _rebuild_weight_manager_local(prob_meta, weights_np: dict):
     MUST return PropNetworkWeights instance whose variables are created locally,
     then assigned from weights_np.
     """
-    wm = PropNetworkWeights.from_numpy(prob_meta, weights_np)
-    return wm
 
+    wm = PropNetworkWeights.from_numpy(prob_meta, weights_np)
+    expected = weights_np["weight_order_check"]
+    assert len(wm.all_weights) == len(expected), (
+        f"Weight count mismatch: "
+        f"local={len(wm.all_weights)} "
+        f"expected={len(expected)}"
+    )
+    for i, (w_local, (name, shape)) in enumerate(
+        zip(wm.all_weights, expected)
+    ):
+        assert w_local.name == name, (
+            f"Weight name mismatch at {i}: "
+            f"expected={name} "
+            f"actual={w_local.name}"
+        )
+        assert tuple(w_local.shape) == tuple(shape), (
+            f"Weight shape mismatch at {i}: "
+            f"{w_local.name} "
+            f"expected={shape} "
+            f"actual={tuple(w_local.shape)}"
+        )
+    return wm
 
 def _build_network_local(weight_manager_local, prob_meta):
     net = PropNetwork(

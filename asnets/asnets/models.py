@@ -120,24 +120,10 @@ class PropNetworkWeights:
             if not hasattr(self, 'value_weights'):
                 self.value_weights = []
 
-            if not hasattr(self, 'all_weights'):
-                self.all_weights = []
-
-                def collect(weight_list):
-                    for d in weight_list:
-                        for W, b in d.values():
-                            self.all_weights.extend([W, b])
-
-                collect(self.prop_weights)
-                collect(self.flnt_weights)
-                collect(self.act_weights)
-                collect(self.comp_weights)
-
-                if hasattr(self, 'value_weights'):
-                    collect(self.value_weights)
-
             if not hasattr(self, 'value_head_enabled'):
                 self.value_head_enabled = False
+
+            self._rebuild_all_weights()
 
 
     @staticmethod
@@ -166,7 +152,6 @@ class PropNetworkWeights:
         self.act_weights = []
         self.comp_weights = []
         self.value_weights = []
-        self.all_weights = []
 
         # TODO: constructing weights separately like this (and having
         # to restore with tf.const, etc.) is silly. Should store
@@ -391,6 +376,7 @@ class PropNetworkWeights:
                     name_pfx_func=value_out_name_pfx,
                 )
             )
+        self._rebuild_all_weights()
 
     def _make_modules_weights(self,
                               hid_idx: int,
@@ -449,7 +435,6 @@ class PropNetworkWeights:
                     trainable=True)
 
             new_layer[key] = (W, b)
-            self.all_weights.extend([W, b])
 
         return new_layer
 
@@ -484,6 +469,45 @@ class PropNetworkWeights:
             "flnt_weights": conv_list(self.flnt_weights),
             "value_weights": conv_list(self.value_weights),
         }
+
+    def _rebuild_all_weights(self):
+        """
+        Rebuild self.all_weights in the SAME order as _make_weights()
+        originally created them.
+        """
+
+        self.all_weights = []
+
+        num_hidden = len(self.hidden_sizes)
+
+        for hid_idx in range(num_hidden):
+
+            # action layer
+            for W, b in self.act_weights[hid_idx].values():
+                self.all_weights.extend([W, b])
+
+            # proposition layer
+            for W, b in self.prop_weights[hid_idx].values():
+                self.all_weights.extend([W, b])
+
+            # fluent layer
+            if self.use_fluents:
+                for W, b in self.flnt_weights[hid_idx].values():
+                    self.all_weights.extend([W, b])
+
+            # comparison layer
+            if self.use_comparisons:
+                for W, b in self.comp_weights[hid_idx].values():
+                    self.all_weights.extend([W, b])
+
+        # final action layer
+        for W, b in self.act_weights[-1].values():
+            self.all_weights.extend([W, b])
+
+        # value head
+        for layer in self.value_weights:
+            for W, b in layer.values():
+                self.all_weights.extend([W, b])
 
     @classmethod
     def from_numpy(cls, prob_meta, weights_np):
