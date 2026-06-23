@@ -802,6 +802,8 @@ class SupervisedTrainer(BaseTrainer):
         if not worker_outs:
             raise RuntimeError("No worker outputs.")
 
+        for i, v in enumerate(params):
+            print("[MAIN]", i, v.name, tuple(v.shape))
         # init accumulators
         grads_sum = [np.zeros(v.shape, dtype=np.float32) for v in params]
         total = 0
