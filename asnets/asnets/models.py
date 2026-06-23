@@ -463,13 +463,18 @@ class PropNetworkWeights:
             "use_fluents": bool(self.use_fluents),
             "use_comparisons": bool(self.use_comparisons),
             "value_head_enabled": bool(self.value_head_enabled),
+
+            "weight_order_check": [
+                (w.name, tuple(w.shape))
+                for w in self.all_weights
+            ],
+
             "act_weights": conv_list(self.act_weights),
             "prop_weights": conv_list(self.prop_weights),
             "comp_weights": conv_list(self.comp_weights),
             "flnt_weights": conv_list(self.flnt_weights),
             "value_weights": conv_list(self.value_weights),
         }
-
     def _rebuild_all_weights(self):
         """
         Rebuild self.all_weights in the SAME order as _make_weights()
