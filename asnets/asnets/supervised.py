@@ -492,22 +492,78 @@ class SupervisedTrainer(BaseTrainer):
                     "[Optimizer BEFORE restore]",
                     self.optimizer.iterations.numpy(),
                 )
-                opt_vals = joblib.load(opt_path)
-                for var, val in zip(self.optimizer.variables(), opt_vals):
-                    if tuple(var.shape) != tuple(val.shape):
+                saved_opt = joblib.load(opt_path)
+
+                # ---------------------------------------
+                # New format (dict keyed by variable name)
+                # ---------------------------------------
+                if isinstance(saved_opt, dict):
+
+                    restored = 0
+                    skipped = 0
+
+                    for var in self.optimizer.variables():
+
+                        entry = saved_opt.get(var.name)
+
+                        if entry is None:
+                            skipped += 1
+                            continue
+
+                        if tuple(var.shape) != tuple(entry["shape"]):
+                            print(
+                                f"[OPT SHAPE MISMATCH] "
+                                f"{var.name} "
+                                f"current={tuple(var.shape)} "
+                                f"saved={entry['shape']}"
+                            )
+                            skipped += 1
+                            continue
+
+                        var.assign(entry["value"])
+                        restored += 1
+
+                    print(
+                        f"[Optimizer] restored={restored} "
+                        f"skipped={skipped}"
+                    )
+
+                # ---------------------------------------
+                # Old format (list)
+                # ---------------------------------------
+                else:
+
+                    opt_vals = saved_opt
+
+                    if (
+                            len(opt_vals) == len(self.optimizer.variables())
+                            and all(
+                        tuple(var.shape) == tuple(val.shape)
+                        for var, val in zip(
+                            self.optimizer.variables(),
+                            opt_vals
+                        )
+                    )
+                    ):
+                        for var, val in zip(
+                                self.optimizer.variables(),
+                                opt_vals
+                        ):
+                            var.assign(val)
+
+                        print("[Optimizer] restored from legacy checkpoint")
+
+                    else:
                         print(
-                            f"[OPT SHAPE MISMATCH] "
-                            f"{var.name} "
-                            f"current={tuple(var.shape)} "
-                            f"saved={tuple(val.shape)}"
+                            "[Optimizer] legacy checkpoint incompatible, "
+                            "starting with fresh optimizer state"
                         )
 
-                assert len(opt_vals) == len(self.optimizer.variables())
-                for var, val in zip(self.optimizer.variables(), opt_vals):
-                    var.assign(val)
-                print("[Optimizer] restored from checkpoint")
-                print("optimizer step:", self.optimizer.iterations.numpy())
-
+                print(
+                    "optimizer step:",
+                    self.optimizer.iterations.numpy(),
+                )
+    
     @can_profile
     def _init_tf(self):
         """Do setup necessary for network (e.g. initialising weights)."""

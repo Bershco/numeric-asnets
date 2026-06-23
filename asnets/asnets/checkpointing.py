@@ -51,13 +51,20 @@ def save_checkpoint_dir(
     # --------------------------------------------------
     # Save optimizer variables
     # --------------------------------------------------
+
     opt_vars = optimizer.variables()
 
     if opt_vars:
-        opt_numpy = [v.numpy() for v in opt_vars]
+        opt_state = {
+            v.name: {
+                "shape": tuple(v.shape),
+                "value": v.numpy(),
+            }
+            for v in opt_vars
+        }
 
         joblib.dump(
-            opt_numpy,
+            opt_state,
             os.path.join(snapshot_path, OPTIMIZER_FILE),
             compress=True,
         )
