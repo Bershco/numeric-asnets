@@ -867,18 +867,18 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
     if inp.log:
         print(f"{worker_tag} " + f"\n{worker_tag} ".join(log_lines), flush=True)
 
-    for i, (w, g) in enumerate(zip(
-            wm_local.all_weights,
-            grads_np)):
-        print(
-            "[WORKER]",
-            i,
-            w.name,
-            tuple(w.shape),
-            tuple(g.shape)
-        )
-    for i, g in enumerate(grads_np):
-        print("[WORKER]", worker_tag, i, g.shape)
+    # for i, (w, g) in enumerate(zip(
+    #         wm_local.all_weights,
+    #         grads_np)):
+    #     print(
+    #         "[WORKER]",
+    #         i,
+    #         w.name,
+    #         tuple(w.shape),
+    #         tuple(g.shape)
+    #     )
+    # for i, g in enumerate(grads_np):
+    #     print("[WORKER]", worker_tag, i, g.shape)
 
     return WorkerOutput(
         hit_goal_mean=float(collector.hit_goal),

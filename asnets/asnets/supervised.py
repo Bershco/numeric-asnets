@@ -595,7 +595,7 @@ class SupervisedTrainer(BaseTrainer):
 
         PATIENCE = 2  # consecutive validations
         COOLDOWN_EPOCHS = 10
-        VALIDATE_EVERY = 5
+        VALIDATE_EVERY = 1
         THRESHOLD_EASY = 0.85
 
         tr = tqdm.trange(max_epochs, desc='epoch', leave=True)
@@ -651,8 +651,8 @@ class SupervisedTrainer(BaseTrainer):
             # 2. APPLY GRADIENTS (MAIN PROCESS ONLY)
             # --------------------------------------------------
             W0 = [w.numpy().copy() for w in self._weight_manager.all_weights]
-            for i, w in enumerate(self._weight_manager.all_weights):
-                print("[MAIN]", i, w.name, tuple(w.shape))
+            # for i, w in enumerate(self._weight_manager.all_weights):
+            #     print("[MAIN]", i, w.name, tuple(w.shape))
             mean_loss, total_succ_rate, n_states = self.apply_worker_grads(worker_outs)
             succ_rate_easy, succ_rate_medium, succ_rate_hard = self.calculate_balanced_succ_rate(worker_outs)
             if getattr(self.explorer, "log", False):

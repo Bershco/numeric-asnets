@@ -775,7 +775,8 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             all_validation_specs.extend(specs)
         validator = ParallelEvaluator(specs=all_validation_specs,
                                       max_workers=min(args.num_workers, len(all_validation_specs)),
-                                      worker_fn=run_worker_eval_policy_only)
+                                      worker_fn=run_worker_eval_policy_only,
+                                      wave_threshold=0)
         # this is policy driven inference because validation checks how good the policy is
         # and because mcts validation takes way too long
         if not args.freeze_train:
@@ -1010,7 +1011,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
             all_validation_specs.extend(specs)
         validator = ParallelEvaluator(specs=all_validation_specs,
                                       max_workers=min(args.num_workers, len(all_validation_specs)),
-                                      worker_fn=run_worker_eval_policy_only)
+                                      worker_fn=run_worker_eval_policy_only, wave_threshold=0)
         # we maintain the old loss for usage of policy network only (instead of dual-head using the new loss)
         sup_trainer = OriginalSupervisedTrainer(
             problems=problems,
