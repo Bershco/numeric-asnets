@@ -492,8 +492,16 @@ class SupervisedTrainer(BaseTrainer):
                     "[Optimizer BEFORE restore]",
                     self.optimizer.iterations.numpy(),
                 )
-
                 opt_vals = joblib.load(opt_path)
+                for var, val in zip(self.optimizer.variables(), opt_vals):
+                    if tuple(var.shape) != tuple(val.shape):
+                        print(
+                            f"[OPT SHAPE MISMATCH] "
+                            f"{var.name} "
+                            f"current={tuple(var.shape)} "
+                            f"saved={tuple(val.shape)}"
+                        )
+
                 assert len(opt_vals) == len(self.optimizer.variables())
                 for var, val in zip(self.optimizer.variables(), opt_vals):
                     var.assign(val)
