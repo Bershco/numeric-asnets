@@ -563,7 +563,7 @@ class SupervisedTrainer(BaseTrainer):
                     "optimizer step:",
                     self.optimizer.iterations.numpy(),
                 )
-    
+
     @can_profile
     def _init_tf(self):
         """Do setup necessary for network (e.g. initialising weights)."""
@@ -651,6 +651,8 @@ class SupervisedTrainer(BaseTrainer):
             # 2. APPLY GRADIENTS (MAIN PROCESS ONLY)
             # --------------------------------------------------
             W0 = [w.numpy().copy() for w in self._weight_manager.all_weights]
+            for i, w in enumerate(self._weight_manager.all_weights):
+                print("[MAIN]", i, w.name, tuple(w.shape))
             mean_loss, total_succ_rate, n_states = self.apply_worker_grads(worker_outs)
             succ_rate_easy, succ_rate_medium, succ_rate_hard = self.calculate_balanced_succ_rate(worker_outs)
             if getattr(self.explorer, "log", False):
