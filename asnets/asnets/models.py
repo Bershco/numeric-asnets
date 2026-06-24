@@ -405,7 +405,7 @@ class PropNetworkWeights:
             the module keys and values being the weights for the module
         """
         new_layer = {}
-        for key in module_keys:
+        for key in sorted(module_keys, key=repr):
             in_size = in_size_func(key, hid_idx)
             name_pfx = name_pfx_func(key, hid_idx)
             if old_weights is not None:
@@ -451,7 +451,8 @@ class PropNetworkWeights:
             out = []
             for d in weight_list:
                 nd = {}
-                for k, v in d.items():
+                for k in sorted(d.keys(), key=repr):
+                    v = d[k]
                     nd[repr(k)] = conv_pair(v)
                 out.append(nd)
             return out
@@ -475,6 +476,7 @@ class PropNetworkWeights:
             "flnt_weights": conv_list(self.flnt_weights),
             "value_weights": conv_list(self.value_weights),
         }
+
     def _rebuild_all_weights(self):
         """
         Rebuild self.all_weights in the SAME order as _make_weights()
@@ -488,30 +490,36 @@ class PropNetworkWeights:
         for hid_idx in range(num_hidden):
 
             # action layer
-            for W, b in self.act_weights[hid_idx].values():
+            for key in sorted(self.act_weights[hid_idx].keys(), key=repr):
+                W, b = self.act_weights[hid_idx][key]
                 self.all_weights.extend([W, b])
 
             # proposition layer
-            for W, b in self.prop_weights[hid_idx].values():
+            for key in sorted(self.prop_weights[hid_idx].keys(), key=repr):
+                W, b = self.prop_weights[hid_idx][key]
                 self.all_weights.extend([W, b])
 
             # fluent layer
             if self.use_fluents:
-                for W, b in self.flnt_weights[hid_idx].values():
+                for key in sorted(self.flnt_weights[hid_idx].keys(), key=repr):
+                    W, b = self.flnt_weights[hid_idx][key]
                     self.all_weights.extend([W, b])
 
             # comparison layer
             if self.use_comparisons:
-                for W, b in self.comp_weights[hid_idx].values():
+                for key in sorted(self.comp_weights[hid_idx].keys(), key=repr):
+                    W, b = self.comp_weights[hid_idx][key]
                     self.all_weights.extend([W, b])
 
         # final action layer
-        for W, b in self.act_weights[-1].values():
+        for key in sorted(self.act_weights[-1].keys(), key=repr):
+            W, b = self.act_weights[-1][key]
             self.all_weights.extend([W, b])
 
         # value head
         for layer in self.value_weights:
-            for W, b in layer.values():
+            for key in sorted(layer.keys(), key=repr):
+                W, b = layer[key]
                 self.all_weights.extend([W, b])
 
     @classmethod
