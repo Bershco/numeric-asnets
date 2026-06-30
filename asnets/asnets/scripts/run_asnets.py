@@ -1070,7 +1070,8 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
     eval_explorer = ParallelEvaluator(
         specs=evaluation_specs,
         max_workers=min(args.num_workers, len(evaluation_specs)),
-        worker_fn=run_worker_eval_policy_only
+        worker_fn=run_worker_eval_policy_only,
+        wave_threshold=0.0,
     )
 
     _, success_rate, outs = eval_explorer.evaluate(weights_np)
