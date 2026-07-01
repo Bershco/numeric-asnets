@@ -409,7 +409,7 @@ def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_ident_to_in
     plan_res: PlanningResult = planner.plan(domain_path, instance_path)
     if plan_res.status == PlanningStatus.SUCCESS:
         plan_actions_int = [act_ident_to_ind[act_ident] for act_ident in plan_res.plan]
-        print(f"Plan_ints = [{', '.join(plan_actions_int)}]")
+        print(f"Plan_ints = {plan_actions_int}")
         print(f"Plan_actions = [{', '.join(plan_res.plan)}]")
         plan_len = len(plan_actions_int) + 1
         plan_states = [init_state]
