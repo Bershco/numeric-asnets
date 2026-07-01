@@ -41,7 +41,7 @@ class LocalExploreContext:
         results = []
         mdpsim_state = cstate.to_mdpsim(self.planner_exts)
         for action_id in action_nums:
-            next_state, step_cost = sample_next_state(cstate, int(action_id), self.planner_exts, mdpsim_state=mdpsim_state)
+            next_state, step_cost = sample_next_state(cstate, int(action_id), self.planner_exts, mdpsim_state=mdpsim_state, ignore_disabled=False)
 
             results.append((
                 action_id,
@@ -57,7 +57,7 @@ class LocalExploreContext:
     def env_simulate_step(self,
                           cstate: CanonicalState,
                           action_id: int):
-        next_state, _ = sample_next_state(cstate, int(action_id), self.planner_exts, mdpsim_state=cstate.to_mdpsim(self.planner_exts))
+        next_state, _ = sample_next_state(cstate, int(action_id), self.planner_exts, mdpsim_state=cstate.to_mdpsim(self.planner_exts), ignore_disabled=False)
         return next_state
 
     # ----- init state -----
