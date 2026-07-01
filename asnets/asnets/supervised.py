@@ -134,18 +134,20 @@ class PlannerExtensions(object):
             strip_parens(a.identifier): a
             for a in self.mdpsim_problem.ground_actions
         }
-        self.act_ident_to_ind: Dict[str, int] = {
-            f"({a})": i for i, a in enumerate(self.act_ident_to_mdpsim_act)
-        }
-        self.ind_to_act_ident: Dict[int, str] = {
-            i: a for a,i in self.act_ident_to_ind.items()
-        }
         LOGGER.debug(f'Python-side extra data')
         # Python-side extra data
         self.domain_meta = get_domain_meta(self.mdpsim_problem.domain)
         self.problem_meta = get_problem_meta(self.mdpsim_problem,
                                              self.domain_meta)
+        self.act_ident_to_ind: Dict[str, int] = {
+            f"({a})": idx
+            for a, idx in self.problem_meta._unique_id_to_index.items()
+        }
 
+        self.ind_to_act_ident: Dict[int, str] = {
+            idx: f"({a})"
+            for a, idx in self.problem_meta._unique_id_to_index.items()
+        }
         LOGGER.debug(f'Using domain type: {self.domain_type}')
         # Either use JPDDL (numeric) or SSiPP (otherwise), ugly!
         if self.domain_type == DomainType.NUMERIC:

@@ -399,7 +399,7 @@ def heuristic_bootstrapping(bootstrap_k: int, trajectory_info: list, ctx: LocalE
     return result
 
 
-def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_ident_to_ind, act_dim: int,
+def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_dim: int,
                        init_state: CanonicalState, ctx: LocalExploreContext, estimator: ENHSPEstimator,
                        est_plan_z: bool = False, enhsp_timeout: int = 15, minimization: bool = False):
     params = ENHSP_CONFIGS[enhsp_config] + f" -timeout {enhsp_timeout}"
@@ -408,7 +408,7 @@ def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_ident_to_in
     instance_path = pddl_files[1]
     plan_res: PlanningResult = planner.plan(domain_path, instance_path)
     if plan_res.status == PlanningStatus.SUCCESS:
-        plan_len = len(plan_res.plan) + 1
+        plan_len = len(plan_res.plan)
         plan_states = [init_state]
         plan_states_pi = []
         plan_states_z = []
@@ -416,9 +416,8 @@ def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_ident_to_in
         for i in range(plan_len):
             prev_state_pi = np.zeros(act_dim, dtype=np.float32)
             act_ident = plan_res.plan[i]
-            planner_exts_act_ind = ctx.planner_exts.act_ident_to_ind[act_ident]
-            prev_state_pi[planner_exts_act_ind] = 1.0 #TODO: make sure this is the correct index to put there, problematic
             applicable_action_id = ctx.planner_exts.problem_meta.act_unique_id_to_index(strip_parens(act_ident))
+            prev_state_pi[applicable_action_id] = 1.0 #TODO: make sure this is the correct index to put there, might be problematic later
             # this should be the same order as acts_enabled in CanonicalState instances
             plan_states_pi.append(prev_state_pi)
             prev_state_key = curr_state.state_key
@@ -642,7 +641,6 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
     if inp.spec.ENHSP_plan_bootstrap:
         plan_as_traj = plan_to_trajectory(enhsp_config=inp.spec.enhsp_config,
                                           pddl_files=planner_exts.pddl_files,
-                                          act_ident_to_ind=planner_exts.act_ident_to_ind,
                                           act_dim=act_dim,
                                           init_state=mcts.original_tree_root.state,
                                           ctx=ctx, estimator=estimator)
@@ -971,7 +969,6 @@ def run_worker_eval_enhsp(inp: WorkerInput) -> EvalWorkerOutput:
     print(f"{worker_tag} Beginning planning on instance {instance_name}")
     plan_as_traj = plan_to_trajectory(enhsp_config=inp.spec.enhsp_config,
                                       pddl_files=planner_exts.pddl_files,
-                                      act_ident_to_ind=planner_exts.act_ident_to_ind,
                                       act_dim=act_dim,
                                       init_state=cstate,
                                       ctx=ctx, estimator=estimator,
