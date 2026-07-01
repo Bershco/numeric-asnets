@@ -655,7 +655,7 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
                     source=DataSource.ENHSP_PLAN,
                 )
         else:
-            print(f"[ENHSP_PLAN_BOOTSTRAPPING] - ENHSP did not succeed in finding a plan for this instance with config: {inp.spec.config}")
+            print(f"[ENHSP_PLAN_BOOTSTRAPPING] - ENHSP did not succeed in finding a plan for this instance with config: {inp.spec.enhsp_config}")
     reconstruct_goal_path = inp.spec.goal_path_reconstruction
     if reconstruct_goal_path:
         trajectory_info = collector.get_trajectory_info_as_list()
