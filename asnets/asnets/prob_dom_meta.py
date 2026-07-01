@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, Iterable, List, Set, Tuple, Union
 from typing_extensions import Self
 
 from asnets.utils.mdpsim_utils import SPECIAL_FUNCTIONS
+from asnets.utils.py_utils import strip_parens
 
 
 class DomainType(Enum):
@@ -1479,7 +1480,7 @@ class ProblemMeta:
             int: the index of the given bound action in the list of all bound
             actions.
         """
-        return self._unique_id_to_index[string]
+        return self._unique_id_to_index[strip_parens(string)]
 
 
 def make_unbound_prop(mdpsim_lifted_prop: Any) -> UnboundProp:

@@ -418,10 +418,6 @@ def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_ident_to_in
             act_ident = plan_res.plan[i]
             planner_exts_act_ind = ctx.planner_exts.act_ident_to_ind[act_ident]
             prev_state_pi[planner_exts_act_ind] = 1.0 #TODO: make sure this is the correct index to put there, problematic
-            print(f"act_ident={act_ident}, bound_act identifier={ctx.planner_exts.act_ident_to_mdpsim_act[strip_parens(act_ident)].identifier}")
-            print("_unique_id_to_index:")
-            for unique_id, index in ctx.planner_exts.problem_meta._unique_id_to_index.items():
-                print(f"  {unique_id}: {index}")
             applicable_action_id = ctx.planner_exts.problem_meta.act_unique_id_to_index(act_ident)
             # this should be the same order as acts_enabled in CanonicalState instances
             plan_states_pi.append(prev_state_pi)
