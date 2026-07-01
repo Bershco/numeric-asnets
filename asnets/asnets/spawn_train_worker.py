@@ -408,17 +408,19 @@ def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_ident_to_in
     instance_path = pddl_files[1]
     plan_res: PlanningResult = planner.plan(domain_path, instance_path)
     if plan_res.status == PlanningStatus.SUCCESS:
-        plan_actions_int = [act_ident_to_ind[act_ident] for act_ident in plan_res.plan]
-        print(f"Plan_ints = {plan_actions_int}")
-        print(f"Plan_actions = [{', '.join(plan_res.plan)}]")
-        plan_len = len(plan_actions_int) + 1
+        plan_len = len(plan_res.plan) + 1
         plan_states = [init_state]
         plan_states_pi = []
         plan_states_z = []
         curr_state = init_state
-        for i, act_int in enumerate(plan_actions_int):
+        for i in range(plan_len):
             prev_state_pi = np.zeros(act_dim, dtype=np.float32)
-            prev_state_pi[act_int] = 1.0
+            act_ident = plan_res.plan[i]
+            planner_exts_act_ind = ctx.planner_exts.act_ident_to_ind[act_ident]
+            prev_state_pi[planner_exts_act_ind] = 1.0 #TODO: make sure this is the correct index to put there, problematic
+            print(f"act_ident={act_ident}, bound_act.unique_ident={ctx.planner_exts.act_ident_to_mdpsim_act(act_ident).unique_ident}")
+            applicable_action_id = ctx.planner_exts.problem_meta.act_unique_id_to_index(act_ident)
+            # this should be the same order as acts_enabled in CanonicalState instances
             plan_states_pi.append(prev_state_pi)
             prev_state_key = curr_state.state_key
             if est_plan_z:
@@ -432,7 +434,7 @@ def plan_to_trajectory(enhsp_config: str, pddl_files: list[str], act_ident_to_in
             else:
                 dist_from_goal = plan_len - i
                 plan_states_z.append(float(1 - (dist_from_goal / plan_len)))
-            curr_state = ctx.env_simulate_step(curr_state, act_int)
+            curr_state = ctx.env_simulate_step(curr_state, applicable_action_id)
             plan_states.append(curr_state)
         assert plan_states[-1].is_goal, "Somehow planner found a plan that is successful but does not reach the goal"
         plan_states = plan_states[:-1]

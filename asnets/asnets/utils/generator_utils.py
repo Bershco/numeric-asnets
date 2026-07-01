@@ -10,6 +10,8 @@ from pathlib import Path
 
 from typing import NamedTuple
 
+import numpy as np
+
 LOGGER = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
