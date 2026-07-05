@@ -1,0 +1,28 @@
+(define (problem mprime-x-5)
+   (:domain mystery-prime-typed)
+   (:objects papaya rice-22 pear-23 flounder-24 - food
+             achievement - pleasure
+             anxiety anger - pain
+)
+   (:init
+(= (locale papaya) 3)
+(= (locale rice-22) 4)
+(= (locale pear-23) 5)
+(= (locale flounder-24) 0)
+(= (harmony achievement) 1)
+(eats papaya pear-23)
+(eats rice-22 flounder-24)
+(eats rice-22 pear-23)
+(eats rice-22 papaya)
+(eats pear-23 papaya)
+(eats pear-23 pear-23)
+(eats pear-23 rice-22)
+(eats flounder-24 papaya)
+(eats flounder-24 flounder-24)
+(eats flounder-24 pear-23)
+(craves achievement flounder-24)
+(craves achievement papaya)
+(craves anxiety rice-22)
+(craves anger papaya)
+(craves anger pear-23))
+   (:goal (and (craves anger pear-23) (craves anxiety rice-22) (craves achievement papaya))))

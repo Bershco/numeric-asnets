@@ -29,5 +29,20 @@ TEST_RUNS = [
     (['instances/problem_9_7_3.pddl'], None),
     (['instances/problem_10_10_3.pddl'], None),
 ]
+VALIDATION_PDDLS = {
+    "easy": [
+        f'valid_easy/pfile{i}.pddl'
+        for i in range(1, 11)
+    ],
+    "medium": [
+        f'valid_medium/pfile{i}.pddl'
+        for i in range(1, 11)
+    ],
+    "hard": [
+        f'valid_hard/pfile{i}.pddl'
+        for i in range(1, 11)
+    ],
+}
+
 
 # should use hadd-astar

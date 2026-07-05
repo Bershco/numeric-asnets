@@ -30,5 +30,20 @@ TEST_RUNS = [
     (['instances/pfile19.pddl'], None),
     (['instances/pfile20.pddl'], None),
 ]  # yapf: disable
+VALIDATION_PDDLS = {
+    "easy": [
+        f'valid_easy/pfile{i}.pddl'
+        for i in range(1, 11)
+    ],
+    "medium": [
+        f'valid_medium/pfile{i}.pddl'
+        for i in range(1, 11)
+    ],
+    "hard": [
+        f'valid_hard/pfile{i}.pddl'
+        for i in range(1, 11)
+    ],
+}
+
 
 # use hadd-gbfs

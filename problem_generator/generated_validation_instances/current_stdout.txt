@@ -1,0 +1,261 @@
+/IdeaProjects/numeric-asnets/venv-asnets/bin/python /IdeaProjects/numeric-asnets/problem_generator/audit_generated_instances_enhsp.py --project-root /IdeaProjects/numeric-asnets --problem-generator-root . --domain-root /IdeaProjects/numeric-asnets/problems/numeric --generated-root ./generated_validation_instances --expected-per-difficulty 10 --planner --enhsp-config hmrp-ha-ht-gbfs --use-domain-enhsp-configs --use-domain-timeouts --enhsp-timeout 30 --output-csv ./generated_validation_instances/audit_enhsp_domain_configs.csv
+Project root          : /IdeaProjects/numeric-asnets
+Domain root           : /IdeaProjects/numeric-asnets/problems/numeric
+Problem generator root: /IdeaProjects/numeric-asnets/problem_generator
+Generated root        : /IdeaProjects/numeric-asnets/problem_generator/generated_validation_instances
+Expected/difficulty   : 10
+Planner enabled       : True
+ENHSP config          : hmrp-ha-ht-gbfs
+ENHSP timeout         : 30
+Use domain configs    : True
+Use domain timeouts   : True
+ENHSP timeout         : 30
+
+[SOLVED      ] block-grouping  easy   pfile0.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=34
+[SOLVED      ] block-grouping  easy   pfile1.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=23
+[SOLVED      ] block-grouping  easy   pfile2.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=42
+[SOLVED      ] block-grouping  easy   pfile3.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=25
+[SOLVED      ] block-grouping  easy   pfile4.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=19
+[SOLVED      ] block-grouping  easy   pfile5.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=15
+[SOLVED      ] block-grouping  easy   pfile6.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=33
+[SOLVED      ] block-grouping  easy   pfile7.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=25
+[SOLVED      ] block-grouping  easy   pfile8.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=36
+[SOLVED      ] block-grouping  easy   pfile9.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=31
+[SOLVED      ] block-grouping  medium pfile0.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=109
+[SOLVED      ] block-grouping  medium pfile1.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=87
+[SOLVED      ] block-grouping  medium pfile2.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=144
+[SOLVED      ] block-grouping  medium pfile3.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=103
+[SOLVED      ] block-grouping  medium pfile4.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=135
+[SOLVED      ] block-grouping  medium pfile5.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=88
+[SOLVED      ] block-grouping  medium pfile6.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=138
+[SOLVED      ] block-grouping  medium pfile7.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=94
+[SOLVED      ] block-grouping  medium pfile8.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=68
+[SOLVED      ] block-grouping  medium pfile9.pddl  cfg=hadd-gbfs          to=30   SUCCESS         len=126
+[PLANNER_FAIL] block-grouping  hard   pfile0.pddl  cfg=hadd-gbfs          to=30   TIMEOUT         len=None
+[PLANNER_FAIL] block-grouping  hard   pfile1.pddl  cfg=hadd-gbfs          to=30   TIMEOUT         len=None
+[PLANNER_FAIL] block-grouping  hard   pfile2.pddl  cfg=hadd-gbfs          to=30   TIMEOUT         len=None
+[PLANNER_FAIL] block-grouping  hard   pfile3.pddl  cfg=hadd-gbfs          to=30   TIMEOUT         len=None
+[PLANNER_FAIL] block-grouping  hard   pfile4.pddl  cfg=hadd-gbfs          to=30   TIMEOUT         len=None
+[PLANNER_FAIL] block-grouping  hard   pfile5.pddl  cfg=hadd-gbfs          to=30   TIMEOUT         len=None
+[PLANNER_FAIL] block-grouping  hard   pfile6.pddl  cfg=hadd-gbfs          to=30   TIMEOUT         len=None
+[PLANNER_FAIL] block-grouping  hard   pfile7.pddl  cfg=hadd-gbfs          to=30   TIMEOUT         len=None
+[PLANNER_FAIL] block-grouping  hard   pfile8.pddl  cfg=hadd-gbfs          to=30   TIMEOUT         len=None
+[PLANNER_FAIL] block-grouping  hard   pfile9.pddl  cfg=hadd-gbfs          to=30   TIMEOUT         len=None
+[SOLVED      ] delivery        easy   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=12
+[SOLVED      ] delivery        easy   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=16
+[SOLVED      ] delivery        easy   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=12
+[SOLVED      ] delivery        easy   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=10
+[SOLVED      ] delivery        easy   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=32
+[SOLVED      ] delivery        easy   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=16
+[SOLVED      ] delivery        easy   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=24
+[SOLVED      ] delivery        easy   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=34
+[SOLVED      ] delivery        easy   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=20
+[SOLVED      ] delivery        easy   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=21
+[SOLVED      ] delivery        medium pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=103
+[SOLVED      ] delivery        medium pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=84
+[SOLVED      ] delivery        medium pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=92
+[PLANNER_FAIL] delivery        medium pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[SOLVED      ] delivery        medium pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=101
+[PLANNER_FAIL] delivery        medium pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[SOLVED      ] delivery        medium pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=48
+[SOLVED      ] delivery        medium pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=54
+[SOLVED      ] delivery        medium pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=82
+[SOLVED      ] delivery        medium pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=89
+[PLANNER_FAIL] delivery        hard   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[PLANNER_FAIL] delivery        hard   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[PLANNER_FAIL] delivery        hard   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[PLANNER_FAIL] delivery        hard   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[PLANNER_FAIL] delivery        hard   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[PLANNER_FAIL] delivery        hard   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[PLANNER_FAIL] delivery        hard   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[PLANNER_FAIL] delivery        hard   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[PLANNER_FAIL] delivery        hard   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[PLANNER_FAIL] delivery        hard   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[SOLVED      ] drone           easy   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=4
+[SOLVED      ] drone           easy   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=4
+[SOLVED      ] drone           easy   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=8
+[SOLVED      ] drone           easy   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=23
+[SOLVED      ] drone           easy   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=4
+[SOLVED      ] drone           easy   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=8
+[SOLVED      ] drone           easy   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=4
+[SOLVED      ] drone           easy   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=8
+[SOLVED      ] drone           easy   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=23
+[SOLVED      ] drone           easy   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=8
+[SOLVED      ] drone           medium pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=44
+[SOLVED      ] drone           medium pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=61
+[SOLVED      ] drone           medium pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=52
+[SOLVED      ] drone           medium pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=44
+[SOLVED      ] drone           medium pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=118
+[SOLVED      ] drone           medium pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=63
+[SOLVED      ] drone           medium pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=105
+[SOLVED      ] drone           medium pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=44
+[SOLVED      ] drone           medium pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=44
+[SOLVED      ] drone           medium pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=105
+[SOLVED      ] drone           hard   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=303
+[PLANNER_FAIL] drone           hard   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[PLANNER_FAIL] drone           hard   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[PLANNER_FAIL] drone           hard   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[SOLVED      ] drone           hard   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=384
+[SOLVED      ] drone           hard   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=198
+[PLANNER_FAIL] drone           hard   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[SOLVED      ] drone           hard   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=373
+[PLANNER_FAIL] drone           hard   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[PLANNER_FAIL] drone           hard   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=30   TIMEOUT         len=None
+[PLANNER_FAIL] fo-counters     easy   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     easy   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     easy   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     easy   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     easy   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     easy   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[SOLVED      ] fo-counters     easy   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] fo-counters     easy   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[PLANNER_FAIL] fo-counters     easy   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     easy   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     medium pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     medium pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     medium pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     medium pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     medium pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     medium pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     medium pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     medium pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     medium pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     medium pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     hard   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     hard   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     hard   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     hard   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     hard   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     hard   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     hard   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     hard   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     hard   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[PLANNER_FAIL] fo-counters     hard   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=30   UNSOLVABLE      len=None
+[SOLVED      ] mprime          easy   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          easy   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          easy   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          easy   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          easy   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          easy   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          easy   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          easy   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          easy   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          easy   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          medium pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          medium pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          medium pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          medium pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          medium pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          medium pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          medium pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          medium pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          medium pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          medium pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          hard   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          hard   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          hard   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          hard   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          hard   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          hard   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          hard   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          hard   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          hard   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] mprime          hard   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=30   SUCCESS         len=0
+[SOLVED      ] rover           easy   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=8
+[PLANNER_FAIL] rover           easy   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[SOLVED      ] rover           easy   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=18
+[SOLVED      ] rover           easy   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=14
+[SOLVED      ] rover           easy   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=14
+[SOLVED      ] rover           easy   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=21
+[SOLVED      ] rover           easy   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=9
+[SOLVED      ] rover           easy   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=28
+[SOLVED      ] rover           easy   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=14
+[PLANNER_FAIL] rover           easy   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] rover           medium pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[SOLVED      ] rover           medium pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=32
+[SOLVED      ] rover           medium pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=25
+[SOLVED      ] rover           medium pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=27
+[SOLVED      ] rover           medium pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=22
+[SOLVED      ] rover           medium pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=15
+[PLANNER_FAIL] rover           medium pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] rover           medium pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[SOLVED      ] rover           medium pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=33
+[PLANNER_FAIL] rover           medium pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] rover           hard   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] rover           hard   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[SOLVED      ] rover           hard   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=51
+[PLANNER_FAIL] rover           hard   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] rover           hard   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] rover           hard   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] rover           hard   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] rover           hard   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] rover           hard   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] rover           hard   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[SOLVED      ] tpp             easy   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=11
+[SOLVED      ] tpp             easy   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=15
+[SOLVED      ] tpp             easy   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=10
+[SOLVED      ] tpp             easy   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=8
+[SOLVED      ] tpp             easy   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=10
+[SOLVED      ] tpp             easy   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=13
+[SOLVED      ] tpp             easy   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=7
+[SOLVED      ] tpp             easy   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=7
+[SOLVED      ] tpp             easy   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=7
+[SOLVED      ] tpp             easy   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=10
+[PLANNER_FAIL] tpp             medium pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[SOLVED      ] tpp             medium pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=30
+[SOLVED      ] tpp             medium pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=39
+[SOLVED      ] tpp             medium pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=34
+[SOLVED      ] tpp             medium pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=41
+[PLANNER_FAIL] tpp             medium pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[SOLVED      ] tpp             medium pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=42
+[PLANNER_FAIL] tpp             medium pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[SOLVED      ] tpp             medium pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=53
+[SOLVED      ] tpp             medium pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=50
+[PLANNER_FAIL] tpp             hard   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] tpp             hard   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] tpp             hard   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] tpp             hard   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] tpp             hard   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] tpp             hard   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] tpp             hard   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] tpp             hard   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] tpp             hard   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] tpp             hard   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[SOLVED      ] zenotravel      easy   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=14
+[PLANNER_FAIL] zenotravel      easy   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      easy   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[SOLVED      ] zenotravel      easy   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=15
+[SOLVED      ] zenotravel      easy   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=24
+[SOLVED      ] zenotravel      easy   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=10
+[SOLVED      ] zenotravel      easy   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=18
+[SOLVED      ] zenotravel      easy   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=8
+[PLANNER_FAIL] zenotravel      easy   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      easy   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      medium pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      medium pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[SOLVED      ] zenotravel      medium pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=23
+[PLANNER_FAIL] zenotravel      medium pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[SOLVED      ] zenotravel      medium pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=25
+[SOLVED      ] zenotravel      medium pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=32
+[PLANNER_FAIL] zenotravel      medium pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      medium pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      medium pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      medium pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      hard   pfile0.pddl  cfg=hmrp-ha-ht-gbfs    to=60   TIMEOUT         len=None
+[PLANNER_FAIL] zenotravel      hard   pfile1.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      hard   pfile2.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      hard   pfile3.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      hard   pfile4.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      hard   pfile5.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      hard   pfile6.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[PLANNER_FAIL] zenotravel      hard   pfile7.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+[SOLVED      ] zenotravel      hard   pfile8.pddl  cfg=hmrp-ha-ht-gbfs    to=60   SUCCESS         len=43
+[PLANNER_FAIL] zenotravel      hard   pfile9.pddl  cfg=hmrp-ha-ht-gbfs    to=60   UNSOLVABLE      len=None
+
+===== AUDIT SUMMARY =====
+PLANNER_FAIL   : 104
+SOLVED         : 136
+
+Wrote CSV: generated_validation_instances/audit_enhsp_domain_configs.csv
+
+Process finished with exit code 1

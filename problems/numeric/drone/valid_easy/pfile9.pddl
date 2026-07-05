@@ -1,0 +1,34 @@
+;;Instance with 2x1x2 points
+(define (problem droneprob_2_1_2_9) (:domain drone)
+(:objects 
+x0y0z0
+x0y0z1
+x1y0z0
+x1y0z1 - location
+) 
+(:init (= (x) 0) (= (y) 0) (= (z) 0)
+ (= (min_x) 0)  (= (max_x) 2) 
+ (= (min_y) 0)  (= (max_y) 1) 
+ (= (min_z) 0)  (= (max_z) 2) 
+(= (xl x0y0z0) 0)
+(= (yl x0y0z0) 0)
+(= (zl x0y0z0) 0)
+(= (xl x0y0z1) 0)
+(= (yl x0y0z1) 0)
+(= (zl x0y0z1) 1)
+(= (xl x1y0z0) 1)
+(= (yl x1y0z0) 0)
+(= (zl x1y0z0) 0)
+(= (xl x1y0z1) 1)
+(= (yl x1y0z1) 0)
+(= (zl x1y0z1) 1)
+(= (battery-level) 11)
+(= (battery-level-full) 11)
+)
+(:goal (and 
+(visited x0y0z0)
+(visited x0y0z1)
+(visited x1y0z0)
+(visited x1y0z1)
+(= (x) 0) (= (y) 0) (= (z) 0) ))
+);; end of the problem instance

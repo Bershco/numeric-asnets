@@ -29,4 +29,17 @@ TEST_RUNS = [
     (['instances/instance_100_20_5_1.pddl'], None),
     (['instances/instance_100_25_6_2.pddl'], None),
 ]
-
+VALIDATION_PDDLS = {
+    "easy": [
+        f'valid_easy/pfile{i}.pddl'
+        for i in range(1, 11)
+    ],
+    "medium": [
+        f'valid_medium/pfile{i}.pddl'
+        for i in range(1, 11)
+    ],
+    "hard": [
+        f'valid_hard/pfile{i}.pddl'
+        for i in range(1, 11)
+    ],
+}
