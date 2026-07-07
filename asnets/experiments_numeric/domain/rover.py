@@ -38,11 +38,11 @@ VALIDATION_PDDLS = {
     ],
     "medium": [
         f'valid_medium/pfile{i}.pddl'
-        for i in range(1, 11)
+        for i in range(10)
     ],
     "hard": [
         f'valid_hard/pfile{i}.pddl'
-        for i in range(1, 11)
+        for i in range(10)
     ],
 }
 

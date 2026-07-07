@@ -40,7 +40,7 @@ VALIDATION_PDDLS = {
     ],
     "hard": [
         f'valid_hard/pfile{i}.pddl'
-        for i in range(1, 11)
+        for i in range(10)
     ],
 }
 

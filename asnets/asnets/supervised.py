@@ -653,14 +653,10 @@ class SupervisedTrainer(BaseTrainer):
             # 2. APPLY GRADIENTS (MAIN PROCESS ONLY)
             # --------------------------------------------------
             W0 = [w.numpy().copy() for w in self._weight_manager.all_weights]
-            # for i, w in enumerate(self._weight_manager.all_weights):
-            #     print("[MAIN]", i, w.name, tuple(w.shape))
             mean_loss, total_succ_rate, n_states = self.apply_worker_grads(worker_outs)
             succ_rate_easy, succ_rate_medium, succ_rate_hard = self.calculate_balanced_succ_rate(worker_outs)
             if getattr(self.explorer, "log", False):
                 w = self._weight_manager.all_weights[0]
-                # print("MAIN after update:", float(tf.reduce_mean(w)), float(tf.math.reduce_std(w)),
-                #       float(tf.linalg.norm(w)))
                 print(f"Trainer first weight (logging for update in between epochs): "
                       f"μ±σ: {float(tf.reduce_mean(w))}±{float(tf.math.reduce_std(w))},"
                       f"weight norm: {float(tf.linalg.norm(w))}")
