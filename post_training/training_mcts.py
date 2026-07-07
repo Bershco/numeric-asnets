@@ -174,10 +174,6 @@ class TrainingMCTS(MCTS):
         assert node.children is not None
         pi = np.zeros(act_dim, dtype=np.float32)
         z_partial = np.zeros(act_dim, dtype=np.float32)
-        # for action, child in node.children.items():
-        #     visits = child.visit_count
-        #     pi[action] = visits
-        #     z_partial[action] = visits * child.Q_value
         for act, Qsa, Nsa in node.children.get_qsa_nsa_list():
             pi[act] = Nsa
             z_partial[act] = Nsa * Qsa
@@ -186,7 +182,6 @@ class TrainingMCTS(MCTS):
             pi /= pi_sum
             z = z_partial.sum() / pi_sum
         else:
-            # mask = self.get_applicable_action_mask(node)
             mask = node.applicable_action_mask
             valid = np.where(mask)[0]
             if len(valid) > 0:
@@ -276,7 +271,6 @@ class TrainingMCTS(MCTS):
 
     def sample_k_sufficient_nodes(self, k, min_visitations: int = 5, power_law_weight: float = 2.0) -> list:
         # 1. Filter eligible nodes
-        # eligible = [(node, self.N[node]) for node, count in self.N.items() if count > min_visitations]
         eligible = [(node, node.visit_count) for node in self.state_key_to_node.values() if
                     node.visit_count > min_visitations]
         if not eligible:
@@ -289,7 +283,12 @@ class TrainingMCTS(MCTS):
 
         # 2. Sample nodes
         num_to_sample = min(k, len(nodes))
-        sampled_nodes = np.random.choice(nodes, size=num_to_sample, replace=False, p=probs)
+        if num_to_sample > 0:
+            sampled_nodes = np.random.choice(nodes, size=num_to_sample, replace=False, p=probs)
+        elif num_to_sample == -1: #Experimental - if k = -1 (no other value should be allowed, hence else is ValueError) then we "sample" the entire eligible list
+            sampled_nodes = nodes
+        else:
+            raise ValueError("This shouldn't have happened, something went wrong with num_to_sample value")
 
         act_dim = self.ctx.get_act_dim()
         results = []
