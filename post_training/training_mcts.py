@@ -139,6 +139,8 @@ class TrainingMCTS(MCTS):
     def _evaluate_node(self, node: MCTSNode) -> float:
         if node.goal_state:
             return self.best_value()
+        if node.terminal_state:
+            return self.worst_value()
         net_v = node.pred_value
         alpha = self.estimator_coeff
         if alpha > 0.0 and self.estimator_mode in (EstimatorMode.V_ONLY, EstimatorMode.BOTH):

@@ -32,14 +32,14 @@ TEST_RUNS = [
 VALIDATION_PDDLS = {
     "easy": [
         f'valid_easy/pfile{i}.pddl'
-        for i in range(1, 11)
+        for i in range(10)
     ],
     "medium": [
         f'valid_medium/pfile{i}.pddl'
-        for i in range(1, 11)
+        for i in range(10)
     ],
     "hard": [
         f'valid_hard/pfile{i}.pddl'
-        for i in range(1, 11)
+        for i in range(10)
     ],
 }
