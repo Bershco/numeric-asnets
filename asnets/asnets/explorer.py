@@ -23,6 +23,7 @@ class SingleProblem(object):
         self.name = None  # this changes later when explorer is created
         self.spec = spec
         self.replay = WeightedReplayBuffer()
+        self.sampled_states_replay = WeightedReplayBuffer()
         self.problem_meta = None
         self.dom_meta = None
         self.obs_dim = None
@@ -47,9 +48,10 @@ class SingleProblem(object):
             return obs_tensor, qv_tensor, value_tensor
         return obs_tensor, qv_tensor
 
-    def weighted_dataset(self):
-        rich_targets, counts = self.replay.get_full_dataset()
-        assert len(rich_targets) > 0, f"Empty replay {self.replay}"
+    def weighted_dataset(self, replay=None):
+        replay = self.replay if replay is None else replay
+        rich_targets, counts = replay.get_full_dataset()
+        assert len(rich_targets) > 0, f"Empty replay {replay}"
         counts = np.asarray(counts, dtype="float32")
         flattened = self.flatten_obs_qvs(rich_targets)
         if self.network.value_head_enabled:
@@ -100,15 +102,15 @@ class WeightedReplayBuffer:
         counts = [self.counter[item] for item in rich_dataset]
         return rich_dataset, counts
 
-    def remove_oldest(self):
-        """Remove the oldest element from the replay buffer."""
-        # make sure we do not empty the replay buffer
-        if len(self.added_items) <= 1:
-            return
+    def remove_oldest(self) -> bool:
+        """Remove the oldest insertion batch from the replay buffer."""
+        if not self.added_items:
+            return False
 
         item_counter = self.added_items.popleft()
         self.counter.subtract(item_counter)
         self.counter += Counter()  # remove zero and negative counts
+        return True
 
 
 class Explorer(ABC):

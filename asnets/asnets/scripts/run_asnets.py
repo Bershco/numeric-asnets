@@ -745,17 +745,17 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
 
     if not args.no_train:
         specs = make_specs(args)
+        problems, weight_manager = make_problems(args, dg_extra_dim, specs, weight_manager)
+
         explorer = ParallelMCTSExplorerGrads(
+            problems=problems,
             specs=specs,
             log=args.worker_logs,
             PROFILE_DIR=args.profile_dir,
             corrupt_pi=args.corrupt_pi,
             corrupt_z=args.corrupt_z,
-            mse_coeff=args.mse,
-            l2_reg_coeff=args.l2_reg,
-            l1_reg_coeff=args.l1_reg,
-            l1_l2_reg_coeff=args.l1_l2_reg,
             max_workers=args.num_workers,
+            max_replay_size=args.max_replay_size,
         )
         validation_sets = {
             "easy": args.validation_pddls_easy,
@@ -779,50 +779,29 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
                                       wave_threshold=0)
         # this is policy driven inference because validation checks how good the policy is
         # and because mcts validation takes way too long
-        if not args.freeze_train:
-            sup_trainer = SupervisedTrainer(
-                weight_manager=weight_manager,
-                summary_writer=sample_writer,
-                explorer=explorer,
-                validator=validator,
-                lr=args.supervised_lr,
-                lr_steps=args.lr_steps,
-                l1_reg_coeff=args.l1_reg,
-                l2_reg_coeff=args.l2_reg,
-                l1_l2_reg_coeff=args.l1_l2_reg,
-                mse_coeff=args.mse,
-                start_time=start_time,
-                early_stop=args.supervised_early_stop,
-                save_every=args.save_every,
-                snapshot_dir=snapshot_dir,
-                time_out=args.timeout,
-                discard_failed_runs=args.discard_failed_runs,
-                resume_from=args.resume_from,
-            )
-        else:
-            sup_trainer = FrozenSupervisedTrainer(  # FIXME: if testing frozen training again - this is probably broken
-                weight_manager=weight_manager,
-                summary_writer=sample_writer,
-                explorer=explorer,
-                batch_size=args.supervised_bs,
-                lr=args.supervised_lr,
-                lr_steps=args.lr_steps,
-                l1_reg_coeff=args.l1_reg,
-                l2_reg_coeff=args.l2_reg,
-                l1_l2_reg_coeff=args.l1_l2_reg,
-                mse_coeff=args.mse,
-                opt_batches_per_epoch=args.opt_batch_per_epoch,
-                start_time=start_time,
-                early_stop=args.supervised_early_stop,
-                save_every=args.save_every,
-                scratch_dir=scratch_dir,
-                snapshot_dir=snapshot_dir,
-                dk=args.dK,
-                time_out=args.timeout,
-                use_fluents=args.use_fluents,
-                use_comps=args.use_comparisons,
-                planner_exts=p,
-            )
+        sup_trainer = SupervisedTrainer(
+            weight_manager=weight_manager,
+            summary_writer=sample_writer,
+            explorer=explorer,
+            validator=validator,
+            lr=args.supervised_lr,
+            lr_steps=args.lr_steps,
+            l1_reg_coeff=args.l1_reg,
+            l2_reg_coeff=args.l2_reg,
+            l1_l2_reg_coeff=args.l1_l2_reg,
+            mse_coeff=args.mse,
+            batch_size=args.supervised_bs,
+            train_steps_per_epoch=1,
+            main_road_fraction=0.75,
+            grad_clip_norm=5.0,
+            start_time=start_time,
+            early_stop=args.supervised_early_stop,
+            save_every=args.save_every,
+            snapshot_dir=snapshot_dir,
+            time_out=args.timeout,
+            discard_failed_runs=args.discard_failed_runs,
+            resume_from=args.resume_from,
+        )
 
         best_rate, elapsed_time, iter_num = sup_trainer.train(
             max_epochs=args.max_opt_epochs
@@ -943,26 +922,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
 
     if not args.no_train:
         specs = make_specs(args)
-        problems = [SingleProblem(spec) for spec in specs]
-        before_dim_init = time()
-        init_data = run_parallel_problem_init_data_collection(
-            specs=[problem.spec for problem in problems], max_workers=args.num_workers
-        )
-
-        for id in init_data:
-            problem = problems[id.slot_id]
-            problem.name = id.name
-            problem.obs_dim = id.obs_dim
-            problem.act_dim = id.act_dim
-            problem.dom_meta = id.dom_meta
-            problem.problem_meta = id.prob_meta
-            problem.ssipp_dead_end_value = id.ssipp_dead_end_value
-        print(f"[EXPLORER_DIM_CACHE] dimension initialization done, took {time() - before_dim_init} seconds")
-
-        for problem in problems:
-            problem.network, weight_manager = make_network(
-                args, problem, dg_extra_dim, weight_manager,
-            )
+        problems, weight_manager = make_problems(args, dg_extra_dim, specs, weight_manager)
 
         # need to create FileWriter *after* creating the policy network itself, or
         # the network will not show up in TB (I assume that the `Graph` view is
@@ -1012,7 +972,6 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
         validator = ParallelEvaluator(specs=all_validation_specs,
                                       max_workers=min(args.num_workers, len(all_validation_specs)),
                                       worker_fn=run_worker_eval_policy_only, wave_threshold=0)
-        # we maintain the old loss for usage of policy network only (instead of dual-head using the new loss)
         sup_trainer = OriginalSupervisedTrainer(
             problems=problems,
             weight_manager=weight_manager,
@@ -1076,6 +1035,27 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
 
     _, success_rate, outs = eval_explorer.evaluate(weights_np)
 
+
+def make_problems(args, dg_extra_dim, specs, weight_manager):
+    problems = [SingleProblem(spec) for spec in specs]
+    before_dim_init = time()
+    init_data = run_parallel_problem_init_data_collection(
+        specs=[problem.spec for problem in problems], max_workers=args.num_workers
+    )
+    for id in init_data:
+        problem = problems[id.slot_id]
+        problem.name = id.name
+        problem.obs_dim = id.obs_dim
+        problem.act_dim = id.act_dim
+        problem.dom_meta = id.dom_meta
+        problem.problem_meta = id.prob_meta
+        problem.ssipp_dead_end_value = id.ssipp_dead_end_value
+    print(f"[EXPLORER_DIM_CACHE] dimension initialization done, took {time() - before_dim_init} seconds")
+    for problem in problems:
+        problem.network, weight_manager = make_network(
+            args, problem, dg_extra_dim, weight_manager,
+        )
+    return problems, weight_manager
 
 
 def parent_death_pact(signal: signal.Signals = signal.SIGINT) -> None:

@@ -458,6 +458,11 @@ class SupervisedTrainer(BaseTrainer):
                  l2_reg_coeff,
                  l1_l2_reg_coeff,
                  mse_coeff,
+                 batch_size,
+                 train_steps_per_epoch=1,
+                 main_road_fraction=0.75,
+                 tree_policy_weight=0.1,
+                 grad_clip_norm=5.0,
                  hide_progress=False,
                  time_out=40,
                  early_stop=20,
@@ -472,6 +477,11 @@ class SupervisedTrainer(BaseTrainer):
         self.balanced_success_rate = balanced_success_rate
         self.hide_progress = hide_progress
         self.mse_coeff = mse_coeff
+        self.batch_size = batch_size
+        self.train_steps_per_epoch = train_steps_per_epoch
+        self.main_road_fraction = main_road_fraction
+        self.tree_policy_weight = tree_policy_weight
+        self.grad_clip_norm = grad_clip_norm
         self.timer = TimerContext()
         self.start_time = start_time
         self.timeout = time_out
@@ -650,21 +660,42 @@ class SupervisedTrainer(BaseTrainer):
                     tf_and_log("mcts/root_kl", mean_kl)
 
             # --------------------------------------------------
-            # 2. APPLY GRADIENTS (MAIN PROCESS ONLY)
+            # 2. INGEST REPLAY (central optimization follows in a later stage)
             # --------------------------------------------------
+            replay_stats = self.explorer.add_worker_outputs_to_main_road_replay(
+                worker_outs,
+            )
+            n_states = replay_stats["collected"]
             W0 = [w.numpy().copy() for w in self._weight_manager.all_weights]
-            mean_loss, total_succ_rate, n_states = self.apply_worker_grads(worker_outs)
+            train_stats = self.train_from_replay()
+            total_succ_rate = float(np.mean([out.hit_goal_mean for out in worker_outs]))
             succ_rate_easy, succ_rate_medium, succ_rate_hard = self.calculate_balanced_succ_rate(worker_outs)
-            if getattr(self.explorer, "log", False):
-                w = self._weight_manager.all_weights[0]
-                print(f"Trainer first weight (logging for update in between epochs): "
-                      f"μ±σ: {float(tf.reduce_mean(w))}±{float(tf.math.reduce_std(w))},"
-                      f"weight norm: {float(tf.linalg.norm(w))}")
-            W1 = self._weight_manager.all_weights
-            deltas = [np.mean(np.abs(w1.numpy() - w0)) for w0, w1 in zip(W0, W1)]
-            tf_and_log("weight-delta/mean", np.mean(deltas))
-            tf_and_log("weight-delta/max", np.max(deltas))
-            tf_and_log('train-loss', mean_loss)
+            tf_and_log("train/updates", train_stats["updates"])
+            if train_stats["updates"] > 0:
+                deltas = [
+                    np.mean(np.abs(w.numpy() - w0))
+                    for w0, w in zip(W0, self._weight_manager.all_weights)
+                ]
+                tf_and_log("weight-delta/mean", np.mean(deltas))
+                tf_and_log("weight-delta/max", np.max(deltas))
+                tf_and_log("train-loss", train_stats["total_loss"])
+                tf_and_log("train/policy_loss", train_stats["policy_loss"])
+                tf_and_log("train/value_loss", train_stats["value_loss"])
+                tf_and_log("train/reg_loss", train_stats["reg_loss"])
+                tf_and_log("grad/global_norm_unclipped", train_stats["grad_norm"])
+                tf_and_log("grad/global_norm_clipped", train_stats["clipped_grad_norm"])
+                tf_and_log("grad/was_clipped", train_stats["was_clipped"])
+                tf_and_log("grad/none_grad_count", train_stats["none_grad_count"])
+            else:
+                LOGGER.warning(
+                    "Replay training skipped: main-road=%d tree=%d",
+                    replay_stats["main_road_size"],
+                    replay_stats["tree_size"],
+                )
+            tf_and_log('replay/main_road_added', replay_stats["main_road_added"])
+            tf_and_log('replay/tree_added', replay_stats["tree_added"])
+            tf_and_log('replay/main_road_size', replay_stats["main_road_size"])
+            tf_and_log('replay/tree_size', replay_stats["tree_size"])
             tf_and_log('succ-rate/mean', total_succ_rate)
 
             present_diffs = {o.instance_diff for o in worker_outs}
@@ -689,8 +720,10 @@ class SupervisedTrainer(BaseTrainer):
                 total_succ_rate = balanced_rate  # if we want to balance rates, this is the real deal
             tr.set_postfix(
                 succ_rate=total_succ_rate,
-                net_loss=mean_loss,
                 states=n_states,
+                main_road_replay=replay_stats["main_road_size"],
+                tree_replay=replay_stats["tree_size"],
+                train_loss=train_stats["total_loss"],
                 lr=self.optimizer.lr,
                 refresh=False,
             )
@@ -795,40 +828,141 @@ class SupervisedTrainer(BaseTrainer):
 
         return True
 
-    def apply_worker_grads(self, worker_outs):
+    def _sample_from_replay(self, problem, replay, batch_size):
+        dataset = problem.weighted_dataset(replay)
+        if problem.network.value_head_enabled:
+            obs, pi, z, counts = dataset
+            return next(weighted_batch_iter((obs, pi, z), counts, batch_size, 1))
+        obs, pi, counts = dataset
+        sampled_obs, sampled_pi = next(weighted_batch_iter((obs, pi), counts, batch_size, 1))
+        return sampled_obs, sampled_pi, None
+
+    def _sample_mixed_replay_batch(self, problem):
+        main_road_available = len(problem.replay) > 0
+        tree_available = len(problem.sampled_states_replay) > 0
+        if not main_road_available and not tree_available:
+            return None
+        if main_road_available and tree_available:
+            main_road_size = int(round(self.batch_size * self.main_road_fraction))
+            tree_size = self.batch_size - main_road_size
+        elif main_road_available:
+            main_road_size, tree_size = self.batch_size, 0
+        else:
+            main_road_size, tree_size = 0, self.batch_size
+
+        batches, policy_weights = [], []
+        if main_road_size:
+            batches.append(self._sample_from_replay(problem, problem.replay, main_road_size))
+            policy_weights.append(np.ones(main_road_size, dtype=np.float32))
+        if tree_size:
+            batches.append(self._sample_from_replay(problem, problem.sampled_states_replay, tree_size))
+            policy_weights.append(np.full(
+                tree_size,
+                self.tree_policy_weight,
+                dtype=np.float32,
+            ))
+
+        obs = np.concatenate([batch[0] for batch in batches], axis=0)
+        pi = np.concatenate([batch[1] for batch in batches], axis=0)
+        z = (
+            np.concatenate([batch[2] for batch in batches], axis=0)
+            if problem.network.value_head_enabled else None
+        )
+        return obs, pi, z, np.concatenate(policy_weights, axis=0)
+
+    def _replay_reg_loss(self, params, dtype):
+        reg_loss = tf.constant(0.0, dtype=dtype)
+        if self.l2_reg_coeff:
+            reg_loss += tf.cast(self.l2_reg_coeff, dtype) * tf.add_n([
+                tf.reduce_sum(tf.square(param)) for param in params
+            ])
+        if self.l1_reg_coeff:
+            reg_loss += tf.cast(self.l1_reg_coeff, dtype) * tf.add_n([
+                tf.reduce_sum(tf.abs(param)) for param in params
+            ])
+        if self.l1_l2_reg_coeff:
+            reg_loss += tf.cast(self.l1_l2_reg_coeff, dtype) * tf.add_n([
+                tf.reduce_sum(tf.abs(param)) + tf.reduce_sum(tf.square(param))
+                for param in params
+            ])
+        return reg_loss
+
+    def _train_replay_step(self):
         params = self._weight_manager.all_weights
-        if not worker_outs:
-            raise RuntimeError("No worker outputs.")
+        sampled_batches = [
+            (problem, self._sample_mixed_replay_batch(problem))
+            for problem in self.explorer.problems
+        ]
+        sampled_batches = [(problem, batch) for problem, batch in sampled_batches if batch is not None]
+        if not sampled_batches:
+            return None
 
-        # for i, v in enumerate(params):
-        #     print("[MAIN]", i, v.name, tuple(v.shape))
-        # init accumulators
-        grads_sum = [np.zeros(v.shape, dtype=np.float32) for v in params]
-        total = 0
-        losses = []
-        succs = []
+        with tf.GradientTape() as tape:
+            policy_losses, value_losses = [], []
+            for problem, (obs, pi_tgt, z_tgt, policy_weights) in sampled_batches:
+                obs_tf = tf.convert_to_tensor(obs, dtype=tf.float32)
+                pi_tgt_tf = tf.convert_to_tensor(pi_tgt, dtype=tf.float32)
+                policy_weights_tf = tf.convert_to_tensor(policy_weights, dtype=tf.float32)
+                if problem.network.value_head_enabled:
+                    pi_pred, value_pred = problem.network(obs_tf, training=True)
+                else:
+                    pi_pred, value_pred = problem.network(obs_tf, training=True), None
 
-        for out in worker_outs:
-            if self.discard_failed_runs:
-                if not out.hit_goal_mean:
-                    continue
-            losses.append(out.loss_mean)
-            succs.append(out.hit_goal_mean)
-            if out.n_samples <= 0:
-                continue
-            total += out.n_samples
-            for i, g in enumerate(out.grads_np):
-                grads_sum[i] += g * out.n_samples
+                xent_per_example = -tf.reduce_sum(
+                    pi_tgt_tf * tf.math.log(tf.clip_by_value(pi_pred, 1e-8, 1.0)),
+                    axis=1,
+                )
+                policy_losses.append(tf.math.divide_no_nan(
+                    tf.reduce_sum(xent_per_example * policy_weights_tf),
+                    tf.reduce_sum(policy_weights_tf),
+                ))
+                if value_pred is not None:
+                    value_pred = tf.squeeze(value_pred, axis=-1)
+                    z_tgt_tf = tf.convert_to_tensor(z_tgt, dtype=value_pred.dtype)
+                    value_losses.append(tf.reduce_mean(tf.square(value_pred - z_tgt_tf)))
 
-        if total == 0:
-            # no samples => skip update
-            return 0.0, float(sum(succs) / max(1, len(succs))), 0
+            policy_loss = tf.reduce_mean(policy_losses)
+            value_loss = tf.reduce_mean(value_losses) if value_losses else tf.constant(0.0, policy_loss.dtype)
+            reg_loss = self._replay_reg_loss(params, policy_loss.dtype)
+            total_loss = policy_loss + tf.cast(self.mse_coeff, policy_loss.dtype) * value_loss + reg_loss
 
-        mean_grads = [g / total for g in grads_sum]
-        mean_grads_tf = [tf.convert_to_tensor(g, dtype=v.dtype) for g, v in zip(mean_grads, params)]
-        self.optimizer.apply_gradients(zip(mean_grads_tf, params))
+        raw_grads = tape.gradient(total_loss, params)
+        none_grad_count = sum(grad is None for grad in raw_grads)
+        grads = [tf.zeros_like(param) if grad is None else grad for param, grad in zip(params, raw_grads)]
+        for grad in grads:
+            tf.debugging.assert_all_finite(grad, "Non-finite gradient detected during replay training")
 
-        return float(sum(losses) / len(losses)), float(sum(succs) / len(succs)), int(total)
+        grad_norm = tf.linalg.global_norm(grads)
+        if self.grad_clip_norm is not None:
+            grads, _ = tf.clip_by_global_norm(grads, self.grad_clip_norm)
+        clipped_grad_norm = tf.linalg.global_norm(grads)
+        self.optimizer.apply_gradients(zip(grads, params))
+
+        return {
+            "total_loss": float(total_loss.numpy()),
+            "policy_loss": float(policy_loss.numpy()),
+            "value_loss": float(value_loss.numpy()),
+            "reg_loss": float(reg_loss.numpy()),
+            "grad_norm": float(grad_norm.numpy()),
+            "clipped_grad_norm": float(clipped_grad_norm.numpy()),
+            "was_clipped": float(self.grad_clip_norm is not None and grad_norm.numpy() > self.grad_clip_norm),
+            "none_grad_count": float(none_grad_count),
+        }
+
+    def train_from_replay(self):
+        step_stats = [self._train_replay_step() for _ in range(self.train_steps_per_epoch)]
+        step_stats = [stats for stats in step_stats if stats is not None]
+        if not step_stats:
+            return {
+                "updates": 0, "total_loss": 0.0, "policy_loss": 0.0,
+                "value_loss": 0.0, "reg_loss": 0.0, "grad_norm": 0.0,
+                "clipped_grad_norm": 0.0, "was_clipped": 0.0,
+                "none_grad_count": 0.0,
+            }
+        return {
+            "updates": len(step_stats),
+            **{key: float(np.mean([stats[key] for stats in step_stats])) for key in step_stats[0]},
+        }
 
     def calculate_balanced_succ_rate(self, worker_outs):
         if not self.balanced_success_rate:

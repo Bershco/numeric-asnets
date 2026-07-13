@@ -93,12 +93,6 @@ class PolicyDrivenWorkerInput(WorkerInput):
 
 @dataclass(frozen=True)
 class MCTSWorkerInput(WorkerInput):
-    # loss cfg
-    mse_coeff: float
-    l2_reg_coeff: float
-    l1_reg_coeff: float
-    l1_l2_reg_coeff: float
-
     # run corruption settings for corruption testing
     corrupt_pi: Optional[str] = None  # "shuffle" | "random" | "zero" | None
     corrupt_z: Optional[str] = None  # "shuffle" | "random" | "zero" | None
@@ -108,8 +102,10 @@ class MCTSWorkerInput(WorkerInput):
 class WorkerOutput:
     hit_goal_mean: float
     n_samples: int
-    loss_mean: float
-    grads_np: list[np.ndarray]
+    main_trajectory: list[tuple] # list of either (CanonicalState, PolicyVector) or (CanonicalState, PolicyVector, ValueFloat)
+    expert_trajectory: list[tuple] = field(default_factory=list) # same but for expert planner trajectory from enhsp bootstrapping
+    tree_samples: list[tuple] = field(default_factory=list)
+    slot_id: Optional[int] = None
     root_target_entropy: Optional[np.float64] = None
     root_pred_entropy: Optional[np.float64] = None
     root_kl: Optional[np.float64] = None
@@ -169,6 +165,37 @@ class WorkerCollector:
     def __len__(self):
         return len(self.cstates)
 
+    def get_data_points_by_source(
+            self,
+            bound_acts_ordered,
+            value_head_enabled: bool,
+            pi_tgt: Optional[np.ndarray] = None,
+            z_tgt: Optional[np.ndarray] = None,
+    ):
+        """Return hashable replay samples using the problem action ordering."""
+        pi_tgt = self.pi_tgt if pi_tgt is None else pi_tgt
+        z_tgt = self.z_tgt if z_tgt is None else z_tgt
+        if len(pi_tgt) != len(self.cstates) or len(z_tgt) != len(self.cstates):
+            raise ValueError("Replay targets do not match collected states")
+
+        # Pre-populate the dictionary for every enum member
+        data_by_source = {ds: [] for ds in DataSource}
+
+        for cstate, pi, z, src in zip(self.cstates, pi_tgt, z_tgt, self.sources):
+            if len(pi) != len(bound_acts_ordered):
+                raise ValueError(
+                    f"Policy length {len(pi)} does not match action count "
+                    f"{len(bound_acts_ordered)}"
+                )
+            rich_qvs = tuple(
+                (bound_act, float(q_value))
+                for bound_act, q_value in zip(bound_acts_ordered, pi)
+            )
+            sample = (cstate, rich_qvs, float(z)) if value_head_enabled else (cstate, rich_qvs)
+            data_by_source[src].append(sample)
+
+        return data_by_source
+
 
 @dataclass
 class WorkerCollectorWithLogging(WorkerCollector):
@@ -180,11 +207,6 @@ class WorkerCollectorWithLogging(WorkerCollector):
     # --- prediction tracking ---
     pi_pred: List[np.ndarray] = field(default_factory=list)
     z_pred: List[float] = field(default_factory=list)
-
-    # --- training losses ---
-    xent_losses: List[float] = field(default_factory=list)
-    mse_losses: List[float] = field(default_factory=list)
-    reg_losses: List[float] = field(default_factory=list)
 
     # --------- logging helpers ---------
 
@@ -198,11 +220,6 @@ class WorkerCollectorWithLogging(WorkerCollector):
         if z_pred is not None:
             self.z_pred.append(float(z_pred))
 
-    def add_losses(self, xent, mse, reg):
-        self.xent_losses.append(float(xent))
-        self.mse_losses.append(float(mse))
-        self.reg_losses.append(float(reg))
-
     # --------- summaries ---------
 
     def root_summary(self):
@@ -210,13 +227,6 @@ class WorkerCollectorWithLogging(WorkerCollector):
             "root_target_entropy": np.mean(self.root_target_entropies) if self.root_target_entropies else None,
             "root_pred_entropy": np.mean(self.root_pred_entropies) if self.root_pred_entropies else None,
             "root_kl": np.mean(self.root_kls) if self.root_kls else None,
-        }
-
-    def loss_summary(self):
-        return {
-            "xent_loss": np.mean(self.xent_losses) if self.xent_losses else None,
-            "mse_loss": np.mean(self.mse_losses) if self.mse_losses else None,
-            "reg_loss": np.mean(self.reg_losses) if self.reg_losses else None,
         }
 
 
@@ -307,36 +317,6 @@ def _build_network_local(weight_manager_local, prob_meta):
         problem_meta=prob_meta,
     )
     return net
-
-
-# -----------------------------
-# Loss (worker-side)
-# -----------------------------
-
-def _policy_xent_loss(pi_pred: tf.Tensor, pi_target: tf.Tensor) -> tf.Tensor:
-    # pi_pred: probabilities (already masked softmax in your network)
-    eps = tf.constant(1e-8, dtype=pi_pred.dtype)
-    pi_pred = tf.clip_by_value(pi_pred, eps, 1.0)
-    return -tf.reduce_mean(tf.reduce_sum(pi_target * tf.math.log(pi_pred), axis=1))
-
-
-def _value_mse_loss(v_pred: tf.Tensor, z_target: tf.Tensor) -> tf.Tensor:
-    v_pred = tf.squeeze(v_pred, axis=-1) if v_pred.shape.rank == 2 else tf.squeeze(v_pred)
-    z_target = tf.cast(z_target, v_pred.dtype)
-    return tf.reduce_mean(tf.square(v_pred - z_target))
-
-
-def _reg_terms(vars_, l2, l1, l1_l2):
-    # keep it simple, stupid: optional L1, L2, and combined coefficient
-    reg = tf.constant(0.0, dtype=vars_[0].dtype if vars_ else tf.float32)
-    if l2:
-        reg += tf.add_n([tf.reduce_sum(tf.square(v)) for v in vars_]) * tf.cast(l2, reg.dtype)
-    if l1:
-        reg += tf.add_n([tf.reduce_sum(tf.abs(v)) for v in vars_]) * tf.cast(l1, reg.dtype)
-    if l1_l2:
-        reg += tf.add_n([tf.reduce_sum(tf.abs(v)) + tf.reduce_sum(tf.square(v)) for v in vars_]) * tf.cast(l1_l2,
-                                                                                                           reg.dtype)
-    return reg
 
 
 def _corrupt_targets(inp, pi_tgt, z_tgt):
@@ -466,7 +446,7 @@ def _dbg_tf_threads(tag=""):
 def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
     """
     This runs fully inside a spawned process.
-    It returns grads as numpy arrays aligned to local weight_manager_local.all_weights order.
+    It uses a local network for MCTS inference and returns replay samples.
     """
     worker_tag = f"[W{inp.seed}|{os.getpid()}]"
     set_random_seeds(inp.seed, worker_tag=worker_tag)
@@ -677,13 +657,12 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
             )
 
     if len(collector) == 0:
-        zeros = [np.zeros(v.shape, dtype=np.float32) for v in wm_local.all_weights]
         return WorkerOutput(
             hit_goal_mean=collector.hit_goal,
             n_samples=0,
-            loss_mean=0.0,
-            grads_np=zeros,
             instance_diff=inp.spec.difficulty,
+            main_trajectory=[],
+            slot_id=inp.spec.slot_id,
         )
 
     obs_batch, pi_tgt, z_tgt = collector.as_batches()
@@ -814,84 +793,28 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
 
         pi_tgt = pi_onehot
 
-    # --- compute grads locally ---
-    vars_ = wm_local.all_weights
-
-    K_train_steps = 10  # TODO: later put this inside the WorkerInput so it can be changed throughout the run if needed, like LR steps
-
-    accum_grads = [np.zeros(v.shape, dtype=np.float32) for v in vars_]
-
-    for step in range(K_train_steps):
-
-        # optional: sample minibatch
-        idx = np.random.choice(obs_batch.shape[0], size=min(32, obs_batch.shape[0]), replace=False)
-
-        obs_mb = obs_batch[idx]
-        pi_mb = pi_tgt[idx]
-        z_mb = z_tgt[idx] if value_head_enabled else None
-
-        with tf.GradientTape() as tape:
-            if value_head_enabled:
-                pi_pred, v_pred = net(obs_mb, training=True)
-                xent_loss = _policy_xent_loss(pi_pred, tf.convert_to_tensor(pi_mb, dtype=pi_pred.dtype))
-                mse_loss = tf.cast(inp.mse_coeff, xent_loss.dtype) * _value_mse_loss(v_pred, tf.convert_to_tensor(z_mb,
-                                                                                                                  dtype=v_pred.dtype))
-            else:
-                pi_pred = net(obs_mb, training=True)
-                xent_loss = _policy_xent_loss(pi_pred, tf.convert_to_tensor(pi_mb, dtype=pi_pred.dtype))
-                mse_loss = 0.0
-
-            reg_loss = _reg_terms(vars_, inp.l2_reg_coeff, inp.l1_reg_coeff, inp.l1_l2_reg_coeff)
-            loss = xent_loss + mse_loss + reg_loss
-            if inp.log:
-                collector.add_losses(
-                    xent_loss.numpy(),
-                    float(mse_loss.numpy()) if value_head_enabled else 0.0,
-                    reg_loss.numpy(),
-                )
-
-        grads = tape.gradient(loss, vars_)
-
-        for i, g in enumerate(grads):
-            accum_grads[i] += g.numpy().astype(np.float32)
-
-    # average grads across local steps
-    grads_np = [g / K_train_steps for g in accum_grads]
-    if inp.log:
-        ls = collector.loss_summary()
-        x = ls.get("xent_loss")
-        m = ls.get("mse_loss")
-        r = ls.get("reg_loss")
-        x_s = f"{x:.4f}" if x is not None else "None"
-        m_s = f"{m:.4f}" if m is not None else "None"
-        r_s = f"{r:.4f}" if r is not None else "None"
-        log_lines.append(f"Loss: xent={x_s}  mse={m_s}  reg={r_s}")
     root_summary = collector.root_summary() if inp.log else {}
     if inp.log:
         print(f"{worker_tag} " + f"\n{worker_tag} ".join(log_lines), flush=True)
 
-    # for i, (w, g) in enumerate(zip(
-    #         wm_local.all_weights,
-    #         grads_np)):
-    #     print(
-    #         "[WORKER]",
-    #         i,
-    #         w.name,
-    #         tuple(w.shape),
-    #         tuple(g.shape)
-    #     )
-    # for i, g in enumerate(grads_np):
-    #     print("[WORKER]", worker_tag, i, g.shape)
+    data_points_by_source = collector.get_data_points_by_source(
+        planner_exts.problem_meta.bound_acts_ordered,
+        value_head_enabled=value_head_enabled,
+        pi_tgt=pi_tgt,
+        z_tgt=z_tgt,
+    )
 
     return WorkerOutput(
         hit_goal_mean=float(collector.hit_goal),
         n_samples=int(obs_batch.shape[0]),
-        loss_mean=float(loss.numpy()),
-        grads_np=grads_np,
         root_target_entropy=root_summary.get("root_target_entropy"),
         root_pred_entropy=root_summary.get("root_pred_entropy"),
         root_kl=root_summary.get("root_kl"),
-        instance_diff=inp.spec.difficulty
+        instance_diff=inp.spec.difficulty,
+        main_trajectory=data_points_by_source[DataSource.TRAJECTORY],
+        expert_trajectory=data_points_by_source[DataSource.ENHSP_PLAN],
+        tree_samples=data_points_by_source[DataSource.TREE_SAMPLE],
+        slot_id=inp.spec.slot_id,
     )
 
 

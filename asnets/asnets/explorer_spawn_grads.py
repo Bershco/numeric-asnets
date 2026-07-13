@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 from collections import deque, defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from time import time
 from typing import Any, Optional, Callable
 
 import numpy as np
 
+from asnets.explorer import SingleProblem
 from asnets.parllel_explore_spawn_grads import run_epoch_spawn_grads, run_epoch_spawn_eval, SpawnExploreSpec
 from asnets.spawn_train_worker import WorkerOutput, WorkerInput, EvalWorkerOutput
 from asnets.utils.generator_utils import ProgressionLevel, InstanceDifficulty
@@ -16,14 +17,9 @@ from asnets.utils.generator_utils import ProgressionLevel, InstanceDifficulty
 
 @dataclass
 class ParallelMCTSExplorerGrads:
+    problems: list[SingleProblem]
     specs: list[Any]
     log: bool
-
-    # loss cfg
-    mse_coeff: float
-    l2_reg_coeff: float
-    l1_reg_coeff: float
-    l1_l2_reg_coeff: float
 
     PROFILE_DIR: Optional[str] = None
     curr_epoch: int = 0
@@ -36,9 +32,15 @@ class ParallelMCTSExplorerGrads:
     progression_level: ProgressionLevel = ProgressionLevel.LEVEL1
     max_curr_est_coeff: float = 1.0
 
-    #corruption testing settings
+    # corruption testing settings
     corrupt_pi: Optional[str] = None
     corrupt_z: Optional[str] = None
+
+    specs_to_problems: dict = field(init=False)
+    max_replay_size: int = 150000
+
+    def __post_init__(self):
+        self.specs_to_problems = {problem.spec: problem for problem in self.problems}
 
     def explore(
             self,
@@ -70,17 +72,45 @@ class ParallelMCTSExplorerGrads:
             PROFILE_DIR=self.PROFILE_DIR,
             corrupt_pi=self.corrupt_pi,
             corrupt_z=self.corrupt_z,
-            mse_coeff=self.mse_coeff,
             max_estimator_coeff=self.max_curr_est_coeff,
-            l2_reg_coeff=self.l2_reg_coeff,
-            l1_reg_coeff=self.l1_reg_coeff,
-            l1_l2_reg_coeff=self.l1_l2_reg_coeff,
             max_workers=effective_max_workers,
             epoch_timeout=epoch_timeout,
         )
         self.curr_epoch += 1
         self.rolling_epoch_times.append(time() - start_time)
         return outputs
+
+    def add_worker_outputs_to_main_road_replay(
+            self,
+            worker_outs: list[WorkerOutput],
+    ) -> dict[str, int]:
+        """Route collection-only worker outputs into problem-local replays."""
+        main_road_added = 0
+        tree_added = 0
+
+        for out in worker_outs:
+            if out.slot_id is None or not 0 <= out.slot_id < len(self.problems):
+                raise ValueError(f"Invalid worker slot id: {out.slot_id}")
+
+            problem = self.problems[out.slot_id]
+            main_road_samples = out.main_trajectory + out.expert_trajectory
+
+            if main_road_samples:
+                problem.replay.update(main_road_samples)
+                main_road_added += len(main_road_samples)
+            if out.tree_samples:
+                problem.sampled_states_replay.update(out.tree_samples)
+                tree_added += len(out.tree_samples)
+
+        self._trim_replays()
+
+        return {
+            "collected": sum(out.n_samples for out in worker_outs),
+            "main_road_added": main_road_added,
+            "tree_added": tree_added,
+            "main_road_size": sum(len(problem.replay) for problem in self.problems),
+            "tree_size": sum(len(problem.sampled_states_replay) for problem in self.problems),
+        }
 
     def _compute_epoch_timeout(self) -> float:
         """
@@ -139,14 +169,42 @@ class ParallelMCTSExplorerGrads:
     def decay_estimator_coefficient(self):
         self.max_curr_est_coeff *= 0.7
 
+    def _trim_replays(self) -> None:
+        """Trims replays for each problem if needed."""
+        if self.max_replay_size is None:
+            return
+        sampled_states_replay_exists = self.specs[0].sample_k_additional_states != 0
+        while True:
+            replay_size = sum(len(problem.replay) for problem in self.problems)
+            sampled_states_replay_size = (
+                sum(len(problem.sampled_states_replay) for problem in self.problems)
+                if sampled_states_replay_exists else 0
+            )
+            # Stop if both buffers are within limits
+            if replay_size <= self.max_replay_size and sampled_states_replay_size <= self.max_replay_size:
+                break
+            # Trim standard replays if they exceed the limit
+            if replay_size > self.max_replay_size:
+                for problem in self.problems:
+                    if len(problem.replay) > 0:
+                        print(f'[{problem.name}] trimming main-road replay buffer')
+                        problem.replay.remove_oldest()
+            # Trim sampled states replays if they exceed the limit
+            if sampled_states_replay_exists and sampled_states_replay_size > self.max_replay_size:
+                for problem in self.problems:
+                    if len(problem.sampled_states_replay) > 0:
+                        print(f'[{problem.name}] trimming sampled states replay buffer')
+                        problem.sampled_states_replay.remove_oldest()
+
+
 @dataclass
 class ParallelEvaluator:
     specs: list[SpawnExploreSpec]
-    worker_fn: Callable[[WorkerInput],EvalWorkerOutput]
+    worker_fn: Callable[[WorkerInput], EvalWorkerOutput]
     max_workers: Optional[int] = None
     wave_threshold: float = 0.5
 
-    def evaluate(self, weights_np) -> tuple[dict[InstanceDifficulty,float],float,list[EvalWorkerOutput]]:
+    def evaluate(self, weights_np) -> tuple[dict[InstanceDifficulty, float], float, list[EvalWorkerOutput]]:
         print(f"[EVAL] worker_fn={self.worker_fn.__name__}")
 
         outs = run_epoch_spawn_eval(
@@ -191,7 +249,7 @@ class ParallelEvaluator:
         # Compute + print metrics
         # ------------------------------------------------------------
 
-        success_rates: dict[InstanceDifficulty,float] = {}
+        success_rates: dict[InstanceDifficulty, float] = {}
 
         for diff, diff_metrics in metrics.items():
             hits = diff_metrics["hits"]
@@ -248,4 +306,3 @@ class ParallelEvaluator:
         print(f"\n[EVAL] OVERALL success={overall_success:.3f}")
 
         return success_rates, overall_success, outs
-

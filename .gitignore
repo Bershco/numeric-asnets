@@ -221,3 +221,6 @@ problem_generator/zenotravel/instances
 # socket information
 asnets/asnet-sockets
 asnets/asnets/scripts/asnet-sockets
+
+# Local Codex working scope; intentionally not versioned.
+codex_local/

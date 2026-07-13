@@ -25,11 +25,7 @@ from asnets.utils.prof_utils import can_profile
 def run_epoch_spawn_grads(
         specs: list[Any],
         weights_np: dict,
-        mse_coeff: float,
         max_estimator_coeff: float,
-        l2_reg_coeff: float,
-        l1_reg_coeff: float,
-        l1_l2_reg_coeff: float,
         log: bool,
         curr_epoch: Optional[int],
         PROFILE_DIR: Optional[str] = None,
@@ -49,10 +45,6 @@ def run_epoch_spawn_grads(
     Args:
         specs: Worker specifications for this epoch.
         weights_np: Network weights passed to each worker.
-        mse_coeff: MSE loss coefficient.
-        l2_reg_coeff: L2 regularization coefficient.
-        l1_reg_coeff: L1 regularization coefficient.
-        l1_l2_reg_coeff: Combined L1/L2 regularization coefficient.
         log: Whether worker logging is enabled.
         curr_epoch: Current epoch index.
         PROFILE_DIR: Optional profiling output directory.
@@ -81,11 +73,7 @@ def run_epoch_spawn_grads(
                     PROFILE_DIR=PROFILE_DIR,
                     corrupt_pi=corrupt_pi,
                     corrupt_z=corrupt_z,
-                    mse_coeff=mse_coeff,
                     max_estimator_coeff=max_estimator_coeff,
-                    l2_reg_coeff=l2_reg_coeff,
-                    l1_reg_coeff=l1_reg_coeff,
-                    l1_l2_reg_coeff=l1_l2_reg_coeff,
                 ),
             )
             for spec in specs
