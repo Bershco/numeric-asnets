@@ -19,7 +19,6 @@ from pympler.asizeof import asized
 
 from asnets.checkpointing import save_checkpoint_dir
 from asnets.explorer_spawn_grads import ParallelMCTSExplorerGrads, ParallelEvaluator
-from asnets.freeze_overfit_test import FrozenSupervisedTrainer
 from asnets.models import make_weight_manager, PropNetworkWeights, PropNetwork, make_network
 from asnets.parllel_explore_spawn_grads import make_specs
 from asnets.utils.tf_utils import configure_tf_gpu_memory_growth
