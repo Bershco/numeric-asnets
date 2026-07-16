@@ -744,12 +744,35 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
 
     if not args.no_train:
         specs = make_specs(args)
-        problems, weight_manager = make_problems(args, dg_extra_dim, specs, weight_manager)
+
+        def make_replay_bucket(init_data):
+            if init_data.dom_meta != weight_manager.dom_meta:
+                raise ValueError(
+                    "Worker bucket domain metadata is incompatible with the "
+                    "global weight manager"
+                )
+
+            problem = SingleProblem(spec=None)
+            problem.name = init_data.name
+            problem.obs_dim = init_data.obs_dim
+            problem.act_dim = init_data.act_dim
+            problem.dom_meta = init_data.dom_meta
+            problem.problem_meta = init_data.prob_meta
+            problem.ssipp_dead_end_value = init_data.ssipp_dead_end_value
+            problem.network, bucket_weight_manager = make_network(
+                args, problem, dg_extra_dim, weight_manager,
+            )
+            if bucket_weight_manager is not weight_manager:
+                raise AssertionError(
+                    "Replay bucket did not reuse the global weight manager"
+                )
+            return problem
 
         explorer = ParallelMCTSExplorerGrads(
-            problems=problems,
+            problems=[],
             specs=specs,
             log=args.worker_logs,
+            bucket_factory=make_replay_bucket,
             PROFILE_DIR=args.profile_dir,
             corrupt_pi=args.corrupt_pi,
             corrupt_z=args.corrupt_z,

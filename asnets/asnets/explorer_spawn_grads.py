@@ -11,7 +11,7 @@ import numpy as np
 
 from asnets.explorer import SingleProblem
 from asnets.parllel_explore_spawn_grads import run_epoch_spawn_grads, run_epoch_spawn_eval, SpawnExploreSpec
-from asnets.spawn_train_worker import WorkerOutput, WorkerInput, EvalWorkerOutput
+from asnets.spawn_train_worker import WorkerOutput, WorkerInput, EvalWorkerOutput, ProblemInitData
 from asnets.utils.generator_utils import ProgressionLevel, InstanceDifficulty
 
 
@@ -20,6 +20,7 @@ class ParallelMCTSExplorerGrads:
     problems: list[SingleProblem]
     specs: list[Any]
     log: bool
+    bucket_factory: Callable[[ProblemInitData], SingleProblem]
 
     PROFILE_DIR: Optional[str] = None
     curr_epoch: int = 0
@@ -38,9 +39,15 @@ class ParallelMCTSExplorerGrads:
 
     specs_to_problems: dict = field(init=False)
     max_replay_size: int = 150000
+    problems_by_signature: dict[str, SingleProblem] = field(
+        default_factory=dict,
+        init=False,
+    )
+    _signature_payloads: dict[str, tuple] = field(default_factory=dict, init=False)
 
     def __post_init__(self):
         self.specs_to_problems = {problem.spec: problem for problem in self.problems}
+        self.problems_by_signature = {}
 
     def explore(
             self,
@@ -80,6 +87,40 @@ class ParallelMCTSExplorerGrads:
         self.rolling_epoch_times.append(time() - start_time)
         return outputs
 
+    def _get_or_create_problem_bucket(self, out: WorkerOutput) -> SingleProblem:
+        if (
+                out.compatibility_signature is None
+                or out.compatibility_payload is None
+                or out.problem_init_data is None
+        ):
+            raise ValueError(
+                "Non-empty worker output is missing compatibility metadata"
+            )
+
+        signature = out.compatibility_signature
+        existing_payload = self._signature_payloads.get(signature)
+        if existing_payload is not None:
+            if existing_payload != out.compatibility_payload:
+                raise ValueError(
+                    f"Compatibility-signature collision for {signature[:12]}"
+                )
+            return self.problems_by_signature[signature]
+
+        problem = self.bucket_factory(out.problem_init_data)
+        self.problems_by_signature[signature] = problem
+        self._signature_payloads[signature] = out.compatibility_payload
+        self.problems.append(problem)
+
+        print(
+            "[REPLAY] Created compatibility bucket "
+            f"| total_buckets={len(self.problems)} "
+            f"| obs_dim={problem.obs_dim} "
+            f"| act_dim={problem.act_dim} "
+            f"| signature={signature[:12]}",
+            flush=True,
+        )
+        return problem
+
     def add_worker_outputs_to_main_road_replay(
             self,
             worker_outs: list[WorkerOutput],
@@ -89,11 +130,24 @@ class ParallelMCTSExplorerGrads:
         tree_added = 0
 
         for out in worker_outs:
-            if out.slot_id is None or not 0 <= out.slot_id < len(self.problems):
-                raise ValueError(f"Invalid worker slot id: {out.slot_id}")
+            if out.n_samples == 0:
+                continue
 
-            problem = self.problems[out.slot_id]
+            problem = self._get_or_create_problem_bucket(out)
             main_road_samples = out.main_trajectory + out.expert_trajectory
+
+            samples_to_validate = main_road_samples or out.tree_samples
+            if samples_to_validate:
+                observed_actions = tuple(
+                    bound_action
+                    for bound_action, _ in samples_to_validate[0][1]
+                )
+                expected_actions = problem.problem_meta.bound_acts_ordered
+                if observed_actions != expected_actions:
+                    raise ValueError(
+                        "Replay action ordering does not match its "
+                        "compatibility bucket"
+                    )
 
             if main_road_samples:
                 problem.replay.update(main_road_samples)
@@ -110,6 +164,7 @@ class ParallelMCTSExplorerGrads:
             "tree_added": tree_added,
             "main_road_size": sum(len(problem.replay) for problem in self.problems),
             "tree_size": sum(len(problem.sampled_states_replay) for problem in self.problems),
+            "compatibility_bucket_count": len(self.problems),
         }
 
     def _compute_epoch_timeout(self) -> float:

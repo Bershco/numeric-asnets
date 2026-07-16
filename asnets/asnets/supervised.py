@@ -696,6 +696,10 @@ class SupervisedTrainer(BaseTrainer):
             tf_and_log('replay/tree_added', replay_stats["tree_added"])
             tf_and_log('replay/main_road_size', replay_stats["main_road_size"])
             tf_and_log('replay/tree_size', replay_stats["tree_size"])
+            tf_and_log(
+                'replay/compatibility_bucket_count',
+                replay_stats["compatibility_bucket_count"],
+            )
             tf_and_log('succ-rate/mean', total_succ_rate)
 
             present_diffs = {o.instance_diff for o in worker_outs}

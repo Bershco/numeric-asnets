@@ -1,6 +1,7 @@
 # asnets/spawn_train_worker.py
 from __future__ import annotations
 
+import hashlib
 import math
 
 import tqdm
@@ -98,6 +99,17 @@ class MCTSWorkerInput(WorkerInput):
     corrupt_z: Optional[str] = None  # "shuffle" | "random" | "zero" | None
 
 
+@dataclass(frozen=True)
+class ProblemInitData:
+    slot_id: int
+    name: str
+    obs_dim: int
+    act_dim: int
+    dom_meta: DomainMeta
+    prob_meta: ProblemMeta
+    ssipp_dead_end_value: int
+
+
 @dataclass
 class WorkerOutput:
     hit_goal_mean: float
@@ -105,11 +117,49 @@ class WorkerOutput:
     main_trajectory: list[tuple] # list of either (CanonicalState, PolicyVector) or (CanonicalState, PolicyVector, ValueFloat)
     expert_trajectory: list[tuple] = field(default_factory=list) # same but for expert planner trajectory from enhsp bootstrapping
     tree_samples: list[tuple] = field(default_factory=list)
+    compatibility_signature: Optional[str] = None
+    compatibility_payload: Optional[tuple] = None
+    problem_init_data: Optional[ProblemInitData] = None
     slot_id: Optional[int] = None
     root_target_entropy: Optional[np.float64] = None
     root_pred_entropy: Optional[np.float64] = None
     root_kl: Optional[np.float64] = None
     instance_diff: InstanceDifficulty = None
+
+
+def _make_compatibility_payload(
+        spec,
+        problem_meta: ProblemMeta,
+        obs_dim: int,
+        aux_dim: int,
+) -> tuple:
+    """Return the complete ordered interface used by one central ASNet bucket."""
+    actions = tuple(
+        (
+            action.unique_ident,
+            action.prototype.schema_name,
+            tuple(prop.unique_ident for prop in action.props),
+            tuple(fluent.unique_ident for fluent in action.flnts),
+            tuple(comp.unique_ident for comp in action.comps),
+        )
+        for action in problem_meta.bound_acts_ordered
+    )
+    return (
+        "asnet-replay-interface-v1",
+        bool(spec.use_fluents),
+        bool(spec.use_comps),
+        int(obs_dim),
+        int(problem_meta.num_acts),
+        int(aux_dim),
+        tuple(prop.unique_ident for prop in problem_meta.bound_props_ordered),
+        tuple(fluent.unique_ident for fluent in problem_meta.bound_flnts_ordered),
+        tuple(comp.unique_ident for comp in problem_meta.bound_comps_ordered),
+        actions,
+    )
+
+
+def _compatibility_signature(payload: tuple) -> str:
+    return hashlib.sha256(repr(payload).encode("utf-8")).hexdigest()
 
 
 class DataSource(Enum):
@@ -663,6 +713,9 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
             instance_diff=inp.spec.difficulty,
             main_trajectory=[],
             slot_id=inp.spec.slot_id,
+            compatibility_signature=None,
+            compatibility_payload=None,
+            problem_init_data=None,
         )
 
     obs_batch, pi_tgt, z_tgt = collector.as_batches()
@@ -803,6 +856,22 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
         pi_tgt=pi_tgt,
         z_tgt=z_tgt,
     )
+    aux_dim = sum(generator.extra_dim for generator in planner_exts.data_gens)
+    compatibility_payload = _make_compatibility_payload(
+        inp.spec,
+        planner_exts.problem_meta,
+        obs_dim=int(obs_batch.shape[1]),
+        aux_dim=aux_dim,
+    )
+    problem_init_data = ProblemInitData(
+        slot_id=inp.spec.slot_id,
+        name=planner_exts.current_problem_name,
+        obs_dim=int(obs_batch.shape[1]),
+        act_dim=int(planner_exts.problem_meta.num_acts),
+        dom_meta=planner_exts.domain_meta,
+        prob_meta=planner_exts.problem_meta,
+        ssipp_dead_end_value=planner_exts.ssipp_dead_end_value,
+    )
 
     return WorkerOutput(
         hit_goal_mean=float(collector.hit_goal),
@@ -815,6 +884,9 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
         expert_trajectory=data_points_by_source[DataSource.ENHSP_PLAN],
         tree_samples=data_points_by_source[DataSource.TREE_SAMPLE],
         slot_id=inp.spec.slot_id,
+        compatibility_signature=_compatibility_signature(compatibility_payload),
+        compatibility_payload=compatibility_payload,
+        problem_init_data=problem_init_data,
     )
 
 
@@ -1559,17 +1631,6 @@ def _terminate(start_time: float, total_new_pairs: int, min_new_pairs: int, max_
     if total_new_pairs >= min_new_pairs:
         return time.time() - start_time >= expl_learn_ratio * recent_learning_time, last_progress_time
     return False, last_progress_time
-
-
-@dataclass(frozen=True)
-class ProblemInitData:
-    slot_id: int
-    name: str
-    obs_dim: int
-    act_dim: int
-    dom_meta: DomainMeta  # might cause circular imports
-    prob_meta: ProblemMeta  # might cause circular imports
-    ssipp_dead_end_value: int
 
 
 def collect_problem_dims_worker(inp: Any) -> ProblemInitData:
