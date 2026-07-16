@@ -1027,7 +1027,8 @@ class OriginalSupervisedTrainer(BaseTrainer):
         # gets incremented to deal with TF
         self.batches_seen = 0
         self.problems = problems
-        self.batch_size_per_problem = max(batch_size // len(problems), 1)
+        self.batch_size = batch_size
+        self.batch_size_per_problem = max(batch_size // max(len(problems), 1), 1)
         self.opt_batches_per_epoch = opt_batches_per_epoch
         self.hide_progress = hide_progress
         self.timer = TimerContext()
@@ -1239,6 +1240,13 @@ class OriginalSupervisedTrainer(BaseTrainer):
             a single problem of the form (obs_tensor, qvs_tensor). The batches
             are order in the same order as the problems in self.problems.
         """
+        if not self.problems:
+            raise RuntimeError("No compatibility replay buckets were collected")
+
+        self.batch_size_per_problem = max(
+            self.batch_size // len(self.problems),
+            1,
+        )
         batch_iters = []
 
         if self.save_training_set:

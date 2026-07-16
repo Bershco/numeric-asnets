@@ -111,6 +111,16 @@ class ProblemInitData:
 
 
 @dataclass
+class TrajectoryCollectionOutput:
+    """Legacy imitation-collection data plus its concrete replay interface."""
+    expert_trajectory: list[tuple]
+    policy_trajectories: list[tuple]
+    compatibility_signature: str
+    compatibility_payload: tuple
+    problem_init_data: ProblemInitData
+
+
+@dataclass
 class WorkerOutput:
     hit_goal_mean: float
     n_samples: int
@@ -1525,7 +1535,30 @@ def run_multiple_trajectory_collection(inp: PolicyDrivenWorkerInput):
                     added_tuples += len(tup_output)
                 pbar.set_postfix({"new expert knowledge": added_tuples}, refresh=False)
                 pbar.update(1)
-    return expert_trajectories, trajectories
+    init_obs = get_init_cstate(pe).to_network_input()
+    aux_dim = sum(generator.extra_dim for generator in pe.data_gens)
+    compatibility_payload = _make_compatibility_payload(
+        spec,
+        pe.problem_meta,
+        obs_dim=int(init_obs.shape[-1]),
+        aux_dim=aux_dim,
+    )
+    problem_init_data = ProblemInitData(
+        slot_id=spec.slot_id,
+        name=pe.current_problem_name,
+        obs_dim=int(init_obs.shape[-1]),
+        act_dim=int(pe.problem_meta.num_acts),
+        dom_meta=pe.domain_meta,
+        prob_meta=pe.problem_meta,
+        ssipp_dead_end_value=pe.ssipp_dead_end_value,
+    )
+    return TrajectoryCollectionOutput(
+        expert_trajectory=expert_trajectories,
+        policy_trajectories=trajectories,
+        compatibility_signature=_compatibility_signature(compatibility_payload),
+        compatibility_payload=compatibility_payload,
+        problem_init_data=problem_init_data,
+    )
 
 
 def collect_single_trajectory(spec, pe, net, model_cache):

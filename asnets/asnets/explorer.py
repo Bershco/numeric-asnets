@@ -5,12 +5,12 @@ import random
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future
 
 import numpy as np
-from typing import List, Optional, Tuple, Any, Iterable
+from typing import List, Optional, Tuple, Any, Iterable, Callable
 from collections import Counter, deque
 import multiprocessing as mp
 
 from asnets.spawn_train_worker import run_multiple_trajectory_collection, ProblemInitData, collect_problem_dims_worker, \
-    PolicyDrivenWorkerInput, run_worker_opt_profiled, WorkerInput
+    PolicyDrivenWorkerInput, run_worker_opt_profiled, WorkerInput, TrajectoryCollectionOutput
 
 LOGGER = logging.getLogger(__name__)
 
@@ -115,21 +115,64 @@ class WeightedReplayBuffer:
 
 class Explorer(ABC):
     def __init__(self, problems: List[SingleProblem],
-                 max_replay_size: int = None):
+                 max_replay_size: int = None,
+                 *,
+                 specs: Optional[List[Any]] = None,
+                 bucket_factory: Optional[Callable[[ProblemInitData], SingleProblem]] = None):
         self.problems = problems
+        self.specs = specs or [problem.spec for problem in self.problems]
+        if not self.specs:
+            raise ValueError("Explorer needs at least one worker spec")
+        self.bucket_factory = bucket_factory
         self.spec_to_problem = {problem.spec: problem for problem in self.problems}
+        self.problems_by_signature = {}
+        self._signature_payloads = {}
         self.max_replay_size = max_replay_size
         self.curr_weights_np = None
         # The following are the same across all specs
-        self.enhsp_config = self.problems[0].spec.enhsp_config
-        self.only_one_good_action = self.problems[0].spec.only_one_good_action
-        self.use_teacher_envelope = self.problems[0].spec.use_teacher_envelope
+        self.enhsp_config = self.specs[0].enhsp_config
+        self.only_one_good_action = self.specs[0].only_one_good_action
+        self.use_teacher_envelope = self.specs[0].use_teacher_envelope
         self.cached_dims = {problem.name: (problem.obs_dim, problem.act_dim) for problem in self.problems}
 
     def get_cached_shapes_per_problem(self):
         if not all(problem.obs_dim is not None and problem.act_dim for problem in self.problems):
             print(f"[EXPLORER_DIM_CACHE] dimension caching problem")
         return self.cached_dims
+
+    def _get_or_create_problem_bucket(
+            self,
+            spec: Any,
+            collection: TrajectoryCollectionOutput,
+    ) -> SingleProblem:
+        if self.bucket_factory is None:
+            return self.spec_to_problem[spec]
+
+        signature = collection.compatibility_signature
+        payload = collection.compatibility_payload
+        existing_payload = self._signature_payloads.get(signature)
+        if existing_payload is not None:
+            if existing_payload != payload:
+                raise ValueError(
+                    f"Compatibility-signature collision for {signature[:12]}"
+                )
+            return self.problems_by_signature[signature]
+
+        problem = self.bucket_factory(collection.problem_init_data)
+        self.problems_by_signature[signature] = problem
+        self._signature_payloads[signature] = payload
+        self.problems.append(problem)
+        self.cached_dims[problem.name] = (problem.obs_dim, problem.act_dim)
+
+        print(
+            "[REPLAY] Created compatibility bucket "
+            f"| total_buckets={len(self.problems)} "
+            f"| obs_dim={problem.obs_dim} "
+            f"| act_dim={problem.act_dim} "
+            f"| signature={signature[:12]}",
+            flush=True,
+        )
+        return problem
 
     def _collect_trajectories(self,
                               num_per_problem: int,
@@ -139,21 +182,21 @@ class Explorer(ABC):
         """Collects trajectories for each problem."""
         assert self.curr_weights_np is not None
         specs_and_all_problems_all_trajectories = run_parallel_multiple_traj_collection(
-            specs=[problem.spec for problem in self.problems], epoch_num=epoch_num, weights_np=self.curr_weights_np,
+            specs=self.specs, epoch_num=epoch_num, weights_np=self.curr_weights_np,
             num_traj=num_per_problem, dynamic=dynamic,
             min_new_pairs=self.min_new_pairs if hasattr(self, "min_new_pairs") else None,
             max_new_pairs=self.max_new_pairs if hasattr(self, "max_new_pairs") else None,
             recent_learning_time=self.recent_learning_time if hasattr(self, "recent_learning_time") else 0,
             expl_learn_ratio=self.expl_learn_ratio if hasattr(self, "expl_learn_ratio") else None)
-        assert len(specs_and_all_problems_all_trajectories) == len(self.problems)
-        for spec, all_trajectories_single_problem in specs_and_all_problems_all_trajectories:
-            problem = self.spec_to_problem[spec]
-            expert_traj, policy_traj_hit_goal_list = all_trajectories_single_problem
-            if expert_traj:
-                problem.replay.update(expert_traj)
-            if policy_traj_hit_goal_list:
-                hit_goal_list = [hit_goal for _, hit_goal in policy_traj_hit_goal_list]
-                self.hit_goal[problem].extend(hit_goal_list)
+        assert len(specs_and_all_problems_all_trajectories) == len(self.specs)
+        for spec, collection in specs_and_all_problems_all_trajectories:
+            problem = self._get_or_create_problem_bucket(spec, collection)
+            self.traj_sizes.setdefault(problem, 0)
+            if collection.expert_trajectory:
+                problem.replay.update(collection.expert_trajectory)
+            if collection.policy_trajectories:
+                hit_goal_list = [hit_goal for _, hit_goal in collection.policy_trajectories]
+                self.hit_goal.setdefault(problem, []).extend(hit_goal_list)
 
     def _trim_replays(self) -> None:
         """Trims replays for each problem if needed."""
@@ -191,8 +234,21 @@ class Explorer(ABC):
 class StaticExplorer(Explorer):
     """The static exploration algorithm from the original ASNets."""
 
-    def __init__(self, problems, trajs_per_problem: int, max_replay_size: int):
-        super().__init__(problems, max_replay_size)
+    def __init__(
+            self,
+            problems,
+            trajs_per_problem: int,
+            max_replay_size: int,
+            *,
+            specs: Optional[List[Any]] = None,
+            bucket_factory: Optional[Callable[[ProblemInitData], SingleProblem]] = None,
+    ):
+        super().__init__(
+            problems,
+            max_replay_size,
+            specs=specs,
+            bucket_factory=bucket_factory,
+        )
         self.trajs_per_problem = trajs_per_problem
 
     def explore(self, epoch_num) -> None:
@@ -208,8 +264,16 @@ class DynamicExplorer(Explorer):
                  min_new_pairs: int,
                  max_new_pairs: int,
                  expl_learn_ratio: float,
-                 max_replay_size: int):
-        super().__init__(problems, max_replay_size)
+                 max_replay_size: int,
+                 *,
+                 specs: Optional[List[Any]] = None,
+                 bucket_factory: Optional[Callable[[ProblemInitData], SingleProblem]] = None):
+        super().__init__(
+            problems,
+            max_replay_size,
+            specs=specs,
+            bucket_factory=bucket_factory,
+        )
         self.init_trajs_per_problem = init_trajs_per_problem
         self.min_new_pairs = min_new_pairs
         self.max_new_pairs = max_new_pairs

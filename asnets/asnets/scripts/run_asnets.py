@@ -944,7 +944,30 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
 
     if not args.no_train:
         specs = make_specs(args)
-        problems, weight_manager = make_problems(args, dg_extra_dim, specs, weight_manager)
+        problems = []
+
+        def make_replay_bucket(init_data):
+            if init_data.dom_meta != weight_manager.dom_meta:
+                raise ValueError(
+                    "Worker bucket domain metadata is incompatible with the "
+                    "global weight manager"
+                )
+
+            problem = SingleProblem(spec=None)
+            problem.name = init_data.name
+            problem.obs_dim = init_data.obs_dim
+            problem.act_dim = init_data.act_dim
+            problem.dom_meta = init_data.dom_meta
+            problem.problem_meta = init_data.prob_meta
+            problem.ssipp_dead_end_value = init_data.ssipp_dead_end_value
+            problem.network, bucket_weight_manager = make_network(
+                args, problem, dg_extra_dim, weight_manager,
+            )
+            if bucket_weight_manager is not weight_manager:
+                raise AssertionError(
+                    "Replay bucket did not reuse the global weight manager"
+                )
+            return problem
 
         # need to create FileWriter *after* creating the policy network itself, or
         # the network will not show up in TB (I assume that the `Graph` view is
@@ -959,7 +982,13 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
         print('Training supervised with strategy %r and heuristic %r' %
               (args.sup_objective, args.fd_teacher_heuristic))
         if args.exploration_algorithm == 'static':
-            explorer = StaticExplorer(problems, args.rollouts, args.max_replay_size)
+            explorer = StaticExplorer(
+                problems,
+                args.rollouts,
+                args.max_replay_size,
+                specs=specs,
+                bucket_factory=make_replay_bucket,
+            )
         elif args.exploration_algorithm == 'dynamic':
             explorer = DynamicExplorer(
                 problems,
@@ -967,7 +996,10 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
                 min_new_pairs=args.min_explored,
                 max_new_pairs=args.max_explored,
                 expl_learn_ratio=args.exploration_learning_ratio,
-                max_replay_size=args.max_replay_size)
+                max_replay_size=args.max_replay_size,
+                specs=specs,
+                bucket_factory=make_replay_bucket,
+            )
         elif args.exploration_algorithm == 'mcts':
             raise NotImplementedError("This is weird, should have arrived in a different code location.")
         else:
