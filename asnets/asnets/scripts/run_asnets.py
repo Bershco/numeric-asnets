@@ -648,12 +648,6 @@ parser.add_argument(
     help='Enable estimator, input a floating point number from 0.0 to 1.0, never decay, use as heuristic service'
 )
 parser.add_argument(
-    '--discard-failed-runs',
-    action='store_true',
-    default=False,
-    help='Discard failed runs from training data, only use successful runs (important only in mcts exploration)'
-)
-parser.add_argument(
     '--estimator-decay-epochs',
     type=int,
     default=None,
@@ -813,7 +807,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             l1_l2_reg_coeff=args.l1_l2_reg,
             mse_coeff=args.mse,
             batch_size=args.supervised_bs,
-            train_steps_per_epoch=1,
+            train_steps_per_epoch=args.opt_batch_per_epoch,
             main_road_fraction=0.75,
             grad_clip_norm=5.0,
             start_time=start_time,
@@ -821,7 +815,6 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             save_every=args.save_every,
             snapshot_dir=snapshot_dir,
             time_out=args.timeout,
-            discard_failed_runs=args.discard_failed_runs,
             resume_from=args.resume_from,
         )
 
@@ -844,7 +837,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     eval_explorer = ParallelEvaluator(
         specs=specs,
         max_workers=args.num_workers,
-        worker_fn=run_worker_eval_mcts,
+        worker_fn=run_worker_eval_policy_only,
     )
     eval_start_time = time()
     _, success_rate, outs = eval_explorer.evaluate(weights_np)

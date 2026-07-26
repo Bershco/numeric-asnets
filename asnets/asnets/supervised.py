@@ -461,14 +461,13 @@ class SupervisedTrainer(BaseTrainer):
                  batch_size,
                  train_steps_per_epoch=1,
                  main_road_fraction=0.75,
-                 tree_policy_weight=0.1,
+                 tree_policy_weight=0.5,
                  grad_clip_norm=5.0,
                  hide_progress=False,
                  time_out=40,
                  early_stop=20,
                  save_every=20,
                  balanced_success_rate=True,
-                 discard_failed_runs=False,
                  resume_from=None,
                  ):
         super().__init__(weight_manager, summary_writer, explorer, validator, lr, l1_reg_coeff, l2_reg_coeff,
@@ -488,7 +487,6 @@ class SupervisedTrainer(BaseTrainer):
         self.early_stop = early_stop
         self.save_every = save_every
         self.snapshot_dir = snapshot_dir
-        self.discard_failed_runs = discard_failed_runs
         self._init_tf()
         if resume_from is not None and not resume_from.endswith(".pkl"):
             opt_path = os.path.join(resume_from, "optimizer.joblib")

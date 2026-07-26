@@ -582,12 +582,6 @@ parser.add_argument(
     help='Enable estimator, input a floating point number from 0.0 to 1.0, never decay, use as heuristic service'
 )
 parser.add_argument(
-    '--discard-failed-runs',
-    action='store_true',
-    default=False,
-    help='Discard failed runs from training data, only use successful runs (important only in mcts exploration)'
-)
-parser.add_argument(
     '--estimator-decay-epochs',
     type=int,
     default=None,
@@ -664,7 +658,6 @@ def main():
                estimator_decay_coeff_start=args.estimator_decay_coeff_start,
                estimator_decay_coeff_end=args.estimator_decay_coeff_end,
                estimator_decay_epochs=args.estimator_decay_epochs,
-               discard_failed_runs=args.discard_failed_runs,
                original_training_set=args.original_training_set,
                validation_on_test_instances=args.validation_on_test_instances,
                )
@@ -709,7 +702,6 @@ def main_inner(*,
                estimator_decay_coeff_start=None,
                estimator_decay_coeff_end=None,
                estimator_decay_epochs=None,
-               discard_failed_runs=False,
                original_training_set=False,
                validation_on_test_instances=False,
                ):
@@ -789,8 +781,6 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend(['--estimator-decay-coeff-end', str(estimator_decay_coeff_end)])
         if estimator_decay_epochs:
             train_flags.extend(['--estimator-decay-epochs', str(estimator_decay_epochs)])
-        if discard_failed_runs:
-            train_flags.append('--discard-failed-runs')
         if disable_value_head:
             train_flags.append('--disable-value-head')
         if original_training_set:
