@@ -31,6 +31,7 @@ def run_epoch_spawn_grads(
         PROFILE_DIR: Optional[str] = None,
         corrupt_pi: Optional[str] = None,
         corrupt_z: Optional[str] = None,
+        minimization: bool = False,
         max_workers: Optional[int] = None,
         epoch_timeout: Optional[float] = None,
 ) -> list[WorkerOutput]:
@@ -73,6 +74,7 @@ def run_epoch_spawn_grads(
                     PROFILE_DIR=PROFILE_DIR,
                     corrupt_pi=corrupt_pi,
                     corrupt_z=corrupt_z,
+                    minimization=minimization,
                     max_estimator_coeff=max_estimator_coeff,
                 ),
             )
@@ -117,6 +119,7 @@ def run_epoch_spawn_eval(
         wave_threshold,
         max_workers=None,
         worker_fn=run_worker_eval_mcts,
+        minimization: bool = False,
 ) -> list[EvalWorkerOutput]:
     if not specs:
         return []
@@ -198,6 +201,7 @@ def run_epoch_spawn_eval(
                     spec=spec,
                     epoch=None,
                     weights_np=weights_np,
+                    minimization=minimization,
                 )
                 p = ctx.Process(
                     target=_eval_process_entry,

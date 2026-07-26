@@ -454,6 +454,12 @@ parser.add_argument(
     default='hadd-gbfs',
     help='When value-based mcts runs, this would be the state-value heuristic function.')
 parser.add_argument(
+    '--minimization',
+    action='store_true',
+    default=False,
+    help='Use raw nonnegative, lower-is-better heuristic values in the value head and MCTS.'
+)
+parser.add_argument(
     '--mcts-exploration-weight',
     type=float,
     default=1.0,
@@ -640,6 +646,7 @@ def main():
                train_only=args.no_eval,
                mcts_heuristic=args.mcts_heuristic,
                mcts_exploration_weight=args.mcts_exploration_weight,
+               minimization=args.minimization,
                mcts_smart_expansions=args.mcts_smart_expansions,
                disable_value_head=args.disable_value_head,
                mcts_iterations=args.mcts_iterations,
@@ -684,6 +691,7 @@ def main_inner(*,
                train_only=False,
                mcts_heuristic=None,
                mcts_exploration_weight=1,
+               minimization=False,
                mcts_smart_expansions=False,
                disable_value_head=False,
                mcts_iterations=None,
@@ -751,6 +759,8 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.append('--heuristic-bootstrapping')
         if mcts_exploration_weight:
             train_flags.extend(['--mcts-exploration-weight', str(mcts_exploration_weight)])
+        if minimization:
+            train_flags.append('--minimization')
         if mcts_expansion_size:
             train_flags.extend(['--mcts-expansion-size', str(mcts_expansion_size)])
         if corrupt_pi:
@@ -834,6 +844,8 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.extend(['--mcts-heuristic', str(mcts_heuristic)])
     if mcts_exploration_weight != 1:
         main_test_flags.extend(['--mcts-exploration-weight', str(mcts_exploration_weight)])
+    if minimization:
+        main_test_flags.append('--minimization')
     if mcts_smart_expansions:
         main_test_flags.append('--mcts-smart-expansions')
     if disable_value_head:

@@ -118,7 +118,8 @@ class Explorer(ABC):
                  max_replay_size: int = None,
                  *,
                  specs: Optional[List[Any]] = None,
-                 bucket_factory: Optional[Callable[[ProblemInitData], SingleProblem]] = None):
+                 bucket_factory: Optional[Callable[[ProblemInitData], SingleProblem]] = None,
+                 minimization: bool = False):
         self.problems = problems
         self.specs = specs or [problem.spec for problem in self.problems]
         if not self.specs:
@@ -129,6 +130,7 @@ class Explorer(ABC):
         self._signature_payloads = {}
         self.max_replay_size = max_replay_size
         self.curr_weights_np = None
+        self.minimization = minimization
         # The following are the same across all specs
         self.enhsp_config = self.specs[0].enhsp_config
         self.only_one_good_action = self.specs[0].only_one_good_action
@@ -187,7 +189,8 @@ class Explorer(ABC):
             min_new_pairs=self.min_new_pairs if hasattr(self, "min_new_pairs") else None,
             max_new_pairs=self.max_new_pairs if hasattr(self, "max_new_pairs") else None,
             recent_learning_time=self.recent_learning_time if hasattr(self, "recent_learning_time") else 0,
-            expl_learn_ratio=self.expl_learn_ratio if hasattr(self, "expl_learn_ratio") else None)
+            expl_learn_ratio=self.expl_learn_ratio if hasattr(self, "expl_learn_ratio") else None,
+            minimization=self.minimization)
         assert len(specs_and_all_problems_all_trajectories) == len(self.specs)
         for spec, collection in specs_and_all_problems_all_trajectories:
             problem = self._get_or_create_problem_bucket(spec, collection)
@@ -242,12 +245,14 @@ class StaticExplorer(Explorer):
             *,
             specs: Optional[List[Any]] = None,
             bucket_factory: Optional[Callable[[ProblemInitData], SingleProblem]] = None,
+            minimization: bool = False,
     ):
         super().__init__(
             problems,
             max_replay_size,
             specs=specs,
             bucket_factory=bucket_factory,
+            minimization=minimization,
         )
         self.trajs_per_problem = trajs_per_problem
 
@@ -267,12 +272,14 @@ class DynamicExplorer(Explorer):
                  max_replay_size: int,
                  *,
                  specs: Optional[List[Any]] = None,
-                 bucket_factory: Optional[Callable[[ProblemInitData], SingleProblem]] = None):
+                 bucket_factory: Optional[Callable[[ProblemInitData], SingleProblem]] = None,
+                 minimization: bool = False):
         super().__init__(
             problems,
             max_replay_size,
             specs=specs,
             bucket_factory=bucket_factory,
+            minimization=minimization,
         )
         self.init_trajs_per_problem = init_trajs_per_problem
         self.min_new_pairs = min_new_pairs
@@ -322,7 +329,8 @@ class DynamicExplorer(Explorer):
 
 
 def run_parallel_multiple_traj_collection(specs, epoch_num, weights_np, num_traj, dynamic: bool, min_new_pairs,
-                                          max_new_pairs, recent_learning_time, expl_learn_ratio, max_workers=None):
+                                          max_new_pairs, recent_learning_time, expl_learn_ratio, max_workers=None,
+                                          minimization=False):
     ctx = mp.get_context("forkserver")
     with ProcessPoolExecutor(
             max_workers=max_workers or len(specs),
@@ -334,7 +342,8 @@ def run_parallel_multiple_traj_collection(specs, epoch_num, weights_np, num_traj
             inp = PolicyDrivenWorkerInput(spec=spec, weights_np=weights_np, epoch=epoch_num, log=False,
                                           log_weights=False, PROFILE_DIR=None, num_trajectories=num_traj,
                                           dynamic=dynamic, min_new_pairs=min_new_pairs, max_new_pairs=max_new_pairs,
-                                          recent_learning_time=recent_learning_time, expl_learn_ratio=expl_learn_ratio)
+                                          recent_learning_time=recent_learning_time, expl_learn_ratio=expl_learn_ratio,
+                                          minimization=minimization)
             fut: Future[Any] = ex.submit(run_worker_opt_profiled, inp, run_multiple_trajectory_collection)
             fut_to_idx[fut] = spec.slot_id
         outs: list[Optional[Any]] = [None] * len(specs)

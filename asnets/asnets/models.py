@@ -32,7 +32,8 @@ class PropNetworkWeights:
                  skip: bool,
                  use_fluents: bool,
                  use_comparisons: bool,
-                 value_head_enabled: bool = False):
+                 value_head_enabled: bool = False,
+                 minimization: bool = False):
         """Initialises weights for a domain-specific problem network.
 
         Args:
@@ -55,6 +56,7 @@ class PropNetworkWeights:
         self.use_fluents: bool = use_fluents
         self.use_comparisons: bool = use_comparisons
         self.value_head_enabled = value_head_enabled
+        self.minimization = minimization
         self._make_weights()
 
     def __getstate__(self):
@@ -66,6 +68,7 @@ class PropNetworkWeights:
             "use_fluents": self.use_fluents,
             "use_comparisons": self.use_comparisons,
             "value_head_enabled": self.value_head_enabled,
+            "minimization": self.minimization,
 
             "prop_weights": self.prop_weights,
             "flnt_weights": self.flnt_weights,
@@ -100,6 +103,7 @@ class PropNetworkWeights:
 
             # value head did not exist
             self.value_head_enabled = state.get('value_head_enabled', False)
+            self.minimization = state.get('minimization', False)
 
             # rebuild TF variables + derived structures
             self._make_weights(
@@ -122,6 +126,8 @@ class PropNetworkWeights:
 
             if not hasattr(self, 'value_head_enabled'):
                 self.value_head_enabled = False
+            if not hasattr(self, 'minimization'):
+                self.minimization = False
 
             self._rebuild_all_weights()
 
@@ -464,6 +470,7 @@ class PropNetworkWeights:
             "use_fluents": bool(self.use_fluents),
             "use_comparisons": bool(self.use_comparisons),
             "value_head_enabled": bool(self.value_head_enabled),
+            "minimization": bool(self.minimization),
 
             "weight_order_check": [
                 (w.name, tuple(w.shape))
@@ -537,6 +544,7 @@ class PropNetworkWeights:
             use_fluents=weights_np["use_fluents"],
             use_comparisons=weights_np["use_comparisons"],
             value_head_enabled=weights_np["value_head_enabled"],
+            minimization=weights_np.get("minimization", False),
         )
 
         # IMPORTANT: variables exist now — overwrite them
@@ -766,7 +774,9 @@ class PropNetwork(tf.keras.layers.Layer):
             self.value_hidden_layer.bias = val_hidden_b
 
             self.value_out_layer = tf.keras.layers.Dense(
-                1, name='value_out', activation='sigmoid'
+                1,
+                name='value_out',
+                activation='softplus' if self._weight_manager.minimization else 'sigmoid',
             )
             self.value_out_layer.build((None, value_hidden_dim))
             self.value_out_layer.kernel = val_out_W
@@ -1095,6 +1105,7 @@ def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
         assert wm.use_comparisons == args.use_comparisons
         assert wm.dom_meta == dom_meta
         assert not hasattr(wm,'value_head_enabled') or wm.value_head_enabled == (not args.disable_value_head)
+        assert wm.minimization == args.minimization
         assert wm.skip == args.skip
         assert wm.extra_dim == dg_extra_dim
         print(f"[WM] Successfully loaded previous weight manager from {weights_path}")
@@ -1123,7 +1134,8 @@ def make_weight_manager(args, dom_meta, dg_extra_dim) -> PropNetworkWeights:
         skip=args.skip,
         use_fluents=args.use_fluents,
         use_comparisons=args.use_comparisons,
-        value_head_enabled=not args.disable_value_head)
+        value_head_enabled=not args.disable_value_head,
+        minimization=args.minimization)
 
 
 def make_network(args, problem, dg_extra_dim: int, weight_manager: Optional[PropNetworkWeights]):

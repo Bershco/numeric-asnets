@@ -487,6 +487,12 @@ parser.add_argument(
     default='hadd-gbfs',
     help='When value-based mcts runs, this would be the state-value heuristic function.')
 parser.add_argument(
+    '--minimization',
+    action='store_true',
+    default=False,
+    help='Use raw nonnegative, lower-is-better heuristic values in the value head and MCTS.'
+)
+parser.add_argument(
     '--mcts-exploration-weight',
     type=float,
     default=1.0,
@@ -772,6 +778,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             corrupt_z=args.corrupt_z,
             max_workers=args.num_workers,
             max_replay_size=args.max_replay_size,
+            minimization=args.minimization,
         )
         validation_sets = {
             "easy": args.validation_pddls_easy,
@@ -838,6 +845,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
         specs=specs,
         max_workers=args.num_workers,
         worker_fn=run_worker_eval_policy_only,
+        minimization=args.minimization,
     )
     eval_start_time = time()
     _, success_rate, outs = eval_explorer.evaluate(weights_np)
@@ -893,6 +901,7 @@ def validating_validation(args):
         specs=all_validation_specs,
         max_workers=args.num_workers,
         worker_fn=curr_worker_fn,
+        minimization=args.minimization,
     )
     _, success_rate, outs = eval_explorer.evaluate(weights_np)
 
@@ -981,6 +990,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
                 args.max_replay_size,
                 specs=specs,
                 bucket_factory=make_replay_bucket,
+                minimization=args.minimization,
             )
         elif args.exploration_algorithm == 'dynamic':
             explorer = DynamicExplorer(
@@ -992,6 +1002,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
                 max_replay_size=args.max_replay_size,
                 specs=specs,
                 bucket_factory=make_replay_bucket,
+                minimization=args.minimization,
             )
         elif args.exploration_algorithm == 'mcts':
             raise NotImplementedError("This is weird, should have arrived in a different code location.")
@@ -1078,6 +1089,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
         max_workers=min(args.num_workers, len(evaluation_specs)),
         worker_fn=run_worker_eval_policy_only,
         wave_threshold=0.0,
+        minimization=args.minimization,
     )
 
     _, success_rate, outs = eval_explorer.evaluate(weights_np)

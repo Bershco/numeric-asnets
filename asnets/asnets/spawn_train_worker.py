@@ -1436,7 +1436,11 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
     )
 
 
-def make_enhsp_value_target_fn(estimator, h_to_v_coeff: float = 1.0):
+def make_enhsp_value_target_fn(
+        estimator,
+        h_to_v_coeff: float = 1.0,
+        minimization: bool = False,
+):
     """
     Returns a callable mapping CanonicalState -> scalar value target.
 
@@ -1447,7 +1451,10 @@ def make_enhsp_value_target_fn(estimator, h_to_v_coeff: float = 1.0):
         h = estimator.evaluate_state(cstate)
 
         if h is None:
-            return 0.0
+            return 10_000_000.0 if minimization else 0.0
+
+        if minimization:
+            return float(h)
 
         # Convert heuristic distance into bounded value
         # smaller h = better → larger value
@@ -1456,7 +1463,13 @@ def make_enhsp_value_target_fn(estimator, h_to_v_coeff: float = 1.0):
     return value_target_fn
 
 
-def distance_to_goal_value_target(cstate: CanonicalState, distance_to_goal: int) -> float:
+def distance_to_goal_value_target(
+        cstate: CanonicalState,
+        distance_to_goal: int,
+        minimization: bool = False,
+) -> float:
+    if minimization:
+        return float(distance_to_goal)
     return 1.0 / (1.0 + float(distance_to_goal))
 
 
@@ -1482,9 +1495,17 @@ def run_multiple_trajectory_collection(inp: PolicyDrivenWorkerInput):
     if net.value_head_enabled:
         if spec.use_estimator:
             estimator = _build_estimator(pe, spec)
-            value_target_fn = make_enhsp_value_target_fn(estimator, spec.estimator_h_to_v_coeff)
+            value_target_fn = make_enhsp_value_target_fn(
+                estimator,
+                spec.estimator_h_to_v_coeff,
+                minimization=inp.minimization,
+            )
         else:
-            value_target_fn = distance_to_goal_value_target
+            value_target_fn = lambda cstate, distance: distance_to_goal_value_target(
+                cstate,
+                distance,
+                minimization=inp.minimization,
+            )
     teacher_timeout_s = 15
     teacher = ENHSPTeacher(planner_exts=pe, teacher_timeout_s=teacher_timeout_s, enhsp_config=spec.enhsp_config)
     model_cache = {}

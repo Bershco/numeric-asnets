@@ -36,6 +36,7 @@ class ParallelMCTSExplorerGrads:
     # corruption testing settings
     corrupt_pi: Optional[str] = None
     corrupt_z: Optional[str] = None
+    minimization: bool = False
 
     specs_to_problems: dict = field(init=False)
     max_replay_size: int = 150000
@@ -79,6 +80,7 @@ class ParallelMCTSExplorerGrads:
             PROFILE_DIR=self.PROFILE_DIR,
             corrupt_pi=self.corrupt_pi,
             corrupt_z=self.corrupt_z,
+            minimization=self.minimization,
             max_estimator_coeff=self.max_curr_est_coeff,
             max_workers=effective_max_workers,
             epoch_timeout=epoch_timeout,
@@ -258,6 +260,7 @@ class ParallelEvaluator:
     worker_fn: Callable[[WorkerInput], EvalWorkerOutput]
     max_workers: Optional[int] = None
     wave_threshold: float = 0.5
+    minimization: bool = False
 
     def evaluate(self, weights_np) -> tuple[dict[InstanceDifficulty, float], float, list[EvalWorkerOutput]]:
         print(f"[EVAL] worker_fn={self.worker_fn.__name__}")
@@ -268,6 +271,7 @@ class ParallelEvaluator:
             max_workers=self.max_workers,
             worker_fn=self.worker_fn,
             wave_threshold=self.wave_threshold,
+            minimization=self.minimization,
         )
 
         # ------------------------------------------------------------
