@@ -135,6 +135,8 @@ class WorkerOutput:
     root_pred_entropy: Optional[np.float64] = None
     root_kl: Optional[np.float64] = None
     instance_diff: InstanceDifficulty = None
+    profile_duration_s: Optional[float] = None
+    profile_paths: tuple[str, ...] = ()
 
 
 def _make_compatibility_payload(
@@ -903,6 +905,8 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
 def run_worker_opt_profiled(inp: WorkerInput, worker_fn=run_worker) -> WorkerOutput:
     # Make sure this directory exists (spawn safe)
     prof = None
+    output = None
+    profile_paths = ()
     t0 = time.time()
 
     if inp.PROFILE_DIR:
@@ -911,14 +915,17 @@ def run_worker_opt_profiled(inp: WorkerInput, worker_fn=run_worker) -> WorkerOut
         prof.enable()
 
     try:
-        return worker_fn(inp)
+        output = worker_fn(inp)
     finally:
         if prof is not None:
             prof.disable()
             pid = os.getpid()
             seed = getattr(inp, "seed", None)
             spec_name = getattr(getattr(inp, "spec", None), "name", None)
-            tag = f"pid{pid}_seed{seed}_spec{spec_name}"
+            tag = (
+                f"epoch{inp.epoch}_slot{inp.spec.slot_id}_"
+                f"pid{pid}_seed{seed}_spec{spec_name}"
+            )
             path = os.path.join(inp.PROFILE_DIR, f"{worker_fn.__name__}_{tag}.prof")
             prof.dump_stats(path)
 
@@ -927,9 +934,15 @@ def run_worker_opt_profiled(inp: WorkerInput, worker_fn=run_worker) -> WorkerOut
             with open(txt_path, "w", encoding="utf-8") as f:
                 ps = pstats.Stats(prof, stream=f).sort_stats("cumtime")
                 ps.print_stats(30)
+            profile_paths = (path, txt_path)
 
         # Optional: coarse phase timings even without pstats
-        print(f"[WORKER TIMING] pid={os.getpid()} total={time.time() - t0:.2f}s", flush=True)
+        duration = time.time() - t0
+        print(f"[WORKER TIMING] pid={os.getpid()} total={duration:.2f}s", flush=True)
+        if output is not None:
+            output.profile_duration_s = duration
+            output.profile_paths = profile_paths
+    return output
 
 
 def init_eval_worker(inp: WorkerInput, worker_tag_addon: Optional[str] = None) -> tuple[str, str, float]:

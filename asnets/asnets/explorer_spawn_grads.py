@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections import deque, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+import shutil
 from time import time
 from typing import Any, Optional, Callable
 
@@ -23,6 +24,8 @@ class ParallelMCTSExplorerGrads:
     bucket_factory: Callable[[ProblemInitData], SingleProblem]
 
     PROFILE_DIR: Optional[str] = None
+    profile_sample_epochs: tuple[int, ...] = (0, 5, 25, 100)
+    profile_sample_every: int = 200
     curr_epoch: int = 0
     max_workers: Optional[int] = None
     bootstrap_timeout_s: Optional[int] = 300
@@ -72,12 +75,13 @@ class ParallelMCTSExplorerGrads:
             else min(limit_workers, self.max_workers)
         )
         start_time = time()
+        candidate_dir = self._profile_candidate_dir()
         outputs = run_epoch_spawn_grads(
             specs=self.specs,
             curr_epoch=self.curr_epoch,
             weights_np=weights_np,
             log=self.log,
-            PROFILE_DIR=self.PROFILE_DIR,
+            PROFILE_DIR=str(candidate_dir) if candidate_dir is not None else None,
             corrupt_pi=self.corrupt_pi,
             corrupt_z=self.corrupt_z,
             minimization=self.minimization,
@@ -85,9 +89,72 @@ class ParallelMCTSExplorerGrads:
             max_workers=effective_max_workers,
             epoch_timeout=epoch_timeout,
         )
+        if candidate_dir is not None:
+            self._retain_profile_representatives(candidate_dir, outputs)
         self.curr_epoch += 1
         self.rolling_epoch_times.append(time() - start_time)
         return outputs
+
+    def _profile_candidate_dir(self) -> Optional[Path]:
+        if self.PROFILE_DIR is None:
+            return None
+        epoch = self.curr_epoch
+        should_profile = (
+            epoch in self.profile_sample_epochs
+            or (
+                epoch >= self.profile_sample_every
+                and epoch % self.profile_sample_every == 0
+            )
+        )
+        if not should_profile:
+            return None
+        return Path(self.PROFILE_DIR) / f"epoch_{epoch:04d}" / "candidates"
+
+    def _retain_profile_representatives(
+            self,
+            candidate_dir: Path,
+            outputs: list[WorkerOutput],
+    ) -> None:
+        profiled = [
+            output for output in outputs
+            if output.profile_duration_s is not None and output.profile_paths
+        ]
+        if not profiled:
+            shutil.rmtree(candidate_dir, ignore_errors=True)
+            return
+
+        median_duration = float(np.median([
+            output.profile_duration_s for output in profiled
+        ]))
+        median_output = min(
+            profiled,
+            key=lambda output: abs(output.profile_duration_s - median_duration),
+        )
+        outliers = [
+            output for output in profiled
+            if output is not median_output
+            and output.profile_duration_s > 1.5 * median_duration
+        ]
+
+        retained_root = candidate_dir.parent / "retained"
+        retained = [("median", median_output)] + [
+            ("outlier", output) for output in outliers
+        ]
+        for label, output in retained:
+            destination = retained_root / label
+            destination.mkdir(parents=True, exist_ok=True)
+            for raw_path in output.profile_paths:
+                source = Path(raw_path)
+                if source.exists():
+                    source.replace(destination / source.name)
+
+        print(
+            f"[PROFILE] epoch={self.curr_epoch} "
+            f"median={median_duration:.2f}s "
+            f"retained_outliers={len(outliers)}",
+            flush=True,
+        )
+        shutil.rmtree(candidate_dir, ignore_errors=True)
 
     def _get_or_create_problem_bucket(self, out: WorkerOutput) -> SingleProblem:
         if (

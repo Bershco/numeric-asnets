@@ -583,6 +583,17 @@ parser.add_argument(
     help='Path to profile directory, default is not profiling at all.'
 )
 parser.add_argument(
+    '--profile-sample-epochs',
+    default='0,5,25,100',
+    help='Comma-separated early epochs to profile when --profile-dir is set.'
+)
+parser.add_argument(
+    '--profile-sample-every',
+    type=int,
+    default=200,
+    help='Profile every N epochs after the early profile epochs.'
+)
+parser.add_argument(
     '--freeze-train',
     action='store_true',
     default=False,
@@ -774,6 +785,8 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             log=args.worker_logs,
             bucket_factory=make_replay_bucket,
             PROFILE_DIR=args.profile_dir,
+            profile_sample_epochs=args.profile_sample_epochs,
+            profile_sample_every=args.profile_sample_every,
             corrupt_pi=args.corrupt_pi,
             corrupt_z=args.corrupt_z,
             max_workers=args.num_workers,
@@ -1154,6 +1167,20 @@ def main():
     parent_death_pact(signal.SIGKILL)
 
     args = parser.parse_args()
+    try:
+        args.profile_sample_epochs = tuple(
+            sorted({
+                int(value)
+                for value in args.profile_sample_epochs.split(',')
+                if value.strip()
+            })
+        )
+    except ValueError:
+        parser.error('--profile-sample-epochs must be comma-separated integers')
+    if any(epoch < 0 for epoch in args.profile_sample_epochs):
+        parser.error('--profile-sample-epochs cannot contain negative values')
+    if args.profile_sample_every <= 0:
+        parser.error('--profile-sample-every must be positive')
     LOGGER.info('Arguments are: %s', args)
 
     if args.seed is not None:
