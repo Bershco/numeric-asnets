@@ -497,6 +497,13 @@ parser.add_argument(
     help='Override architecture supervised learning rate.'
 )
 parser.add_argument(
+    '--policy-anchor-kl-coeff',
+    type=float,
+    default=0.0,
+    help=('Coefficient for KL(pi_stage1 || pi_current) during MCTS replay '
+          'training; 0 disables the frozen stage-1 policy anchor.')
+)
+parser.add_argument(
     '--mcts-iterations',
     type=int,
     default=0,
@@ -636,6 +643,7 @@ def main():
                override_mse_coeff=args.override_mse_coeff,
                override_epoch_num=args.max_opt_epochs,
                override_sup_lr=args.supervised_lr,
+               policy_anchor_kl_coeff=args.policy_anchor_kl_coeff,
                serial_test=args.serial_test,
                no_eval=args.no_eval,
                no_valid=args.no_valid,
@@ -681,6 +689,7 @@ def main_inner(*,
                override_mse_coeff=None,
                override_epoch_num=None,
                override_sup_lr=None,
+               policy_anchor_kl_coeff=0.0,
                serial_test=None,
                no_eval=None,
                no_valid=None,
@@ -761,6 +770,11 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend(['--mcts-exploration-weight', str(mcts_exploration_weight)])
         if minimization:
             train_flags.append('--minimization')
+        if policy_anchor_kl_coeff:
+            train_flags.extend([
+                '--policy-anchor-kl-coeff',
+                str(policy_anchor_kl_coeff),
+            ])
         if mcts_expansion_size:
             train_flags.extend(['--mcts-expansion-size', str(mcts_expansion_size)])
         if corrupt_pi:

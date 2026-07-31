@@ -30,6 +30,7 @@ from asnets.utils.prof_utils import can_profile
 from asnets.utils.pddl_utils import get_domain_file
 from asnets.utils.py_utils import TimerContext, strip_parens, weak_ref_to, weighted_batch_iter
 from asnets.utils.tf_utils import cross_entropy, mean_squared_error, empty_feed_value
+from asnets.models import PropNetwork, PropNetworkWeights
 import jpype
 import jpype.imports
 import sys
@@ -460,6 +461,7 @@ class SupervisedTrainer(BaseTrainer):
                  mse_coeff,
                  batch_size,
                  train_steps_per_epoch=1,
+                 policy_anchor_kl_coeff=0.0,
                  main_road_fraction=0.75,
                  tree_policy_weight=0.5,
                  grad_clip_norm=5.0,
@@ -478,6 +480,9 @@ class SupervisedTrainer(BaseTrainer):
         self.mse_coeff = mse_coeff
         self.batch_size = batch_size
         self.train_steps_per_epoch = train_steps_per_epoch
+        self.policy_anchor_kl_coeff = float(policy_anchor_kl_coeff)
+        if self.policy_anchor_kl_coeff < 0:
+            raise ValueError("policy_anchor_kl_coeff must be non-negative")
         self.main_road_fraction = main_road_fraction
         self.tree_policy_weight = tree_policy_weight
         self.grad_clip_norm = grad_clip_norm
@@ -487,6 +492,28 @@ class SupervisedTrainer(BaseTrainer):
         self.early_stop = early_stop
         self.save_every = save_every
         self.snapshot_dir = snapshot_dir
+        self._policy_anchor_networks = {}
+        self._policy_anchor_weights_np = None
+        if self.policy_anchor_kl_coeff > 0:
+            os.makedirs(self.snapshot_dir, exist_ok=True)
+            anchor_path = os.path.join(
+                self.snapshot_dir, "policy_anchor_weights.joblib")
+            if os.path.exists(anchor_path):
+                self._policy_anchor_weights_np = joblib.load(anchor_path)
+                anchor_source = "restored persisted stage-1 anchor"
+            else:
+                self._policy_anchor_weights_np = \
+                    self._weight_manager.export_numpy()
+                temp_path = f"{anchor_path}.{os.getpid()}.tmp"
+                joblib.dump(
+                    self._policy_anchor_weights_np, temp_path, compress=True)
+                os.replace(temp_path, anchor_path)
+                anchor_source = "created from initial stage-1 weights"
+            print(
+                "[POLICY ANCHOR] enabled "
+                f"coeff={self.policy_anchor_kl_coeff}; {anchor_source}; "
+                f"path={anchor_path}"
+            )
         self._init_tf()
         if resume_from is not None and not resume_from.endswith(".pkl"):
             opt_path = os.path.join(resume_from, "optimizer.joblib")
@@ -679,6 +706,10 @@ class SupervisedTrainer(BaseTrainer):
                 tf_and_log("train-loss", train_stats["total_loss"])
                 tf_and_log("train/policy_loss", train_stats["policy_loss"])
                 tf_and_log("train/value_loss", train_stats["value_loss"])
+                tf_and_log(
+                    "train/policy_anchor_kl_loss",
+                    train_stats["policy_anchor_kl_loss"],
+                )
                 tf_and_log("train/reg_loss", train_stats["reg_loss"])
                 tf_and_log("grad/global_norm_unclipped", train_stats["grad_norm"])
                 tf_and_log("grad/global_norm_clipped", train_stats["clipped_grad_norm"])
@@ -889,6 +920,24 @@ class SupervisedTrainer(BaseTrainer):
             ])
         return reg_loss
 
+    def _anchor_policy(self, problem, obs_tf):
+        key = id(problem)
+        anchor_network = self._policy_anchor_networks.get(key)
+        if anchor_network is None:
+            anchor_weights = PropNetworkWeights.from_numpy(
+                problem.problem_meta, self._policy_anchor_weights_np)
+            anchor_network = PropNetwork(
+                anchor_weights,
+                problem.problem_meta,
+                dropout=0.0,
+                trainable=False,
+            )
+            self._policy_anchor_networks[key] = anchor_network
+        anchor_out = anchor_network(obs_tf, training=False)
+        anchor_policy = anchor_out[0] if isinstance(anchor_out, tuple) \
+            else anchor_out
+        return tf.stop_gradient(anchor_policy)
+
     def _train_replay_step(self):
         params = self._weight_manager.all_weights
         sampled_batches = [
@@ -900,7 +949,7 @@ class SupervisedTrainer(BaseTrainer):
             return None
 
         with tf.GradientTape() as tape:
-            policy_losses, value_losses = [], []
+            policy_losses, value_losses, anchor_kl_losses = [], [], []
             for problem, (obs, pi_tgt, z_tgt, policy_weights) in sampled_batches:
                 obs_tf = tf.convert_to_tensor(obs, dtype=tf.float32)
                 pi_tgt_tf = tf.convert_to_tensor(pi_tgt, dtype=tf.float32)
@@ -918,6 +967,19 @@ class SupervisedTrainer(BaseTrainer):
                     tf.reduce_sum(xent_per_example * policy_weights_tf),
                     tf.reduce_sum(policy_weights_tf),
                 ))
+                if self.policy_anchor_kl_coeff > 0:
+                    anchor_pi = self._anchor_policy(problem, obs_tf)
+                    anchor_kl_per_example = tf.reduce_sum(
+                        anchor_pi * (
+                            tf.math.log(tf.clip_by_value(
+                                anchor_pi, 1e-8, 1.0))
+                            - tf.math.log(tf.clip_by_value(
+                                pi_pred, 1e-8, 1.0))
+                        ),
+                        axis=1,
+                    )
+                    anchor_kl_losses.append(
+                        tf.reduce_mean(anchor_kl_per_example))
                 if value_pred is not None:
                     value_pred = tf.squeeze(value_pred, axis=-1)
                     z_tgt_tf = tf.convert_to_tensor(z_tgt, dtype=value_pred.dtype)
@@ -925,8 +987,20 @@ class SupervisedTrainer(BaseTrainer):
 
             policy_loss = tf.reduce_mean(policy_losses)
             value_loss = tf.reduce_mean(value_losses) if value_losses else tf.constant(0.0, policy_loss.dtype)
+            policy_anchor_kl_loss = (
+                tf.reduce_mean(anchor_kl_losses)
+                if anchor_kl_losses
+                else tf.constant(0.0, policy_loss.dtype)
+            )
             reg_loss = self._replay_reg_loss(params, policy_loss.dtype)
-            total_loss = policy_loss + tf.cast(self.mse_coeff, policy_loss.dtype) * value_loss + reg_loss
+            total_loss = (
+                policy_loss
+                + tf.cast(self.mse_coeff, policy_loss.dtype) * value_loss
+                + tf.cast(
+                    self.policy_anchor_kl_coeff, policy_loss.dtype
+                ) * policy_anchor_kl_loss
+                + reg_loss
+            )
 
         raw_grads = tape.gradient(total_loss, params)
         none_grad_count = sum(grad is None for grad in raw_grads)
@@ -944,6 +1018,8 @@ class SupervisedTrainer(BaseTrainer):
             "total_loss": float(total_loss.numpy()),
             "policy_loss": float(policy_loss.numpy()),
             "value_loss": float(value_loss.numpy()),
+            "policy_anchor_kl_loss": float(
+                policy_anchor_kl_loss.numpy()),
             "reg_loss": float(reg_loss.numpy()),
             "grad_norm": float(grad_norm.numpy()),
             "clipped_grad_norm": float(clipped_grad_norm.numpy()),
@@ -957,7 +1033,8 @@ class SupervisedTrainer(BaseTrainer):
         if not step_stats:
             return {
                 "updates": 0, "total_loss": 0.0, "policy_loss": 0.0,
-                "value_loss": 0.0, "reg_loss": 0.0, "grad_norm": 0.0,
+                "value_loss": 0.0, "policy_anchor_kl_loss": 0.0,
+                "reg_loss": 0.0, "grad_norm": 0.0,
                 "clipped_grad_norm": 0.0, "was_clipped": 0.0,
                 "none_grad_count": 0.0,
             }

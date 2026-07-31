@@ -386,6 +386,13 @@ parser.add_argument(
     help='mse coefficient for loss'
 )
 parser.add_argument(
+    '--policy-anchor-kl-coeff',
+    type=float,
+    default=0.0,
+    help=('coefficient for KL(pi_stage1 || pi_current) during MCTS replay '
+          'training; 0 disables the frozen stage-1 policy anchor')
+)
+parser.add_argument(
     '--teacher-planner',
     choices=('ssipp', 'fd', 'domain-specific', 'enhsp', 'metricff'),
     default='ssipp',
@@ -828,6 +835,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             mse_coeff=args.mse,
             batch_size=args.supervised_bs,
             train_steps_per_epoch=args.opt_batch_per_epoch,
+            policy_anchor_kl_coeff=args.policy_anchor_kl_coeff,
             main_road_fraction=0.75,
             grad_clip_norm=5.0,
             start_time=start_time,
@@ -1167,6 +1175,8 @@ def main():
     parent_death_pact(signal.SIGKILL)
 
     args = parser.parse_args()
+    if args.policy_anchor_kl_coeff < 0:
+        parser.error('--policy-anchor-kl-coeff must be non-negative')
     try:
         args.profile_sample_epochs = tuple(
             sorted({
