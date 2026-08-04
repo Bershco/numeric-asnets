@@ -32,6 +32,7 @@ class NetworkModule(tf.keras.layers.Layer, abc.ABC):
         self.skip = skip
         self.nonlinearity = nonlinearity
         self.dropout = dropout
+        self.dropout_layer = tf.keras.layers.Dropout(dropout)
         self.name_pfx = None
         self.conv_input = None
 
@@ -42,16 +43,14 @@ class NetworkModule(tf.keras.layers.Layer, abc.ABC):
     def call(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
-    def compute_output(self, conv_input):
+    def compute_output(self, conv_input, training=False):
         # with tf.name_scope(self.name_pfx + '/conv'):
         with tf.name_scope('testing/conv'):
             conv_result = _apply_conv_matmul(conv_input, self.W)
             rv = self.nonlinearity(conv_result + self.b[None, :])
 
         if self.dropout > 0:
-            rv = tf.nn.dropout(rv, self.dropout,
-                               # name=self.name_pfx + '/drop'
-                               )
+            rv = self.dropout_layer(rv, training=training)
 
         return rv
 
@@ -76,7 +75,8 @@ class ActionModule(NetworkModule):
                 prev_func: Dict[UnboundFlnt, tf.Tensor] = None,
                 prev_comp: Dict[UnboundComp, tf.Tensor] = None,
                 extra_input: Optional[Dict[UnboundAction, tf.Tensor]] = None,
-                prev_act: Optional[tf.Tensor] = None) -> tf.Tensor:
+                prev_act: Optional[tf.Tensor] = None,
+                training=False) -> tf.Tensor:
         """Forward pass for this action module.
 
         Args:
@@ -218,8 +218,9 @@ class ActionModule(NetworkModule):
                 mgc_elem_indices[-1].set_shape(extra_chan.shape[1])
 
         # 4. Profit!
-        return self.compute_output(multi_gather_concat(
-            mgc_inputs, mgc_elem_indices))
+        return self.compute_output(
+            multi_gather_concat(mgc_inputs, mgc_elem_indices),
+            training=training)
 
     def build(self, input_shape=None):
         """Register the shared variables with Keras."""
@@ -243,6 +244,7 @@ class ValueModule(NetworkModule):
             *,
             prev_func: Optional[Dict[UnboundFlnt, tf.Tensor]] = None,
             prev_comp: Optional[Dict[UnboundComp, tf.Tensor]] = None,
+            training=False,
     ) -> tf.Tensor:
         """
         Forward pass for the value module. Aggregates all propositions, fluents,
@@ -286,7 +288,7 @@ class ValueModule(NetworkModule):
         # --- 4. Apply linear projection and nonlinearity ---
         value_raw = tf.matmul(state_repr, self.W) + self.b
         value_out = self.nonlinearity(value_raw)
-        value_out = tf.nn.dropout(value_out, rate=self.dropout, name="drop")
+        value_out = self.dropout_layer(value_out, training=training)
 
         return value_out
 
@@ -353,7 +355,8 @@ class PropLayerModule(NetworkModule):
     def forward(self,
                 prev_act: Dict[Any, tf.Tensor],
                 *,
-                prev_self: Optional[tf.Tensor] = None) -> tf.Tensor:
+                prev_self: Optional[tf.Tensor] = None,
+                training=False) -> tf.Tensor:
         """Forward pass for this module.
 
         Args:
@@ -431,7 +434,7 @@ class PropLayerModule(NetworkModule):
                 conv_input = tf.concat([conv_input, *extra_chans], axis=2)
 
         # 4. Profit!
-        return self.compute_output(conv_input)
+        return self.compute_output(conv_input, training=training)
 
 
 class PropModule(PropLayerModule):

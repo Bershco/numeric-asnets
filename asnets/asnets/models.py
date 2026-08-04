@@ -858,6 +858,9 @@ class PropNetwork(tf.keras.layers.Layer):
 
     @tf.function(reduce_retracing=True)
     def call(self, inputs, *args, **kwargs):
+        training = kwargs.get('training', False)
+        if training is None:
+            training = False
         # input vector spec:
         #
         # |<--num_acts-->|<--k*num_acts-->|<--num_props-->|<--num_flnts-->|<--num_comps-->|
@@ -984,7 +987,8 @@ class PropNetwork(tf.keras.layers.Layer):
                     prev_func=func_dict,
                     prev_comp=comp_dict,
                     extra_input=extra_dict,
-                    prev_act=prev_act_dict.get(unbound_act, None))
+                    prev_act=prev_act_dict.get(unbound_act, None),
+                    training=training)
 
             self.act_layers_outcome.append(act_outcome_dict)
             prev_act_dict = act_outcome_dict
@@ -994,7 +998,8 @@ class PropNetwork(tf.keras.layers.Layer):
             for pred_name in dom_meta.pred_names:
                 pred_dict[pred_name] = pred_module_dict[pred_name].forward(
                     prev_act=act_outcome_dict,
-                    prev_self=prev_pred_dict.get(pred_name, None))
+                    prev_self=prev_pred_dict.get(pred_name, None),
+                    training=training)
 
             self.prop_layers_outcome.append(pred_dict)
             prev_pred_dict = pred_dict
@@ -1005,7 +1010,8 @@ class PropNetwork(tf.keras.layers.Layer):
                 for func_name in dom_meta.func_names:
                     func_dict[func_name] = func_module_dict[func_name].forward(
                         prev_act=act_outcome_dict,
-                        prev_self=prev_func_dict.get(func_name, None))
+                        prev_self=prev_func_dict.get(func_name, None),
+                        training=training)
 
                 self.flnt_layers_outcome.append(func_dict)
                 prev_func_dict = func_dict
@@ -1016,7 +1022,8 @@ class PropNetwork(tf.keras.layers.Layer):
                 for unbound_comp in dom_meta.unbound_comps:
                     comp_dict[unbound_comp] = comp_module_dict[unbound_comp].forward(
                         prev_act=act_outcome_dict,
-                        prev_self=prev_comp_dict.get(unbound_comp, None))
+                        prev_self=prev_comp_dict.get(unbound_comp, None),
+                        training=training)
 
                 self.copm_layers_outcome.append(comp_dict)
                 prev_comp_dict = comp_dict
@@ -1030,7 +1037,8 @@ class PropNetwork(tf.keras.layers.Layer):
                 prev_func=func_dict,
                 prev_comp=comp_dict,
                 extra_input=extra_dict,
-                prev_act=prev_act_dict.get(unbound_act, None))
+                prev_act=prev_act_dict.get(unbound_act, None),
+                training=training)
 
         l_pre_softmax = _merge_finals(prob_meta, finals)
         # voila!
@@ -1046,7 +1054,8 @@ class PropNetwork(tf.keras.layers.Layer):
         value_features = self.value_module.forward(
             prev_pred=pred_dict,
             prev_func=func_dict if self.use_fluents else None,
-            prev_comp=comp_dict if self.use_comparisons else None)
+            prev_comp=comp_dict if self.use_comparisons else None,
+            training=training)
 
         value_hidden = self.value_hidden_layer(value_features)
         value_out = self.value_out_layer(value_hidden)
