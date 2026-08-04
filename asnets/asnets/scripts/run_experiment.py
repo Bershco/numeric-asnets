@@ -72,6 +72,7 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
     stderr_path = path.join(dest_dir, 'stderr')
 
     dfpg_proc = tee_out_proc = tee_err_proc = None
+    training_retcode = None
     start_time = time()
     try:
         # print to stdout/stderr *and* save as well
@@ -93,6 +94,7 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
         timeout = 60 * 60 * 24 * 7
         try:
             dfpg_proc.wait(timeout=timeout)
+            training_retcode = dfpg_proc.returncode
         except TimeoutExpired:
             # uh, oops; better kill everything
             print('Run timed out after %ss!' % timeout)
@@ -138,6 +140,16 @@ def run_asnets_local(flags, root_dir, need_snapshot, timeout, is_train,
         raise Exception("Couldn't find unique prefix for problem!")
     run_dir = path.join(root_dir, run_subdir)
     copytree(dest_dir, path.join(run_dir, 'run-info'), dirs_exist_ok=True)
+
+    if timed_out:
+        raise RuntimeError(
+            f"run_asnets timed out; see {dest_dir}"
+        )
+    if training_retcode != 0:
+        raise RuntimeError(
+            f"run_asnets exited with code {training_retcode}; "
+            f"see {dest_dir}"
+        )
 
     if need_snapshot:
         # parse output to figure out where it put the last checkpoint

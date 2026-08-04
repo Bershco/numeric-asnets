@@ -501,6 +501,31 @@ class SupervisedTrainer(BaseTrainer):
             if os.path.exists(anchor_path):
                 self._policy_anchor_weights_np = joblib.load(anchor_path)
                 anchor_source = "restored persisted stage-1 anchor"
+            elif (
+                    resume_from is not None
+                    and not resume_from.endswith(".pkl")
+                    and os.path.exists(os.path.join(
+                        os.path.dirname(resume_from),
+                        "policy_anchor_weights.joblib",
+                    ))
+            ):
+                resume_anchor_path = os.path.join(
+                    os.path.dirname(resume_from),
+                    "policy_anchor_weights.joblib",
+                )
+                self._policy_anchor_weights_np = joblib.load(
+                    resume_anchor_path)
+                temp_path = f"{anchor_path}.{os.getpid()}.tmp"
+                joblib.dump(
+                    self._policy_anchor_weights_np,
+                    temp_path,
+                    compress=True,
+                )
+                os.replace(temp_path, anchor_path)
+                anchor_source = (
+                    "restored stage-1 anchor from resumed experiment "
+                    f"{resume_anchor_path}"
+                )
             else:
                 self._policy_anchor_weights_np = \
                     self._weight_manager.export_numpy()
