@@ -269,26 +269,32 @@ class TrainingMCTS(MCTS):
 
         return mask
 
-    def sample_k_sufficient_nodes(self, k, min_visitations: int = 5, power_law_weight: float = 2.0) -> list:
+    def sample_k_sufficient_nodes(self, k, min_visitations: int = 5,
+                                  power_law_weight: float = 2.0) -> tuple[list, dict]:
         # 1. Filter eligible nodes
+        nodes_examined = len(self.state_key_to_node)
         eligible = [(node, node.visit_count) for node in self.state_key_to_node.values() if
                     node.visit_count > min_visitations]
         if not eligible:
-            return []
+            return [], {
+                "nodes_examined": nodes_examined,
+                "eligible": 0,
+                "emitted": 0,
+            }
 
         nodes, counts = zip(*eligible)
-        counts_array = np.array(counts, dtype=np.float32)
-        counts_array **= power_law_weight
-        probs = counts_array / counts_array.sum()
 
         # 2. Sample nodes
-        num_to_sample = min(k, len(nodes))
-        if num_to_sample > 0:
-            sampled_nodes = np.random.choice(nodes, size=num_to_sample, replace=False, p=probs)
-        elif num_to_sample == -1: #Experimental - if k = -1 (no other value should be allowed, hence else is ValueError) then we "sample" the entire eligible list
+        if k == -1:
             sampled_nodes = nodes
+        elif k > 0:
+            counts_array = np.array(counts, dtype=np.float32)
+            counts_array **= power_law_weight
+            probs = counts_array / counts_array.sum()
+            num_to_sample = min(k, len(nodes))
+            sampled_nodes = np.random.choice(nodes, size=num_to_sample, replace=False, p=probs)
         else:
-            raise ValueError("This shouldn't have happened, something went wrong with num_to_sample value")
+            raise ValueError(f"k must be positive or -1, got {k}")
 
         act_dim = self.ctx.get_act_dim()
         results = []
@@ -303,7 +309,11 @@ class TrainingMCTS(MCTS):
                 'z': z
             })
 
-        return results
+        return results, {
+            "nodes_examined": nodes_examined,
+            "eligible": len(eligible),
+            "emitted": len(results),
+        }
 
     def get_children_of(self, cstate: CanonicalState) -> list:
         return [(act, child_node.state) for act, child_node in

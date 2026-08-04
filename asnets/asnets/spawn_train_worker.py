@@ -127,6 +127,9 @@ class WorkerOutput:
     main_trajectory: list[tuple] # list of either (CanonicalState, PolicyVector) or (CanonicalState, PolicyVector, ValueFloat)
     expert_trajectory: list[tuple] = field(default_factory=list) # same but for expert planner trajectory from enhsp bootstrapping
     tree_samples: list[tuple] = field(default_factory=list)
+    tree_nodes_examined: int = 0
+    tree_eligible: int = 0
+    tree_emitted: int = 0
     compatibility_signature: Optional[str] = None
     compatibility_payload: Optional[tuple] = None
     problem_init_data: Optional[ProblemInitData] = None
@@ -581,6 +584,11 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
     )
 
     a = None
+    tree_sample_stats = {
+        "nodes_examined": 0,
+        "eligible": 0,
+        "emitted": 0,
+    }
 
     # Episode
     for t in range(max_len):
@@ -632,19 +640,6 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
                 kl_t.numpy(),
             )
 
-        if inp.spec.sample_k_additional_states:
-            sampled_data = mcts.sample_k_sufficient_nodes(k=inp.spec.sample_k_additional_states)
-            for item in sampled_data:
-                # item['node'].state is the actual state representation (cstate)
-                collector.add_sample(
-                    cstate=item['node'].state,
-                    children=None,
-                    action=None,
-                    pi=item['pi'],
-                    z=item['z'],
-                    source=DataSource.TREE_SAMPLE,
-                )
-
         # sample action from pi masked by available children
         mask = mcts.get_children_mask(act_dim=act_dim)
         masked_pi = pi * mask
@@ -660,6 +655,29 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
             masked_pi[valid] = 1.0 / len(valid)
         a = action_policy.select_action(mcts=mcts, pi=masked_pi)
         cstate = mcts.step_forward(a)
+
+    # Extract tree supervision once after the complete episode. This uses each
+    # node's final visitation statistics and emits each tree node at most once.
+    if inp.spec.sample_k_additional_states:
+        sampled_data, tree_sample_stats = mcts.sample_k_sufficient_nodes(
+            k=inp.spec.sample_k_additional_states
+        )
+        for item in sampled_data:
+            collector.add_sample(
+                cstate=item['node'].state,
+                children=None,
+                action=None,
+                pi=item['pi'],
+                z=item['z'],
+                source=DataSource.TREE_SAMPLE,
+            )
+        print(
+            "[TREE SAMPLE STATS] "
+            f"nodes_examined={tree_sample_stats['nodes_examined']} "
+            f"eligible={tree_sample_stats['eligible']} "
+            f"emitted={tree_sample_stats['emitted']}",
+            flush=True,
+        )
 
     if select_logging:
         mcts.get_select_depth_stats()
@@ -895,6 +913,9 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
         main_trajectory=data_points_by_source[DataSource.TRAJECTORY],
         expert_trajectory=data_points_by_source[DataSource.ENHSP_PLAN],
         tree_samples=data_points_by_source[DataSource.TREE_SAMPLE],
+        tree_nodes_examined=tree_sample_stats["nodes_examined"],
+        tree_eligible=tree_sample_stats["eligible"],
+        tree_emitted=tree_sample_stats["emitted"],
         slot_id=inp.spec.slot_id,
         compatibility_signature=_compatibility_signature(compatibility_payload),
         compatibility_payload=compatibility_payload,

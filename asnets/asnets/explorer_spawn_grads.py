@@ -197,6 +197,9 @@ class ParallelMCTSExplorerGrads:
         """Route collection-only worker outputs into problem-local replays."""
         main_road_added = 0
         tree_added = 0
+        tree_size_before = sum(
+            len(problem.sampled_states_replay) for problem in self.problems
+        )
 
         for out in worker_outs:
             if out.n_samples == 0:
@@ -225,14 +228,32 @@ class ParallelMCTSExplorerGrads:
                 problem.sampled_states_replay.update(out.tree_samples)
                 tree_added += len(out.tree_samples)
 
+        tree_size_before_trim = sum(
+            len(problem.sampled_states_replay) for problem in self.problems
+        )
+        tree_unique_added = max(0, tree_size_before_trim - tree_size_before)
+        tree_duplicates_merged = max(0, tree_added - tree_unique_added)
+
         self._trim_replays()
+        tree_size_after_trim = sum(
+            len(problem.sampled_states_replay) for problem in self.problems
+        )
+        tree_trimmed = max(0, tree_size_before_trim - tree_size_after_trim)
 
         return {
             "collected": sum(out.n_samples for out in worker_outs),
             "main_road_added": main_road_added,
             "tree_added": tree_added,
+            "tree_nodes_examined": sum(
+                out.tree_nodes_examined for out in worker_outs
+            ),
+            "tree_eligible": sum(out.tree_eligible for out in worker_outs),
+            "tree_emitted": sum(out.tree_emitted for out in worker_outs),
+            "tree_unique_added": tree_unique_added,
+            "tree_duplicates_merged": tree_duplicates_merged,
+            "tree_trimmed": tree_trimmed,
             "main_road_size": sum(len(problem.replay) for problem in self.problems),
-            "tree_size": sum(len(problem.sampled_states_replay) for problem in self.problems),
+            "tree_size": tree_size_after_trim,
             "compatibility_bucket_count": len(self.problems),
         }
 

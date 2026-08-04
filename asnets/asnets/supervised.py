@@ -723,6 +723,21 @@ class SupervisedTrainer(BaseTrainer):
                 )
             tf_and_log('replay/main_road_added', replay_stats["main_road_added"])
             tf_and_log('replay/tree_added', replay_stats["tree_added"])
+            tf_and_log(
+                'replay/tree_nodes_examined',
+                replay_stats["tree_nodes_examined"],
+            )
+            tf_and_log('replay/tree_eligible', replay_stats["tree_eligible"])
+            tf_and_log('replay/tree_emitted', replay_stats["tree_emitted"])
+            tf_and_log(
+                'replay/tree_unique_added',
+                replay_stats["tree_unique_added"],
+            )
+            tf_and_log(
+                'replay/tree_duplicates_merged',
+                replay_stats["tree_duplicates_merged"],
+            )
+            tf_and_log('replay/tree_trimmed', replay_stats["tree_trimmed"])
             tf_and_log('replay/main_road_size', replay_stats["main_road_size"])
             tf_and_log('replay/tree_size', replay_stats["tree_size"])
             tf_and_log(

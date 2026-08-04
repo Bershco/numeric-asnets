@@ -140,7 +140,9 @@ class FrozenSupervisedTrainer(SupervisedTrainer):
             )
 
             if spec.sample_k_additional_states:
-                sampled_data = mcts.sample_k_sufficient_nodes(k=spec.sample_k_additional_states)
+                sampled_data, _ = mcts.sample_k_sufficient_nodes(
+                    k=spec.sample_k_additional_states
+                )
                 for item in sampled_data:
                     collector.add_sample(
                         cstate=item["node"].state,
