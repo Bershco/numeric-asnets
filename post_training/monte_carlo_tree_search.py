@@ -1,6 +1,5 @@
 import gc
 import logging
-import random
 from array import array
 import bisect
 import math
@@ -182,9 +181,7 @@ class MCTS:
     def __init__(self, exploration_weight=1,
                  network=None,
                  debug_memory=False,
-                 use_numpy_sampler=False,
                  select_logging=False,
-                 puct_selection_mode='argmax',  # or 'sample'
                  minimization=True,
                  ):
         self.curr_tree_root: Optional[MCTSNode] = None
@@ -200,11 +197,6 @@ class MCTS:
         self.debug_memory = debug_memory
         self._select_counter = -1
 
-        # -- select path --
-        self.puct_selection_mode = puct_selection_mode
-        assert puct_selection_mode in ('sample', 'argmax'), \
-            f"Unknown puct_selection_mode={puct_selection_mode!r}; expected 'sample' or 'argmax'"
-        self._init_selector(use_numpy_sampler=use_numpy_sampler)
         self.select_logging = select_logging
         if select_logging:
             self.select_depths = []
@@ -289,24 +281,6 @@ class MCTS:
             print(f"Cycle-blocked depth mean: {cd.mean():.2f}, median: {np.median(cd):.2f}, max: {cd.max()}")
         print("==========================")
 
-    def _init_selector(self, use_numpy_sampler: bool):
-        mode = self.puct_selection_mode
-
-        if use_numpy_sampler:
-            if mode == "sample":
-                self._puct_select_no_cycle = self._puct_select_fast_numpy_sample
-            elif mode == "argmax":
-                self._puct_select_no_cycle = self._puct_select_fast_numpy_argmax
-            else:
-                raise ValueError(f"Unknown puct_selection_mode={mode!r}")
-        else:
-            if mode == "sample":
-                self._puct_select_no_cycle = self._puct_select_fast_python_sample
-            elif mode == "argmax":
-                self._puct_select_no_cycle = self._puct_select_fast_python_argmax
-            else:
-                raise ValueError(f"Unknown puct_selection_mode={mode!r}")
-
     def mcts_iteration_classic(self, node, horizon):
         """Make the tree one layer better. (Train for one iteration.)"""
         path = self._select(node)
@@ -356,7 +330,7 @@ class MCTS:
                     self.same_action_streaks.append(max_same_action_streak)
                     self.select_stop_frontier += 1
                 return node_path
-            action, child = self._puct_select_no_cycle(node)
+            action, child = self._puct_select_argmax(node)
 
             if self.select_logging:
                 if prev_action is not None and action == prev_action:
@@ -485,83 +459,7 @@ class MCTS:
     def get_applicable_action_mask(self, node: MCTSNode):
         return node.applicable_action_mask
 
-    def _puct_select_fast_python_sample(self, node):
-        children = node.children
-        actions = children.actions_np
-        child_list = children._values
-        edge_visits = children.visits
-        priors = children.priors
-        sqrtN = math.sqrt(max(1.0, node.visit_count))
-        c = self.exploration_weight
-        sid = self._select_counter
-        best_max = -math.inf
-        any_valid = False
-        scores = []
-        for i, child in enumerate(child_list):
-            u = c * priors[i] * (sqrtN / (1.0 + edge_visits[i]))
-            s = self.sign * child.Q_value + u
-            scores.append(s)
-            if child.last_select_id != sid:
-                any_valid = True
-                if s > best_max:
-                    best_max = s
-        if not any_valid:
-            return None, None
-
-        # Effective branching logging.
-        threshold = best_max - 1e-1
-        effective_branching = 0
-        for i, child in enumerate(child_list):
-            if child.last_select_id == sid:
-                continue
-            if scores[i] >= threshold:
-                effective_branching += 1
-        if self.select_logging:
-            self.effective_branching.append(effective_branching)
-
-        total = 0.0
-        weights = []
-        for i, child in enumerate(child_list):
-            if child.last_select_id == sid:
-                weights.append(0.0)
-                continue
-            w = math.exp(scores[i] - best_max)
-            weights.append(w)
-            total += w
-        if total <= 0 or not math.isfinite(total):
-            best = -math.inf
-            idx = -1
-            for i, child in enumerate(child_list):
-                if child.last_select_id == sid:
-                    continue
-                s = scores[i]
-                if s > best:
-                    best = s
-                    idx = i
-        else:
-            r = random.random() * total
-            acc = 0.0
-            idx = -1
-            for i, child in enumerate(child_list):
-                if child.last_select_id == sid:
-                    continue
-                acc += weights[i]
-                if acc >= r:
-                    idx = i
-                    break
-            # Numerical safety fallback.
-            if idx < 0:
-                best = -math.inf
-                for i, child in enumerate(child_list):
-                    if child.last_select_id == sid:
-                        continue
-                    s = scores[i]
-                    if s > best:
-                        best = s
-                        idx = i
-        return int(actions[idx]), child_list[idx]
-
-    def _puct_select_fast_python_argmax(self, node):
+    def _puct_select_argmax(self, node):
         children = node.children
         actions = children.actions_np
         child_list = children._values
@@ -595,80 +493,6 @@ class MCTS:
                     effective_branching += 1
             self.effective_branching.append(effective_branching)
         return int(actions[best_idx]), child_list[best_idx]
-
-    def _puct_select_fast_numpy_sample(self, node):
-        children = node.children
-        actions = children.actions_np
-        child_list = children._values
-        edge_visits = children.visits
-        priors = children.priors
-        n = len(actions)
-        sid = self._select_counter
-        cycle = np.empty(n, dtype=bool)
-        Q = np.empty(n, dtype=np.float32)
-        for i, child in enumerate(child_list):
-            Q[i] = child.Q_value
-            cycle[i] = child.last_select_id == sid
-        sqrtN = math.sqrt(max(1.0, node.visit_count))
-        U = self.exploration_weight * priors * (sqrtN / (1.0 + edge_visits))
-        score = self.sign * Q + U
-        valid_mask = ~cycle
-        if not valid_mask.any():
-            return None, None
-        score_valid = score[valid_mask]
-        best = float(score_valid.max())
-        if self.select_logging:
-            effective_branching = int(np.sum(score_valid >= best - 1e-1))
-            self.effective_branching.append(effective_branching)
-        x = score_valid - best
-        w = np.exp(x)
-        s = w.sum()
-        if not np.isfinite(s) or s <= 0:
-            idx_local = int(np.argmax(score_valid))
-        else:
-            p = w / s
-            idx_local = int(np.random.choice(len(score_valid), p=p))
-        idx = np.flatnonzero(valid_mask)[idx_local]
-        return int(actions[idx]), child_list[idx]
-
-    def _puct_select_fast_numpy_argmax(self, node):
-        children = node.children
-        actions = children.actions_np
-        child_list = children._values
-
-        edge_visits = children.visits
-        priors = children.priors
-
-        n = len(actions)
-        sid = self._select_counter
-
-        cycle = np.empty(n, dtype=bool)
-        Q = np.empty(n, dtype=np.float32)
-
-        for i, child in enumerate(child_list):
-            Q[i] = child.Q_value
-            cycle[i] = child.last_select_id == sid
-
-        sqrtN = math.sqrt(max(1.0, node.visit_count))
-        U = self.exploration_weight * priors * (sqrtN / (1.0 + edge_visits))
-        score = self.sign * Q + U
-
-        valid_mask = ~cycle
-
-        if not valid_mask.any():
-            return None, None
-
-        score_valid = score[valid_mask]
-        best = float(score_valid.max())
-
-        if self.select_logging:
-            effective_branching = int(np.sum(score_valid >= best - 1e-1))
-            self.effective_branching.append(effective_branching)
-
-        idx_local = int(np.argmax(score_valid))
-        idx = np.flatnonzero(valid_mask)[idx_local]
-
-        return int(actions[idx]), child_list[idx]
 
     def log_puct_snapshot(
             self,
