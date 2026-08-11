@@ -417,6 +417,18 @@ parser.add_argument(
         'Use MCTS for final test-set evaluation. By default final evaluation '
         'remains policy-only, including after MCTS stage-2 training.'))
 parser.add_argument(
+    '--action-debug',
+    action='store_true',
+    default=False,
+    help=('Log raw-network-policy and MCTS action decisions during MCTS '
+          'evaluation.'))
+parser.add_argument(
+    '--puct-debug',
+    action='store_true',
+    default=False,
+    help=('Log root-child priors, values, exploration terms, visits, and '
+          'transposition consistency during MCTS evaluation.'))
+parser.add_argument(
     '--rollouts',
     type=int,
     default=75,

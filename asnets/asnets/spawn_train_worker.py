@@ -1340,29 +1340,39 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
             )
             if inp.spec.action_debug:
                 tree_policy_argmax = int(np.argmax(masked_pi))
-                # descending sort of actions by policy probability
-                ranked_actions = np.argsort(masked_pi)[::-1]
-                policy_rank_selected = (
-                        int(np.where(ranked_actions == action_id)[0][0]) + 1
+                mcts_ranked_actions = np.argsort(masked_pi)[::-1]
+                mcts_rank_selected = (
+                        int(np.where(mcts_ranked_actions == action_id)[0][0]) + 1
                 )
                 if action_id == tree_policy_argmax:
-                    policy_rank_selected = 1  # there is a weird behavior that if several actions have the same probability it orders by action id and then even if the actions (tree argmax and selected action) match it could still be ranked 17 or something
+                    mcts_rank_selected = 1
                 selected_action_prob = float(masked_pi[action_id])
                 tree_argmax_action_prob = float(masked_pi[tree_policy_argmax])
                 root_net_policy = mcts.curr_tree_root.act_dist
                 policy_argmax = int(np.argmax(root_net_policy))
                 policy_argmax_action_prob = float(root_net_policy[policy_argmax])
+                raw_policy_ranked_actions = np.argsort(root_net_policy)[::-1]
+                raw_policy_rank_selected = (
+                        int(np.where(raw_policy_ranked_actions == action_id)[0][0]) + 1
+                )
+                if action_id == policy_argmax:
+                    raw_policy_rank_selected = 1
                 dist = mcts.curr_tree_root.known_distance_to_goal
-                optional_goal_msg = f" because goal can be reached in {dist} steps" if dist < np.inf else ""
+                goal_discovered = bool(dist < np.inf)
+                goal_distance = int(dist) if goal_discovered else None
                 print(
                     f"[ROOT_COMPARE] "
                     f"step={step} | "
                     f"instance={instance_name} | "
                     f"tree_policy_argmax={tree_policy_argmax} ({tree_argmax_action_prob:.4f}) | "
-                    f"mcts_selected={action_id} ({selected_action_prob:.4f}){optional_goal_msg} | "
-                    f"selected_rank={policy_rank_selected} | "
-                    f"actual_policy_argmax={policy_argmax} ({policy_argmax_action_prob}) | "
-                    f"top5_policy_actions={[(int(a), float(masked_pi[a])) for a in ranked_actions[:5]]}"
+                    f"mcts_selected={action_id} ({selected_action_prob:.4f}) | "
+                    f"mcts_rank_selected={mcts_rank_selected} | "
+                    f"raw_policy_argmax={policy_argmax} ({policy_argmax_action_prob:.4f}) | "
+                    f"raw_policy_rank_selected={raw_policy_rank_selected} | "
+                    f"goal_discovered={goal_discovered} | "
+                    f"goal_distance={goal_distance} | "
+                    f"top5_mcts_visit_actions={[(int(a), float(masked_pi[a])) for a in mcts_ranked_actions[:5]]} | "
+                    f"top5_raw_policy_actions={[(int(a), float(root_net_policy[a])) for a in raw_policy_ranked_actions[:5]]}"
                 )
             cstate = mcts.step_forward(action_id)
             bound_act, _ = cstate.acts_enabled[action_id]

@@ -409,6 +409,16 @@ parser.add_argument(
     default=False,
     help='Use MCTS, rather than policy-only inference, for final test evaluation.')
 parser.add_argument(
+    '--action-debug',
+    action='store_true',
+    default=False,
+    help='Log raw-policy versus MCTS action decisions during MCTS evaluation.')
+parser.add_argument(
+    '--puct-debug',
+    action='store_true',
+    default=False,
+    help='Log detailed root PUCT statistics during MCTS evaluation.')
+parser.add_argument(
     '--no-valid',
     default=False,
     action='store_true',
@@ -664,6 +674,8 @@ def main():
                serial_test=args.serial_test,
                no_eval=args.no_eval,
                eval_with_mcts=args.eval_with_mcts,
+               action_debug=args.action_debug,
+               puct_debug=args.puct_debug,
                no_valid=args.no_valid,
                profiling=args.profiling,
                memory_profiling=args.memory_profiling,
@@ -711,6 +723,8 @@ def main_inner(*,
                serial_test=None,
                no_eval=None,
                eval_with_mcts=False,
+               action_debug=False,
+               puct_debug=False,
                no_valid=None,
                profiling=False,
                memory_profiling=False,
@@ -867,6 +881,10 @@ evaluation = {"off" if no_eval else "on"}
     ]  # yapf: disable
     if eval_with_mcts:
         main_test_flags.append('--eval-with-mcts')
+    if action_debug:
+        main_test_flags.append('--action-debug')
+    if puct_debug:
+        main_test_flags.append('--puct-debug')
     main_test_flags.extend(build_arch_flags(
         arch_mod, is_train=False,
         override_enhsp_config=override_enhsp_config))

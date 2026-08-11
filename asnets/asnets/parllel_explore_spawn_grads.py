@@ -520,6 +520,8 @@ list[SpawnExploreSpec]:
             action_policy_temperature=args.action_policy_temperature,
             action_policy_decay_rate=args.action_policy_decay_rate,
             action_policy_duplicate_penalty=args.action_policy_duplicate_penalty,
+            action_debug=args.action_debug,
+            puct_debug=args.puct_debug,
             timeout=args.graceful_timeout,
             use_estimator=args.use_estimator,
         )
