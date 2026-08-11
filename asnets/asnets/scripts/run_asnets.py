@@ -891,6 +891,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
         specs=specs,
         max_workers=args.num_workers,
         worker_fn=evaluation_worker,
+        wave_threshold=0.0,
         minimization=args.minimization,
     )
     eval_start_time = time()
