@@ -410,6 +410,13 @@ parser.add_argument(
          'original ASNets algorithm. Dynamic exploration is the algorithm '
          'proposed for numeric planning.')
 parser.add_argument(
+    '--eval-with-mcts',
+    action='store_true',
+    default=False,
+    help=(
+        'Use MCTS for final test-set evaluation. By default final evaluation '
+        'remains policy-only, including after MCTS stage-2 training.'))
+parser.add_argument(
     '--rollouts',
     type=int,
     default=75,
@@ -862,10 +869,16 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
 
     specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
     weights_np = weight_manager.export_numpy()
+    evaluation_worker = (
+        run_worker_eval_mcts
+        if args.eval_with_mcts
+        else run_worker_eval_policy_only
+    )
+    print(f"[EVAL] worker_fn={evaluation_worker.__name__}")
     eval_explorer = ParallelEvaluator(
         specs=specs,
         max_workers=args.num_workers,
-        worker_fn=run_worker_eval_policy_only,
+        worker_fn=evaluation_worker,
         minimization=args.minimization,
     )
     eval_start_time = time()
@@ -1105,10 +1118,16 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
         evaluation_mode=True,
     )
     weights_np = weight_manager.export_numpy()
+    evaluation_worker = (
+        run_worker_eval_mcts
+        if args.eval_with_mcts
+        else run_worker_eval_policy_only
+    )
+    print(f"[EVAL] worker_fn={evaluation_worker.__name__}")
     eval_explorer = ParallelEvaluator(
         specs=evaluation_specs,
         max_workers=min(args.num_workers, len(evaluation_specs)),
-        worker_fn=run_worker_eval_policy_only,
+        worker_fn=evaluation_worker,
         wave_threshold=0.0,
         minimization=args.minimization,
     )

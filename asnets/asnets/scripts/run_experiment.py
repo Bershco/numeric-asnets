@@ -404,6 +404,11 @@ parser.add_argument(
     action='store_true',
     help='do not run evaluation (only train)')
 parser.add_argument(
+    '--eval-with-mcts',
+    action='store_true',
+    default=False,
+    help='Use MCTS, rather than policy-only inference, for final test evaluation.')
+parser.add_argument(
     '--no-valid',
     default=False,
     action='store_true',
@@ -658,6 +663,7 @@ def main():
                policy_anchor_kl_coeff=args.policy_anchor_kl_coeff,
                serial_test=args.serial_test,
                no_eval=args.no_eval,
+               eval_with_mcts=args.eval_with_mcts,
                no_valid=args.no_valid,
                profiling=args.profiling,
                memory_profiling=args.memory_profiling,
@@ -704,6 +710,7 @@ def main_inner(*,
                policy_anchor_kl_coeff=0.0,
                serial_test=None,
                no_eval=None,
+               eval_with_mcts=False,
                no_valid=None,
                profiling=False,
                memory_profiling=False,
@@ -858,6 +865,8 @@ evaluation = {"off" if no_eval else "on"}
         '--resume-from', final_checkpoint,
         '-e', prefix_dir,
     ]  # yapf: disable
+    if eval_with_mcts:
+        main_test_flags.append('--eval-with-mcts')
     main_test_flags.extend(build_arch_flags(
         arch_mod, is_train=False,
         override_enhsp_config=override_enhsp_config))
