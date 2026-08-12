@@ -409,6 +409,15 @@ parser.add_argument(
     default=False,
     help='Use MCTS, rather than policy-only inference, for final test evaluation.')
 parser.add_argument(
+    '--eval-start-wave',
+    type=int,
+    default=1,
+    help=(
+        'One-based evaluation wave from which inference starts. Values below '
+        '1 are treated as 1; a wave beyond the available instances exits '
+        'normally without evaluating instances. Ignored when this run has no '
+        'final evaluation.'))
+parser.add_argument(
     '--action-debug',
     action='store_true',
     default=False,
@@ -674,6 +683,7 @@ def main():
                serial_test=args.serial_test,
                no_eval=args.no_eval,
                eval_with_mcts=args.eval_with_mcts,
+               eval_start_wave=args.eval_start_wave,
                action_debug=args.action_debug,
                puct_debug=args.puct_debug,
                no_valid=args.no_valid,
@@ -723,6 +733,7 @@ def main_inner(*,
                serial_test=None,
                no_eval=None,
                eval_with_mcts=False,
+               eval_start_wave=1,
                action_debug=False,
                puct_debug=False,
                no_valid=None,
@@ -881,6 +892,8 @@ evaluation = {"off" if no_eval else "on"}
     ]  # yapf: disable
     if eval_with_mcts:
         main_test_flags.append('--eval-with-mcts')
+    if eval_start_wave != 1:
+        main_test_flags.extend(['--eval-start-wave', str(eval_start_wave)])
     if action_debug:
         main_test_flags.append('--action-debug')
     if puct_debug:

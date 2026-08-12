@@ -417,6 +417,16 @@ parser.add_argument(
         'Use MCTS for final test-set evaluation. By default final evaluation '
         'remains policy-only, including after MCTS stage-2 training.'))
 parser.add_argument(
+    '--eval-start-wave',
+    type=int,
+    default=1,
+    help=(
+        'One-based evaluation wave from which inference starts. Values below '
+        '1 are treated as 1. A wave beyond the available instances performs '
+        'an empty evaluation and exits normally. This option is ignored when '
+        'the current run performs no final evaluation. Resuming requires the '
+        'same ordered test set and --num-workers value as the original run.'))
+parser.add_argument(
     '--action-debug',
     action='store_true',
     default=False,
@@ -731,6 +741,30 @@ parser.add_argument(
 )
 
 @can_profile
+def evaluation_instances_from_wave(instances, requested_wave, num_workers):
+    """Return the ordered evaluation suffix beginning at a wave boundary."""
+    effective_wave = max(1, requested_wave)
+    if requested_wave < 1:
+        print(
+            f"[EVAL RESUME] requested wave {requested_wave} is below 1; "
+            "starting from wave 1"
+        )
+    start_offset = (effective_wave - 1) * num_workers
+    print(
+        f"[EVAL RESUME] starting wave {effective_wave}; "
+        f"worker_count={num_workers}; "
+        f"instance_offset={start_offset}; "
+        f"total_instances={len(instances)}"
+    )
+    if start_offset >= len(instances):
+        print(
+            f"[EVAL RESUME] wave {effective_wave} has no instances; "
+            "finishing without evaluation"
+        )
+        return []
+    return instances[start_offset:]
+
+
 def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     print('Training supervised on random instances (SPAWN, NO RPyC)')
     print(f"Instances: {args.pddls}")
@@ -877,7 +911,10 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     if args.no_eval:
         return
 
-    instances = args.pddls[1:]
+    instances = evaluation_instances_from_wave(
+        args.pddls[1:], args.eval_start_wave, args.num_workers)
+    if not instances:
+        return
 
     specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
     weights_np = weight_manager.export_numpy()
