@@ -930,6 +930,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
         worker_fn=evaluation_worker,
         wave_threshold=0.0,
         minimization=args.minimization,
+        PROFILE_DIR=args.profile_dir if args.no_train else None,
     )
     eval_start_time = time()
     _, success_rate, outs = eval_explorer.evaluate(weights_np)
@@ -1180,6 +1181,7 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
         worker_fn=evaluation_worker,
         wave_threshold=0.0,
         minimization=args.minimization,
+        PROFILE_DIR=args.profile_dir if args.no_train else None,
     )
 
     _, success_rate, outs = eval_explorer.evaluate(weights_np)

@@ -349,6 +349,7 @@ class ParallelEvaluator:
     max_workers: Optional[int] = None
     wave_threshold: float = 0.5
     minimization: bool = False
+    PROFILE_DIR: Optional[str] = None
 
     def evaluate(self, weights_np) -> tuple[dict[InstanceDifficulty, float], float, list[EvalWorkerOutput]]:
         print(f"[EVAL] worker_fn={self.worker_fn.__name__}")
@@ -360,6 +361,7 @@ class ParallelEvaluator:
             worker_fn=self.worker_fn,
             wave_threshold=self.wave_threshold,
             minimization=self.minimization,
+            PROFILE_DIR=self.PROFILE_DIR,
         )
 
         # ------------------------------------------------------------

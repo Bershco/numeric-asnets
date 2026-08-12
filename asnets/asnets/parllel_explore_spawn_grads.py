@@ -108,7 +108,10 @@ def run_epoch_spawn_grads(
 def _eval_process_entry(idx, worker_fn, inp, out_q):
     os.setsid()  # worker becomes leader of a new process group/session, this gives us a way to kill all subprocesses of said worker when something crashed inside
     try:
-        result = worker_fn(inp)
+        if inp.PROFILE_DIR:
+            result = run_worker_opt_profiled(inp, worker_fn=worker_fn)
+        else:
+            result = worker_fn(inp)
         out_q.put((idx, "ok", result, None))
     except BaseException as e:
         out_q.put((idx, "err", None, f"{repr(e)}\n{traceback.format_exc()}"))
@@ -120,6 +123,7 @@ def run_epoch_spawn_eval(
         max_workers=None,
         worker_fn=run_worker_eval_mcts,
         minimization: bool = False,
+        PROFILE_DIR: Optional[str] = None,
 ) -> list[EvalWorkerOutput]:
     if not specs:
         return []
@@ -202,6 +206,7 @@ def run_epoch_spawn_eval(
                     epoch=None,
                     weights_np=weights_np,
                     minimization=minimization,
+                    PROFILE_DIR=PROFILE_DIR,
                 )
                 p = ctx.Process(
                     target=_eval_process_entry,

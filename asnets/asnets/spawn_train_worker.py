@@ -923,7 +923,10 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
     )
 
 
-def run_worker_opt_profiled(inp: WorkerInput, worker_fn=run_worker) -> WorkerOutput:
+def run_worker_opt_profiled(
+        inp: WorkerInput,
+        worker_fn=run_worker,
+) -> WorkerOutput | EvalWorkerOutput:
     # Make sure this directory exists (spawn safe)
     prof = None
     output = None
