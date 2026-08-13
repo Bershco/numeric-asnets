@@ -26,6 +26,7 @@ def _spec(number, delay=0.0, outcome="success", timeout=None):
         slot_id=number - 1,
         use_estimator=False,
         use_estimator_decay=False,
+        difficulty=SimpleNamespace(name="EASY"),
     )
 
 
@@ -38,6 +39,8 @@ def _worker(inp):
         hit_goal=solved,
         steps=inp.spec.evaluation_index if solved else -1,
         instance_name=inp.spec.pddls[1],
+        plan=[f"solve instance {inp.spec.evaluation_index}"]
+        if solved else None,
     )
 
 
@@ -109,12 +112,18 @@ class RollingEvaluationTests(unittest.TestCase):
             self.assertEqual(
                 [record["status"] for record in records],
                 ["success", "finished_unsolved"])
+            self.assertEqual(records[0]["plan"], ["solve instance 1"])
             printed = output.getvalue()
             self.assertIn("[EVAL INSTANCE] completed number=1", printed)
             self.assertIn("[EVAL INSTANCE] completed number=2", printed)
             self.assertIn("[EVAL FINAL] success=1.0/2=0.500", printed)
             self.assertIn("path=instance_1.pddl", printed)
             self.assertIn("success=True", printed)
+            self.assertIn(
+                "[EVAL][PLAN] EASY       | instance_1.pddl | "
+                "steps=1 | plan=['solve instance 1']",
+                printed,
+            )
 
     def test_persisted_results_are_skipped_on_retry(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -133,8 +142,10 @@ class RollingEvaluationTests(unittest.TestCase):
             self.assertEqual(
                 [(result.hit_goal, result.steps) for result in second],
                 [(result.hit_goal, result.steps) for result in first])
+            self.assertEqual(second[0].plan, ["solve instance 1"])
             self.assertIn(
                 "[EVAL INSTANCE] skip completed number=1", output.getvalue())
+            self.assertIn("[EVAL][PLAN] EASY", output.getvalue())
 
     def test_crash_and_timeout_are_not_persisted(self):
         for outcome, delay in (("crash", 0.0), ("success", 1.0)):

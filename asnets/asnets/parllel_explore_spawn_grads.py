@@ -13,6 +13,7 @@ import traceback
 
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future, wait, ALL_COMPLETED, FIRST_COMPLETED
+from pathlib import Path
 
 import numpy as np
 
@@ -21,6 +22,27 @@ from asnets.spawn_train_worker import MCTSWorkerInput, WorkerOutput, run_worker_
 from asnets.supervised import SupervisedObjective
 from asnets.utils.generator_utils import InstanceDifficulty
 from asnets.utils.prof_utils import can_profile
+
+
+def _print_completed_eval_plan(spec, result):
+    """Immediately emit a completed successful plan for recovery and VAL."""
+    if not result.hit_goal:
+        return
+    if result.plan is None:
+        print(
+            f"[EVAL PLAN WARNING] successful instance "
+            f"number={spec.evaluation_index} has no serialized plan",
+            flush=True,
+        )
+        return
+    print(
+        f"[EVAL][PLAN] "
+        f"{spec.difficulty.name:<10} | "
+        f"{Path(spec.pddls[1]).name} | "
+        f"steps={result.steps} | "
+        f"plan={result.plan}",
+        flush=True,
+    )
 
 
 def run_epoch_spawn_grads(
@@ -151,6 +173,7 @@ def _append_completed_evaluation(
         "status": "success" if result.hit_goal else "finished_unsolved",
         "hit_goal": bool(result.hit_goal),
         "steps": int(result.steps),
+        "plan": result.plan,
         "elapsed_seconds": float(elapsed),
     }
     os.makedirs(os.path.dirname(os.path.abspath(completion_file)), exist_ok=True)
@@ -224,6 +247,7 @@ def run_rolling_spawn_eval(
             hit_goal=previous["hit_goal"],
             steps=previous["steps"],
             instance_name=previous["instance_path"],
+            plan=previous.get("plan"),
         )
         print(
             f"[EVAL INSTANCE] skip completed "
@@ -233,6 +257,7 @@ def run_rolling_spawn_eval(
             f"success={previous['hit_goal']} steps={previous['steps']}",
             flush=True,
         )
+        _print_completed_eval_plan(spec, outs[idx])
 
     ctx = mp.get_context("forkserver")
     out_q = ctx.Queue()
@@ -286,12 +311,6 @@ def run_rolling_spawn_eval(
                     _terminate_eval_process(process)
                 if status == "ok":
                     outs[idx] = result
-                    print(
-                        f"[EVAL INSTANCE] completed "
-                        f"number={spec.evaluation_index} path={spec.pddls[1]} "
-                        f"status={'success' if result.hit_goal else 'unsolved'} "
-                        f"elapsed={elapsed:.2f}s success={result.hit_goal} "
-                        f"steps={result.steps}", flush=True)
                     _append_completed_evaluation(
                         completion_file,
                         evaluation_signature,
@@ -299,6 +318,13 @@ def run_rolling_spawn_eval(
                         result,
                         elapsed,
                     )
+                    print(
+                        f"[EVAL INSTANCE] completed "
+                        f"number={spec.evaluation_index} path={spec.pddls[1]} "
+                        f"status={'success' if result.hit_goal else 'unsolved'} "
+                        f"elapsed={elapsed:.2f}s success={result.hit_goal} "
+                        f"steps={result.steps}", flush=True)
+                    _print_completed_eval_plan(spec, result)
                 else:
                     print(
                         f"[EVAL INSTANCE] crashed "
@@ -494,6 +520,7 @@ def run_epoch_spawn_eval(
                     p.join(timeout=0)
                     if status == "ok":
                         outs[idx] = result
+                        _print_completed_eval_plan(specs[idx], result)
                     else:
                         print(
                             f"[EVAL] Worker crashed | "

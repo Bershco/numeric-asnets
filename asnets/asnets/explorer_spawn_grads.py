@@ -455,19 +455,19 @@ class ParallelEvaluator:
         # Successful plans logging
         # ------------------------------------------------------------
 
-        print("\n[EVAL] SUCCESSFUL PLANS")
+        print("\n[EVAL] SUCCESSFUL PLAN SUMMARY")
 
         if successful_plans:
             for entry in successful_plans:
                 print(
-                    f"[EVAL][PLAN] "
+                    f"[EVAL][PLAN SUMMARY] "
                     f"{entry['difficulty']:<10} | "
                     f"{entry['instance']} | "
                     f"steps={entry['steps']} | "
                     f"plan={entry['plan']}"
                 )
         else:
-            print("[EVAL][PLAN] No successful plans.")
+            print("[EVAL][PLAN SUMMARY] No successful plans.")
 
         # ------------------------------------------------------------
         # Overall metrics
