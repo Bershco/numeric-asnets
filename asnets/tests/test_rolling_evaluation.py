@@ -72,16 +72,22 @@ class RollingEvaluationTests(unittest.TestCase):
 
     def test_rolling_pool_replaces_finished_workers_immediately(self):
         specs = [
-            _spec(1, 0.1), _spec(2, 1.0),
-            _spec(3, 0.1), _spec(4, 1.0),
+            _spec(1, 0.0), _spec(2, 2.0),
+            _spec(3, 0.0), _spec(4, 0.0),
         ]
-        start = time.monotonic()
-        outputs = run_rolling_spawn_eval(
-            specs, {}, max_workers=2, worker_fn=_worker,
-            instance_timeout=5, evaluation_signature="sig")
-        elapsed = time.monotonic() - start
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            outputs = run_rolling_spawn_eval(
+                specs, {}, max_workers=2, worker_fn=_worker,
+                evaluation_signature="sig")
         self.assertTrue(all(output.hit_goal for output in outputs))
-        self.assertLess(elapsed, 1.7)
+        events = output.getvalue()
+        self.assertLess(
+            events.index("completed number=1"),
+            events.index("started number=3"))
+        self.assertLess(
+            events.index("started number=3"),
+            events.index("completed number=2"))
 
     def test_finished_results_are_printed_and_persisted(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -91,7 +97,6 @@ class RollingEvaluationTests(unittest.TestCase):
             with contextlib.redirect_stdout(output):
                 results = run_rolling_spawn_eval(
                     specs, {}, max_workers=2, worker_fn=_worker,
-                    instance_timeout=5,
                     completion_file=str(completion_file),
                     evaluation_signature="sig")
             self.assertEqual(
