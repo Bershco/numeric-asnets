@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import json
 import signal
 from collections import defaultdict
 from dataclasses import dataclass, fields, replace
@@ -115,6 +116,255 @@ def _eval_process_entry(idx, worker_fn, inp, out_q):
         out_q.put((idx, "ok", result, None))
     except BaseException as e:
         out_q.put((idx, "err", None, f"{repr(e)}\n{traceback.format_exc()}"))
+
+
+def _load_completed_evaluations(completion_file, expected_signature):
+    completed = {}
+    if not completion_file or not os.path.exists(completion_file):
+        return completed
+    with open(completion_file, encoding="utf-8") as stream:
+        records = [json.loads(line) for line in stream if line.strip()]
+    signatures = {record["evaluation_signature"] for record in records}
+    if signatures and signatures != {expected_signature}:
+        raise RuntimeError(
+            "Evaluation completion file does not match the current ordered "
+            "test-set signature"
+        )
+    for record in records:
+        completed[record["instance_number"]] = record
+    return completed
+
+
+def _append_completed_evaluation(
+        completion_file,
+        evaluation_signature,
+        spec,
+        result,
+        elapsed,
+):
+    if not completion_file:
+        return
+    record = {
+        "evaluation_signature": evaluation_signature,
+        "instance_number": spec.evaluation_index,
+        "instance_path": spec.pddls[1],
+        "status": "success" if result.hit_goal else "finished_unsolved",
+        "hit_goal": bool(result.hit_goal),
+        "steps": int(result.steps),
+        "elapsed_seconds": float(elapsed),
+    }
+    os.makedirs(os.path.dirname(os.path.abspath(completion_file)), exist_ok=True)
+    line = json.dumps(record, sort_keys=True) + "\n"
+    fd = os.open(
+        completion_file,
+        os.O_WRONLY | os.O_CREAT | os.O_APPEND,
+        0o644,
+    )
+    try:
+        os.write(fd, line.encode("utf-8"))
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _terminate_eval_process(process):
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    process.join(timeout=3.0)
+    if process.is_alive():
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.join(timeout=3.0)
+
+
+def run_rolling_spawn_eval(
+        specs,
+        weights_np,
+        max_workers=None,
+        worker_fn=run_worker_eval_mcts,
+        minimization: bool = False,
+        PROFILE_DIR: Optional[str] = None,
+        instance_timeout: Optional[float] = None,
+        completion_file: Optional[str] = None,
+        evaluation_signature: Optional[str] = None,
+) -> list[EvalWorkerOutput]:
+    """Evaluate with a rolling worker pool and per-instance hard deadlines."""
+    if not specs:
+        return []
+    if instance_timeout is not None and instance_timeout <= 0:
+        raise ValueError("instance_timeout must be positive")
+    if completion_file and not evaluation_signature:
+        raise ValueError("completion_file requires evaluation_signature")
+
+    max_workers = min(max_workers or len(specs), len(specs))
+    completed_records = _load_completed_evaluations(
+        completion_file, evaluation_signature)
+    outs: list[Optional[EvalWorkerOutput]] = [None] * len(specs)
+    pending_specs = []
+    for idx, spec in enumerate(specs):
+        previous = completed_records.get(spec.evaluation_index)
+        if previous is None:
+            pending_specs.append((idx, spec))
+            continue
+        if previous["instance_path"] != spec.pddls[1]:
+            raise RuntimeError(
+                f"Persisted instance {spec.evaluation_index} path mismatch")
+        outs[idx] = EvalWorkerOutput(
+            hit_goal=previous["hit_goal"],
+            steps=previous["steps"],
+            instance_name=previous["instance_path"],
+        )
+        print(
+            f"[EVAL INSTANCE] skip completed "
+            f"number={spec.evaluation_index} path={spec.pddls[1]} "
+            f"status={previous['status']} "
+            f"elapsed={previous['elapsed_seconds']:.2f}s "
+            f"success={previous['hit_goal']} steps={previous['steps']}",
+            flush=True,
+        )
+
+    ctx = mp.get_context("forkserver")
+    out_q = ctx.Queue()
+    active = {}
+    pending_iter = iter(pending_specs)
+
+    def launch_available():
+        while len(active) < max_workers:
+            try:
+                idx, spec = next(pending_iter)
+            except StopIteration:
+                return
+            inp = WorkerInput(
+                spec=spec,
+                epoch=None,
+                weights_np=weights_np,
+                minimization=minimization,
+                PROFILE_DIR=PROFILE_DIR,
+            )
+            process = ctx.Process(
+                target=_eval_process_entry,
+                args=(idx, worker_fn, inp, out_q),
+            )
+            process.start()
+            active[idx] = {
+                "process": process,
+                "started": monotonic(),
+                "spec": spec,
+                "dead_since": None,
+            }
+            print(
+                f"[EVAL INSTANCE] started number={spec.evaluation_index} "
+                f"path={spec.pddls[1]} pid={process.pid}", flush=True)
+
+    launch_available()
+    try:
+        while active:
+            while True:
+                try:
+                    idx, status, result, err_text = out_q.get_nowait()
+                except Empty:
+                    break
+                entry = active.pop(idx, None)
+                if entry is None:
+                    continue
+                process = entry["process"]
+                spec = entry["spec"]
+                elapsed = monotonic() - entry["started"]
+                process.join(timeout=1.0)
+                if process.is_alive():
+                    _terminate_eval_process(process)
+                if status == "ok":
+                    outs[idx] = result
+                    print(
+                        f"[EVAL INSTANCE] completed "
+                        f"number={spec.evaluation_index} path={spec.pddls[1]} "
+                        f"status={'success' if result.hit_goal else 'unsolved'} "
+                        f"elapsed={elapsed:.2f}s success={result.hit_goal} "
+                        f"steps={result.steps}", flush=True)
+                    _append_completed_evaluation(
+                        completion_file,
+                        evaluation_signature,
+                        spec,
+                        result,
+                        elapsed,
+                    )
+                else:
+                    print(
+                        f"[EVAL INSTANCE] crashed "
+                        f"number={spec.evaluation_index} path={spec.pddls[1]} "
+                        f"elapsed={elapsed:.2f}s error={err_text}", flush=True)
+                    outs[idx] = EvalWorkerOutput(
+                        hit_goal=False,
+                        steps=-3,
+                        instance_name=f"[{spec.pddls[1]}]:[CRASH]",
+                    )
+                process.close()
+                launch_available()
+
+            now = monotonic()
+            for idx, entry in list(active.items()):
+                process = entry["process"]
+                spec = entry["spec"]
+                elapsed = now - entry["started"]
+                if not process.is_alive() and process.exitcode is not None:
+                    if entry["dead_since"] is None:
+                        entry["dead_since"] = now
+                        continue
+                    if now - entry["dead_since"] < 0.5:
+                        continue
+                    process.join(timeout=0)
+                    print(
+                        f"[EVAL INSTANCE] died number={spec.evaluation_index} "
+                        f"path={spec.pddls[1]} exitcode={process.exitcode}",
+                        flush=True,
+                    )
+                    outs[idx] = EvalWorkerOutput(
+                        hit_goal=False,
+                        steps=-3,
+                        instance_name=(
+                            f"[{spec.pddls[1]}]:"
+                            f"[CRASH_EXIT_{process.exitcode}]"),
+                    )
+                    process.close()
+                    del active[idx]
+                    launch_available()
+                    continue
+                effective_timeout = (
+                    instance_timeout
+                    if instance_timeout is not None
+                    else spec.timeout
+                )
+                if (effective_timeout is not None
+                        and elapsed >= effective_timeout):
+                    _terminate_eval_process(process)
+                    print(
+                        f"[EVAL INSTANCE] timeout number={spec.evaluation_index} "
+                        f"path={spec.pddls[1]} limit={effective_timeout:.1f}s",
+                        flush=True,
+                    )
+                    outs[idx] = EvalWorkerOutput(
+                        hit_goal=False,
+                        steps=-2,
+                        instance_name=f"[{spec.pddls[1]}]:[HARD_TIMEOUT]",
+                    )
+                    process.close()
+                    del active[idx]
+                    launch_available()
+            if active:
+                sleep(0.25)
+    finally:
+        for entry in active.values():
+            _terminate_eval_process(entry["process"])
+            entry["process"].close()
+        out_q.close()
+        out_q.join_thread()
+
+    assert all(output is not None for output in outs)
+    return outs
 
 def run_epoch_spawn_eval(
         specs,
@@ -416,6 +666,7 @@ class SpawnExploreSpec:
 
     # evaluation only attributes
     evaluation_mode: bool = False
+    evaluation_index: Optional[int] = None
 
     def __str__(self) -> str:
         """A stylized and grouped representation of the spec."""
@@ -476,11 +727,17 @@ class SpawnExploreSpec:
 
 
 @can_profile
-def make_specs(args, specific_instances=None, evaluation_mode=False, difficulty: Optional[InstanceDifficulty] = None) -> \
+def make_specs(args, specific_instances=None, evaluation_mode=False,
+               difficulty: Optional[InstanceDifficulty] = None,
+               evaluation_indices=None) -> \
 list[SpawnExploreSpec]:
     only_one_good_action = args.sup_objective == SupervisedObjective.THERE_CAN_ONLY_BE_ONE
 
     num_slots = len(specific_instances) if specific_instances is not None else args.num_workers
+    if evaluation_indices is not None:
+        if specific_instances is None or len(evaluation_indices) != len(specific_instances):
+            raise ValueError(
+                "evaluation_indices must align with specific_instances")
 
     specs = []
     for slot_id in range(num_slots):
@@ -494,7 +751,9 @@ list[SpawnExploreSpec]:
             pddls=pddls,
             domain_type=args.domain_type,
             trainer_seed=args.seed,
-            slot_id=slot_id,
+            slot_id=(
+                evaluation_indices[slot_id] - 1
+                if evaluation_indices is not None else slot_id),
             evaluation_mode=evaluation_mode,
             num_slots=num_slots,
             ssipp_dg_heuristic=args.ssipp_dg_heuristic,
@@ -518,6 +777,9 @@ list[SpawnExploreSpec]:
             use_fluents=args.use_fluents,
             use_comps=args.use_comparisons,
             difficulty=difficulty if difficulty is not None else InstanceDifficulty.EASY,
+            evaluation_index=(
+                evaluation_indices[slot_id]
+                if evaluation_indices is not None else None),
             fixed_instance_pddl=args.fixed_instance,
             mcts_exploration_weight=args.mcts_exploration_weight,
             action_policy=args.action_policy,

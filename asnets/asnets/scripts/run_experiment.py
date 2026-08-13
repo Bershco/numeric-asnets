@@ -426,6 +426,13 @@ parser.add_argument(
         'normally without evaluating instances. Ignored when this run has no '
         'final evaluation.'))
 parser.add_argument(
+    '--eval-scheduling',
+    choices=('wave', 'rolling'),
+    default='wave')
+parser.add_argument('--skip-instance-numbers', default='')
+parser.add_argument('--eval-instance-timeout', type=float, default=None)
+parser.add_argument('--eval-completion-file', default=None)
+parser.add_argument(
     '--jpddl-max-heap',
     type=jpddl_heap_size,
     default='1g',
@@ -698,6 +705,10 @@ def main():
                no_eval=args.no_eval,
                eval_with_mcts=args.eval_with_mcts,
                eval_start_wave=args.eval_start_wave,
+               eval_scheduling=args.eval_scheduling,
+               skip_instance_numbers=args.skip_instance_numbers,
+               eval_instance_timeout=args.eval_instance_timeout,
+               eval_completion_file=args.eval_completion_file,
                jpddl_max_heap=args.jpddl_max_heap,
                action_debug=args.action_debug,
                puct_debug=args.puct_debug,
@@ -749,6 +760,10 @@ def main_inner(*,
                no_eval=None,
                eval_with_mcts=False,
                eval_start_wave=1,
+               eval_scheduling='wave',
+               skip_instance_numbers='',
+               eval_instance_timeout=None,
+               eval_completion_file=None,
                jpddl_max_heap='1g',
                action_debug=False,
                puct_debug=False,
@@ -912,6 +927,16 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.append('--eval-with-mcts')
     if eval_start_wave != 1:
         main_test_flags.extend(['--eval-start-wave', str(eval_start_wave)])
+    main_test_flags.extend(['--eval-scheduling', eval_scheduling])
+    if skip_instance_numbers:
+        main_test_flags.extend([
+            '--skip-instance-numbers', skip_instance_numbers])
+    if eval_instance_timeout is not None:
+        main_test_flags.extend([
+            '--eval-instance-timeout', str(eval_instance_timeout)])
+    if eval_completion_file:
+        main_test_flags.extend([
+            '--eval-completion-file', eval_completion_file])
     if action_debug:
         main_test_flags.append('--action-debug')
     if puct_debug:

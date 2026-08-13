@@ -3,6 +3,8 @@
 import argparse
 import copy
 import ctypes
+import hashlib
+import json
 import os
 from copy import deepcopy
 from json import dump
@@ -165,6 +167,20 @@ def jpddl_heap_size(arg_str):
         raise argparse.ArgumentTypeError(
             "JPDDL heap size must be a positive integer followed by k, m, or g")
     return arg_str.lower()
+
+
+def comma_separated_positive_ints(arg_str):
+    if not arg_str.strip():
+        return ()
+    try:
+        values = tuple(int(value.strip()) for value in arg_str.split(','))
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            "expected comma-separated integer instance numbers")
+    if any(value < 1 for value in values):
+        raise argparse.ArgumentTypeError(
+            "instance numbers are one-based and must be >= 1")
+    return values
 
 
 parser = argparse.ArgumentParser(description='Trainer for ASNets')
@@ -434,6 +450,29 @@ parser.add_argument(
         'an empty evaluation and exits normally. This option is ignored when '
         'the current run performs no final evaluation. Resuming requires the '
         'same ordered test set and --num-workers value as the original run.'))
+parser.add_argument(
+    '--eval-scheduling',
+    choices=('wave', 'rolling'),
+    default='wave',
+    help=('Evaluation scheduling strategy. Wave preserves historical fixed '
+          'waves; rolling starts the next pending instance immediately.'))
+parser.add_argument(
+    '--skip-instance-numbers',
+    type=comma_separated_positive_ints,
+    default=(),
+    help=('Comma-separated one-based positions in the original ordered test '
+          'set to skip, applied in addition to --eval-start-wave.'))
+parser.add_argument(
+    '--eval-instance-timeout',
+    type=float,
+    default=None,
+    help=('Hard timeout in seconds for each evaluation instance. The existing '
+          'configured timeout is used when omitted.'))
+parser.add_argument(
+    '--eval-completion-file',
+    default=None,
+    help=('Persistent JSONL file for rolling evaluation. Completed results are '
+          'skipped after retry/requeue; crashes and timeouts are retried.'))
 parser.add_argument(
     '--jpddl-max-heap',
     type=jpddl_heap_size,
@@ -755,8 +794,9 @@ parser.add_argument(
 )
 
 @can_profile
-def evaluation_instances_from_wave(instances, requested_wave, num_workers):
-    """Return the ordered evaluation suffix beginning at a wave boundary."""
+def select_evaluation_instances(
+        instances, requested_wave, num_workers, skip_instance_numbers=()):
+    """Select test instances while retaining stable one-based positions."""
     effective_wave = max(1, requested_wave)
     if requested_wave < 1:
         print(
@@ -764,19 +804,53 @@ def evaluation_instances_from_wave(instances, requested_wave, num_workers):
             "starting from wave 1"
         )
     start_offset = (effective_wave - 1) * num_workers
+    explicit_skips = set(skip_instance_numbers)
+    invalid_skips = sorted(
+        number for number in explicit_skips if number > len(instances))
+    if invalid_skips:
+        print(
+            f"[EVAL RESUME] skip numbers outside test set ignored: "
+            f"{invalid_skips}; total_instances={len(instances)}")
+    print("[EVAL INSTANCES] stable ordered test-set positions:")
+    for number, instance in enumerate(instances, 1):
+        print(f"[EVAL INSTANCES] {number}: {instance}")
     print(
         f"[EVAL RESUME] starting wave {effective_wave}; "
         f"worker_count={num_workers}; "
         f"instance_offset={start_offset}; "
         f"total_instances={len(instances)}"
     )
-    if start_offset >= len(instances):
+    selected = [
+        (number, instance)
+        for number, instance in enumerate(instances, 1)
+        if number > start_offset and number not in explicit_skips
+    ]
+    if not selected:
         print(
-            f"[EVAL RESUME] wave {effective_wave} has no instances; "
+            f"[EVAL RESUME] selection has no instances; "
             "finishing without evaluation"
         )
         return []
-    return instances[start_offset:]
+    print(
+        f"[EVAL RESUME] selected instance numbers: "
+        f"{[number for number, _ in selected]}")
+    return selected
+
+
+def evaluation_signature(args):
+    payload = json.dumps({
+        'instances': list(enumerate(args.pddls[1:], 1)),
+        'checkpoint': args.resume_from,
+        'eval_with_mcts': args.eval_with_mcts,
+        'seed': args.seed,
+        'minimization': args.minimization,
+        'disable_value_head': args.disable_value_head,
+        'use_estimator': args.use_estimator,
+        'mcts_expansion_size': args.mcts_expansion_size,
+        'mcts_iterations': args.mcts_iterations,
+        'mcts_exploration_weight': args.mcts_exploration_weight,
+    }, separators=(',', ':'), ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
 
 def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
@@ -925,12 +999,17 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
     if args.no_eval:
         return
 
-    instances = evaluation_instances_from_wave(
-        args.pddls[1:], args.eval_start_wave, args.num_workers)
-    if not instances:
+    indexed_instances = select_evaluation_instances(
+        args.pddls[1:], args.eval_start_wave, args.num_workers,
+        args.skip_instance_numbers)
+    if not indexed_instances:
         return
 
-    specs = make_specs(args, specific_instances=instances, evaluation_mode=True)
+    specs = make_specs(
+        args,
+        specific_instances=[instance for _, instance in indexed_instances],
+        evaluation_indices=[number for number, _ in indexed_instances],
+        evaluation_mode=True)
     weights_np = weight_manager.export_numpy()
     evaluation_worker = (
         run_worker_eval_mcts
@@ -945,6 +1024,10 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
         wave_threshold=0.0,
         minimization=args.minimization,
         PROFILE_DIR=args.profile_dir if args.no_train else None,
+        scheduling=args.eval_scheduling,
+        instance_timeout=args.eval_instance_timeout,
+        completion_file=args.eval_completion_file,
+        evaluation_signature=evaluation_signature(args),
     )
     eval_start_time = time()
     _, success_rate, outs = eval_explorer.evaluate(weights_np)
@@ -1176,10 +1259,15 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
             optimizer=sup_trainer.optimizer if not args.no_train else None,
         )
     print("\n[EVAL] Running final evaluation (parallel)")
-    instances = args.pddls[1:]
+    indexed_instances = select_evaluation_instances(
+        args.pddls[1:], args.eval_start_wave, args.num_workers,
+        args.skip_instance_numbers)
+    if not indexed_instances:
+        return
     evaluation_specs = make_specs(
         args,
-        specific_instances=instances,
+        specific_instances=[instance for _, instance in indexed_instances],
+        evaluation_indices=[number for number, _ in indexed_instances],
         evaluation_mode=True,
     )
     weights_np = weight_manager.export_numpy()
@@ -1196,6 +1284,10 @@ def main_supervised(args, unique_prefix, snapshot_dir, scratch_dir):
         wave_threshold=0.0,
         minimization=args.minimization,
         PROFILE_DIR=args.profile_dir if args.no_train else None,
+        scheduling=args.eval_scheduling,
+        instance_timeout=args.eval_instance_timeout,
+        completion_file=args.eval_completion_file,
+        evaluation_signature=evaluation_signature(args),
     )
 
     _, success_rate, outs = eval_explorer.evaluate(weights_np)
@@ -1262,6 +1354,8 @@ def main():
     args = parser.parse_args()
     os.environ['ASNETS_JPDDL_MAX_HEAP'] = args.jpddl_max_heap
     print(f"[JPDDL] Maximum heap per worker: {args.jpddl_max_heap}")
+    if args.eval_instance_timeout is not None and args.eval_instance_timeout <= 0:
+        parser.error('--eval-instance-timeout must be positive')
     if args.policy_anchor_kl_coeff < 0:
         parser.error('--policy-anchor-kl-coeff must be non-negative')
     try:

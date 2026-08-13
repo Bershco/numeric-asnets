@@ -11,7 +11,12 @@ from typing import Any, Optional, Callable
 import numpy as np
 
 from asnets.explorer import SingleProblem
-from asnets.parllel_explore_spawn_grads import run_epoch_spawn_grads, run_epoch_spawn_eval, SpawnExploreSpec
+from asnets.parllel_explore_spawn_grads import (
+    run_epoch_spawn_grads,
+    run_epoch_spawn_eval,
+    run_rolling_spawn_eval,
+    SpawnExploreSpec,
+)
 from asnets.spawn_train_worker import WorkerOutput, WorkerInput, EvalWorkerOutput, ProblemInitData
 from asnets.utils.generator_utils import ProgressionLevel, InstanceDifficulty
 
@@ -350,19 +355,38 @@ class ParallelEvaluator:
     wave_threshold: float = 0.5
     minimization: bool = False
     PROFILE_DIR: Optional[str] = None
+    scheduling: str = "wave"
+    instance_timeout: Optional[float] = None
+    completion_file: Optional[str] = None
+    evaluation_signature: Optional[str] = None
 
     def evaluate(self, weights_np) -> tuple[dict[InstanceDifficulty, float], float, list[EvalWorkerOutput]]:
         print(f"[EVAL] worker_fn={self.worker_fn.__name__}")
 
-        outs = run_epoch_spawn_eval(
-            specs=self.specs,
-            weights_np=weights_np,
-            max_workers=self.max_workers,
-            worker_fn=self.worker_fn,
-            wave_threshold=self.wave_threshold,
-            minimization=self.minimization,
-            PROFILE_DIR=self.PROFILE_DIR,
-        )
+        if self.scheduling == "rolling":
+            outs = run_rolling_spawn_eval(
+                specs=self.specs,
+                weights_np=weights_np,
+                max_workers=self.max_workers,
+                worker_fn=self.worker_fn,
+                minimization=self.minimization,
+                PROFILE_DIR=self.PROFILE_DIR,
+                instance_timeout=self.instance_timeout,
+                completion_file=self.completion_file,
+                evaluation_signature=self.evaluation_signature,
+            )
+        elif self.scheduling == "wave":
+            outs = run_epoch_spawn_eval(
+                specs=self.specs,
+                weights_np=weights_np,
+                max_workers=self.max_workers,
+                worker_fn=self.worker_fn,
+                wave_threshold=self.wave_threshold,
+                minimization=self.minimization,
+                PROFILE_DIR=self.PROFILE_DIR,
+            )
+        else:
+            raise ValueError(f"Unknown evaluation scheduling: {self.scheduling}")
 
         # ------------------------------------------------------------
         # Aggregate metrics per difficulty
