@@ -172,13 +172,20 @@ def _terminate_eval_process(process):
         os.killpg(process.pid, signal.SIGTERM)
     except ProcessLookupError:
         pass
+    if process.is_alive():
+        process.terminate()
     process.join(timeout=3.0)
     if process.is_alive():
         try:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
+        if process.is_alive():
+            process.kill()
         process.join(timeout=3.0)
+    if process.is_alive():
+        raise RuntimeError(
+            f"Evaluation worker pid={process.pid} survived SIGKILL")
 
 
 def run_rolling_spawn_eval(
