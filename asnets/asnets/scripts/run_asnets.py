@@ -9,6 +9,7 @@ from json import dump
 import logging
 from os import makedirs, path
 import random
+import re
 import signal
 import sys
 from time import time
@@ -157,6 +158,13 @@ def int_or_float(arg_str):
         raise argparse.ArgumentTypeError(
             "Could not convert argument '%s' to non-negative int or float" %
             (arg_str,))
+
+
+def jpddl_heap_size(arg_str):
+    if not re.fullmatch(r"[1-9][0-9]*[kKmMgG]", arg_str):
+        raise argparse.ArgumentTypeError(
+            "JPDDL heap size must be a positive integer followed by k, m, or g")
+    return arg_str.lower()
 
 
 parser = argparse.ArgumentParser(description='Trainer for ASNets')
@@ -426,6 +434,12 @@ parser.add_argument(
         'an empty evaluation and exits normally. This option is ignored when '
         'the current run performs no final evaluation. Resuming requires the '
         'same ordered test set and --num-workers value as the original run.'))
+parser.add_argument(
+    '--jpddl-max-heap',
+    type=jpddl_heap_size,
+    default='1g',
+    help=('Maximum heap for each JPDDL JVM worker, for example 4g. '
+          'Defaults to 1g.'))
 parser.add_argument(
     '--action-debug',
     action='store_true',
@@ -1246,6 +1260,8 @@ def main():
     parent_death_pact(signal.SIGKILL)
 
     args = parser.parse_args()
+    os.environ['ASNETS_JPDDL_MAX_HEAP'] = args.jpddl_max_heap
+    print(f"[JPDDL] Maximum heap per worker: {args.jpddl_max_heap}")
     if args.policy_anchor_kl_coeff < 0:
         parser.error('--policy-anchor-kl-coeff must be non-negative')
     try:

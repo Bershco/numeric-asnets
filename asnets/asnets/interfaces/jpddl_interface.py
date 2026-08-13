@@ -32,13 +32,18 @@ JARS_DIR = os.path.join(
 
 _GLOBAL_JVM_HANDLE = None
 
+
+def _jvm_memory_args():
+    max_heap = os.environ.get("ASNETS_JPDDL_MAX_HEAP", "1g")
+    return "-Xms256m", f"-Xmx{max_heap}"
+
 @run_once
 def start_jvm() -> None:
     global _GLOBAL_JVM_HANDLE
     if not jpype.isJVMStarted():
         jpype.startJVM(
             jpype.getDefaultJVMPath(),
-            "-Xms256m", "-Xmx1g",
+            *_jvm_memory_args(),
             classpath=":".join(get_files_with_extension(JARS_DIR, ".jar")),
         )
         LOGGER.debug(f"[JPYPE OK] PID={os.getpid()} Thread={threading.current_thread().name} JVM started?"
@@ -77,7 +82,7 @@ def ensure_jvm():
         try:
             jpype.startJVM(
                 jpype.getDefaultJVMPath(),
-                "-Xms256m", "-Xmx1g",
+                *_jvm_memory_args(),
                 classpath=":".join(get_files_with_extension(JARS_DIR, ".jar")),
             )
             LOGGER.info(f"[RECOVER] JVM restarted successfully.")
@@ -191,4 +196,3 @@ class NumericLandmarkGenerator:
         """
         return landmark.target != 1 or \
             any([t[1] != 1 for t in landmark.actions])
-        

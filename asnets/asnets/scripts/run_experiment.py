@@ -7,6 +7,7 @@ import datetime
 from hashlib import md5
 from importlib import import_module
 from os import path, makedirs, listdir, getcwd, environ
+import re
 from shutil import copytree
 from subprocess import Popen, PIPE, TimeoutExpired
 import sys
@@ -394,6 +395,13 @@ def parse_idx_list(idx_list):
     return idx_strs
 
 
+def jpddl_heap_size(arg_str):
+    if not re.fullmatch(r"[1-9][0-9]*[kKmMgG]", arg_str):
+        raise argparse.ArgumentTypeError(
+            "JPDDL heap size must be a positive integer followed by k, m, or g")
+    return arg_str.lower()
+
+
 parser = argparse.ArgumentParser(description='Run an experiment with ASNets')
 parser.add_argument('--resume-from',
                     default=None,
@@ -417,6 +425,12 @@ parser.add_argument(
         '1 are treated as 1; a wave beyond the available instances exits '
         'normally without evaluating instances. Ignored when this run has no '
         'final evaluation.'))
+parser.add_argument(
+    '--jpddl-max-heap',
+    type=jpddl_heap_size,
+    default='1g',
+    help=('Maximum heap for each JPDDL JVM worker, for example 4g. '
+          'Defaults to 1g.'))
 parser.add_argument(
     '--action-debug',
     action='store_true',
@@ -684,6 +698,7 @@ def main():
                no_eval=args.no_eval,
                eval_with_mcts=args.eval_with_mcts,
                eval_start_wave=args.eval_start_wave,
+               jpddl_max_heap=args.jpddl_max_heap,
                action_debug=args.action_debug,
                puct_debug=args.puct_debug,
                no_valid=args.no_valid,
@@ -734,6 +749,7 @@ def main_inner(*,
                no_eval=None,
                eval_with_mcts=False,
                eval_start_wave=1,
+               jpddl_max_heap='1g',
                action_debug=False,
                puct_debug=False,
                no_valid=None,
@@ -784,6 +800,7 @@ def main_inner(*,
         train_flags = [
             # log and snapshot dirs
             '-e', prefix_dir,
+            '--jpddl-max-heap', jpddl_max_heap,
         ]  # yapf: disable
         train_flags.extend(build_arch_flags(
             arch_mod, is_train=True,
@@ -889,6 +906,7 @@ evaluation = {"off" if no_eval else "on"}
         '--minimal-file-saves',
         '--resume-from', final_checkpoint,
         '-e', prefix_dir,
+        '--jpddl-max-heap', jpddl_max_heap,
     ]  # yapf: disable
     if eval_with_mcts:
         main_test_flags.append('--eval-with-mcts')
