@@ -371,6 +371,12 @@ def run_rolling_spawn_eval(
         out_q.join_thread()
 
     assert all(output is not None for output in outs)
+    total_success = float(sum(output.hit_goal for output in outs))
+    print(
+        f"\n[EVAL FINAL] success={total_success}/{len(specs)}="
+        f"{total_success / len(specs):.3f}",
+        flush=True,
+    )
     return outs
 
 def run_epoch_spawn_eval(

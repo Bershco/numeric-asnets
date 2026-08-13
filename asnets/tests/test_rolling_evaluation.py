@@ -112,6 +112,7 @@ class RollingEvaluationTests(unittest.TestCase):
             printed = output.getvalue()
             self.assertIn("[EVAL INSTANCE] completed number=1", printed)
             self.assertIn("[EVAL INSTANCE] completed number=2", printed)
+            self.assertIn("[EVAL FINAL] success=1.0/2=0.500", printed)
             self.assertIn("path=instance_1.pddl", printed)
             self.assertIn("success=True", printed)
 
