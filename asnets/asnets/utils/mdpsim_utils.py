@@ -42,7 +42,19 @@ def parse_problem_args(mdpsim_module: ModuleType,
         try:
             problem = problems[problem_name]
         except KeyError:
-            raise PDDLLoadError(
-                'Could not find problem %s. Available problems: %s' % (
-                    problem_name, ', '.join(problems.keys())))
+            matching_names = [
+                name for name in problems
+                if name.casefold() == problem_name.casefold()
+            ]
+            if len(matching_names) == 1:
+                problem = problems[matching_names[0]]
+            elif len(matching_names) > 1:
+                raise PDDLLoadError(
+                    'Problem name %s is ambiguous under case-insensitive '
+                    'matching: %s' % (
+                        problem_name, ', '.join(sorted(matching_names))))
+            else:
+                raise PDDLLoadError(
+                    'Could not find problem %s. Available problems: %s' % (
+                        problem_name, ', '.join(problems.keys())))
     return problem
