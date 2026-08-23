@@ -31,6 +31,12 @@ from asnets.utils.pddl_utils import get_domain_file
 from asnets.utils.py_utils import TimerContext, strip_parens, weak_ref_to, weighted_batch_iter
 from asnets.utils.tf_utils import cross_entropy, mean_squared_error, empty_feed_value
 from asnets.models import PropNetwork, PropNetworkWeights
+from asnets.validation_state import (
+    ValidationState,
+    cumulative_epoch_offset,
+    load_trainer_state,
+    validation_set_fingerprint,
+)
 import jpype
 import jpype.imports
 import sys
@@ -492,6 +498,7 @@ class SupervisedTrainer(BaseTrainer):
         self.early_stop = early_stop
         self.save_every = save_every
         self.snapshot_dir = snapshot_dir
+        self.resume_from = resume_from
         self._policy_anchor_networks = {}
         self._policy_anchor_weights_np = None
         if self.policy_anchor_kl_coeff > 0:
@@ -652,8 +659,15 @@ class SupervisedTrainer(BaseTrainer):
         patience_counter = 0
         cooldown_counter = 0
 
-        best_valid_rate = None
-        best_valid_average_plan_length = None
+        trainer_state = load_trainer_state(self.resume_from)
+        validation_state, legacy_resume = ValidationState.restore(
+            expected_fingerprint=validation_set_fingerprint(
+                self.validator.specs),
+            expected_trainer_kind="stage2_mcts",
+            trainer_state=trainer_state,
+            is_resume=self.resume_from is not None,
+        )
+        epoch_offset = cumulative_epoch_offset(trainer_state)
 
         PATIENCE = 2  # consecutive validations
         COOLDOWN_EPOCHS = 10
@@ -664,8 +678,50 @@ class SupervisedTrainer(BaseTrainer):
         epoch = tf.Variable(0, dtype=tf.int64)
         self.summary_writer.set_as_default(step=epoch)
 
+        if self.resume_from and not legacy_resume:
+            if validation_state.best_rate is None:
+                print(
+                    "[VALIDATION STATE] Starting a new trainer phase; "
+                    "validation selection was not inherited from the source "
+                    "checkpoint."
+                )
+            else:
+                print(
+                    "[VALIDATION STATE] Restored "
+                    f"best_rate={validation_state.best_rate:.3f} "
+                    "best_avg_len="
+                    f"{validation_state.best_average_plan_length:.2f} "
+                    "non_improving="
+                    f"{validation_state.non_improving_count} "
+                    "best_epoch="
+                    f"{validation_state.best_cumulative_epoch} "
+                    f"best_checkpoint={validation_state.best_checkpoint}"
+                )
+        if legacy_resume:
+            print(
+                "[VALIDATION RESUME WARNING] Legacy checkpoint has no "
+                "persisted validation state; evaluating the resumed network "
+                "once before training to establish a safe baseline. Earlier "
+                "lineage-wide validation maxima cannot be reconstructed."
+            )
+            _, baseline_rate, baseline_outs = self.validator.evaluate(
+                self._weight_manager.export_numpy())
+            baseline_solved = [out for out in baseline_outs if out.hit_goal]
+            baseline_length = (
+                sum(len(out.plan) for out in baseline_solved)
+                / len(baseline_solved)
+                if baseline_solved else float("inf")
+            )
+            validation_state.observe(
+                baseline_rate,
+                baseline_length,
+                self.resume_from,
+                epoch_offset - 1,
+            )
+
         for epoch_num in tr:
             epoch.assign(epoch_num)
+            cumulative_epoch = epoch_offset + epoch_num
 
             # --------------------------------------------------
             # 1. EXPLORE (spawn workers, compute grads there)
@@ -819,23 +875,21 @@ class SupervisedTrainer(BaseTrainer):
                 )
                 tf_and_log("validation/success_rate", overall_succ_rate)
                 tf_and_log("validation/avg_plan_length", avg_plan_len)
-                is_better = (
-                        best_valid_rate is None
-                        or overall_succ_rate > best_valid_rate
-                        or (
-                                overall_succ_rate == best_valid_rate
-                                and avg_plan_len < best_valid_average_plan_length
-                        )
+                checkpoint_path = os.path.join(
+                    self.snapshot_dir, snapshot_name)
+                is_better = validation_state.observe(
+                    overall_succ_rate,
+                    avg_plan_len,
+                    checkpoint_path,
+                    cumulative_epoch,
                 )
                 if is_better:
-                    best_valid_rate = overall_succ_rate
-                    best_valid_average_plan_length = avg_plan_len
-
                     print(
                         f"[VALIDATION] New best! "
-                        f"succ={best_valid_rate:.3f} "
-                        f"avg_len={best_valid_average_plan_length:.2f} "
+                        f"succ={validation_state.best_rate:.3f} "
+                        f"avg_len={validation_state.best_average_plan_length:.2f} "
                         f"iter_num={epoch_num} "
+                        f"cumulative_epoch={cumulative_epoch} "
                         f"snapshot_name={snapshot_name}"
                     )
                 print(f"[VALIDATION] Current network validation success rate: {overall_succ_rate}")
@@ -863,7 +917,8 @@ class SupervisedTrainer(BaseTrainer):
                 if self.can_progress(success_rates):
                     if self.explorer.advance_progression_level():
                         # this progresses the progression level and returns true if advanced, if current progression level is max - returns false
-                        cooldown_counter = max(cooldown_counter, int(COOLDOWN_EPOCHS / 2))
+                        cooldown_counter = max(
+                            cooldown_counter, int(COOLDOWN_EPOCHS / 2))
 
             save_checkpoint_dir(
                 snapshot_dir=self.snapshot_dir,
@@ -872,8 +927,10 @@ class SupervisedTrainer(BaseTrainer):
                 optimizer=self.optimizer,
                 trainer_state={
                     "epoch_num": epoch_num,
+                    "cumulative_epoch": cumulative_epoch,
                     "best_rate": last_rate,
                     "time_since_best": time_since_best,
+                    "validation_state": validation_state.to_dict(),
                 },
             )
             tf.summary.flush()
@@ -1175,8 +1232,15 @@ class OriginalSupervisedTrainer(BaseTrainer):
 
     def train(self, max_epochs):
         best_train_rate = None
-        best_valid_rate = None
-        best_valid_average_plan_length = None
+        trainer_state = load_trainer_state(self.resume_from)
+        validation_state, legacy_resume = ValidationState.restore(
+            expected_fingerprint=validation_set_fingerprint(
+                self.validator.specs),
+            expected_trainer_kind="stage1_imitation",
+            trainer_state=trainer_state,
+            is_resume=self.resume_from is not None,
+        )
+        epoch_offset = cumulative_epoch_offset(trainer_state)
         keep_going = True
         iter_num = 0
         time_since_best = 0
@@ -1191,12 +1255,53 @@ class OriginalSupervisedTrainer(BaseTrainer):
         self.summary_writer.set_as_default(step=epoch)
 
         validate_every = 1
-        consecutive_validations_best = 0
         consecutive_validation_patience = 50
+
+        if self.resume_from and not legacy_resume:
+            if validation_state.best_rate is None:
+                print(
+                    "[VALIDATION STATE] Starting a new trainer phase; "
+                    "validation selection was not inherited from the source "
+                    "checkpoint."
+                )
+            else:
+                print(
+                    "[VALIDATION STATE] Restored "
+                    f"best_rate={validation_state.best_rate:.3f} "
+                    "best_avg_len="
+                    f"{validation_state.best_average_plan_length:.2f} "
+                    "non_improving="
+                    f"{validation_state.non_improving_count} "
+                    "best_epoch="
+                    f"{validation_state.best_cumulative_epoch} "
+                    f"best_checkpoint={validation_state.best_checkpoint}"
+                )
+        if legacy_resume:
+            print(
+                "[VALIDATION RESUME WARNING] Legacy checkpoint has no "
+                "persisted validation state; evaluating the resumed network "
+                "once before training to establish a safe baseline. Earlier "
+                "lineage-wide validation maxima cannot be reconstructed."
+            )
+            _, baseline_rate, baseline_outs = self.validator.evaluate(
+                self._weight_manager.export_numpy())
+            baseline_solved = [out for out in baseline_outs if out.hit_goal]
+            baseline_length = (
+                sum(len(out.plan) for out in baseline_solved)
+                / len(baseline_solved)
+                if baseline_solved else float("inf")
+            )
+            validation_state.observe(
+                baseline_rate,
+                baseline_length,
+                self.resume_from,
+                epoch_offset - 1,
+            )
 
         for epoch_num in tr:
             # update the epoch variable
             epoch.assign(epoch_num)
+            cumulative_epoch = epoch_offset + epoch_num
             elapsed_time = time() - self.start_time
 
             # only extend replay by a bit each time
@@ -1243,14 +1348,23 @@ class OriginalSupervisedTrainer(BaseTrainer):
                         / num_validation_instances_success
                 ) if num_validation_instances_success > 0 else float("inf")
                 print(f"[VALIDATION] Current network validation success rate: {validation_succ_rate:.3f} with an average plan length of {average_plan_length:.3f}")
-                if best_valid_rate is None or validation_succ_rate > best_valid_rate or (validation_succ_rate == best_valid_rate and average_plan_length < best_valid_average_plan_length):
-                    best_valid_rate = validation_succ_rate
-                    best_valid_average_plan_length = average_plan_length
-                    consecutive_validations_best = 0
-                    print(f"[VALIDATION] New best reached! [success rate: {best_valid_rate} | average plan length: {best_valid_average_plan_length} | iteration {iter_num} | snapshot name: {snapshot_name}]")
-                else:
-                    consecutive_validations_best += 1
-                if consecutive_validations_best >= consecutive_validation_patience:
+                checkpoint_path = os.path.join(
+                    self.snapshot_dir, snapshot_name)
+                if validation_state.observe(
+                        validation_succ_rate,
+                        average_plan_length,
+                        checkpoint_path,
+                        cumulative_epoch):
+                    print(
+                        "[VALIDATION] New best reached! "
+                        f"[success rate: {validation_state.best_rate} | "
+                        "average plan length: "
+                        f"{validation_state.best_average_plan_length} | "
+                        f"iteration {iter_num} | "
+                        f"cumulative epoch {cumulative_epoch} | "
+                        f"snapshot name: {snapshot_name}]"
+                    )
+                if validation_state.non_improving_count >= consecutive_validation_patience:
                     keep_going = False
             # save checkout for every epoch, it's cheap.
             best_train_rate = train_succ_rate
@@ -1262,9 +1376,11 @@ class OriginalSupervisedTrainer(BaseTrainer):
                 optimizer=self.optimizer,
                 trainer_state={
                     "epoch_num": epoch_num,
+                    "cumulative_epoch": cumulative_epoch,
                     "iter_num": iter_num,
                     "best_rate": best_train_rate,
                     "time_since_best": time_since_best,
+                    "validation_state": validation_state.to_dict(),
                 },
             )  # also, always save timing data
             with open(os.path.join(self.scratch_dir, 'timing.json'), 'w') as fp:
