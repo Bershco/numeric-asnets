@@ -23,7 +23,8 @@ class ActionSelectionPolicy:
                 if hasattr(self, attr):
                     print(f"{self.worker_tag} {attr} = {getattr(self, attr)}")
 
-    def select_action(self, mcts, pi: np.ndarray) -> int:
+    def select_action(
+            self, mcts, pi: np.ndarray, *, remaining_horizon=None) -> int:
         raise NotImplementedError
 
 
@@ -33,19 +34,19 @@ class ActionSelectionPolicy:
 
 class ArgmaxPolicy(ActionSelectionPolicy):
 
-    def select_action(self, mcts, pi):
+    def select_action(self, mcts, pi, *, remaining_horizon=None):
         return int(np.argmax(pi))
 
 
 class SamplePolicy(ActionSelectionPolicy):
 
-    def select_action(self, mcts, pi):
+    def select_action(self, mcts, pi, *, remaining_horizon=None):
         return int(np.random.choice(len(pi), p=pi))
 
 
 class VisitProportionalPolicy(ActionSelectionPolicy):
 
-    def select_action(self, mcts, pi):
+    def select_action(self, mcts, pi, *, remaining_horizon=None):
 
         root = mcts.curr_tree_root
         act_dim = len(pi)
@@ -75,20 +76,26 @@ class GoalChaseMixin:
         self.distance_threshold = distance_threshold
         super().__init__(**kwargs)
 
-    def select_action(self, mcts, pi):
+    def select_action(self, mcts, pi, *, remaining_horizon=None):
 
         root = mcts.curr_tree_root
 
+        goal_is_within_remaining_horizon = (
+            remaining_horizon is None
+            or root.known_distance_to_goal <= remaining_horizon
+        )
         if (
                 root.known_distance_to_goal < np.inf
                 and root.known_distance_to_goal <= self.distance_threshold
+                and goal_is_within_remaining_horizon
                 and root.best_goal_child is not None
         ):
             for action, child in root.children.items():
                 if child is root.best_goal_child:
                     return action
 
-        return super().select_action(mcts, pi)
+        return super().select_action(
+            mcts, pi, remaining_horizon=remaining_horizon)
 
 
 class TemperatureMixin:
@@ -97,7 +104,7 @@ class TemperatureMixin:
         self.temperature = temperature
         super().__init__(**kwargs)
 
-    def select_action(self, mcts, pi):
+    def select_action(self, mcts, pi, *, remaining_horizon=None):
 
         if self.temperature != 1.0:
             pi = np.power(pi, 1.0 / self.temperature)
@@ -106,7 +113,8 @@ class TemperatureMixin:
             if s > 0:
                 pi /= s
 
-        return super().select_action(mcts, pi)
+        return super().select_action(
+            mcts, pi, remaining_horizon=remaining_horizon)
 
 
 class EpsilonGreedyMixin:
@@ -115,7 +123,7 @@ class EpsilonGreedyMixin:
         self.epsilon = epsilon
         super().__init__(**kwargs)
 
-    def select_action(self, mcts, pi):
+    def select_action(self, mcts, pi, *, remaining_horizon=None):
         if np.random.rand() < self.epsilon:
             pi_sum = np.sum(pi)
             if pi_sum > 0:
@@ -124,7 +132,8 @@ class EpsilonGreedyMixin:
                 pi_norm = np.ones_like(pi) / len(pi)
             return int(np.random.choice(len(pi), p=pi_norm))
 
-        return super().select_action(mcts, pi)
+        return super().select_action(
+            mcts, pi, remaining_horizon=remaining_horizon)
 
 
 class ExplorationDecayMixin:
@@ -149,13 +158,15 @@ class PathDuplicatePenaltyMixin:
         # the name penalty is reversed, the value 0.0 means the highest penalty - a ban.
         super().__init__(**kwargs)
 
-    def select_action(self, mcts, pi):
+    def select_action(self, mcts, pi, *, remaining_horizon=None):
         root = mcts.curr_tree_root
         if root.children is None or root.children.is_empty():
-            return super().select_action(mcts, pi)
+            return super().select_action(
+                mcts, pi, remaining_horizon=remaining_horizon)
         traj_mask = root.get_child_on_trajectory_mask()
         if traj_mask.size == 0:
-            return super().select_action(mcts, pi)
+            return super().select_action(
+                mcts, pi, remaining_horizon=remaining_horizon)
         orig_pi = pi
         pi = pi.copy()
         child_actions = root.children.actions_np
@@ -170,7 +181,8 @@ class PathDuplicatePenaltyMixin:
             pi /= s
         else:
             pi = orig_pi
-        return super().select_action(mcts, pi)
+        return super().select_action(
+            mcts, pi, remaining_horizon=remaining_horizon)
 
 
 # ============================================================

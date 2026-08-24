@@ -672,6 +672,10 @@ class SpawnExploreSpec:
     use_fluents: bool
     use_comps: bool
     difficulty: InstanceDifficulty
+    mcts_progressive_widening: bool = False
+    mcts_pw_min_width: int = 2
+    mcts_pw_c: float = 0.6
+    mcts_pw_alpha: float = 0.5
     fixed_instance_pddl: bool = False
     original_training_set: bool = False
     mcts_exploration_weight: float = 1.0
@@ -707,6 +711,7 @@ class SpawnExploreSpec:
     # evaluation only attributes
     evaluation_mode: bool = False
     evaluation_index: Optional[int] = None
+    mcts_enforce_remaining_horizon: bool = False
 
     def __str__(self) -> str:
         """A stylized and grouped representation of the spec."""
@@ -717,8 +722,9 @@ class SpawnExploreSpec:
                                   "max_len"],
             "HEURISTICS": ["ssipp_dg_heuristic", "fd_heuristic", "ssipp_teacher_heuristic", "use_lm_cuts",
                            "use_numeric_landmarks", "use_contributions"],
-            "MCTS & EXPLORATION": ["training_mcts_iterations", "mcts_expansion_k", "mcts_exploration_weight",
-                                   "mcts_her_strategy", "sample_k_additional_states"],
+            "MCTS & EXPLORATION": ["mcts_iterations", "mcts_expansion_k", "mcts_exploration_weight",
+                                   "mcts_progressive_widening", "mcts_pw_min_width", "mcts_pw_c",
+                                   "mcts_pw_alpha", "mcts_her_strategy", "sample_k_additional_states"],
             "ESTIMATOR & DECAY": ["estimator_h_to_v_coeff", "use_estimator", "estimator_decay_coeff_start",
                                   "estimator_decay_coeff_end", "estimator_decay_epochs"],
             "ACTION POLICY": ["action_policy", "action_policy_epsilon", "action_policy_temperature",
@@ -814,12 +820,19 @@ list[SpawnExploreSpec]:
             heuristic_bootstrapping=args.heuristic_bootstrapping,
             mcts_her_strategy=args.mcts_her_strategy,
             mcts_expansion_k=args.mcts_expansion_size,
+            mcts_progressive_widening=args.mcts_progressive_widening,
+            mcts_pw_min_width=args.mcts_pw_min_width,
+            mcts_pw_c=args.mcts_pw_c,
+            mcts_pw_alpha=args.mcts_pw_alpha,
             use_fluents=args.use_fluents,
             use_comps=args.use_comparisons,
             difficulty=difficulty if difficulty is not None else InstanceDifficulty.EASY,
             evaluation_index=(
                 evaluation_indices[slot_id]
                 if evaluation_indices is not None else None),
+            mcts_enforce_remaining_horizon=(
+                evaluation_mode
+                and args.eval_mcts_enforce_remaining_horizon),
             fixed_instance_pddl=args.fixed_instance,
             mcts_exploration_weight=args.mcts_exploration_weight,
             action_policy=args.action_policy,

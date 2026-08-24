@@ -571,6 +571,10 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
         select_logging=select_logging,
         estimator_coeff=inp.estimator_coeff,
         minimization=inp.minimization,
+        progressive_widening=inp.spec.mcts_progressive_widening,
+        pw_min_width=inp.spec.mcts_pw_min_width,
+        pw_c=inp.spec.mcts_pw_c,
+        pw_alpha=inp.spec.mcts_pw_alpha,
     )
 
     mcts.initialise_tree(cstate)
@@ -1268,6 +1272,7 @@ def print_puct_debug(mcts, masked_pi) -> None:
 
 def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
     estimator = None
+    mcts = None
     try:
         worker_tag, instance_name, start_time = init_eval_worker(inp)
         planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
@@ -1312,6 +1317,10 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
             estimator_coeff=inp.estimator_coeff,
             puct_debug=inp.spec.puct_debug,
             minimization=inp.minimization,
+            progressive_widening=inp.spec.mcts_progressive_widening,
+            pw_min_width=inp.spec.mcts_pw_min_width,
+            pw_c=inp.spec.mcts_pw_c,
+            pw_alpha=inp.spec.mcts_pw_alpha,
         )
         cstate = ctx.get_init_state()
         max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
@@ -1329,7 +1338,14 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
                     instance_name=instance_name,
                     plan=plan,
                 )
-            pi, _ = mcts.run_search()
+            remaining_horizon = max_len - step
+            enforced_horizon = (
+                remaining_horizon
+                if inp.spec.mcts_enforce_remaining_horizon
+                else None
+            )
+            pi, _ = mcts.run_search(
+                remaining_horizon=enforced_horizon)
             mask = mcts.get_children_mask(act_dim=act_dim)
             masked_pi = pi * mask
             if inp.spec.puct_debug:
@@ -1340,7 +1356,11 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
             action_id = action_policy.select_action(
                 mcts=mcts,
                 pi=masked_pi,
+                remaining_horizon=enforced_horizon,
             )
+            mcts.record_selected_policy_rank(action_id)
+            if enforced_horizon is not None:
+                mcts.record_goal_feasibility(enforced_horizon)
             if inp.spec.action_debug:
                 tree_policy_argmax = int(np.argmax(masked_pi))
                 mcts_ranked_actions = np.argsort(masked_pi)[::-1]
@@ -1387,6 +1407,8 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
             plan=plan,
         )
     finally:
+        if mcts is not None:
+            mcts.print_search_diagnostics()
         if estimator is not None:
             estimator.close()
 

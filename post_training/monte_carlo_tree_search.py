@@ -3,6 +3,8 @@ import logging
 from array import array
 import bisect
 import math
+from collections import Counter
+from time import perf_counter
 from typing import Any, List, Optional, Iterator, Tuple
 import numpy as np
 from rpyc import BaseNetref
@@ -152,6 +154,24 @@ class FixedChildMap:
                 return
         raise KeyError("Child not found in FixedChildMap")
 
+    def append(self, key: int, value: Any, prior: float) -> None:
+        """Insert one child without disturbing existing edge statistics."""
+        if self._find_index(key) is not None:
+            raise ValueError(f"Action {key} already exists in child map")
+        if key < 0 or key > 65535:
+            raise ValueError(f"Action {key} does not fit compact uint16 storage")
+
+        idx = bisect.bisect_left(self._keys, key)
+        self._keys.insert(idx, key)
+        self._values.insert(idx, value)
+        self._priors = np.insert(
+            self._priors, idx, np.float32(prior)).astype(
+                np.float32, copy=False)
+        self._visits = np.insert(
+            self._visits, idx, np.int32(0)).astype(
+                np.int32, copy=False)
+        self._actions_np = np.asarray(self._keys, dtype=np.int32)
+
     def __len__(self) -> int:
         return len(self._keys)
 
@@ -182,7 +202,7 @@ class MCTS:
                  network=None,
                  debug_memory=False,
                  select_logging=False,
-                 minimization=True,
+                 minimization=False,
                  ):
         self.curr_tree_root: Optional[MCTSNode] = None
         self.original_tree_root: Optional[MCTSNode] = None
@@ -196,6 +216,19 @@ class MCTS:
 
         self.debug_memory = debug_memory
         self._select_counter = -1
+        self.selection_depth_hist = Counter()
+        self.horizon_cutoff_depth_hist = Counter()
+        self.root_width_hist = Counter()
+        self.width_by_depth_band = {}
+        self.selected_policy_rank_hist = Counter()
+        self.known_goal_decisions = 0
+        self.infeasible_known_goal_decisions = 0
+        self.selection_seconds = 0.0
+        self.expansion_seconds = 0.0
+        self.evaluation_seconds = 0.0
+        self.backpropagation_seconds = 0.0
+        self.search_calls = 0
+        self.peak_node_count = 0
 
         self.select_logging = select_logging
         if select_logging:
@@ -283,7 +316,7 @@ class MCTS:
 
     def mcts_iteration_classic(self, node, horizon):
         """Make the tree one layer better. (Train for one iteration.)"""
-        path = self._select(node)
+        path, _ = self._select(node)
         leaf = path[-1]
         self._expand(leaf)
         value = self._rollout(leaf, horizon=horizon)
@@ -291,19 +324,44 @@ class MCTS:
         if self.path_until_goal is not None:
             self.path_until_goal = self.reconstructSelectionPath(path) + self.path_until_goal
 
-    def mcts_iteration_value_based(self, node):
+    def mcts_iteration_value_based(self, node, remaining_horizon=None):
         node.root_visit_count += 1
-        path = self._select(node)
+        started = perf_counter()
+        path, stop_reason = self._select(
+            node,
+            max_depth=remaining_horizon,
+        )
+        self.selection_seconds += perf_counter() - started
+        selection_depth = len(path) - 1
+        self.selection_depth_hist[selection_depth] += 1
         if self.select_logging:
             self.select_depths.append(len(path))
         leaf = path[-1]
-        self._expand(leaf)
-        value = self._evaluate_node(leaf)
+        if stop_reason == "horizon":
+            self.horizon_cutoff_depth_hist[selection_depth] += 1
+            evaluation_node = leaf
+        else:
+            started = perf_counter()
+            expanded_child = self._expand(leaf)
+            self.expansion_seconds += perf_counter() - started
+            if (expanded_child is not None
+                    and expanded_child.last_select_id != self._select_counter):
+                path.append(expanded_child)
+                evaluation_node = expanded_child
+            else:
+                evaluation_node = leaf
+        self.peak_node_count = max(
+            self.peak_node_count, len(self.state_key_to_node))
+        started = perf_counter()
+        value = self._evaluate_node(evaluation_node)
+        self.evaluation_seconds += perf_counter() - started
         # numbers might be too low or insignificant?? I think it would be okay...
         # theoretically and practically it SHOULD not be lower than 1/10001 which isn't that low.
-        self._backpropagate(path, value, leaf.goal_state)
+        started = perf_counter()
+        self._backpropagate(path, value, evaluation_node.goal_state)
+        self.backpropagation_seconds += perf_counter() - started
 
-    def _select(self, node: MCTSNode):
+    def _select(self, node: MCTSNode, max_depth=None):
         """Find an unexplored descendant of `node`."""
         if self.select_logging:
             prev_action = None
@@ -314,9 +372,14 @@ class MCTS:
         depth = 0
         while True:
             node_path.append(node)
+            selection_depth = depth
+            if node.children is not None:
+                band = self._depth_band(selection_depth)
+                self.width_by_depth_band.setdefault(band, Counter())[
+                    len(node.children)] += 1
             self.maybe_log_puct_on_selection_path(
                 node,
-                selection_depth=depth,
+                selection_depth=selection_depth,
                 max_depth=-1,
                 every=25,
             )
@@ -324,12 +387,17 @@ class MCTS:
             if self.select_logging and depth > self.select_depth_limit:
                 self.deep_select_applicable_actions.append(sum(node.applicable_action_mask))
             node.last_select_id = self._select_counter
-            childmap = node.children
-            if childmap is None or childmap.is_empty():
+            if (max_depth is not None
+                    and selection_depth >= max_depth):
+                return node_path, "horizon"
+            if self._should_expand(node):
                 if self.select_logging:
                     self.same_action_streaks.append(max_same_action_streak)
                     self.select_stop_frontier += 1
-                return node_path
+                return node_path, "expand"
+            childmap = node.children
+            if childmap is None or childmap.is_empty():
+                return node_path, "frontier"
             action, child = self._puct_select_argmax(node)
 
             if self.select_logging:
@@ -348,9 +416,43 @@ class MCTS:
                     self.same_action_streaks.append(max_same_action_streak)
                     self.select_stop_cycle_blocked += 1
                     self.cycle_blocked_depths.append(depth)
-                return node_path
+                return node_path, "cycle"
             # childmap.increment_visit(action)
             node = child
+
+    @staticmethod
+    def _depth_band(depth: int) -> str:
+        if depth <= 2:
+            return str(depth)
+        for lower, upper in (
+                (3, 4), (5, 9), (10, 19), (20, 49),
+                (50, 99), (100, 199)):
+            if lower <= depth <= upper:
+                return f"{lower}-{upper}"
+        return "200+"
+
+    def record_goal_feasibility(self, remaining_horizon: int) -> None:
+        root = self.curr_tree_root
+        if root.known_distance_to_goal == np.inf:
+            return
+        self.known_goal_decisions += 1
+        if root.known_distance_to_goal > remaining_horizon:
+            self.infeasible_known_goal_decisions += 1
+
+    def record_selected_policy_rank(self, action_id: int) -> None:
+        root = self.curr_tree_root
+        valid = np.where(root.applicable_action_mask)[0]
+        if len(valid) == 0:
+            return
+        order = np.lexsort((valid, -root.act_dist[valid]))
+        ranked = valid[order]
+        matches = np.where(ranked == action_id)[0]
+        if len(matches):
+            self.selected_policy_rank_hist[int(matches[0]) + 1] += 1
+
+    def _should_expand(self, node: MCTSNode) -> bool:
+        """Return whether selection should stop so this node can expand."""
+        return node.children is None or node.children.is_empty()
 
     def _expand(self, node):
         """Update the `children` dict with the children of `node`"""

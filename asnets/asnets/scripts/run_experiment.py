@@ -417,6 +417,14 @@ parser.add_argument(
     default=False,
     help='Use MCTS, rather than policy-only inference, for final test evaluation.')
 parser.add_argument(
+    '--eval-mcts-enforce-remaining-horizon',
+    action='store_true',
+    default=False,
+    help=(
+        'During final MCTS evaluation, limit tree-selection depth to the '
+        'number of executable actions remaining and chase only goals within '
+        'that horizon. Ignored by training and policy-only evaluation.'))
+parser.add_argument(
     '--eval-start-wave',
     type=int,
     default=1,
@@ -523,12 +531,25 @@ parser.add_argument(
     help='PUCT exploration weight (c value).'
 )
 parser.add_argument(
-    '--mcts-smart-expansions',
+    '--mcts-progressive-widening',
     action='store_true',
     default=False,
-    help='Enable smart expansions, progressive widening (or "unpruning"),'
-         ' otherwise only limits number of generated children nodes to be min(mcts_expansion_size,(mcts_iterations - 1))'
-)
+    help='Admit policy-ranked children progressively instead of fixed top-k expansion.')
+parser.add_argument(
+    '--mcts-pw-min-width',
+    type=int,
+    default=2,
+    help='Initial child count for progressive widening (default: 2).')
+parser.add_argument(
+    '--mcts-pw-c',
+    type=float,
+    default=0.6,
+    help='Progressive-widening scale c in floor(c*N^alpha).')
+parser.add_argument(
+    '--mcts-pw-alpha',
+    type=float,
+    default=0.5,
+    help='Progressive-widening exponent alpha in floor(c*N^alpha).')
 parser.add_argument(
     '--disable-value-head',
     action='store_true',
@@ -704,6 +725,8 @@ def main():
                serial_test=args.serial_test,
                no_eval=args.no_eval,
                eval_with_mcts=args.eval_with_mcts,
+               eval_mcts_enforce_remaining_horizon=(
+                   args.eval_mcts_enforce_remaining_horizon),
                eval_start_wave=args.eval_start_wave,
                eval_scheduling=args.eval_scheduling,
                skip_instance_numbers=args.skip_instance_numbers,
@@ -721,7 +744,10 @@ def main():
                mcts_heuristic=args.mcts_heuristic,
                mcts_exploration_weight=args.mcts_exploration_weight,
                minimization=args.minimization,
-               mcts_smart_expansions=args.mcts_smart_expansions,
+               mcts_progressive_widening=args.mcts_progressive_widening,
+               mcts_pw_min_width=args.mcts_pw_min_width,
+               mcts_pw_c=args.mcts_pw_c,
+               mcts_pw_alpha=args.mcts_pw_alpha,
                disable_value_head=args.disable_value_head,
                mcts_iterations=args.mcts_iterations,
                heuristic_bootstrapping=args.heuristic_bootstrapping,
@@ -759,6 +785,7 @@ def main_inner(*,
                serial_test=None,
                no_eval=None,
                eval_with_mcts=False,
+               eval_mcts_enforce_remaining_horizon=False,
                eval_start_wave=1,
                eval_scheduling='wave',
                skip_instance_numbers='',
@@ -776,7 +803,10 @@ def main_inner(*,
                mcts_heuristic=None,
                mcts_exploration_weight=1,
                minimization=False,
-               mcts_smart_expansions=False,
+               mcts_progressive_widening=False,
+               mcts_pw_min_width=2,
+               mcts_pw_c=0.6,
+               mcts_pw_alpha=0.5,
                disable_value_head=False,
                mcts_iterations=None,
                heuristic_bootstrapping=False,
@@ -853,6 +883,13 @@ evaluation = {"off" if no_eval else "on"}
             ])
         if mcts_expansion_size:
             train_flags.extend(['--mcts-expansion-size', str(mcts_expansion_size)])
+        if mcts_progressive_widening:
+            train_flags.extend([
+                '--mcts-progressive-widening',
+                '--mcts-pw-min-width', str(mcts_pw_min_width),
+                '--mcts-pw-c', str(mcts_pw_c),
+                '--mcts-pw-alpha', str(mcts_pw_alpha),
+            ])
         if corrupt_pi:
             train_flags.extend(['--corrupt-pi', str(corrupt_pi)])
         if corrupt_z:
@@ -925,6 +962,12 @@ evaluation = {"off" if no_eval else "on"}
     ]  # yapf: disable
     if eval_with_mcts:
         main_test_flags.append('--eval-with-mcts')
+    if eval_mcts_enforce_remaining_horizon:
+        if not eval_with_mcts:
+            raise ValueError(
+                '--eval-mcts-enforce-remaining-horizon requires '
+                '--eval-with-mcts')
+        main_test_flags.append('--eval-mcts-enforce-remaining-horizon')
     if eval_start_wave != 1:
         main_test_flags.extend(['--eval-start-wave', str(eval_start_wave)])
     main_test_flags.extend(['--eval-scheduling', eval_scheduling])
@@ -955,8 +998,13 @@ evaluation = {"off" if no_eval else "on"}
         main_test_flags.extend(['--mcts-exploration-weight', str(mcts_exploration_weight)])
     if minimization:
         main_test_flags.append('--minimization')
-    if mcts_smart_expansions:
-        main_test_flags.append('--mcts-smart-expansions')
+    if mcts_progressive_widening:
+        main_test_flags.extend([
+            '--mcts-progressive-widening',
+            '--mcts-pw-min-width', str(mcts_pw_min_width),
+            '--mcts-pw-c', str(mcts_pw_c),
+            '--mcts-pw-alpha', str(mcts_pw_alpha),
+        ])
     if disable_value_head:
         main_test_flags.append('--disable-value-head')
     if num_workers:

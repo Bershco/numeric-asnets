@@ -1,4 +1,6 @@
-from time import time
+from collections import Counter
+from time import time, perf_counter
+import math
 
 import numpy as np
 import tensorflow as tf
@@ -20,8 +22,19 @@ class TrainingMCTS(MCTS):
     def __init__(self, network, ctx: LocalExploreContext,
                  iterations=10, expansion_k=5,
                  exploration_weight=1.0, sharpen_pi=1.0, one_hot_distance_gamma=0.999,
-                 select_logging=False, estimator_coeff=0.0, puct_debug=False, minimization=True, ):
+                 select_logging=False, estimator_coeff=0.0, puct_debug=False,
+                 minimization=False, progressive_widening=False,
+                 pw_min_width=2, pw_c=0.6, pw_alpha=0.5):
         super().__init__(exploration_weight, network=network, select_logging=select_logging, minimization=minimization)
+        if expansion_k < 1:
+            raise ValueError("expansion_k must be at least 1")
+        if pw_min_width < 1 or pw_min_width > expansion_k:
+            raise ValueError(
+                "pw_min_width must be between 1 and expansion_k")
+        if pw_c <= 0:
+            raise ValueError("pw_c must be positive")
+        if not 0 < pw_alpha <= 1:
+            raise ValueError("pw_alpha must be in (0, 1]")
         self.ctx = ctx
         self.iterations = iterations
         self.k = expansion_k
@@ -30,6 +43,15 @@ class TrainingMCTS(MCTS):
         self.estimator_coeff = estimator_coeff
         self.estimator_mode = EstimatorMode.V_ONLY
         self.puct_debug = puct_debug
+        self.progressive_widening = progressive_widening
+        self.pw_min_width = pw_min_width
+        self.pw_c = pw_c
+        self.pw_alpha = pw_alpha
+        self.widening_events = 0
+        self.widening_width_hist = Counter()
+        self.admitted_policy_rank_hist = Counter()
+        self.successor_generation_seconds = 0.0
+        self.network_inference_seconds = 0.0
 
     def get_single_node_policy_value(self, node, training=False):
         if self.network.value_network_enabled:
@@ -61,27 +83,67 @@ class TrainingMCTS(MCTS):
             return one_hot
         return pi_pow / pi_pow_sum
 
-    def _expand(self, node: MCTSNode):
-        """Expand children using policy priors (top-k by prob)."""
+    def _progressive_width(self, node: MCTSNode) -> int:
+        scheduled = math.floor(
+            self.pw_c * (max(1, node.visit_count) ** self.pw_alpha))
+        return min(self.k, max(self.pw_min_width, scheduled))
 
-        if node.children is not None:
-            return
+    def _should_expand(self, node: MCTSNode) -> bool:
+        if node.children is None or node.children.is_empty():
+            return True
+        return (
+            self.progressive_widening
+            and len(node.children) < self._progressive_width(node)
+        )
+
+    def _ranked_unexpanded_actions(self, node: MCTSNode) -> np.ndarray:
+        valid = np.where(
+            node.applicable_action_mask & (node.act_dist > 0.0))[0]
+        if node.children is not None and not node.children.is_empty():
+            valid = valid[
+                ~np.isin(valid, node.children.actions_np, assume_unique=True)]
+        if len(valid) == 0:
+            return valid
+        # lexsort makes action id the deterministic tie-breaker.
+        order = np.lexsort((valid, -node.act_dist[valid]))
+        return valid[order]
+
+    def _expand(self, node: MCTSNode) -> Optional[MCTSNode]:
+        """Expand fixed top-k children or admit progressive children.
+
+        Progressive widening admits ``pw_min_width`` children on first
+        expansion and exactly one child on subsequent widening events.  The
+        highest-prior newly admitted child is returned for immediate
+        evaluation and backpropagation.
+        """
+
+        if node.children is not None and not self.progressive_widening:
+            return None
 
         act_dist = node.act_dist
-        mask = node.applicable_action_mask
 
         actions, children_nodes, edge_priors = [], [], []
         children_network_repr = []
 
-        valid = np.where(mask & (act_dist > 0.0))[0]
-
-        if len(valid) > self.k:
-            topk = np.argpartition(-act_dist[valid], self.k)[:self.k]
-            selected_actions = valid[topk]
+        ranked_actions = self._ranked_unexpanded_actions(node)
+        if self.progressive_widening:
+            add_count = self.pw_min_width if node.children is None else 1
+            allowed_remaining = max(
+                0, self._progressive_width(node)
+                   - (0 if node.children is None else len(node.children)))
+            add_count = min(add_count, allowed_remaining)
         else:
-            selected_actions = valid
+            add_count = min(self.k, len(ranked_actions))
+        selected_actions = ranked_actions[:add_count]
 
+        if len(selected_actions) == 0:
+            if node.children is None:
+                node.children = FixedChildMap([], [], [])
+            return None
+
+        started = perf_counter()
         results = self.ctx.env_simulate_batch_steps(node.state, selected_actions)
+        self.successor_generation_seconds += perf_counter() - started
 
         for (
                 action_id,
@@ -116,9 +178,10 @@ class TrainingMCTS(MCTS):
             children_nodes.append(wrapped_output_cstate)
             children_network_repr.append(wrapped_output_cstate.as_network_input)
 
-        # Network inference only (no estimator here anymore)
+        # Network inference only.  The selected child is estimator-evaluated
+        # immediately by mcts_iteration_value_based.
         if len(children_network_repr) > 0:
-
+            started = perf_counter()
             batch_tensor = tf.stack(children_network_repr)
             if self.network.value_head_enabled:
                 pred_pi_batch, pred_v_batch = self.network(batch_tensor, training=False)
@@ -134,7 +197,27 @@ class TrainingMCTS(MCTS):
                 for i, child in enumerate(children_nodes):
                     child.act_dist = pred_pi_batch[i]
                     child.pred_value = self.worst_value() if not child.goal_state else self.best_value()
-        node.children = FixedChildMap(actions, children_nodes, edge_priors)
+            self.network_inference_seconds += perf_counter() - started
+
+        if node.children is None:
+            node.children = FixedChildMap(
+                actions, children_nodes, edge_priors)
+        else:
+            for action, child, prior in zip(
+                    actions, children_nodes, edge_priors):
+                node.children.append(action, child, prior)
+
+        if self.progressive_widening:
+            self.widening_events += 1
+            self.widening_width_hist[len(node.children)] += 1
+            policy_order = {
+                int(action): rank
+                for rank, action in enumerate(ranked_actions, 1)
+            }
+            for action in actions:
+                self.admitted_policy_rank_hist[policy_order[int(action)]] += 1
+
+        return children_nodes[0] if self.progressive_widening else None
 
     def _evaluate_node(self, node: MCTSNode) -> float:
         if node.goal_state:
@@ -214,11 +297,17 @@ class TrainingMCTS(MCTS):
 
         return pi, z
 
-    def run_search(self) -> tuple[np.ndarray, float]:
+    def run_search(self, remaining_horizon=None) -> tuple[np.ndarray, float]:
         """Run N simulations on current root and return π."""
+        if remaining_horizon is not None and remaining_horizon < 0:
+            raise ValueError("remaining_horizon cannot be negative")
         root = self.curr_tree_root
+        self.search_calls += 1
         for iteration in range(self.iterations):
-            self.mcts_iteration_value_based(root)
+            self.mcts_iteration_value_based(
+                root,
+                remaining_horizon=remaining_horizon,
+            )
 
             if (
                     self.puct_debug
@@ -237,8 +326,93 @@ class TrainingMCTS(MCTS):
                     skip_zero_q_range=True,
                 )
 
+        root_width = (
+            0 if root.children is None else len(root.children))
+        self.root_width_hist[root_width] += 1
         act_dim = self.ctx.get_act_dim()
         return self.compute_pi_z_for_node(root, act_dim)
+
+    @staticmethod
+    def _hist_summary(hist: Counter) -> str:
+        if not hist:
+            return "count=0"
+        count = sum(hist.values())
+        mean = sum(value * freq for value, freq in hist.items()) / count
+        ordered = sorted(hist.items())
+
+        def percentile(fraction):
+            target = max(1, math.ceil(fraction * count))
+            seen = 0
+            for value, freq in ordered:
+                seen += freq
+                if seen >= target:
+                    return value
+            return ordered[-1][0]
+
+        return (
+            f"count={count} min={ordered[0][0]} mean={mean:.2f} "
+            f"median={percentile(0.5)} p90={percentile(0.9)} "
+            f"p95={percentile(0.95)} max={ordered[-1][0]}"
+        )
+
+    def print_search_diagnostics(self) -> None:
+        final_width_hist = Counter(
+            0 if node.children is None else len(node.children)
+            for node in self.state_key_to_node.values()
+        )
+        print(
+            "[MCTS SEARCH SUMMARY] "
+            f"progressive_widening={self.progressive_widening} "
+            f"iterations_per_search={self.iterations} "
+            f"search_calls={self.search_calls} "
+            f"nodes={len(self.state_key_to_node)} "
+            f"peak_nodes={self.peak_node_count} "
+            f"widening_events={self.widening_events}",
+            flush=True,
+        )
+        print(
+            "[MCTS WIDTH SUMMARY] "
+            f"final_widths=({self._hist_summary(final_width_hist)}) "
+            f"root_widths=({self._hist_summary(self.root_width_hist)}) "
+            f"widen_event_widths=("
+            f"{self._hist_summary(self.widening_width_hist)}) "
+            f"admitted_policy_ranks=("
+            f"{self._hist_summary(self.admitted_policy_rank_hist)})",
+            flush=True,
+        )
+        for depth_band, hist in self.width_by_depth_band.items():
+            print(
+                "[MCTS WIDTH BY DEPTH] "
+                f"depth={depth_band} {self._hist_summary(hist)}",
+                flush=True,
+            )
+        print(
+            "[MCTS DEPTH SUMMARY] "
+            f"selection_depths=("
+            f"{self._hist_summary(self.selection_depth_hist)}) "
+            f"horizon_cutoffs=("
+            f"{self._hist_summary(self.horizon_cutoff_depth_hist)})",
+            flush=True,
+        )
+        print(
+            "[MCTS ACTION SUMMARY] "
+            f"selected_raw_policy_ranks=("
+            f"{self._hist_summary(self.selected_policy_rank_hist)}) "
+            f"known_goal_decisions={self.known_goal_decisions} "
+            f"infeasible_known_goal_decisions="
+            f"{self.infeasible_known_goal_decisions}",
+            flush=True,
+        )
+        print(
+            "[MCTS TIME SUMMARY] "
+            f"selection={self.selection_seconds:.6f}s "
+            f"expansion={self.expansion_seconds:.6f}s "
+            f"successor_generation={self.successor_generation_seconds:.6f}s "
+            f"network_inference={self.network_inference_seconds:.6f}s "
+            f"evaluation={self.evaluation_seconds:.6f}s "
+            f"backpropagation={self.backpropagation_seconds:.6f}s",
+            flush=True,
+        )
 
     def step_forward(self, action_id):
         """Re-root at chosen child and prune irrelevant branches."""

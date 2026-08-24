@@ -441,6 +441,14 @@ parser.add_argument(
         'Use MCTS for final test-set evaluation. By default final evaluation '
         'remains policy-only, including after MCTS stage-2 training.'))
 parser.add_argument(
+    '--eval-mcts-enforce-remaining-horizon',
+    action='store_true',
+    default=False,
+    help=(
+        'During final MCTS evaluation, limit tree-selection depth to the '
+        'number of executable actions remaining and chase only goals within '
+        'that horizon. Ignored by training and policy-only evaluation.'))
+parser.add_argument(
     '--eval-start-wave',
     type=int,
     default=1,
@@ -588,12 +596,25 @@ parser.add_argument(
     help='PUCT exploration weight (c value).'
 )
 parser.add_argument(
-    '--mcts-smart-expansions',
+    '--mcts-progressive-widening',
     action='store_true',
     default=False,
-    help='Enable smart expansions, progressive widening (or "unpruning"),'
-         ' otherwise only limits number of generated children nodes to be min(mcts_expansion_size,(mcts_iterations - 1))'
-)
+    help='Admit policy-ranked children progressively instead of fixed top-k expansion.')
+parser.add_argument(
+    '--mcts-pw-min-width',
+    type=int,
+    default=2,
+    help='Initial child count for progressive widening (default: 2).')
+parser.add_argument(
+    '--mcts-pw-c',
+    type=float,
+    default=0.6,
+    help='Progressive-widening scale c in floor(c*N^alpha).')
+parser.add_argument(
+    '--mcts-pw-alpha',
+    type=float,
+    default=0.5,
+    help='Progressive-widening exponent alpha in floor(c*N^alpha).')
 parser.add_argument(
     '--disable-value-head',
     action='store_true',
@@ -847,8 +868,14 @@ def evaluation_signature(args):
         'disable_value_head': args.disable_value_head,
         'use_estimator': args.use_estimator,
         'mcts_expansion_size': args.mcts_expansion_size,
+        'mcts_progressive_widening': args.mcts_progressive_widening,
+        'mcts_pw_min_width': args.mcts_pw_min_width,
+        'mcts_pw_c': args.mcts_pw_c,
+        'mcts_pw_alpha': args.mcts_pw_alpha,
         'mcts_iterations': args.mcts_iterations,
         'mcts_exploration_weight': args.mcts_exploration_weight,
+        'mcts_enforce_remaining_horizon': (
+            args.eval_mcts_enforce_remaining_horizon),
     }, separators=(',', ':'), ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
@@ -1356,6 +1383,19 @@ def main():
     print(f"[JPDDL] Maximum heap per worker: {args.jpddl_max_heap}")
     if args.eval_instance_timeout is not None and args.eval_instance_timeout <= 0:
         parser.error('--eval-instance-timeout must be positive')
+    if (args.eval_mcts_enforce_remaining_horizon
+            and not args.eval_with_mcts):
+        parser.error(
+            '--eval-mcts-enforce-remaining-horizon requires --eval-with-mcts')
+    if args.mcts_pw_min_width < 1:
+        parser.error('--mcts-pw-min-width must be at least 1')
+    if args.mcts_pw_min_width > args.mcts_expansion_size:
+        parser.error(
+            '--mcts-pw-min-width cannot exceed --mcts-expansion-size')
+    if args.mcts_pw_c <= 0:
+        parser.error('--mcts-pw-c must be positive')
+    if not 0 < args.mcts_pw_alpha <= 1:
+        parser.error('--mcts-pw-alpha must be in (0, 1]')
     if args.policy_anchor_kl_coeff < 0:
         parser.error('--policy-anchor-kl-coeff must be non-negative')
     try:
