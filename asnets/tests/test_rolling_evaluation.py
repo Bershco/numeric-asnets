@@ -1,6 +1,9 @@
 import contextlib
 import io
 import json
+import multiprocessing as mp
+import os
+import signal
 import tempfile
 import time
 import unittest
@@ -9,6 +12,7 @@ from types import SimpleNamespace
 
 from asnets.parllel_explore_spawn_grads import (
     _load_completed_evaluations,
+    _terminate_eval_process,
     run_rolling_spawn_eval,
 )
 from asnets.spawn_train_worker import EvalWorkerOutput
@@ -46,6 +50,13 @@ def _worker(inp):
 
 def _must_not_run(_inp):
     raise AssertionError("persisted instances must not run again")
+
+
+def _ignore_term_forever():
+    os.setsid()
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    while True:
+        time.sleep(1.0)
 
 
 class RollingEvaluationTests(unittest.TestCase):
@@ -168,6 +179,36 @@ class RollingEvaluationTests(unittest.TestCase):
             [_spec(1, delay=1.0, timeout=0.1)], {}, max_workers=1,
             worker_fn=_worker, evaluation_signature="sig")
         self.assertEqual(outputs[0].steps, -2)
+
+    def test_timed_out_worker_is_reaped_before_replacement_starts(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            outputs = run_rolling_spawn_eval(
+                [_spec(1, delay=1.0, timeout=0.1), _spec(2)], {},
+                max_workers=1, worker_fn=_worker,
+                evaluation_signature="sig")
+        self.assertEqual(outputs[0].steps, -2)
+        self.assertTrue(outputs[1].hit_goal)
+        events = output.getvalue()
+        self.assertLess(
+            events.index("timeout number=1"),
+            events.index("started number=2"))
+
+    @unittest.skipUnless(os.name == "posix", "requires POSIX process groups")
+    def test_hard_cleanup_reaps_worker_that_ignores_sigterm(self):
+        process = mp.get_context("forkserver").Process(
+            target=_ignore_term_forever)
+        process.start()
+        try:
+            time.sleep(0.1)
+            _terminate_eval_process(process, hard=True, reap_timeout=3.0)
+            self.assertFalse(process.is_alive())
+            self.assertIsNotNone(process.exitcode)
+        finally:
+            if process.is_alive():
+                process.kill()
+                process.join(timeout=3.0)
+            process.close()
 
     def test_completion_file_signature_mismatch_fails(self):
         with tempfile.TemporaryDirectory() as directory:

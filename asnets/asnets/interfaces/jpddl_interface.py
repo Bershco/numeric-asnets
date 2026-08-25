@@ -4,7 +4,7 @@
 # ! 'j_' (objects) or `J_` (classes) to avoid confusion with Python.
 
 from dataclasses import dataclass
-import os, traceback
+import os
 import logging
 from typing import List, Set, Tuple
 from asnets.utils.py_utils import get_files_with_extension, run_once
@@ -76,20 +76,16 @@ def _suppress_java_stdout():
     J_System.setOut(J_PrintStream(J_File(os.devnull)))
 
 def ensure_jvm():
-    """Restart the JVM if it was closed or crashed."""
+    """Require the worker-local JVM to still be healthy.
+
+    JPype cannot restart a JVM in a Python process after it has stopped.  The
+    rolling evaluator owns recovery by discarding this worker and launching a
+    fresh process with a fresh JVM.
+    """
     if not jpype.isJVMStarted():
-        LOGGER.debug(f"[RECOVER] Restarting JVM in PID={os.getpid()}")
-        try:
-            jpype.startJVM(
-                jpype.getDefaultJVMPath(),
-                *_jvm_memory_args(),
-                classpath=":".join(get_files_with_extension(JARS_DIR, ".jar")),
-            )
-            LOGGER.info(f"[RECOVER] JVM restarted successfully.")
-        except Exception:
-            LOGGER.error("[RECOVER] JVM restart failed:")
-            traceback.print_exc()
-            raise
+        raise RuntimeError(
+            "JPDDL JVM stopped inside the evaluation worker; JPype cannot "
+            "restart it in-process, so this worker must exit and be replaced")
     if not jpype.isThreadAttachedToJVM():
         LOGGER.debug(f"[RECOVER] JVM was not attached in PID={os.getpid()} thread={threading.current_thread().name}, attaching.")
         jpype.attachThreadToJVM()

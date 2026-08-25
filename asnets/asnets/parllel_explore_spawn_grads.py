@@ -128,16 +128,19 @@ def run_epoch_spawn_grads(
     return outs
 
 
-def _eval_process_entry(idx, worker_fn, inp, out_q):
+def _eval_process_entry(idx, worker_fn, inp, result_conn):
     os.setsid()  # worker becomes leader of a new process group/session, this gives us a way to kill all subprocesses of said worker when something crashed inside
     try:
         if inp.PROFILE_DIR:
             result = run_worker_opt_profiled(inp, worker_fn=worker_fn)
         else:
             result = worker_fn(inp)
-        out_q.put((idx, "ok", result, None))
+        result_conn.send((idx, "ok", result, None))
     except BaseException as e:
-        out_q.put((idx, "err", None, f"{repr(e)}\n{traceback.format_exc()}"))
+        result_conn.send(
+            (idx, "err", None, f"{repr(e)}\n{traceback.format_exc()}"))
+    finally:
+        result_conn.close()
 
 
 def _load_completed_evaluations(completion_file, expected_signature):
@@ -190,25 +193,35 @@ def _append_completed_evaluation(
         os.close(fd)
 
 
-def _terminate_eval_process(process):
+def _terminate_eval_process(process, *, hard=False, reap_timeout=30.0):
+    """Terminate and reap one isolated evaluation worker process group.
+
+    Hard evaluation deadlines use SIGKILL immediately.  A JPype-hosted JVM can
+    intercept or delay SIGTERM while leaving the Python worker alive but unable
+    to restart its JVM.  We must reap the old worker before filling its pool
+    slot; otherwise abandoned trees/JVMs can accumulate inside the Slurm cgroup.
+    """
+    first_signal = signal.SIGKILL if hard else signal.SIGTERM
     try:
-        os.killpg(process.pid, signal.SIGTERM)
+        os.killpg(process.pid, first_signal)
     except ProcessLookupError:
         pass
-    if process.is_alive():
-        process.terminate()
-    process.join(timeout=3.0)
-    if process.is_alive():
+    if hard and process.is_alive():
+        process.kill()
+    process.join(timeout=reap_timeout)
+    if process.is_alive() and not hard:
         try:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
         if process.is_alive():
             process.kill()
-        process.join(timeout=3.0)
+        process.join(timeout=reap_timeout)
     if process.is_alive():
         raise RuntimeError(
-            f"Evaluation worker pid={process.pid} survived SIGKILL")
+            f"Evaluation worker pid={process.pid} was not reaped after "
+            f"SIGKILL within {reap_timeout:.1f}s; refusing to overfill the "
+            f"worker pool")
 
 
 def run_rolling_spawn_eval(
@@ -260,7 +273,6 @@ def run_rolling_spawn_eval(
         _print_completed_eval_plan(spec, outs[idx])
 
     ctx = mp.get_context("forkserver")
-    out_q = ctx.Queue()
     active = {}
     pending_iter = iter(pending_specs)
 
@@ -277,13 +289,16 @@ def run_rolling_spawn_eval(
                 minimization=minimization,
                 PROFILE_DIR=PROFILE_DIR,
             )
+            result_conn, worker_conn = ctx.Pipe(duplex=False)
             process = ctx.Process(
                 target=_eval_process_entry,
-                args=(idx, worker_fn, inp, out_q),
+                args=(idx, worker_fn, inp, worker_conn),
             )
             process.start()
+            worker_conn.close()
             active[idx] = {
                 "process": process,
+                "result_conn": result_conn,
                 "started": monotonic(),
                 "spec": spec,
                 "dead_since": None,
@@ -295,20 +310,27 @@ def run_rolling_spawn_eval(
     launch_available()
     try:
         while active:
-            while True:
+            ready_results = []
+            for idx, entry in list(active.items()):
+                result_conn = entry["result_conn"]
+                if not result_conn.poll():
+                    continue
                 try:
-                    idx, status, result, err_text = out_q.get_nowait()
-                except Empty:
-                    break
+                    ready_results.append(result_conn.recv())
+                except EOFError:
+                    # The dead-worker branch below records the exit code.
+                    pass
+            for idx, status, result, err_text in ready_results:
                 entry = active.pop(idx, None)
                 if entry is None:
                     continue
                 process = entry["process"]
+                result_conn = entry["result_conn"]
                 spec = entry["spec"]
                 elapsed = monotonic() - entry["started"]
                 process.join(timeout=1.0)
                 if process.is_alive():
-                    _terminate_eval_process(process)
+                    _terminate_eval_process(process, hard=True)
                 if status == "ok":
                     outs[idx] = result
                     _append_completed_evaluation(
@@ -335,6 +357,7 @@ def run_rolling_spawn_eval(
                         steps=-3,
                         instance_name=f"[{spec.pddls[1]}]:[CRASH]",
                     )
+                result_conn.close()
                 process.close()
                 launch_available()
 
@@ -362,6 +385,7 @@ def run_rolling_spawn_eval(
                             f"[{spec.pddls[1]}]:"
                             f"[CRASH_EXIT_{process.exitcode}]"),
                     )
+                    entry["result_conn"].close()
                     process.close()
                     del active[idx]
                     launch_available()
@@ -373,7 +397,7 @@ def run_rolling_spawn_eval(
                 )
                 if (effective_timeout is not None
                         and elapsed >= effective_timeout):
-                    _terminate_eval_process(process)
+                    _terminate_eval_process(process, hard=True)
                     print(
                         f"[EVAL INSTANCE] timeout number={spec.evaluation_index} "
                         f"path={spec.pddls[1]} limit={effective_timeout:.1f}s",
@@ -384,6 +408,7 @@ def run_rolling_spawn_eval(
                         steps=-2,
                         instance_name=f"[{spec.pddls[1]}]:[HARD_TIMEOUT]",
                     )
+                    entry["result_conn"].close()
                     process.close()
                     del active[idx]
                     launch_available()
@@ -391,10 +416,9 @@ def run_rolling_spawn_eval(
                 sleep(0.25)
     finally:
         for entry in active.values():
-            _terminate_eval_process(entry["process"])
+            _terminate_eval_process(entry["process"], hard=True)
+            entry["result_conn"].close()
             entry["process"].close()
-        out_q.close()
-        out_q.join_thread()
 
     assert all(output is not None for output in outs)
     total_success = float(sum(output.hit_goal for output in outs))
