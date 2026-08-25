@@ -68,3 +68,28 @@ instance order. Reports must record this resource adjustment explicitly.
   initially be combined with progressive widening.
 - Horizon-indexed `(state, remaining horizon)` statistics remain a documented
   deferred design because of their potential memory cost.
+
+## Four-domain Stage-2 anchor selection
+
+Delivery, MPrime, TPP and Zenotravel use the same seven-value Stage-2 anchor
+grid used for the earlier five-domain campaign:
+
+`0, 0.03, 0.3, 1, 3, 10, 30`
+
+The tuning lineages reuse Stage-1 seeds `1963100312` and `2011206605` from the
+current 80-lineage campaign. These two seeds are the tuning set; the remaining
+eight seeds per domain/value-head cell are the held-out confirmation set. This
+avoids 16 redundant Stage-1 training jobs.
+
+Using these two seeds instead of the historical labels `42` and `2026` does
+not change the statistical design: the important requirement is that the
+tuning seeds are declared before examining Stage-2 test outcomes and are not
+later counted as independent held-out confirmation seeds. The seed values
+themselves have no special scientific meaning.
+
+The complete tuning workload is 112 Stage-2 training jobs
+(`4 domains x 2 value-head modes x 2 tuning seeds x 7 coefficients`) followed
+by 2,352 every-five policy evaluations. Select the coefficient using the
+predeclared two-seed mean learning-curve AUC, with mean peak and final coverage
+as tie-breakers. Only after coefficient selection should the remaining eight
+held-out seeds enter the confirmatory Stage-2 pipeline.
