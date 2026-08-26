@@ -1,0 +1,13 @@
+bytes|mtime|root_consistency_blocks|incoming_parent_lines|puct_debug_true|action_debug_true|path
+2810109890|2026-08-19 15:50:21|405894|9459748|2|2|/home/hersco/training_new_domains/2026-08-17/remaining_narrow_mcts/20278848_Ev_counters_comp_mcts_orig_vh_e.5_c.1_s42_K0_RQ4_counters_width5_iter20.txt
+2201879508|2026-06-14 00:28:03|383697|10788106|0|0|/home/hersco/training_new_domains/2026-06-11/v2.5train/counters/18087379_Re-Tr_counters_comp_mcts_orig_novh_c.1_s1111999_K10.txt
+2160833991|2026-06-14 00:28:03|377057|10516728|0|0|/home/hersco/training_new_domains/2026-06-11/v2.5train/counters/18087380_Re-Tr_counters_comp_mcts_orig_novh_c.1_s6363_K10.txt
+2144158562|2026-06-14 00:28:03|369841|10684832|0|0|/home/hersco/training_new_domains/2026-06-11/v2.5train/counters/18087376_Re-Tr_counters_comp_mcts_orig_novh_c.1_s2025_K10.txt
+2115505290|2026-06-14 00:28:03|367775|10272984|0|0|/home/hersco/training_new_domains/2026-06-11/v2.5train/counters/18087384_Re-Tr_counters_comp_mcts_orig_novh_c.1_s777_K10.txt
+2076785694|2026-06-14 00:28:03|357339|10382713|0|0|/home/hersco/training_new_domains/2026-06-11/v2.5train/counters/18087381_Re-Tr_counters_comp_mcts_orig_novh_c.1_s100626_K10.txt
+2015872602|2026-08-20 22:36:50|171270|3157558|1|1|/home/hersco/training_new_domains/2026-08-17/remaining_narrow_mcts/20278849_Ev_counters_comp_mcts_orig_vh_e.5_c.1_s42_K0_RQ4_counters_width5_iter70.txt
+1982857995|2026-06-11 23:11:13|339440|7905511|0|0|/home/hersco/training_new_domains/06_2026/v2.5train/counters/18044717.txt
+1700420458|2026-06-12 14:25:25|303313|7732201|0|0|/home/hersco/training_new_domains/2026-06-09/v2.5train/counters/18064216.txt
+1689839789|2026-06-14 00:28:03|293685|7487078|0|0|/home/hersco/training_new_domains/2026-06-11/v2.5train/counters/18087382_Re-Tr_counters_comp_mcts_orig_novh_c.1_s12345_K10.txt
+1565754387|2026-06-12 09:51:41|271384|7499136|0|0|/home/hersco/training_new_domains/2026-06-09/v2.5train/counters/18064213.txt
+1382705020|2026-06-12 13:58:54|253720|4807764|0|0|/home/hersco/training_new_domains/2026-06-09/v2.5train/counters/18063814.txt

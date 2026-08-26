@@ -1,0 +1,35 @@
+{
+  "version": "mprime-validation-ipc-scale-v1",
+  "base_seed": 20260826,
+  "instances": 30,
+  "tier_parameters": {
+    "easy": {
+      "min_foods": 8,
+      "max_foods": 11,
+      "min_pleasures": 2,
+      "max_pleasures": 4,
+      "min_pains": 7,
+      "max_pains": 13,
+      "max_locale": 9
+    },
+    "medium": {
+      "min_foods": 12,
+      "max_foods": 16,
+      "min_pleasures": 3,
+      "max_pleasures": 5,
+      "min_pains": 14,
+      "max_pains": 24,
+      "max_locale": 12
+    },
+    "hard": {
+      "min_foods": 17,
+      "max_foods": 22,
+      "min_pleasures": 4,
+      "max_pleasures": 6,
+      "min_pains": 25,
+      "max_pains": 46,
+      "max_locale": 15
+    }
+  },
+  "selection_independence": "Ranges fixed from IPC structural scale before checkpoint scoring; test coverage is never used to regenerate or select instances."
+}

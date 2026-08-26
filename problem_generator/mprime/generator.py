@@ -63,6 +63,7 @@ def generate_instance(
     num_pleasures: int,
     num_pains: int,
     max_locale: int,
+    rng: Optional[random.Random] = None,
 ) -> str:
     """Generate a single mystery-prime planning problem instance.
 
@@ -75,27 +76,28 @@ def generate_instance(
     """
 
     template = get_problem_template(TEMPLATE_FILE_PATH)
+    rng = rng or random
 
     foods = unique_names(
         pool=FOOD_POOL,
         count=num_foods,
-        offset=random.randint(0, len(FOOD_POOL) - 1),
+        offset=rng.randint(0, len(FOOD_POOL) - 1),
     )
 
     pleasures = unique_names(
         pool=PLEASURE_POOL,
         count=num_pleasures,
-        offset=random.randint(0, len(PLEASURE_POOL) - 1),
+        offset=rng.randint(0, len(PLEASURE_POOL) - 1),
     )
 
     pains = unique_names(
         pool=PAIN_POOL,
         count=num_pains,
-        offset=random.randint(0, len(PAIN_POOL) - 1),
+        offset=rng.randint(0, len(PAIN_POOL) - 1),
     )
 
     initial_statements = []
-    craving_facts = []
+    initial_cravings: set[tuple[str, str]] = set()
 
     # ---------------------------------------------------------
     # Initial numeric fluents
@@ -103,12 +105,12 @@ def generate_instance(
 
     for food in foods:
         initial_statements.append(
-            f"(= (locale {food}) {random.randint(0, max_locale)})"
+            f"(= (locale {food}) {rng.randint(0, max_locale)})"
         )
 
     for pleasure in pleasures:
         initial_statements.append(
-            f"(= (harmony {pleasure}) {random.randint(1, 3)})"
+            f"(= (harmony {pleasure}) {rng.randint(1, 3)})"
         )
 
     # ---------------------------------------------------------
@@ -116,9 +118,9 @@ def generate_instance(
     # ---------------------------------------------------------
 
     for food in foods:
-        targets = random.sample(
+        targets = rng.sample(
             foods,
-            k=random.randint(1, min(len(foods), 3)),
+            k=rng.randint(1, min(len(foods), 3)),
         )
 
         for target in targets:
@@ -127,27 +129,40 @@ def generate_instance(
     feelings = pleasures + pains
 
     for feeling in feelings:
-        targets = random.sample(
+        targets = rng.sample(
             foods,
-            k=random.randint(1, min(len(foods), 2)),
+            k=rng.randint(1, min(len(foods), 2)),
         )
 
         for target in targets:
-            fact = f"(craves {feeling} {target})"
-            craving_facts.append(fact)
-            initial_statements.append(fact)
+            initial_cravings.add((feeling, target))
 
     # ---------------------------------------------------------
-    # Goal conditions
+    # Goal conditions.  Each goal is absent initially but has a guaranteed
+    # two-action witness: overcome(pain, pleasure, source) followed by
+    # succumb(pain, pleasure, target).  The old generator sampled goals from
+    # initial_cravings, making every generated problem a zero-step problem.
     # ---------------------------------------------------------
 
-    num_goal_cravings = random.randint(1, min(len(craving_facts), 3))
+    num_goal_cravings = rng.randint(1, min(len(pains), len(pleasures), 3))
+    goal_conditions = []
+    for pain, pleasure in zip(
+        rng.sample(pains, k=num_goal_cravings),
+        rng.sample(pleasures, k=num_goal_cravings),
+    ):
+        pain_sources = [food for food in foods if (pain, food) in initial_cravings]
+        source = rng.choice(pain_sources)
+        target_candidates = [
+            food for food in foods if (pain, food) not in initial_cravings
+        ]
+        target = rng.choice(target_candidates)
+        initial_cravings.add((pleasure, source))
+        initial_cravings.add((pleasure, target))
+        goal_conditions.append(f"(craves {pain} {target})")
 
-    goal_conditions = " ".join(
-        random.sample(
-            craving_facts,
-            k=num_goal_cravings,
-        )
+    initial_statements.extend(
+        f"(craves {feeling} {food})"
+        for feeling, food in sorted(initial_cravings)
     )
 
     # ---------------------------------------------------------
@@ -160,7 +175,7 @@ def generate_instance(
         "pleasures": " ".join(pleasures),
         "pains": " ".join(pains),
         "initial_statements": "\n".join(initial_statements),
-        "goal_conditions": goal_conditions,
+        "goal_conditions": " ".join(goal_conditions),
     }
 
     return template.substitute(template_mapping)
@@ -272,6 +287,13 @@ def parse_arguments() -> argparse.Namespace:
         ),
     )
 
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Optional deterministic generator seed.",
+    )
+
     return parser.parse_args()
 
 
@@ -291,6 +313,7 @@ def generate_multiple_problems(
     max_pains: Optional[int] = None,
     max_fuel: int = 9,
     max_locale: Optional[int] = None,
+    seed: Optional[int] = None,
     **_,
 ) -> None:
     """Generate multiple mystery-prime problems.
@@ -377,23 +400,24 @@ def generate_multiple_problems(
 
     output_folder = Path(output_folder)
     output_folder.mkdir(parents=True, exist_ok=True)
+    rng = random.Random(seed) if seed is not None else random
 
     start_index = num_prev_instances or 0
 
     for idx in range(total_num_problems):
         problem_index = start_index + idx
 
-        num_foods = random.randint(
+        num_foods = rng.randint(
             max(4, min_foods),
             max(6, max_foods),
         )
 
-        num_pleasures = random.randint(
+        num_pleasures = rng.randint(
             min_pleasures,
             max_pleasures,
         )
 
-        num_pains = random.randint(
+        num_pains = rng.randint(
             min_pains,
             max_pains,
         )
@@ -404,6 +428,7 @@ def generate_multiple_problems(
             num_pleasures=num_pleasures,
             num_pains=num_pains,
             max_locale=max_locale,
+            rng=rng,
         )
 
         with open(output_folder / f"pfile{problem_index}.pddl", "wt") as problem_file:
@@ -424,6 +449,7 @@ def main() -> None:
         min_pains=args.min_pains,
         max_pains=args.max_pains,
         max_locale=args.max_locale,
+        seed=args.seed,
     )
 
 

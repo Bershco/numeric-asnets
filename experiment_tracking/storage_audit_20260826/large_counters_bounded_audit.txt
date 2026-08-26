@@ -1,0 +1,286 @@
+===FILE===
+bytes=2810109890|mtime=2026-08-19 15:50:21.640608769 +0300|path=/home/hersco/training_new_domains/2026-08-17/remaining_narrow_mcts/20278848_Ev_counters_comp_mcts_orig_vh_e.5_c.1_s42_K0_RQ4_counters_width5_iter20.txt
+---HEAD_MARKERS---
+[SLURM] Starting job 20278848 on ise-cpu128-09.auth.ad.bgu.ac.il
+[2026-08-17 22:38:00,854] [INFO] [run_asnets.py:1375] Arguments are: Namespace(problems=None, domain_type=numeric, opt_patience=10, max_opt_epochs=1000, supervised_lr=0.003, lr_steps=[], supervised_bs=50, ssipp_teacher_heuristic='lm-cut', fd_teacher_heuristic='astar-hadd', enhsp_config='hmrmax-astar', supervised_early_stop=20, save_every=1, seed=42, optimizer_opts={}, resume_from='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-08-11T11:21:39.723699/P[domain,fz_instance_
+Snapshot directory: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-08-11T11:21:39.723699/P[domain,fz_instance_2,fz_instance_3,fz_instance_...]-S[0.003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04901392-1c80318/snapshots
+Starting to parse mdpsim problem: instance_2
+Finished parsing mdpsim problem: instance_2
+[WM] Successfully loaded previous weight manager from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-08-11T11:21:39.723699/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04892075-1c80318/snapshots/snapshot_0_1.0000/weights.joblib
+---TAIL_MARKERS---
+[EVAL FINAL] success=15.0/59=0.254
+[EVAL] OVERALL success=0.254
+    teacher_timeout_s                        : 1
+    estimator_decay_epochs                   : 0
+    timeout                                  : 86400
+Importing architecture from experiments_numeric.architecture.actprop_2l_comparison_mcts
+Importing problem from experiments_numeric.domain.counters
+Resuming from checkpoint "/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-08-11T11:21:39.723699/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04892075-1c80318/snapshots/snapshot_0_1.0000"
+Testing network
+Running command line "/home/hersco/bershco-nu-asnets/numeric-asnets/venv-asnets/bin/python3 -u -m asnets.scripts.run_asnets --no-train --minimal-file-saves --resume-from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-08-11T11:21:39.723699/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04892075-1c80318/snapshots/snapshot_0_1.0000 -e /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_nu
+[VAL] Starting validation guardrail
+[VAL] ===== VALIDATION SUMMARY =====
+[SLURM] Job 20278848 finished
+---SAMPLE_LINE_LENGTHS---
+max_sample_line_length=8425
+===FILE===
+bytes=2201879508|mtime=2026-06-14 00:28:03.161555356 +0300|path=/home/hersco/training_new_domains/2026-06-11/v2.5train/counters/18087379_Re-Tr_counters_comp_mcts_orig_novh_c.1_s1111999_K10.txt
+---HEAD_MARKERS---
+[SLURM] Starting job 18087379 on ise-cpu256-29.auth.ad.bgu.ac.il
+Importing architecture from experiments_numeric.architecture.actprop_2l_comparison_mcts
+Importing problem from experiments_numeric.domain.counters
+Training network
+Starting to train network with the following parameters:
+flags = ['-e', '/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-11T00:29:04.147096', '--dropout', '0.1', '--det-eval', '--no-use-lm-cuts', '--use-act-history', '--no-use-teacher-envelope', '--max-opt-epochs', '1000', '--teacher-timeout-s', '1', '--use-comparisons', '--use-numeric-landmarks', '--enhsp-config', 'hmrmax-astar', '--limit-train-obs-size', '1200', '--exploration-algorithm', 'mcts', '--rollouts', '2', '--min-explored', '10', '--max-explored', '1000', '--expl
+timeout = 561600
+[2026-06-11 00:29:08,435] [INFO] [run_asnets.py:1114] Arguments are: Namespace(problems=None, domain_type=numeric, opt_patience=10, max_opt_epochs=1000, supervised_lr=0.003, lr_steps=[], supervised_bs=50, ssipp_teacher_heuristic='lm-cut', fd_teacher_heuristic='astar-hadd', enhsp_config='hmrmax-astar', supervised_early_stop=20, save_every=1, seed=1111999, optimizer_opts={}, resume_from='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_
+Snapshot directory: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-11T00:29:04.147096/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04803583-680349b/snapshots
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+[WM] Successfully loaded previous weight manager from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[603000]-04337986-55cbf32/snapshots/snapshot_666_0.666667.pkl
+epoch:   0%|          | 0/1000 [00:00<?, ?it/s]2026-06-11 00:29:09.862787: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+Starting to parse mdpsim problem: instance_4_1
+Finished parsing mdpsim problem: instance_4_1
+---TAIL_MARKERS---
+[2026-06-14T00:28:03.164] error: *** JOB 18087379 ON ise-cpu256-29 CANCELLED AT 2026-06-14T00:28:03 DUE TO TIME LIMIT ***
+---SAMPLE_LINE_LENGTHS---
+max_sample_line_length=4683
+===FILE===
+bytes=2160833991|mtime=2026-06-14 00:28:03.165555424 +0300|path=/home/hersco/training_new_domains/2026-06-11/v2.5train/counters/18087380_Re-Tr_counters_comp_mcts_orig_novh_c.1_s6363_K10.txt
+---HEAD_MARKERS---
+[SLURM] Starting job 18087380 on ise-cpu256-29.auth.ad.bgu.ac.il
+Importing architecture from experiments_numeric.architecture.actprop_2l_comparison_mcts
+Importing problem from experiments_numeric.domain.counters
+Training network
+Starting to train network with the following parameters:
+flags = ['-e', '/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-11T00:29:04.146972', '--dropout', '0.1', '--det-eval', '--no-use-lm-cuts', '--use-act-history', '--no-use-teacher-envelope', '--max-opt-epochs', '1000', '--teacher-timeout-s', '1', '--use-comparisons', '--use-numeric-landmarks', '--enhsp-config', 'hmrmax-astar', '--limit-train-obs-size', '1200', '--exploration-algorithm', 'mcts', '--rollouts', '2', '--min-explored', '10', '--max-explored', '1000', '--expl
+timeout = 561600
+[2026-06-11 00:29:08,435] [INFO] [run_asnets.py:1114] Arguments are: Namespace(problems=None, domain_type=numeric, opt_patience=10, max_opt_epochs=1000, supervised_lr=0.003, lr_steps=[], supervised_bs=50, ssipp_teacher_heuristic='lm-cut', fd_teacher_heuristic='astar-hadd', enhsp_config='hmrmax-astar', supervised_early_stop=20, save_every=1, seed=6363, optimizer_opts={}, resume_from='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,i
+Snapshot directory: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-11T00:29:04.146972/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04803583-3c2b498/snapshots
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+[WM] Successfully loaded previous weight manager from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[603000]-04337986-55cbf32/snapshots/snapshot_666_0.666667.pkl
+epoch:   0%|          | 0/1000 [00:00<?, ?it/s]2026-06-11 00:29:09.731046: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+Starting to parse mdpsim problem: instance_4_1
+Finished parsing mdpsim problem: instance_4_1
+---TAIL_MARKERS---
+[2026-06-14T00:28:03.167] error: *** JOB 18087380 ON ise-cpu256-29 CANCELLED AT 2026-06-14T00:28:03 DUE TO TIME LIMIT ***
+---SAMPLE_LINE_LENGTHS---
+max_sample_line_length=4680
+===FILE===
+bytes=2144158562|mtime=2026-06-14 00:28:03.153555217 +0300|path=/home/hersco/training_new_domains/2026-06-11/v2.5train/counters/18087376_Re-Tr_counters_comp_mcts_orig_novh_c.1_s2025_K10.txt
+---HEAD_MARKERS---
+[SLURM] Starting job 18087376 on ise-cpu256-30.auth.ad.bgu.ac.il
+Importing architecture from experiments_numeric.architecture.actprop_2l_comparison_mcts
+Importing problem from experiments_numeric.domain.counters
+Training network
+Starting to train network with the following parameters:
+flags = ['-e', '/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-11T00:28:58.613222', '--dropout', '0.1', '--det-eval', '--no-use-lm-cuts', '--use-act-history', '--no-use-teacher-envelope', '--max-opt-epochs', '1000', '--teacher-timeout-s', '1', '--use-comparisons', '--use-numeric-landmarks', '--enhsp-config', 'hmrmax-astar', '--limit-train-obs-size', '1200', '--exploration-algorithm', 'mcts', '--rollouts', '2', '--min-explored', '10', '--max-explored', '1000', '--expl
+timeout = 561600
+[2026-06-11 00:29:03,018] [INFO] [run_asnets.py:1114] Arguments are: Namespace(problems=None, domain_type=numeric, opt_patience=10, max_opt_epochs=1000, supervised_lr=0.003, lr_steps=[], supervised_bs=50, ssipp_teacher_heuristic='lm-cut', fd_teacher_heuristic='astar-hadd', enhsp_config='hmrmax-astar', supervised_early_stop=20, save_every=1, seed=2025, optimizer_opts={}, resume_from='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,i
+Snapshot directory: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-11T00:28:58.613222/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04803583-152bf89/snapshots
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+[WM] Successfully loaded previous weight manager from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[603000]-04337986-55cbf32/snapshots/snapshot_666_0.666667.pkl
+epoch:   0%|          | 0/1000 [00:00<?, ?it/s]2026-06-11 00:29:04.316694: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+Starting to parse mdpsim problem: instance_4_1
+Finished parsing mdpsim problem: instance_4_1
+---TAIL_MARKERS---
+[2026-06-14T00:28:03.156] error: *** JOB 18087376 ON ise-cpu256-30 CANCELLED AT 2026-06-14T00:28:03 DUE TO TIME LIMIT ***
+---SAMPLE_LINE_LENGTHS---
+max_sample_line_length=4680
+===FILE===
+bytes=2115505290|mtime=2026-06-14 00:28:03.189555838 +0300|path=/home/hersco/training_new_domains/2026-06-11/v2.5train/counters/18087384_Re-Tr_counters_comp_mcts_orig_novh_c.1_s777_K10.txt
+---HEAD_MARKERS---
+[SLURM] Starting job 18087384 on ise-cpu256-28.auth.ad.bgu.ac.il
+Importing architecture from experiments_numeric.architecture.actprop_2l_comparison_mcts
+Importing problem from experiments_numeric.domain.counters
+Training network
+Starting to train network with the following parameters:
+flags = ['-e', '/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-11T00:30:09.490862', '--dropout', '0.1', '--det-eval', '--no-use-lm-cuts', '--use-act-history', '--no-use-teacher-envelope', '--max-opt-epochs', '1000', '--teacher-timeout-s', '1', '--use-comparisons', '--use-numeric-landmarks', '--enhsp-config', 'hmrmax-astar', '--limit-train-obs-size', '1200', '--exploration-algorithm', 'mcts', '--rollouts', '2', '--min-explored', '10', '--max-explored', '1000', '--expl
+timeout = 561600
+[2026-06-11 00:30:14,365] [INFO] [run_asnets.py:1114] Arguments are: Namespace(problems=None, domain_type=numeric, opt_patience=10, max_opt_epochs=1000, supervised_lr=0.003, lr_steps=[], supervised_bs=50, ssipp_teacher_heuristic='lm-cut', fd_teacher_heuristic='astar-hadd', enhsp_config='hmrmax-astar', supervised_early_stop=20, save_every=1, seed=777, optimizer_opts={}, resume_from='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,in
+Snapshot directory: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-11T00:30:09.490862/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04803584-3ab5a39/snapshots
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+[WM] Successfully loaded previous weight manager from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[603000]-04337986-55cbf32/snapshots/snapshot_666_0.666667.pkl
+epoch:   0%|          | 0/1000 [00:00<?, ?it/s]2026-06-11 00:30:15.780735: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+Starting to parse mdpsim problem: instance_4_1
+Finished parsing mdpsim problem: instance_4_1
+---TAIL_MARKERS---
+[2026-06-14T00:28:03.190] error: *** JOB 18087384 ON ise-cpu256-28 CANCELLED AT 2026-06-14T00:28:03 DUE TO TIME LIMIT ***
+---SAMPLE_LINE_LENGTHS---
+max_sample_line_length=4679
+===FILE===
+bytes=2076785694|mtime=2026-06-14 00:28:03.177555632 +0300|path=/home/hersco/training_new_domains/2026-06-11/v2.5train/counters/18087381_Re-Tr_counters_comp_mcts_orig_novh_c.1_s100626_K10.txt
+---HEAD_MARKERS---
+[SLURM] Starting job 18087381 on ise-cpu256-28.auth.ad.bgu.ac.il
+Importing architecture from experiments_numeric.architecture.actprop_2l_comparison_mcts
+Importing problem from experiments_numeric.domain.counters
+Training network
+Starting to train network with the following parameters:
+flags = ['-e', '/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-11T00:30:09.490758', '--dropout', '0.1', '--det-eval', '--no-use-lm-cuts', '--use-act-history', '--no-use-teacher-envelope', '--max-opt-epochs', '1000', '--teacher-timeout-s', '1', '--use-comparisons', '--use-numeric-landmarks', '--enhsp-config', 'hmrmax-astar', '--limit-train-obs-size', '1200', '--exploration-algorithm', 'mcts', '--rollouts', '2', '--min-explored', '10', '--max-explored', '1000', '--expl
+timeout = 561600
+[2026-06-11 00:30:14,366] [INFO] [run_asnets.py:1114] Arguments are: Namespace(problems=None, domain_type=numeric, opt_patience=10, max_opt_epochs=1000, supervised_lr=0.003, lr_steps=[], supervised_bs=50, ssipp_teacher_heuristic='lm-cut', fd_teacher_heuristic='astar-hadd', enhsp_config='hmrmax-astar', supervised_early_stop=20, save_every=1, seed=100626, optimizer_opts={}, resume_from='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4
+Snapshot directory: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-11T00:30:09.490758/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04803584-624ae24/snapshots
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+[WM] Successfully loaded previous weight manager from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[603000]-04337986-55cbf32/snapshots/snapshot_666_0.666667.pkl
+epoch:   0%|          | 0/1000 [00:00<?, ?it/s]2026-06-11 00:30:15.668526: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+Starting to parse mdpsim problem: instance_4_1
+Finished parsing mdpsim problem: instance_4_1
+---TAIL_MARKERS---
+[2026-06-14T00:28:03.178] error: *** JOB 18087381 ON ise-cpu256-28 CANCELLED AT 2026-06-14T00:28:03 DUE TO TIME LIMIT ***
+---SAMPLE_LINE_LENGTHS---
+max_sample_line_length=4682
+===FILE===
+bytes=2015872602|mtime=2026-08-20 22:36:50.037474740 +0300|path=/home/hersco/training_new_domains/2026-08-17/remaining_narrow_mcts/20278849_Ev_counters_comp_mcts_orig_vh_e.5_c.1_s42_K0_RQ4_counters_width5_iter70.txt
+---HEAD_MARKERS---
+[SLURM] Starting job 20278849 on ise-cpu128-11.auth.ad.bgu.ac.il
+[2026-08-17 22:38:03,406] [INFO] [run_asnets.py:1375] Arguments are: Namespace(problems=None, domain_type=numeric, opt_patience=10, max_opt_epochs=1000, supervised_lr=0.003, lr_steps=[], supervised_bs=50, ssipp_teacher_heuristic='lm-cut', fd_teacher_heuristic='astar-hadd', enhsp_config='hmrmax-astar', supervised_early_stop=20, save_every=1, seed=42, optimizer_opts={}, resume_from='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-08-11T11:21:39.723699/P[domain,fz_instance_
+Snapshot directory: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-08-11T11:21:39.723699/P[domain,fz_instance_2,fz_instance_3,fz_instance_...]-S[0.003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04901392-1c80318/snapshots
+Starting to parse mdpsim problem: instance_2
+Finished parsing mdpsim problem: instance_2
+[WM] Successfully loaded previous weight manager from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-08-11T11:21:39.723699/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04892075-1c80318/snapshots/snapshot_0_1.0000/weights.joblib
+---TAIL_MARKERS---
+[2026-08-20T22:36:50.033] error: *** JOB 20278849 ON ise-cpu128-11 CANCELLED AT 2026-08-20T22:36:50 DUE TO TIME LIMIT ***
+---SAMPLE_LINE_LENGTHS---
+max_sample_line_length=8425
+===FILE===
+bytes=1982857995|mtime=2026-06-11 23:11:13.019612120 +0300|path=/home/hersco/training_new_domains/06_2026/v2.5train/counters/18044717.txt
+---HEAD_MARKERS---
+[SLURM] Starting job 18044717 on ise-cpu256-25.auth.ad.bgu.ac.il
+Importing architecture from experiments_numeric.architecture.actprop_2l_comparison_mcts
+Importing problem from experiments_numeric.domain.counters
+Training network
+Starting to train network with the following parameters:
+flags = ['-e', '/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-08T23:11:50.302414', '--dropout', '0.1', '--det-eval', '--no-use-lm-cuts', '--use-act-history', '--no-use-teacher-envelope', '--max-opt-epochs', '1000', '--teacher-timeout-s', '1', '--use-comparisons', '--use-numeric-landmarks', '--enhsp-config', 'hmrmax-astar', '--limit-train-obs-size', '1200', '--exploration-algorithm', 'mcts', '--rollouts', '2', '--min-explored', '10', '--max-explored', '1000', '--expl
+timeout = 561600
+[2026-06-08 23:11:58,397] [INFO] [run_asnets.py:1114] Arguments are: Namespace(problems=None, domain_type=numeric, opt_patience=10, max_opt_epochs=1000, supervised_lr=0.003, lr_steps=[], supervised_bs=50, ssipp_teacher_heuristic='lm-cut', fd_teacher_heuristic='astar-hadd', enhsp_config='hmrmax-astar', supervised_early_stop=20, save_every=1, seed=1255324700, optimizer_opts={}, resume_from='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instan
+Snapshot directory: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-08T23:11:50.302414/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04800625-3cbe346/snapshots
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+[WM] Successfully loaded previous weight manager from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[603000]-04337986-55cbf32/snapshots/snapshot_666_0.666667.pkl
+epoch:   0%|          | 0/1000 [00:00<?, ?it/s]2026-06-08 23:11:59.967351: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+Starting to parse mdpsim problem: instance_4_1
+Finished parsing mdpsim problem: instance_4_1
+---TAIL_MARKERS---
+[2026-06-11T23:11:13.019] error: *** JOB 18044717 ON ise-cpu256-25 CANCELLED AT 2026-06-11T23:11:13 DUE TO TIME LIMIT ***
+---SAMPLE_LINE_LENGTHS---
+max_sample_line_length=4686
+===FILE===
+bytes=1700420458|mtime=2026-06-12 14:25:25.022005378 +0300|path=/home/hersco/training_new_domains/2026-06-09/v2.5train/counters/18064216.txt
+---HEAD_MARKERS---
+[SLURM] Starting job 18064216 on ise-cpu256-18.auth.ad.bgu.ac.il
+Importing architecture from experiments_numeric.architecture.actprop_2l_comparison_mcts
+Importing problem from experiments_numeric.domain.counters
+Training network
+Starting to train network with the following parameters:
+flags = ['-e', '/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-09T14:26:12.417138', '--dropout', '0.1', '--det-eval', '--no-use-lm-cuts', '--use-act-history', '--no-use-teacher-envelope', '--max-opt-epochs', '1000', '--teacher-timeout-s', '1', '--use-comparisons', '--use-numeric-landmarks', '--enhsp-config', 'hmrmax-astar', '--limit-train-obs-size', '1200', '--exploration-algorithm', 'mcts', '--rollouts', '2', '--min-explored', '10', '--max-explored', '1000', '--expl
+timeout = 561600
+[2026-06-09 14:26:16,871] [INFO] [run_asnets.py:1114] Arguments are: Namespace(problems=None, domain_type=numeric, opt_patience=10, max_opt_epochs=1000, supervised_lr=0.003, lr_steps=[], supervised_bs=50, ssipp_teacher_heuristic='lm-cut', fd_teacher_heuristic='astar-hadd', enhsp_config='hmrmax-astar', supervised_early_stop=20, save_every=1, seed=1255324700, optimizer_opts={}, resume_from='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instan
+Snapshot directory: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-09T14:26:12.417138/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04801540-3cbe346/snapshots
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+[WM] Successfully loaded previous weight manager from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[603000]-04337986-55cbf32/snapshots/snapshot_666_0.666667.pkl
+epoch:   0%|          | 0/1000 [00:00<?, ?it/s]2026-06-09 14:26:18.154000: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+Starting to parse mdpsim problem: instance_4_1
+Finished parsing mdpsim problem: instance_4_1
+---TAIL_MARKERS---
+[2026-06-12T14:25:25.025] error: *** JOB 18064216 ON ise-cpu256-18 CANCELLED AT 2026-06-12T14:25:25 DUE TO TIME LIMIT ***
+---SAMPLE_LINE_LENGTHS---
+max_sample_line_length=4687
+===FILE===
+bytes=1689839789|mtime=2026-06-14 00:28:03.181555700 +0300|path=/home/hersco/training_new_domains/2026-06-11/v2.5train/counters/18087382_Re-Tr_counters_comp_mcts_orig_novh_c.1_s12345_K10.txt
+---HEAD_MARKERS---
+[SLURM] Starting job 18087382 on ise-cpu256-28.auth.ad.bgu.ac.il
+Importing architecture from experiments_numeric.architecture.actprop_2l_comparison_mcts
+Importing problem from experiments_numeric.domain.counters
+Training network
+Starting to train network with the following parameters:
+flags = ['-e', '/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-11T00:30:09.490791', '--dropout', '0.1', '--det-eval', '--no-use-lm-cuts', '--use-act-history', '--no-use-teacher-envelope', '--max-opt-epochs', '1000', '--teacher-timeout-s', '1', '--use-comparisons', '--use-numeric-landmarks', '--enhsp-config', 'hmrmax-astar', '--limit-train-obs-size', '1200', '--exploration-algorithm', 'mcts', '--rollouts', '2', '--min-explored', '10', '--max-explored', '1000', '--expl
+timeout = 561600
+[2026-06-11 00:30:14,369] [INFO] [run_asnets.py:1114] Arguments are: Namespace(problems=None, domain_type=numeric, opt_patience=10, max_opt_epochs=1000, supervised_lr=0.003, lr_steps=[], supervised_bs=50, ssipp_teacher_heuristic='lm-cut', fd_teacher_heuristic='astar-hadd', enhsp_config='hmrmax-astar', supervised_early_stop=20, save_every=1, seed=12345, optimizer_opts={}, resume_from='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,
+Snapshot directory: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-11T00:30:09.490791/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04803584-6aa7999/snapshots
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+[WM] Successfully loaded previous weight manager from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[603000]-04337986-55cbf32/snapshots/snapshot_666_0.666667.pkl
+epoch:   0%|          | 0/1000 [00:00<?, ?it/s]2026-06-11 00:30:15.683629: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+Starting to parse mdpsim problem: instance_4_1
+Finished parsing mdpsim problem: instance_4_1
+---TAIL_MARKERS---
+[2026-06-14T00:28:03.182] error: *** JOB 18087382 ON ise-cpu256-28 CANCELLED AT 2026-06-14T00:28:03 DUE TO TIME LIMIT ***
+---SAMPLE_LINE_LENGTHS---
+max_sample_line_length=4681
+===FILE===
+bytes=1565754387|mtime=2026-06-12 09:51:41.893965606 +0300|path=/home/hersco/training_new_domains/2026-06-09/v2.5train/counters/18064213.txt
+---HEAD_MARKERS---
+[SLURM] Starting job 18064213 on ise-cpu256-18.auth.ad.bgu.ac.il
+Importing architecture from experiments_numeric.architecture.actprop_2l_comparison_mcts
+Importing problem from experiments_numeric.domain.counters
+Training network
+Starting to train network with the following parameters:
+flags = ['-e', '/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-09T14:26:12.416949', '--dropout', '0.1', '--det-eval', '--no-use-lm-cuts', '--use-act-history', '--no-use-teacher-envelope', '--max-opt-epochs', '1000', '--teacher-timeout-s', '1', '--use-comparisons', '--use-numeric-landmarks', '--enhsp-config', 'hmrmax-astar', '--limit-train-obs-size', '1200', '--exploration-algorithm', 'mcts', '--rollouts', '2', '--min-explored', '10', '--max-explored', '1000', '--expl
+timeout = 561600
+[2026-06-09 14:26:16,874] [INFO] [run_asnets.py:1114] Arguments are: Namespace(problems=None, domain_type=numeric, opt_patience=10, max_opt_epochs=1000, supervised_lr=0.003, lr_steps=[], supervised_bs=50, ssipp_teacher_heuristic='lm-cut', fd_teacher_heuristic='astar-hadd', enhsp_config='hmrmax-astar', supervised_early_stop=20, save_every=1, seed=1255324700, optimizer_opts={}, resume_from='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instan
+Snapshot directory: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-09T14:26:12.416949/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04801540-3cbe346/snapshots
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+[WM] Successfully loaded previous weight manager from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[603000]-04337986-55cbf32/snapshots/snapshot_666_0.666667.pkl
+epoch:   0%|          | 0/1000 [00:00<?, ?it/s]2026-06-09 14:26:18.171025: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+Starting to parse mdpsim problem: instance_4_1
+Finished parsing mdpsim problem: instance_4_1
+---TAIL_MARKERS---
+[EVAL FINAL] success=29.0/30=0.967
+[EVAL] OVERALL success=0.967
+Starting to advance progression level from 40% Easy, 40% Medium, 20% Hard to 20% Easy, 40% Medium, 40% Hard
+[CHECKPOINT SAVED] snapshot_480_1.0000 | W0 mean/std/norm=-0.013133/0.087723/0.768173 | opt_iter=481
+epoch:  48%|████▊     | 480/1000 [67:25:14<1:53:30, 13.10s/it, lr=<tf.Variable 'learning_rate:0' shape=() dtype=float32, numpy=0.003>, net_loss=30.3, states=385, succ_rate=1]epoch:  48%|████▊     | 480/1000 [67:25:14<73:02:20, 505.66s/it, lr=<tf.Variable 'learning_rate:0' shape=() dtype=float32, numpy=0.003>, net_loss=30.3, states=385, succ_rate=1]
+[run_experiment_setup] timing profiling is on, timeout set to 561600
+Running command line "/home/hersco/bershco-nu-asnets/numeric-asnets/venv-asnets/bin/python3 -m cProfile -o profile_output.prof -m asnets.scripts.run_asnets -e /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-09T14:26:12.416949 --dropout 0.1 --det-eval --no-use-lm-cuts --use-act-history --no-use-teacher-envelope --max-opt-epochs 1000 --teacher-timeout-s 1 --use-comparisons --use-numeric-landmarks --enhsp-config hmrmax-astar --limit-train-obs-size 1200 --exploration-algo
+Last valid checkpoint is /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-09T14:26:12.416949/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04801540-3cbe346/snapshots/snapshot_480_1.0000
+[SLURM] Job 18064213 finished
+---SAMPLE_LINE_LENGTHS---
+max_sample_line_length=4687
+===FILE===
+bytes=1382705020|mtime=2026-06-12 13:58:54.034824282 +0300|path=/home/hersco/training_new_domains/2026-06-09/v2.5train/counters/18063814.txt
+---HEAD_MARKERS---
+[SLURM] Starting job 18063814 on ise-cpu256-13.auth.ad.bgu.ac.il
+Importing architecture from experiments_numeric.architecture.actprop_2l_comparison_mcts
+Importing problem from experiments_numeric.domain.counters
+Training network
+Starting to train network with the following parameters:
+flags = ['-e', '/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-09T13:59:27.736807', '--dropout', '0.1', '--det-eval', '--no-use-lm-cuts', '--use-act-history', '--no-use-teacher-envelope', '--max-opt-epochs', '1000', '--teacher-timeout-s', '1', '--use-comparisons', '--use-numeric-landmarks', '--enhsp-config', 'hmrmax-astar', '--limit-train-obs-size', '1200', '--exploration-algorithm', 'mcts', '--rollouts', '2', '--min-explored', '10', '--max-explored', '1000', '--expl
+timeout = 561600
+[2026-06-09 13:59:32,664] [INFO] [run_asnets.py:1114] Arguments are: Namespace(problems=None, domain_type=numeric, opt_patience=10, max_opt_epochs=1000, supervised_lr=0.003, lr_steps=[], supervised_bs=50, ssipp_teacher_heuristic='lm-cut', fd_teacher_heuristic='astar-hadd', enhsp_config='hmrmax-astar', supervised_early_stop=20, save_every=1, seed=1255324700, optimizer_opts={}, resume_from='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instan
+Snapshot directory: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison_mcts-2026-06-09T13:59:27.736807/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.003,50,enhsp-hmrmax-astar]-MO[]-T[561600]-04801513-3cbe346/snapshots
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+[WM] Successfully loaded previous weight manager from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.counters-experiments_numeric.architecture.actprop_2l_comparison-2025-07-22T16:32:18.456899/P[domain,fz_instance_4,inv_instance_4,rnd_instanc...]-S[0.0003,50,enhsp-hmrmax-astar]-MO[]-T[603000]-04337986-55cbf32/snapshots/snapshot_666_0.666667.pkl
+epoch:   0%|          | 0/1000 [00:00<?, ?it/s]2026-06-09 13:59:34.224118: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+Starting to parse mdpsim problem: instance_4
+Finished parsing mdpsim problem: instance_4
+Starting to parse mdpsim problem: instance_4_1
+Finished parsing mdpsim problem: instance_4_1
+---TAIL_MARKERS---
+[2026-06-12T13:58:54.033] error: *** JOB 18063814 ON ise-cpu256-13 CANCELLED AT 2026-06-12T13:58:54 DUE TO TIME LIMIT ***
+---SAMPLE_LINE_LENGTHS---
+max_sample_line_length=4685
