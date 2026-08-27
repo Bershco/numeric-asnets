@@ -20,6 +20,9 @@ The original audit artifacts in this directory were copied verbatim from:
   job or user process referenced it.  It occupied 10,243,448,832 bytes and can
   be recovered by cloning `ryanxwang/numeric-asnets` at commit
   `b7d015396f8258adc953657c1773b7c7ee2f8044`.
+  This is the exact historical checkout that was deleted; it must not be
+  described as the current upstream `main` HEAD unless that is independently
+  verified at restoration time.
 - Earlier quota recovery also removed approximately 3.4 GB of pip cache and
   2.8 GB of JetBrains cache.  Total reclaimed across these four approved
   cleanups is approximately 23.7 GB (decimal; about 22.1 GiB).
@@ -62,10 +65,12 @@ The largest domain aggregates are Counters (76.5 GB), Rover (58.0 GB), Drone
 scores.
 
 The problem generator occupies almost exactly 12.0 GB; 11.986 GB is under its
-Counters subtree and 11.986 GB is generated instance material.  These are the
+Counters subtree and 11.986 GB is generated instance material. These are the
 realtime-generated training artifacts from the abandoned dynamic-instance
-experiment.  They are strong archive/deletion candidates after preserving the
-generator version, seeds, and a compact manifest proving regeneration.
+experiment. The user explicitly approved deleting the generated Counters
+instances without preserving their seeds, parameters, or checksums; the
+generator source itself must remain untouched. The approved exact target is
+`/home/hersco/bershco-nu-asnets/numeric-asnets/problem_generator/counters/instances`.
 
 The largest Counters logs are pathological debug outputs.  For example, job
 20278848 contains 405,894 repeated root-consistency blocks and 9,459,748
@@ -74,7 +79,31 @@ with identical size and timestamp, while the Slurm wrapper is a third near-copy.
 Other giant logs contain roughly 253,000--384,000 root blocks and 4.8--10.8
 million incoming-parent lines each.
 
-Do not regex-edit those raw logs in place.  The safe reclamation procedure is:
+Do not regex-edit those raw logs in place. There are two valid, mutually
+exclusive retention policies:
+
+1. **Raw-preservation policy:** keep one compressed raw copy and delete only
+   checksum-proven duplicates. A full extracted replacement is unnecessary;
+   only the retained path/checksum and duplicate mapping are required.
+2. **Compact-evidence policy:** extract configuration, checkpoint,
+   per-instance outcomes/runtimes, plans, and VAL evidence, verify the compact
+   record, and then delete every raw copy.
+
+For selected scientific results, use raw preservation. For redundant debug
+campaigns that are not selected results, compact evidence may be used. Never
+mix the policies by keeping a raw copy *and* requiring a full extraction merely
+to justify duplicate removal.
+
+The recent giant logs are not an active default behavior. Jobs `20278848`
+(2.81 GB, last modified 2026-08-19) and `20278849` (2.02 GB, last modified
+2026-08-20) were Counters VH-on narrow MCTS evaluations with width 5 and 20/70
+simulations respectively. They explicitly ran with `puct_debug=True` and
+`action_debug=True`, causing hundreds of thousands of full root-consistency
+tables and millions of incoming-parent lines. Current production manifests
+must keep both debug flags disabled; compact profiling added for progressive
+widening is separate and does not print these tables.
+
+When the compact-evidence policy is selected, the procedure is:
 
 1. extract configuration, checkpoint, per-instance outcome/runtime, plan, and
    VAL status into compact immutable records;
