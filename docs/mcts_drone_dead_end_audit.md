@@ -75,6 +75,16 @@ then reuse the first node's cached policy/value for a different network input.
 A future collision audit should compare network-input vectors whenever an
 existing state key is reused.
 
+In code this is Python-side auxiliary data, not a `BoundProp` or `BoundFlnt`.
+`ActionCountDataGenerator` creates one float feature per grounded action and
+increments the slot of the executed action. `CanonicalState.populate_aux_data`
+flattens it into `_aux_data`; the network later reshapes it to
+`[batch, num_actions, extra_dimension]` and routes the corresponding count to
+each grounded action module. `CanonicalState.__eq__` can compare `_aux_data`,
+but MCTS transpositions use `CanonicalState.state_key`, which is produced by
+`env_state_key()` before auxiliary data is populated and contains no action
+history.
+
 ## Required correction before a dedicated rerun
 
 1. At external action selection, form a safe set from expanded children that
@@ -113,6 +123,13 @@ terminal-selection condition.
 The historical logs had action-level debug disabled, so the first earlier
 policy/MCTS divergence cannot be reconstructed. The persisted complete failed
 plans are sufficient to establish the final mechanism above.
+
+The progressive-widening pilot is isolated from MCTS-SAFE. PW jobs execute from
+`/home/hersco/bershco-nu-asnets/numeric-asnets-pw` at commit `6701f4c1`.
+MCTS-SAFE executes from the separate
+`/home/hersco/bershco-nu-asnets/numeric-asnets-mcts-safe` worktree. Neither the
+running nor pending PW jobs can see the MCTS-SAFE changes, so the pilot does not
+need to be relaunched merely because MCTS-SAFE was deployed.
 
 ## Provenance
 
