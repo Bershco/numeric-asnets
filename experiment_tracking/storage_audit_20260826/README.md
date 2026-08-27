@@ -26,6 +26,11 @@ The original audit artifacts in this directory were copied verbatim from:
 - Earlier quota recovery also removed approximately 3.4 GB of pip cache and
   2.8 GB of JetBrains cache.  Total reclaimed across these four approved
   cleanups is approximately 23.7 GB (decimal; about 22.1 GiB).
+- Deleted only the generated Counters instance material under
+  `/home/hersco/bershco-nu-asnets/numeric-asnets/problem_generator/counters/instances`
+  after exact-path and live-process checks, then recreated the directory empty.
+  The generator source was not touched. This reclaimed another
+  11,985,996,800 bytes, bringing the audited total to about 35.7 GB decimal.
 
 ## Confirmed candidates — not deleted
 - Giant Counters logs: several 1.3–2.8 GB wrapper logs have similarly sized
@@ -64,13 +69,15 @@ The largest domain aggregates are Counters (76.5 GB), Rover (58.0 GB), Drone
 (11.1 GB).  These figures are directory-storage measurements, not experimental
 scores.
 
-The problem generator occupies almost exactly 12.0 GB; 11.986 GB is under its
+Before the approved cleanup, the problem generator occupied almost exactly
+12.0 GB; 11.986 GB was under its
 Counters subtree and 11.986 GB is generated instance material. These are the
 realtime-generated training artifacts from the abandoned dynamic-instance
 experiment. The user explicitly approved deleting the generated Counters
 instances without preserving their seeds, parameters, or checksums; the
 generator source itself must remain untouched. The approved exact target is
 `/home/hersco/bershco-nu-asnets/numeric-asnets/problem_generator/counters/instances`.
+That exact target is now empty.
 
 The largest Counters logs are pathological debug outputs.  For example, job
 20278848 contains 405,894 repeated root-consistency blocks and 9,459,748

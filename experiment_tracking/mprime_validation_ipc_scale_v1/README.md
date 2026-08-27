@@ -34,15 +34,15 @@ directory and the corrected MPrime module was changed to an absolute package
 import.  The fixed rescore campaign is resumable: it reuses any complete policy
 evaluation log and performs only the missing VAL summary.
 
-Partial results already establish the design decision without consulting test
-coverage: across the 18 lineages with summaries at the recorded refresh, epoch
-1 was never the corrected-validation optimum.  Later checkpoints improved from
-epoch-1 scores as low as 1--22/30 to current best scores as high as 19--30/30.
-This directly refutes the old validation set's universal epoch-1 selection.
-Two lineages (seed 1073581256, VH off/on) still required release through the
-fixed rescore wrapper at the last refresh.
+The 20/20 launch gate is now satisfied without consulting test coverage. In
+all twenty old lineages, a later checkpoint beats epoch 1 on the corrected
+validation set. The last two lineages (seed 1073581256) score 6/30 and 5/30 at
+epoch 1, while later checkpoints reach 26/30 and 23/30. This directly refutes
+the old validation set's universal epoch-1 selection.
 
-The next primary campaign is therefore a fresh 20-lineage Stage-1 run (ten
-seeds, VH off/on) using this exact frozen validation module.  Submission is
-gated only by byte-for-byte checksum verification on the cluster and recording
-the submitted job IDs in a dedicated manifest ledger.
+The fresh 20-lineage Stage-1 run (ten seeds, VH off/on) using this exact frozen
+validation module was submitted by controller `20618715`, which completed with
+exit `0:0`. Training jobs `20618716`--`20618735` were all running at the first
+post-submission check. Their downstream contract is every available epoch
+divisible by five plus validation-selected/final policy endpoints and both
+validation-selected/final Stage-1 MCTS endpoints.

@@ -1,0 +1,107 @@
+record_type,experiment_id,domain,value_head,comparison,stage,endpoint,n,mean_before,mean_after,mean_difference,ci95_low,ci95_high,raw_p,holm_p,significant_0_05,source_results_file
+endpoint,MAIN-TERM,block_grouping,off,,stage1,final,10,,16.3,,14.949097945815463,17.650902054184538,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,block_grouping,off,,stage2,final,10,,16.2,,15.258254301841522,17.141745698158477,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,block_grouping,off,,stage2,validation_selected,10,,16.3,,15.343281253450106,17.256718746549893,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,block_grouping,on,,stage1,final,10,,15.0,,13.569385586539825,16.430614413460177,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,block_grouping,on,,stage2,final,10,,11.5,,9.982604270468643,13.017395729531357,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,block_grouping,on,,stage2,validation_selected,10,,11.6,,10.634408864995127,12.565591135004873,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,counters,off,,stage1,final,10,,21.5,,9.118548574581412,33.88145142541859,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,counters,off,,stage2,final,10,,29.8,,18.4158484128153,41.1841515871847,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,counters,off,,stage2,validation_selected,10,,37.9,,26.07180899545497,49.728191004545025,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,counters,on,,stage1,final,10,,17.2,,7.9114054798371125,26.488594520162884,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,counters,on,,stage2,final,10,,15.7,,4.131320232628099,27.2686797673719,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,counters,on,,stage2,validation_selected,10,,16.8,,4.365627826062148,29.234372173937853,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,drone,off,,stage1,final,10,,7.4,,5.516508603683043,9.283491396316958,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,drone,off,,stage2,final,10,,6.8,,4.9904,8.6096,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,drone,off,,stage2,validation_selected,10,,7.8,,5.8396,9.760399999999999,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,drone,on,,stage1,final,10,,7.2,,5.625601778456289,8.774398221543711,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,drone,on,,stage2,final,10,,5.9,,4.6182,7.181800000000001,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,drone,on,,stage2,validation_selected,10,,6.5,,4.982604270468643,8.017395729531357,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,fo_counters,off,,stage1,final,10,,3.6,,2.9968000000000004,4.2032,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,fo_counters,off,,stage2,final,10,,3.0,,2.3256018979860635,3.6743981020139365,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,fo_counters,off,,stage2,validation_selected,10,,2.8,,2.2357580660744896,3.36424193392551,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,fo_counters,on,,stage1,final,10,,3.3,,2.4706,4.1293999999999995,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,fo_counters,on,,stage2,final,10,,3.6,,3.099852981614406,4.100147018385594,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,fo_counters,on,,stage2,validation_selected,10,,3.8,,3.2357580660744896,4.36424193392551,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,rover,off,,stage1,final,10,,3.8,,3.2357580660744896,4.36424193392551,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,rover,off,,stage2,final,10,,3.9,,3.6738,4.1262,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,rover,off,,stage2,validation_selected,10,,3.8,,3.4983999999999997,4.1015999999999995,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,rover,on,,stage1,final,10,,4.1,,3.8737999999999997,4.3262,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,rover,on,,stage2,final,10,,4.0,,4.0,4.0,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-TERM,rover,on,,stage2,validation_selected,10,,4.0,,4.0,4.0,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,block_grouping,off,,stage1,validation_selected,10,,16.3,,15.404674606637341,17.19532539336266,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,block_grouping,off,,stage2,final,10,,16.2,,14.947361121471953,17.452638878528045,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,block_grouping,off,,stage2,validation_selected,10,,16.0,,15.246,16.754,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,block_grouping,on,,stage1,validation_selected,10,,15.9,,14.809954844972008,16.990045155027993,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,block_grouping,on,,stage2,final,10,,12.8,,11.087241242906638,14.512758757093364,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,block_grouping,on,,stage2,validation_selected,10,,12.8,,11.41789517040132,14.182104829598682,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,counters,off,,stage1,validation_selected,10,,32.5,,17.932961968883312,47.06703803111669,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,counters,off,,stage2,final,10,,29.0,,14.970736327233707,43.02926367276629,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,counters,off,,stage2,validation_selected,10,,36.9,,24.07113813154105,49.72886186845895,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,counters,on,,stage1,validation_selected,10,,18.6,,2.8769755632066794,34.323024436793325,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,counters,on,,stage2,final,10,,11.6,,6.937377150143924,16.262622849856076,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,counters,on,,stage2,validation_selected,10,,21.8,,6.440592480176848,37.159407519823155,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,drone,off,,stage1,validation_selected,10,,5.9,,3.4347543651798107,8.365245634820191,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,drone,off,,stage2,final,10,,6.5,,5.020545167975717,7.979454832024283,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,drone,off,,stage2,validation_selected,10,,6.7,,4.243996180784729,9.156003819215272,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,drone,on,,stage1,validation_selected,10,,5.1,,3.301429445365014,6.898570554634985,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,drone,on,,stage2,final,10,,4.7,,3.012319591865806,6.3876804081341945,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,drone,on,,stage2,validation_selected,10,,5.0,,2.5919171110611665,7.408082888938834,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,fo_counters,off,,stage1,validation_selected,10,,4.2,,3.5426780393140667,4.857321960685934,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,fo_counters,off,,stage2,final,10,,2.4,,1.7968,3.0031999999999996,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,fo_counters,off,,stage2,validation_selected,10,,2.9,,2.043620621453319,3.756379378546681,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,fo_counters,on,,stage1,validation_selected,10,,3.7,,2.7432812534501063,4.656718746549894,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,fo_counters,on,,stage2,final,10,,3.1,,2.388677822642932,3.8113221773570682,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,fo_counters,on,,stage2,validation_selected,10,,3.1,,2.063421377800989,4.136578622199011,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,rover,off,,stage1,validation_selected,10,,4.0,,4.0,4.0,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,rover,off,,stage2,final,10,,4.0,,4.0,4.0,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,rover,off,,stage2,validation_selected,10,,4.0,,4.0,4.0,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,rover,on,,stage1,validation_selected,10,,3.8,,3.3476,4.2524,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,rover,on,,stage2,final,10,,3.6,,2.9089475852006594,4.29105241479934,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,MAIN-VAL,rover,on,,stage2,validation_selected,10,,3.9,,3.1128008892281445,4.687199110771855,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,delivery,off,,stage1,final,10,,14.1,,11.094385380658391,17.10561461934161,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,delivery,off,,stage1,validation_selected,10,,19.8,,19.3476,20.2524,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,delivery,on,,stage1,final,10,,16.7,,14.175507108348292,19.224492891651707,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,delivery,on,,stage1,validation_selected,10,,19.2,,18.320692454257326,20.079307545742672,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,mprime,off,,stage1,final,10,,15.3,,13.9076496274285,16.692350372571504,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,mprime,off,,stage1,validation_selected,10,,5.7,,2.3610482543169335,9.038951745683066,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,mprime,on,,stage1,final,10,,14.1,,12.77458895432398,15.42541104567602,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,mprime,on,,stage1,validation_selected,10,,4.7,,2.338402667684434,7.061597332315566,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,tpp,off,,stage1,final,10,,17.1,,12.723551206743075,21.476448793256928,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,tpp,off,,stage1,validation_selected,10,,20.0,,20.0,20.0,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,tpp,on,,stage1,final,10,,18.9,,17.232653833182802,20.567346166817195,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,tpp,on,,stage1,validation_selected,10,,20.0,,20.0,20.0,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,zenotravel,off,,stage1,final,10,,20.0,,20.0,20.0,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,zenotravel,off,,stage1,validation_selected,10,,20.0,,20.0,20.0,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,zenotravel,on,,stage1,final,10,,19.8,,19.4984,20.1016,,,,experiment_tracking/policy_endpoint_results.csv
+endpoint,PRESERVE-4,zenotravel,on,,stage1,validation_selected,10,,20.0,,20.0,20.0,,,,experiment_tracking/policy_endpoint_results.csv
+paired,MAIN-VAL,block_grouping,off,S1 validation-selected -> S2 validation-selected,,,10,16.3,16.0,-0.3,-1.1953253933626589,0.5953253933626588,0.625,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-VAL,block_grouping,on,S1 validation-selected -> S2 validation-selected,,,10,15.9,12.8,-3.1,-5.163536973257324,-1.0364630267426755,0.015625,0.15625,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-VAL,counters,off,S1 validation-selected -> S2 validation-selected,,,10,32.5,36.9,4.4,-17.435298446323095,26.2352984463231,0.66015625,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-VAL,counters,on,S1 validation-selected -> S2 validation-selected,,,10,18.6,21.8,3.2,-6.149599999999999,12.549599999999998,0.5625,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-VAL,drone,off,S1 validation-selected -> S2 validation-selected,,,10,5.9,6.7,0.8,-1.273157244398022,2.873157244398022,0.50390625,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-VAL,drone,on,S1 validation-selected -> S2 validation-selected,,,10,5.1,5.0,-0.1,-1.336651947800997,1.1366519478009969,1.0,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-VAL,fo_counters,off,S1 validation-selected -> S2 validation-selected,,,10,4.2,2.9,-1.3,-2.36897949465834,-0.23102050534166008,0.046875,0.421875,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-VAL,fo_counters,on,S1 validation-selected -> S2 validation-selected,,,10,3.7,3.1,-0.6,-1.5048,0.30479999999999996,0.25,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-VAL,rover,off,S1 validation-selected -> S2 validation-selected,,,10,4.0,4.0,0.0,0.0,0.0,1.0,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-VAL,rover,on,S1 validation-selected -> S2 validation-selected,,,10,3.8,3.9,0.1,-0.30604142645794163,0.5060414264579416,1.0,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-TERM,block_grouping,off,S1 final -> S2 validation-selected,,,10,16.3,16.3,0.0,-0.9537429423067831,0.9537429423067831,1.0,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-TERM,block_grouping,on,S1 final -> S2 validation-selected,,,10,15.0,11.6,-3.4,-5.2530614236986315,-1.5469385763013683,0.0078125,0.078125,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-TERM,counters,off,S1 final -> S2 validation-selected,,,10,21.5,37.9,16.4,3.093662297987473,29.706337702012526,0.02734375,0.24609375,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-TERM,counters,on,S1 final -> S2 validation-selected,,,10,17.2,16.8,-0.4,-11.436252436402494,10.636252436402494,0.9609375,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-TERM,drone,off,S1 final -> S2 validation-selected,,,10,7.4,7.8,0.4,-1.325984889852747,2.1259848898527474,0.6875,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-TERM,drone,on,S1 final -> S2 validation-selected,,,10,7.2,6.5,-0.7,-1.76897949465834,0.36897949465834,0.25,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-TERM,fo_counters,off,S1 final -> S2 validation-selected,,,10,3.6,2.8,-0.8,-1.4573219606859338,-0.14267803931406642,0.0546875,0.4375,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-TERM,fo_counters,on,S1 final -> S2 validation-selected,,,10,3.3,3.8,0.5,-0.4079362312409389,1.407936231240939,0.34375,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-TERM,rover,off,S1 final -> S2 validation-selected,,,10,3.8,3.8,0.0,-0.33719905100696823,0.33719905100696823,1.0,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-TERM,rover,on,S1 final -> S2 validation-selected,,,10,4.1,4.0,-0.1,-0.3262,0.12619999999999998,1.0,1.0,false,experiment_tracking/policy_paired_seed_results.csv
+paired,MAIN-VAL,block_grouping,off,S1 policy -> S1 MCTS,stage1,validation_selected,10,16.3,15.4,-0.9,-1.8801999999999999,0.08019999999999983,0.109375,0.546875,false,experiment_tracking/mcts_paired_seed_results.csv
+paired,MAIN-VAL,block_grouping,on,S1 policy -> S1 MCTS,stage1,validation_selected,10,15.9,16.2,0.3,-0.28889282556336177,0.8888928255633617,0.453125,0.90625,false,experiment_tracking/mcts_paired_seed_results.csv
+paired,MAIN-VAL,counters,off,S1 policy -> S1 MCTS,stage1,validation_selected,10,32.5,21.9,-10.6,-23.63875088495827,2.438750884958269,0.125,0.546875,false,experiment_tracking/mcts_paired_seed_results.csv
+paired,MAIN-VAL,counters,on,S1 policy -> S1 MCTS,stage1,validation_selected,10,18.6,16.7,-1.9,-13.951977134063938,10.151977134063937,0.701171875,0.90625,false,experiment_tracking/mcts_paired_seed_results.csv
+paired,MAIN-VAL,drone,off,S1 policy -> S1 MCTS,stage1,validation_selected,10,5.9,6.9,1.0,0.04625705769321686,1.9537429423067831,0.07421875,0.4453125,false,experiment_tracking/mcts_paired_seed_results.csv
+paired,MAIN-VAL,drone,on,S1 policy -> S1 MCTS,stage1,validation_selected,10,5.1,10.4,5.3,3.4210416822079317,7.178958317792068,0.001953125,0.01953125,true,experiment_tracking/mcts_paired_seed_results.csv
+paired,MAIN-VAL,fo_counters,off,S1 policy -> S1 MCTS,stage1,validation_selected,10,4.2,7.8,3.6,2.201538330879248,4.998461669120752,0.00390625,0.03515625,true,experiment_tracking/mcts_paired_seed_results.csv
+paired,MAIN-VAL,fo_counters,on,S1 policy -> S1 MCTS,stage1,validation_selected,10,3.7,5.7,2.0,1.0462570576932169,2.953742942306783,0.00390625,0.03515625,true,experiment_tracking/mcts_paired_seed_results.csv
+paired,MAIN-VAL,rover,off,S1 policy -> S1 MCTS,stage1,validation_selected,10,4.0,5.0,1.0,0.246,1.754,0.03125,0.21875,false,experiment_tracking/mcts_paired_seed_results.csv
+paired,MAIN-VAL,rover,on,S1 policy -> S1 MCTS,stage1,validation_selected,10,3.8,4.4,0.6,-0.0031999999999999806,1.2031999999999998,0.125,0.546875,false,experiment_tracking/mcts_paired_seed_results.csv
