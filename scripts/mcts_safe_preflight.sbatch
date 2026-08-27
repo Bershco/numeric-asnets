@@ -15,11 +15,11 @@ apptainer exec \
   --bind /home/hersco:/home/hersco \
   --bind /home/hersco/apptainer_fake_passwd:/etc/passwd \
   /home/hersco/Docker/image.sif \
-  env PYTHONPATH="${SAFE_REPO}" \
-  "${PRODUCTION_REPO}/venv-asnets/bin/python" \
-  -m unittest \
-  discover \
-  -s "${SAFE_REPO}/asnets/tests" \
-  -p test_progressive_widening.py
+  /bin/bash -lc "
+    cd '${SAFE_REPO}/asnets'
+    export PYTHONPATH='${SAFE_REPO}/asnets:${SAFE_REPO}'
+    '${PRODUCTION_REPO}/venv-asnets/bin/python' \
+      -m unittest discover -s tests -p test_progressive_widening.py
+  "
 
 echo "[MCTS-SAFE PREFLIGHT] commit=efb003cc tests=passed"
