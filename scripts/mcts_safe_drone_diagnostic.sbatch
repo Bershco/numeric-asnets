@@ -46,7 +46,7 @@ apptainer exec \
     source '${PRODUCTION_REPO}/venv-asnets/bin/activate'
     export PYTHONPATH='${SAFE_REPO}':\${PYTHONPATH:-}
     ./run_experiment \
-      experiments_numeric.architecture.actprop_2l_all_dynamic \
+      experiments_numeric.architecture_2.drone_mcts \
       experiments_numeric.domain.drone \
       --resume-from '${CHECKPOINT}' \
       --eval-with-mcts \

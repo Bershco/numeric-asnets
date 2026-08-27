@@ -6,6 +6,9 @@ cluster filesystem.
 
 ## Files
 
+- `../docs/cluster_access_and_ssh.md`: canonical cluster-access procedure,
+  including the recurring wrong-Windows-profile versus stale-VPN-route failure
+  and its bounded retry sequence.
 - `experiment_registry.csv`: one row per named experiment, including its scientific
   role, status, configuration boundary, and reason when held.
 - `live_jobs.csv`: replaceable queue snapshot. This contains only jobs that are
@@ -28,6 +31,19 @@ cluster filesystem.
 - `mcts_paired_seed_results.csv`: the seed-level policy/MCTS joins, including
   Slurm terminal state, exact search configuration, timeout counts, and
   unfinished-instance counts.
+- `mcts_policy_regression_audit.csv`: all 100 matched Stage-1 policy/MCTS seed
+  pairs with an explicit relation and first-pass cause class. Every
+  `policy_gt_mcts` row requires an instance-level log audit; aggregate means
+  must never be used to assume that MCTS dominates policy seed by seed.
+- `policy_mcts_instance_audit.csv`: all available matched Stage-1
+  policy/MCTS instances, including policy and MCTS outcomes, steps, runtimes,
+  timeout/action-limit classification, and literal source-log paths. This is
+  the authoritative source for diagnosing seed-level gains and regressions.
+- `block_grouping_policy_mcts_instance_audit.csv`: the focused Block Grouping
+  extract used to explain the width-5/20 result without rerunning inference.
+- `../docs/mcts_drone_dead_end_audit.md`: exact persisted-trajectory diagnosis
+  of the four Drone policy-only successes and the required terminal-safety
+  selection correction.
 - `slurm_accounting_20260826_1608.psv`: immutable accounting export captured
   during the 2026-08-26 home-quota incident.
 - `failed_jobs_20260826.csv`: every failed top-level job in that accounting
@@ -44,6 +60,19 @@ cluster filesystem.
   outputs.  They are candidates for review, never automatic deletion lists.
 - per-experiment directories: immutable launch manifests and any compact
   derived summaries specific to that experiment.
+- `mcts_progressive_widening_pilot/results.csv`: terminal PW/fixed-top-5
+  results joined to their matched policy and fixed-top-20 baselines. Running
+  rows remain in `live_jobs.csv` until they become static.
+- `mcts_counters_width_sensitivity/main_term_stage2_narrow_held_manifest.csv`
+  and its submission ledger: the twenty held MAIN-TERM Stage-2 Counters
+  width-5/20 replacements. The obsolete held width-20/70 jobs were cancelled
+  only after all replacements existed and were explicitly held.
+- `large_log_compaction_20260827.csv`: immutable verification/deletion ledger
+  for the 17 debug-spam logs compacted on 2026-08-27. It records source and
+  compact checksums and exact reclaimed bytes.
+- `four_domain_preservation/zenotravel_anchor_evidence.csv`: the 28-lineage
+  replay that reproduces the frozen Zenotravel coefficients. Delivery and TPP
+  use the same validated finalizer after their remaining lineages terminate.
 - `evaluation_coverage_plan.csv`: authoritative coverage contract for every
   training experiment. It records the required learning-curve policy work,
   required endpoint MCTS comparisons, materialized entry counts, and deliberate
@@ -67,6 +96,24 @@ cluster filesystem.
    scheduler termination prevented the evaluator from reaching those
    instances. Per-instance six-hour timeouts are classified failures.
 6. Completed rows are static. Only the live-job snapshot is repeatedly queried.
+
+## Large-log compaction
+
+Completed experiment text logs larger than 1 GiB may be replaced by a verified
+compact evidence record when their size is dominated by repeated debug output.
+Exact duplicate groups are also eligible when each copy is at least 500 MiB;
+the same evidence and safety checks apply.
+The compact record must retain the original path, size, modification time and
+SHA-256; job/commit/checkpoint/seed/configuration and command evidence; all
+epoch, loss, coverage, selection and termination markers; per-instance
+outcomes, runtimes and complete printed plans; VAL evidence; and the original
+head and tail. It must also have its own checksum and manifest row.
+
+Deletion is allowed only after verification, only for logs at least 24 hours
+old, and never while the corresponding job is active. A compact file must not
+reuse the original filename or pretend to be the raw source. Primary unique
+logs that cannot pass the evidence checks remain untouched. The implementation
+is `../scripts/compact_large_experiment_logs.py`.
 
 ## 2026-08-26 quota recovery
 

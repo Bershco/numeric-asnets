@@ -75,6 +75,17 @@ then reuse the first node's cached policy/value for a different network input.
 A future collision audit should compare network-input vectors whenever an
 existing state key is reused.
 
+The code already has two *representations*, `state_key` and
+`as_network_input()`, but that does not yet provide two MCTS identities.  The
+transposition dictionary is indexed only by the physical `state_key`.  Once a
+node has been created, a later trajectory with the same physical key reuses
+that node and its cached policy/value; the alternate action-history network
+input is never evaluated for a second node.  The proposed correction therefore
+requires a real network-context cache/node key (physical key plus auxiliary
+action counts) while retaining the physical key separately for cycle and
+duplicate avoidance.  Merely having the richer network-input tensor is not
+enough.
+
 In code this is Python-side auxiliary data, not a `BoundProp` or `BoundFlnt`.
 `ActionCountDataGenerator` creates one float feature per grounded action and
 increments the slot of the executed action. `CanonicalState.populate_aux_data`
