@@ -6,8 +6,10 @@ batch="$work/mcts_safe_drone_diagnostic.sbatch"
 
 submit() {
   local name=$1 checkpoint=$2 seed=$3 vh=$4 skip=$5 label=$6
+  local checkpoint_b64
+  checkpoint_b64=$(printf '%s' "$checkpoint" | base64 -w0)
   sbatch --job-name="$name" --output="$work/%x_%j.out" \
-    --export=ALL,CHECKPOINT="$checkpoint",SEED="$seed",VALUE_HEAD="$vh",SKIP_INSTANCE_NUMBERS="$skip",RUN_LABEL="$label" \
+    --export=ALL,CHECKPOINT_B64="$checkpoint_b64",SEED="$seed",VALUE_HEAD="$vh",SKIP_INSTANCE_NUMBERS="$skip",RUN_LABEL="$label" \
     "$batch"
 }
 

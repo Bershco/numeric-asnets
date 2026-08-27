@@ -8,11 +8,13 @@
 set -euo pipefail
 set -o pipefail
 
-: "${CHECKPOINT:?CHECKPOINT is required}"
+: "${CHECKPOINT_B64:?CHECKPOINT_B64 is required}"
 : "${SEED:?SEED is required}"
 : "${VALUE_HEAD:?VALUE_HEAD must be on or off}"
 : "${SKIP_INSTANCE_NUMBERS:?SKIP_INSTANCE_NUMBERS is required}"
 : "${RUN_LABEL:?RUN_LABEL is required}"
+
+CHECKPOINT=$(printf '%s' "${CHECKPOINT_B64}" | base64 -d)
 
 SAFE_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-mcts-safe
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
