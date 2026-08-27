@@ -425,6 +425,13 @@ parser.add_argument(
         'number of executable actions remaining and chase only goals within '
         'that horizon. Ignored by training and policy-only evaluation.'))
 parser.add_argument(
+    '--eval-mcts-terminal-safe-action-selection',
+    action='store_true',
+    default=False,
+    help=(
+        'During final MCTS evaluation, exclude known terminal non-goal '
+        'children whenever a safe child exists.'))
+parser.add_argument(
     '--eval-start-wave',
     type=int,
     default=1,
@@ -727,6 +734,8 @@ def main():
                eval_with_mcts=args.eval_with_mcts,
                eval_mcts_enforce_remaining_horizon=(
                    args.eval_mcts_enforce_remaining_horizon),
+               eval_mcts_terminal_safe_action_selection=(
+                   args.eval_mcts_terminal_safe_action_selection),
                eval_start_wave=args.eval_start_wave,
                eval_scheduling=args.eval_scheduling,
                skip_instance_numbers=args.skip_instance_numbers,
@@ -786,6 +795,7 @@ def main_inner(*,
                no_eval=None,
                eval_with_mcts=False,
                eval_mcts_enforce_remaining_horizon=False,
+               eval_mcts_terminal_safe_action_selection=False,
                eval_start_wave=1,
                eval_scheduling='wave',
                skip_instance_numbers='',
@@ -968,6 +978,13 @@ evaluation = {"off" if no_eval else "on"}
                 '--eval-mcts-enforce-remaining-horizon requires '
                 '--eval-with-mcts')
         main_test_flags.append('--eval-mcts-enforce-remaining-horizon')
+    if eval_mcts_terminal_safe_action_selection:
+        if not eval_with_mcts:
+            raise ValueError(
+                '--eval-mcts-terminal-safe-action-selection requires '
+                '--eval-with-mcts')
+        main_test_flags.append(
+            '--eval-mcts-terminal-safe-action-selection')
     if eval_start_wave != 1:
         main_test_flags.extend(['--eval-start-wave', str(eval_start_wave)])
     main_test_flags.extend(['--eval-scheduling', eval_scheduling])

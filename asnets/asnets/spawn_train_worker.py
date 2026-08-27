@@ -1285,6 +1285,7 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
             temperature=inp.spec.action_policy_temperature,
             decay_rate=inp.spec.action_policy_decay_rate,
             duplicate_penalty=inp.spec.action_policy_duplicate_penalty,
+            terminal_safe=inp.spec.mcts_terminal_safe_action_selection,
         )
         wm_local = _rebuild_weight_manager_local(
             planner_exts.problem_meta,

@@ -449,6 +449,14 @@ parser.add_argument(
         'number of executable actions remaining and chase only goals within '
         'that horizon. Ignored by training and policy-only evaluation.'))
 parser.add_argument(
+    '--eval-mcts-terminal-safe-action-selection',
+    action='store_true',
+    default=False,
+    help=(
+        'During final MCTS evaluation, exclude known terminal non-goal '
+        'children whenever a safe child exists. Safe duplicate actions are '
+        'restored before any terminal fallback.'))
+parser.add_argument(
     '--eval-start-wave',
     type=int,
     default=1,
@@ -876,6 +884,8 @@ def evaluation_signature(args):
         'mcts_exploration_weight': args.mcts_exploration_weight,
         'mcts_enforce_remaining_horizon': (
             args.eval_mcts_enforce_remaining_horizon),
+        'mcts_terminal_safe_action_selection': (
+            args.eval_mcts_terminal_safe_action_selection),
     }, separators=(',', ':'), ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
@@ -1387,6 +1397,11 @@ def main():
             and not args.eval_with_mcts):
         parser.error(
             '--eval-mcts-enforce-remaining-horizon requires --eval-with-mcts')
+    if (args.eval_mcts_terminal_safe_action_selection
+            and not args.eval_with_mcts):
+        parser.error(
+            '--eval-mcts-terminal-safe-action-selection requires '
+            '--eval-with-mcts')
     if args.mcts_pw_min_width < 1:
         parser.error('--mcts-pw-min-width must be at least 1')
     if args.mcts_pw_min_width > args.mcts_expansion_size:

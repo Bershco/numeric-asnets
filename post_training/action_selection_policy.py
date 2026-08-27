@@ -185,6 +185,146 @@ class PathDuplicatePenaltyMixin:
             mcts, pi, remaining_horizon=remaining_horizon)
 
 
+class TerminalSafeMixin:
+    """Keep external MCTS execution away from known non-goal terminals.
+
+    This is deliberately an evaluation/action-selection guard. It does not
+    change MCTS backup values or training targets. Duplicate avoidance is
+    applied inside this mixin so a safe duplicate is restored before a known
+    terminal action can become eligible.
+    """
+
+    _Q_TOLERANCE = 1e-6
+
+    def __init__(self, duplicate_penalty=0.0, **kwargs):
+        self.duplicate_penalty = (
+            0.0 if duplicate_penalty is None else duplicate_penalty)
+        self.terminal_actions_excluded = 0
+        self.safe_duplicate_fallbacks = 0
+        self.no_safe_child_events = 0
+        super().__init__(**kwargs)
+
+    @staticmethod
+    def _normalise_or_fallback(vector, fallback, eligible):
+        result = np.asarray(vector, dtype=np.float64).copy()
+        total = float(result.sum())
+        if total > 0.0:
+            result /= total
+            return result
+        result[:] = 0.0
+        fallback = np.asarray(fallback, dtype=np.float64)
+        result[eligible] = fallback[eligible]
+        total = float(result.sum())
+        if total > 0.0:
+            result /= total
+        elif np.any(eligible):
+            result[eligible] = 1.0 / int(np.count_nonzero(eligible))
+        return result
+
+    def _validate_root_q_values(self, mcts, root):
+        if root.children is None or root.children.is_empty():
+            return
+        q_values = np.asarray(
+            [float(child.Q_value) for child in root.children.values()],
+            dtype=np.float64,
+        )
+        finite = bool(np.all(np.isfinite(q_values)))
+        if getattr(mcts, "minimization", False):
+            valid = finite
+        else:
+            tol = self._Q_TOLERANCE
+            valid = finite and bool(np.all(q_values >= -tol)) and bool(
+                np.all(q_values <= 1.0 + tol))
+        if not valid:
+            print(
+                f"[MCTS SAFE INVARIANT] invalid_root_q_values="
+                f"{q_values.tolist()} minimization="
+                f"{getattr(mcts, 'minimization', False)}"
+            )
+            raise ValueError(
+                "MCTS-SAFE root Q-values violate the declared value convention")
+
+    def select_action(self, mcts, pi, *, remaining_horizon=None):
+        if hasattr(mcts, "ensure_safe_root_child"):
+            mcts.ensure_safe_root_child()
+
+        root = mcts.curr_tree_root
+        raw_pi = np.asarray(pi, dtype=np.float64).copy()
+        self._validate_root_q_values(mcts, root)
+
+        act_dim = len(raw_pi)
+        safe_mask = np.zeros(act_dim, dtype=bool)
+        terminal_mask = np.zeros(act_dim, dtype=bool)
+        duplicate_mask = np.zeros(act_dim, dtype=bool)
+        priors = np.zeros(act_dim, dtype=np.float64)
+        visits = np.zeros(act_dim, dtype=np.int64)
+        child_rows = []
+
+        if root.children is not None and not root.children.is_empty():
+            trajectory = root.get_child_on_trajectory_mask()
+            for index, (action, child) in enumerate(root.children.items()):
+                action = int(action)
+                is_goal = bool(child is not None and child.goal_state)
+                is_terminal = bool(child is not None and child.terminal_state)
+                is_duplicate = bool(index < len(trajectory) and trajectory[index] > 0)
+                is_safe = bool(child is not None and (is_goal or not is_terminal))
+                safe_mask[action] = is_safe
+                terminal_mask[action] = bool(is_terminal and not is_goal)
+                duplicate_mask[action] = is_duplicate
+                priors[action] = float(root.children.priors[index])
+                visits[action] = int(root.children.visits[index])
+                child_rows.append({
+                    "action": action,
+                    "N": int(root.children.visits[index]),
+                    "Q": float(child.Q_value),
+                    "U": float(
+                        mcts.exploration_weight
+                        * root.children.priors[index]
+                        * (np.sqrt(max(1.0, root.visit_count))
+                           / (1.0 + root.children.visits[index]))),
+                    "prior": float(root.children.priors[index]),
+                    "terminal": is_terminal,
+                    "goal": is_goal,
+                    "duplicate": is_duplicate,
+                })
+
+        post_terminal = raw_pi.copy()
+        if np.any(safe_mask):
+            excluded = terminal_mask & (raw_pi > 0.0)
+            self.terminal_actions_excluded += int(np.count_nonzero(excluded))
+            post_terminal[~safe_mask] = 0.0
+            post_terminal = self._normalise_or_fallback(
+                post_terminal, priors, safe_mask)
+        else:
+            self.no_safe_child_events += 1
+
+        post_duplicate = post_terminal.copy()
+        eligible_safe = safe_mask if np.any(safe_mask) else (raw_pi > 0.0)
+        if np.any(duplicate_mask & eligible_safe):
+            post_duplicate[duplicate_mask] *= self.duplicate_penalty
+            if float(post_duplicate.sum()) <= 0.0 and np.any(eligible_safe):
+                post_duplicate = post_terminal.copy()
+                self.safe_duplicate_fallbacks += 1
+            else:
+                post_duplicate = self._normalise_or_fallback(
+                    post_duplicate, post_terminal, eligible_safe)
+
+        action = super().select_action(
+            mcts, post_duplicate, remaining_horizon=remaining_horizon)
+        print(
+            "[MCTS SAFE DECISION] "
+            f"raw_visits={visits.tolist()} "
+            f"raw_pi={raw_pi.tolist()} "
+            f"post_terminal={post_terminal.tolist()} "
+            f"post_duplicate={post_duplicate.tolist()} "
+            f"selected={int(action)} children={child_rows} "
+            f"excluded_total={self.terminal_actions_excluded} "
+            f"duplicate_fallbacks_total={self.safe_duplicate_fallbacks} "
+            f"no_safe_total={self.no_safe_child_events}"
+        )
+        return int(action)
+
+
 # ============================================================
 # Policy Builder
 # ============================================================
@@ -205,6 +345,7 @@ def build_action_policy(
         decay_rate=None,
         epoch=None,
         duplicate_penalty=None,
+        terminal_safe=False,
 ):
     base = BASE_POLICIES[base_policy]
 
@@ -222,7 +363,9 @@ def build_action_policy(
     if temperature is not None and temperature != 0.0:
         mixins.append(TemperatureMixin)
 
-    if duplicate_penalty is not None:
+    if terminal_safe:
+        mixins.append(TerminalSafeMixin)
+    elif duplicate_penalty is not None:
         mixins.append(PathDuplicatePenaltyMixin)
 
     bases = tuple(mixins + [base])

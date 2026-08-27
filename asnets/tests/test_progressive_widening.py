@@ -284,5 +284,78 @@ class HorizonTests(unittest.TestCase):
         )
 
 
+class TerminalSafeActionSelectionTests(unittest.TestCase):
+    @staticmethod
+    def _mcts(root):
+        return types.SimpleNamespace(
+            curr_tree_root=root,
+            minimization=False,
+            exploration_weight=0.1,
+        )
+
+    def test_known_terminal_is_masked_when_safe_child_exists(self):
+        root = make_node(FakeState("safe-root"))
+        terminal = make_node(FakeState("terminal", terminal=True))
+        safe = make_node(FakeState("safe"))
+        root.children = search.FixedChildMap(
+            [0, 1], [terminal, safe], [0.9, 0.1])
+        policy = policies.build_action_policy(
+            "argmax", duplicate_penalty=0.0, terminal_safe=True)
+
+        selected = policy.select_action(
+            self._mcts(root), np.asarray([0.9, 0.1]))
+
+        self.assertEqual(selected, 1)
+        self.assertEqual(policy.terminal_actions_excluded, 1)
+
+    def test_safe_duplicate_is_restored_before_terminal_fallback(self):
+        root = make_node(FakeState("duplicate-root"))
+        terminal = make_node(FakeState("terminal", terminal=True))
+        safe_duplicate = make_node(FakeState("safe-duplicate"))
+        safe_duplicate.on_trajectory = True
+        root.children = search.FixedChildMap(
+            [0, 1], [terminal, safe_duplicate], [0.9, 0.1])
+        policy = policies.build_action_policy(
+            "argmax", duplicate_penalty=0.0, terminal_safe=True)
+
+        selected = policy.select_action(
+            self._mcts(root), np.asarray([0.9, 0.1]))
+
+        self.assertEqual(selected, 1)
+        self.assertEqual(policy.safe_duplicate_fallbacks, 1)
+
+    def test_invalid_modern_q_value_fails_with_invariant(self):
+        root = make_node(FakeState("invalid-q-root"))
+        child = make_node(FakeState("child"))
+        child.Q_value = -0.25
+        root.children = search.FixedChildMap([0], [child], [1.0])
+        policy = policies.build_action_policy(
+            "argmax", duplicate_penalty=0.0, terminal_safe=True)
+
+        with self.assertRaisesRegex(ValueError, "value convention"):
+            policy.select_action(self._mcts(root), np.asarray([1.0]))
+
+    def test_all_terminal_root_forces_safe_action_admission(self):
+        root = make_node(FakeState("force-root"))
+        terminal = make_node(FakeState("terminal", terminal=True))
+        root.children = search.FixedChildMap([0], [terminal], [0.4])
+        mcts = training.TrainingMCTS(
+            network=FakeNetwork(),
+            ctx=FakeContext(),
+            iterations=1,
+            expansion_k=1,
+            pw_min_width=1,
+            progressive_widening=False,
+        )
+        mcts.curr_tree_root = root
+        mcts.original_tree_root = root
+        mcts.state_key_to_node[root.state_key] = root
+
+        self.assertTrue(mcts.ensure_safe_root_child())
+        self.assertGreater(len(root.children), 1)
+        self.assertTrue(any(
+            not child.terminal_state for child in root.children.values()))
+
+
 if __name__ == "__main__":
     unittest.main()

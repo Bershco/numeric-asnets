@@ -108,7 +108,9 @@ class TrainingMCTS(MCTS):
         order = np.lexsort((valid, -node.act_dist[valid]))
         return valid[order]
 
-    def _expand(self, node: MCTSNode) -> Optional[MCTSNode]:
+    def _expand(
+            self, node: MCTSNode, *,
+            force_single_admission: bool = False) -> Optional[MCTSNode]:
         """Expand fixed top-k children or admit progressive children.
 
         Progressive widening admits ``pw_min_width`` children on first
@@ -117,7 +119,9 @@ class TrainingMCTS(MCTS):
         evaluation and backpropagation.
         """
 
-        if node.children is not None and not self.progressive_widening:
+        if (node.children is not None
+                and not self.progressive_widening
+                and not force_single_admission):
             return None
 
         act_dist = node.act_dist
@@ -126,7 +130,9 @@ class TrainingMCTS(MCTS):
         children_network_repr = []
 
         ranked_actions = self._ranked_unexpanded_actions(node)
-        if self.progressive_widening:
+        if force_single_admission:
+            add_count = 1
+        elif self.progressive_widening:
             add_count = self.pw_min_width if node.children is None else 1
             allowed_remaining = max(
                 0, self._progressive_width(node)
@@ -217,7 +223,43 @@ class TrainingMCTS(MCTS):
             for action in actions:
                 self.admitted_policy_rank_hist[policy_order[int(action)]] += 1
 
-        return children_nodes[0] if self.progressive_widening else None
+        return (
+            children_nodes[0]
+            if self.progressive_widening or force_single_admission
+            else None
+        )
+
+    def ensure_safe_root_child(self) -> bool:
+        """Admit/evaluate actions until the root has a known safe child.
+
+        This is called only by the opt-in MCTS-SAFE external selector. Normal
+        training and evaluation preserve their existing expansion semantics.
+        A forced admission may exceed the ordinary width schedule (and fixed
+        top-k) only when every currently admitted root child is a known
+        terminal non-goal.
+        """
+        root = self.curr_tree_root
+
+        def has_safe_child() -> bool:
+            return bool(
+                root.children is not None
+                and any(
+                    child is not None
+                    and (child.goal_state or not child.terminal_state)
+                    for child in root.children.values()
+                )
+            )
+
+        while not has_safe_child():
+            if len(self._ranked_unexpanded_actions(root)) == 0:
+                break
+            child = self._expand(root, force_single_admission=True)
+            if child is None:
+                break
+            # Complete the estimator blend as well as the batched network
+            # prediction before the safety selector considers this child.
+            self._evaluate_node(child)
+        return has_safe_child()
 
     def _evaluate_node(self, node: MCTSNode) -> float:
         if node.goal_state:
