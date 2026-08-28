@@ -11,7 +11,8 @@ set -o pipefail
 : "${PW_MIN:?}" "${PW_C:?}" "${PW_ALPHA:?}" "${ITERATIONS:?}"
 
 CHECKPOINT=$(printf '%s' "$CHECKPOINT_B64" | base64 -d)
-FEATURE_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-pw-sensitivity
+FEATURE_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-mcts-safe
+CODE_OVERLAY=/home/hersco/bershco-nu-asnets/numeric-asnets-pw-sensitivity-overlay
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
 OUT=/home/hersco/training_new_domains/2026-08-28/mcts_pw_safe_sensitivity
 CONTAINER=/home/hersco/Docker/image.sif
@@ -28,7 +29,7 @@ apptainer exec --bind /home/hersco:/home/hersco \
     set -o pipefail
     cd '$FEATURE_REPO/asnets'
     source '$PRODUCTION_REPO/venv-asnets/bin/activate'
-    export PYTHONPATH='$FEATURE_REPO':\${PYTHONPATH:-}
+    export PYTHONPATH='$CODE_OVERLAY':'$FEATURE_REPO':\${PYTHONPATH:-}
     ./run_experiment experiments_numeric.architecture_2.drone_mcts \
       experiments_numeric.domain.drone --resume-from '$CHECKPOINT' \
       --eval-with-mcts --eval-mcts-terminal-safe-action-selection \
