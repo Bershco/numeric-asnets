@@ -397,11 +397,42 @@ class TrainingMCTS(MCTS):
             f"p95={percentile(0.95)} max={ordered[-1][0]}"
         )
 
+    @staticmethod
+    def _compact_hist(hist: Counter, ordered_keys=None) -> str:
+        """Serialize exact histogram counts without emitting per-node rows."""
+        if not hist:
+            return "empty"
+        keys = ordered_keys if ordered_keys is not None else sorted(hist)
+        return ",".join(
+            f"{key}={hist[key]}" for key in keys if hist.get(key, 0)
+        )
+
+    @staticmethod
+    def _visit_bucket(visits: int) -> str:
+        if visits <= 2:
+            return str(visits)
+        for low, high in ((3, 4), (5, 8), (9, 16), (17, 32),
+                          (33, 64), (65, 128)):
+            if visits <= high:
+                return f"{low}-{high}"
+        return "129+"
+
     def print_search_diagnostics(self) -> None:
         final_width_hist = Counter(
             0 if node.children is None else len(node.children)
             for node in self.state_key_to_node.values()
         )
+        visit_bin_order = (
+            "0", "1", "2", "3-4", "5-8", "9-16", "17-32",
+            "33-64", "65-128", "129+",
+        )
+        node_visit_bins = Counter(
+            self._visit_bucket(node.visit_count)
+            for node in self.state_key_to_node.values()
+        )
+        selection_depth_bins = Counter()
+        for depth, frequency in self.selection_depth_hist.items():
+            selection_depth_bins[self._visit_bucket(depth)] += frequency
         print(
             "[MCTS SEARCH SUMMARY] "
             f"progressive_widening={self.progressive_widening} "
@@ -422,10 +453,26 @@ class TrainingMCTS(MCTS):
             f"{self._hist_summary(self.admitted_policy_rank_hist)})",
             flush=True,
         )
+        print(
+            "[MCTS DISTRIBUTION] "
+            f"final_width_counts=("
+            f"{self._compact_hist(final_width_hist)}) "
+            f"node_visit_bins=("
+            f"{self._compact_hist(node_visit_bins, visit_bin_order)}) "
+            f"selection_depth_bins=("
+            f"{self._compact_hist(selection_depth_bins, visit_bin_order)})",
+            flush=True,
+        )
         for depth_band, hist in self.width_by_depth_band.items():
             print(
                 "[MCTS WIDTH BY DEPTH] "
                 f"depth={depth_band} {self._hist_summary(hist)}",
+                flush=True,
+            )
+            print(
+                "[MCTS WIDTH COUNTS BY DEPTH] "
+                f"depth={depth_band} counts=("
+                f"{self._compact_hist(hist)})",
                 flush=True,
             )
         print(

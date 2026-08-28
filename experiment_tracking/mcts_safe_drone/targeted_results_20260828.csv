@@ -1,0 +1,5 @@
+job_id,value_head,seed,instance_number,instance,status,steps,elapsed_seconds,safe_repaired_original_policy_only_failure,source_log
+20651244,off,1963100312,5,problem_2_5_4.pddl,unsolved,201,445.97,false,/home/hersco/training_new_domains/2026-08-27/mcts_safe_drone_diagnostic/SAFE3_D_OFF_1963_20651244.out
+20651244,off,1963100312,6,problem_2_8_3.pddl,unsolved,395,1154.27,false,/home/hersco/training_new_domains/2026-08-27/mcts_safe_drone_diagnostic/SAFE3_D_OFF_1963_20651244.out
+20651245,off,534933607,11,problem_5_2_2.pddl,success,105,119.70,true,/home/hersco/training_new_domains/2026-08-27/mcts_safe_drone_diagnostic/SAFE3_D_OFF_5349_20651245.out
+20651246,on,2011206605,13,problem_6_8_1.pddl,success,246,435.65,true,/home/hersco/training_new_domains/2026-08-27/mcts_safe_drone_diagnostic/SAFE3_D_ON_2011_20651246.out

@@ -1,7 +1,8 @@
 # MCTS Inference Search Design and Experiment Plan
 
-Status: implementation available on commit `fac11cb0`; not yet integrated into
-`main` or deployed to the cluster.
+Status: implementation available on commit `fac11cb0`; not integrated into the
+production checkout. The pilot uses an isolated sparse cluster checkout pinned
+to aggregate commit `6701f4c1`, so existing queued jobs remain unaffected.
 
 This document records the inference-search work developed for the numeric-ASNet
 thesis, including the motivation, selected algorithms, rejected alternatives,
@@ -247,7 +248,7 @@ horizon-aware known-goal chasing.
 
 Result recorded by the implementation chat: `Ran 10 tests` / `OK`.
 
-## 11. Planned widening-only experiment
+## 11. Completed widening-only experiment
 
 The widening pilot domain is **Drone**. This was selected from complete Slurm-job
 accounting, including terminal timeouts and OOM outcomes, rather than from policy
@@ -313,7 +314,51 @@ promising variant should be expanded to at least five matched seeds.
 Historical fixed-top-20 results may be reused only if checkpoint seed and every
 other configuration match exactly.
 
-## 12. Planned horizon-only experiment
+The declared five pilot seeds are `1963100312`, `2011206605`, `1073581256`,
+`1239739722`, and `1472491096`. Each value-head mode receives the same five
+network seeds. The 30-job launch manifest is
+`experiment_tracking/mcts_progressive_widening_pilot/manifest.csv`.
+
+All 30 new evaluations completed and passed VAL. The immutable seed-level
+results and aggregate statistics are stored in
+`experiment_tracking/mcts_progressive_widening_pilot/results.csv` and
+`experiment_tracking/mcts_progressive_widening_pilot/summary.csv`.
+
+| Variant | n | Mean coverage | Matched top-20 | Paired change (95% CI) | Exact sign-flip p | Mean runtime |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Fixed top-5 | 10 | 8.70/20 | 8.60/20 | +0.10 [-0.31, +0.51] | 1.0000 | 11.24 h |
+| PW c=0.6 | 10 | 6.70/20 | 8.60/20 | -1.90 [-3.35, -0.45] | 0.0195 | 8.12 h |
+| PW c=1.0 | 10 | 6.20/20 | 8.60/20 | -2.40 [-3.92, -0.88] | 0.0039 | 5.03 h |
+
+Progressive widening reduced runtime but failed the declared non-inferior
+coverage criterion. Both progressive variants are significantly worse than
+the matched fixed-top-20 baseline; this remains true under Holm correction
+across the three displayed comparisons.
+
+Weighted across all compact width summaries, the mean children count over all
+retained nodes was 1.3269 for fixed top-5, 1.2516 for PW c=0.6, and 1.2603 for
+PW c=1.0. This includes leaf nodes, so root branching is more interpretable:
+4.7754, 5.0638, and 5.0212 respectively. PW retained 692,524 nodes for c=0.6
+and 319,398 for c=1.0, versus 3,622,099 for fixed top-5. The runtime gain is
+therefore consistent with a much smaller retained search graph, not with a
+smaller final root width.
+
+All 30 new jobs retain 70 simulations, PUCT 0.1, estimator coefficient 0.5,
+the `hadd-astar` teacher, three workers, a six-hour per-instance limit, and a
+three-day allocation. Remaining-horizon enforcement is disabled.
+
+### Pilot profiling
+
+Profiling is part of the pilot, but it uses the new compact per-instance MCTS
+summaries rather than Python `cProfile`, which could perturb wall-clock
+behavior. Aggregate coverage, VAL validity, runtime, retained/peak nodes,
+widening events, width/depth distributions, successor-generation time, network
+inference time, estimator time, and timeout/OOM incidence separately for
+successes, ordinary failures, instance timeouts, and scheduler interruptions.
+Use a separate cProfile follow-up only if these summaries cannot identify the
+bottleneck.
+
+## 12. Live horizon-only experiment
 
 Compare:
 
@@ -324,6 +369,28 @@ Use the same checkpoints and seeds. Historical top-20 coverage can provide the
 unaware baseline only when all settings match. Fresh unaware baselines may still
 be desirable because historical logs lack the new depth, horizon, and timing
 diagnostics.
+
+The primary success criterion is paired coverage non-inferior to the matched
+horizon-unaware width-20/70 baseline. Secondary criteria are fewer per-instance
+timeouts, lower runtime and retained-node work, feasible-only known-goal
+chasing, and nonzero cutoff evidence showing that search was actually prevented
+from exceeding the remaining executable horizon.
+
+Ten matched Drone jobs were submitted as `20652251`--`20652260`. At the
+2026-08-28 07:50 snapshot, nine were running and one had completed inference at
+6/20 but failed only because the wrapper referenced a missing validator script.
+Its inference evidence is recoverable through post-hoc VAL. Current completion
+manifests already meet or exceed every matched fixed-top-20 baseline score as a
+lower bound.
+
+However, all compact summaries currently report `horizon_cutoffs=(count=0)`.
+Drone trajectories are far below the 10,000-action evaluation limit and its
+observed MCTS selection depths are only tens of edges, so the horizon constraint
+has not bound. This campaign is therefore currently a useful non-regression
+check, but not evidence that horizon enforcement improves a genuinely
+horizon-constrained problem. A later efficacy experiment must predeclare a
+smaller common executable budget for both arms or use instances whose executed
+trajectories approach their existing limit.
 
 ## 13. Deferred experiments
 
@@ -362,6 +429,60 @@ accidentally included in the lifecycle commit.
 8. Submit the separate horizon-only comparison.
 9. Keep the deferred designs and combined experiment on hold.
 
-No progressive-widening or horizon-aware experimental result exists yet. Until
-the planned jobs run and their plans pass VAL, these items are implementation
-and experimental design—not thesis findings.
+Progressive widening is now a completed negative coverage result with a clear
+runtime/graph-size trade-off. Horizon-aware inference remains live and must not
+be described as effective until it produces nonzero cutoff evidence on a
+genuinely constrained workload.
+
+### Progressive-widening sensitivity gate
+
+Do not launch an undirected Cartesian grid. First add compact histograms for
+node child count, visit-count bins, depth bands, and outcome class; raw per-node
+dumps are explicitly excluded. Every new arm must use the same finalized
+MCTS-SAFE behavior, so the pre-SAFE pilot cannot be mixed with post-SAFE arms.
+
+The initial matched diagnostic changes one factor at a time:
+
+1. `K_min=2, c=0.6, alpha=0.5, 70 simulations` (fresh SAFE baseline);
+2. `K_min=3` only;
+3. `alpha=0.65` only;
+4. `140 simulations` only.
+
+Use two seeds in each VH mode: sixteen jobs total. Do not raise `c` again in
+this gate because `c=1.0` was already tested and lost more coverage. Promote
+only a defensible arm to a five-seed confirmation. All sensitivity arms use
+the frozen MCTS-SAFE behavior, so this gate is also the first SAFE+PW test.
+
+The compact-v1 logger prints exact child-count histograms, visit-count bins,
+selection-depth bins, and exact child widths by depth band. Each instance keeps
+its own summary, allowing the evaluator result to partition distributions into
+success, ordinary failure, timeout, and interruption without per-node dumps.
+
+## MCTS-SAFE-2: contextual transposition follow-up
+
+MCTS-SAFE-1 is considered successful but incomplete: it repaired two of the
+four targeted policy-only Drone failures. The other two no longer ended through
+the same known-terminal selection, but still wandered to an unsolved outcome.
+
+The next architectural question is contextual aliasing. The network input
+contains a per-grounded-action application-count vector, while the current
+transposition key contains only the physical planning state. Multiple histories
+can therefore reuse one node even when the network would assign different
+priors or values. The current key also intentionally omits the special
+`total-time` fluent.
+
+MCTS-SAFE-2 is staged rather than immediately changing node identity:
+
+1. Instrument collisions where one physical-state key is observed with more
+   than one action-count vector. Record collision frequency, action-count
+   distance, and sampled policy/value disagreement.
+2. Preserve physical-state identity for cycle and trajectory-duplicate safety.
+3. Add a separate network-context identity—physical state plus action-count
+   vector—for cached network predictions and MCTS statistics.
+4. Compare MCTS-SAFE-1 against contextual MCTS-SAFE-2 on matched Drone seeds.
+
+This is not domain-specific and is not cheating: it prevents a
+history-dependent network from being evaluated with another history's cached
+statistics. It may improve cyclic domains, but reduces transposition sharing
+and can increase runtime and memory. Instrumentation must therefore precede the
+behavioral experiment.

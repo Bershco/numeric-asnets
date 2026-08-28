@@ -13,6 +13,9 @@ cluster filesystem.
   role, status, configuration boundary, and reason when held.
 - `live_jobs.csv`: replaceable queue snapshot. This contains only jobs that are
   running, pending, completing, or deliberately held in Slurm.
+- `live_experiment_status.csv`: replaceable experiment-level roll-up of the
+  live queue and latest immutable result-ledger counts. It separates running,
+  dependency/resource-pending, and deliberately held work.
 - `experiment_results.csv`: canonical completed-result ledger. Each row identifies the
   checkpoint/configuration, checkpoint epoch (parsed directly from the checkpoint
   path), score, VAL evidence, terminal condition, and source
@@ -63,6 +66,9 @@ cluster filesystem.
 - `mcts_progressive_widening_pilot/results.csv`: terminal PW/fixed-top-5
   results joined to their matched policy and fixed-top-20 baselines. Running
   rows remain in `live_jobs.csv` until they become static.
+- `mcts_progressive_widening_pilot/summary.csv`: completed ten-seed matched
+  coverage, runtime, paired inference, and weighted node/root branching
+  summaries for fixed top-5 and both progressive-widening variants.
 - `mcts_counters_width_sensitivity/main_term_stage2_narrow_held_manifest.csv`
   and its submission ledger: the twenty held MAIN-TERM Stage-2 Counters
   width-5/20 replacements. The obsolete held width-20/70 jobs were cancelled
@@ -70,6 +76,11 @@ cluster filesystem.
 - `large_log_compaction_20260827.csv`: immutable verification/deletion ledger
   for the 17 debug-spam logs compacted on 2026-08-27. It records source and
   compact checksums and exact reclaimed bytes.
+- Cluster job `20652215` is the read-only post-compaction audit. It inventories
+  every file above 25 MiB, directory usage to depth four, modification times,
+  extensions, and experiment-output domains. Its partial inventory already
+  identifies 743 files above 25 MiB and multiple remaining Counters logs of
+  0.7--1.0 GB that fell below the previous unique-file threshold.
 - `four_domain_preservation/zenotravel_anchor_evidence.csv`: the 28-lineage
   replay that reproduces the frozen Zenotravel coefficients. Delivery and TPP
   use the same validated finalizer after their remaining lineages terminate.
@@ -77,6 +88,14 @@ cluster filesystem.
   training experiment. It records the required learning-curve policy work,
   required endpoint MCTS comparisons, materialized entry counts, and deliberate
   exclusions. Refresh it whenever training creates new checkpoints.
+- `mcts_progressive_widening_sensitivity/manifest.csv`: predeclared two-seed
+  SAFE+PW sensitivity gate with sixteen one-factor-at-a-time jobs.
+- `mcts_safe_drone/targeted_results_20260828.csv`: frozen outcomes for the four
+  targeted SAFE cases. The broader jobs were cancelled after those targets
+  completed because the older skip-list transport expanded their scope.
+- `mcts_counters_width_sensitivity/stage2_narrow_release.csv`: the twenty and
+  only twenty Stage-2 Counters width-5/20 jobs released from the legacy hold on
+  2026-08-28.
 
 ## Provenance rules
 

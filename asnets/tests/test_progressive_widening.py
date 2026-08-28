@@ -218,6 +218,15 @@ class ProgressiveWideningTests(unittest.TestCase):
                 FakeNetwork(), FakeContext(), expansion_k=2,
                 pw_min_width=3)
 
+    def test_compact_distribution_helpers(self):
+        counts = training.Counter({0: 5, 2: 3, 5: 1})
+        self.assertEqual(
+            self.mcts._compact_hist(counts), "0=5,2=3,5=1")
+        self.assertEqual(self.mcts._visit_bucket(0), "0")
+        self.assertEqual(self.mcts._visit_bucket(4), "3-4")
+        self.assertEqual(self.mcts._visit_bucket(65), "65-128")
+        self.assertEqual(self.mcts._visit_bucket(129), "129+")
+
 
 class FixedExpansionRegressionTests(unittest.TestCase):
     def test_fixed_expansion_keeps_parent_leaf_evaluation_semantics(self):

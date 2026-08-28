@@ -1,0 +1,4 @@
+variant,n,mean_score,matched_top20_mean,paired_delta,paired_delta_ci_low,paired_delta_ci_high,raw_exact_signflip_p,mean_runtime_hours,matched_top20_runtime_hours,paired_runtime_delta_hours,runtime_delta_ci_low,runtime_delta_ci_high,runtime_exact_signflip_p,weighted_mean_children_all_nodes,weighted_mean_root_children,summed_retained_nodes,summed_search_calls
+fixed_top5,10,8.70,8.60,0.10,-0.31,0.51,1.000000,11.236,11.831,-0.595,-1.513,0.323,0.230469,1.3269,4.7754,3622099,20251
+progressive_c0p6,10,6.70,8.60,-1.90,-3.35,-0.45,0.019531,8.119,11.831,-3.712,-5.630,-1.794,0.001953,1.2516,5.0638,692524,24303
+progressive_c1p0,10,6.20,8.60,-2.40,-3.92,-0.88,0.003906,5.028,11.831,-6.803,-8.029,-5.576,0.001953,1.2603,5.0212,319398,26435
