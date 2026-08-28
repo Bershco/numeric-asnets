@@ -242,6 +242,28 @@ class CanonicalState(object):
                              "using .aux_data attribute.")
         return self._aux_data
 
+    def get_aux_data_dimension(self, dim_name: str) -> np.ndarray:
+        """Return one named per-action auxiliary feature as a flat vector.
+
+        Auxiliary data may contain several generators.  Callers that need the
+        action-history context must not hash the complete auxiliary tensor:
+        unrelated present or future features would silently change MCTS node
+        identity.  This accessor isolates exactly the requested column.
+        """
+        if self._aux_data is None:
+            raise ValueError("Auxiliary data has not been populated")
+        if not self._aux_data_interp:
+            raise KeyError(dim_name)
+        try:
+            dim_idx = self._aux_data_interp_to_id[dim_name]
+        except (AttributeError, KeyError):
+            try:
+                dim_idx = self._aux_data_interp.index(dim_name)
+            except ValueError as exc:
+                raise KeyError(dim_name) from exc
+        matrix = self._aux_data.reshape((-1, len(self._aux_data_interp)))
+        return np.ascontiguousarray(matrix[:, dim_idx], dtype=np.float32)
+
     def populate_aux_data(self,
                           data_gens: Iterable['ActionDataGenerator'],
                           *,

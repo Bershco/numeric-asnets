@@ -186,11 +186,13 @@ score column. Never present a dash as though it were a score. A seed lacking a
 matched policy or baseline belongs in a separate progress/provenance table until
 that value is recovered.
 
-Every progressive-widening result table includes the matched policy-only and
-fixed top-20 score when those observations exist. Every Counters narrow Stage-1
-row includes its matched policy and normal width-20/70 result; Stage-2 narrow
-rows include policy only because Stage-2 normal MCTS is intentionally outside
-the current comparison.
+Every result table—not only Counters—must be comparative. Search experiments
+include the matched policy-only result and the declared search baseline whenever
+those observations exist; training experiments include the relevant Stage-1
+and Stage-2 endpoints. Every progressive-widening row therefore includes
+matched policy-only and fixed top-20 scores. Every Counters narrow Stage-1 row
+includes matched policy and normal width-20/70; Stage-2 narrow includes policy
+only because Stage-2 normal MCTS is intentionally outside that comparison.
 
 `experiments.csv` is the legacy seed used to construct `experiment_registry.csv`.
 The obsolete `completed_results.csv`, `statistics.csv`, and `held_work.csv`

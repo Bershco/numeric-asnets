@@ -78,11 +78,23 @@ class FakeTensor:
 
 
 class FakeState:
-    def __init__(self, key, depth=0, goal=False, terminal=False):
+    def __init__(self, key, depth=0, goal=False, terminal=False,
+                 action_counts=None, unrelated_aux=0.0):
         self.state_key = key.encode("ascii")
         self.depth = depth
         self.is_goal = goal
         self.is_terminal = terminal
+        self.action_counts = np.asarray(
+            [0.0, 0.0, 0.0, 0.0]
+            if action_counts is None else action_counts,
+            dtype=np.float32,
+        )
+        self.unrelated_aux = unrelated_aux
+
+    def get_aux_data_dimension(self, dim_name):
+        if dim_name != "action_count":
+            raise KeyError(dim_name)
+        return self.action_counts
 
     def to_network_input(self):
         return np.asarray([self.depth], dtype=np.float32)
@@ -152,6 +164,49 @@ class FixedChildMapTests(unittest.TestCase):
         self.assertEqual(children[2], first)
         self.assertEqual(children.visits.tolist(), [0, 1])
         self.assertEqual(children.priors.dtype, np.float32)
+
+
+class ContextIdentityTests(unittest.TestCase):
+    def test_digest_uses_action_count_only(self):
+        first = FakeState(
+            "same", action_counts=[1, 2, 3, 4], unrelated_aux=10)
+        second = FakeState(
+            "same", action_counts=[1, 2, 3, 4], unrelated_aux=999)
+        changed = FakeState(
+            "same", action_counts=[1, 2, 4, 4], unrelated_aux=10)
+
+        self.assertEqual(
+            search.action_history_digest(first),
+            search.action_history_digest(second),
+        )
+        self.assertNotEqual(
+            search.action_history_digest(first),
+            search.action_history_digest(changed),
+        )
+
+    def test_contextual_registry_separates_histories(self):
+        mcts = training.TrainingMCTS(
+            FakeNetwork(), FakeContext(), contextual_nodes=True)
+        first = FakeState("same", action_counts=[1, 0, 0, 0])
+        second = FakeState("same", action_counts=[0, 1, 0, 0])
+        self.assertNotEqual(
+            mcts.node_registry_key(first), mcts.node_registry_key(second))
+        self.assertEqual(
+            mcts.node_registry_key(first)[0],
+            mcts.node_registry_key(second)[0],
+        )
+
+    def test_contextual_cycle_mask_uses_physical_state(self):
+        mcts = training.TrainingMCTS(
+            FakeNetwork(), FakeContext(), contextual_nodes=True)
+        parent = make_node(FakeState("same", action_counts=[1, 0, 0, 0]))
+        child = make_node(FakeState("same", action_counts=[2, 0, 0, 0]))
+        parent.children = search.FixedChildMap([0], [child], [1.0])
+        mcts._select_counter = 1
+        action, selected = mcts._puct_select_argmax(
+            parent, forbidden_physical_keys={parent.state_key})
+        self.assertIsNone(action)
+        self.assertIsNone(selected)
 
 
 class ProgressiveWideningTests(unittest.TestCase):

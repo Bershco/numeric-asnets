@@ -177,6 +177,40 @@ The implemented intermediate correction consists only of:
 - cutoff and infeasible-goal diagnostics;
 - existing state-only transpositions.
 
+### Action-history-aware transpositions (MCTS-SAFE-CONTEXT)
+
+Numeric ASNets may include one cumulative count per grounded action in the
+network input. The physical MCTS key omits that vector, so old behavior can
+reuse priors, values, visits, and children obtained under a different action
+history. SAFE-CONTEXT separates the identities:
+
+- cycle identity remains the physical state;
+- node/cache identity becomes `(physical_state_key, action_count_digest)`;
+- the fixed 128-bit BLAKE2 digest covers **only** the named `action_count`
+  column, never all auxiliary data;
+- selection keeps an explicit physical-state path set, so contextual nodes do
+  not weaken cycle blocking;
+- diagnostics retain compact counters and at most 128 detailed witnesses per
+  worker, including action-count distance and policy/value disagreement;
+- no growing action-history list is stored per node.
+
+The diagnostic pilot uses Drone, Rover, Counters, and Block Grouping; one seed
+and VH mode; three representative instances; one worker; at most 100 external
+actions; width 20; and 70 simulations. The separate MCTS-SAFE-2 proposal keys
+statistics by `(state, remaining horizon)` and remains explicitly held because
+combining both context dimensions immediately would confound effects and may
+multiply memory in two dimensions.
+
+### Binding-horizon efficacy experiment
+
+The original Horizon pilot was non-binding: every job recorded zero cutoff
+events. The replacement uses fresh aware and unaware arms from the same commit.
+Drone receives a shared 750-action limit: the largest previously successful
+matched Drone plan in the authoritative audit is 651 actions, leaving a
+99-action margin while making the horizon relevant to long wandering failures.
+The design is five matched seeds, both VH modes, two arms, width 20, 70
+simulations, SAFE-1 enabled in both arms, and progressive widening disabled.
+
 ## 7. Defaults and removed option
 
 Production callers already selected maximization because they passed

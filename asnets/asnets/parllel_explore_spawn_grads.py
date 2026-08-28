@@ -737,6 +737,9 @@ class SpawnExploreSpec:
     evaluation_index: Optional[int] = None
     mcts_enforce_remaining_horizon: bool = False
     mcts_terminal_safe_action_selection: bool = False
+    mcts_context_diagnostics: bool = False
+    mcts_contextual_nodes: bool = False
+    mcts_context_witness_limit: int = 128
 
     def __str__(self) -> str:
         """A stylized and grouped representation of the spec."""
@@ -861,6 +864,11 @@ list[SpawnExploreSpec]:
             mcts_terminal_safe_action_selection=(
                 evaluation_mode
                 and args.eval_mcts_terminal_safe_action_selection),
+            mcts_context_diagnostics=(
+                evaluation_mode and args.eval_mcts_context_diagnostics),
+            mcts_contextual_nodes=(
+                evaluation_mode and args.eval_mcts_contextual_nodes),
+            mcts_context_witness_limit=args.eval_mcts_context_witness_limit,
             fixed_instance_pddl=args.fixed_instance,
             mcts_exploration_weight=args.mcts_exploration_weight,
             action_policy=args.action_policy,

@@ -457,6 +457,16 @@ parser.add_argument(
         'children whenever a safe child exists. Safe duplicate actions are '
         'restored before any terminal fallback.'))
 parser.add_argument(
+    '--eval-mcts-context-diagnostics', action='store_true', default=False,
+    help='Measure action-history aliasing during MCTS evaluation.')
+parser.add_argument(
+    '--eval-mcts-contextual-nodes', action='store_true', default=False,
+    help=('Key node statistics by physical state plus action-count context; '
+          'physical state remains the cycle-detection identity.'))
+parser.add_argument(
+    '--eval-mcts-context-witness-limit', type=int, default=128,
+    help='Maximum detailed context-collision witnesses per worker.')
+parser.add_argument(
     '--eval-start-wave',
     type=int,
     default=1,
@@ -870,6 +880,7 @@ def evaluation_signature(args):
     payload = json.dumps({
         'instances': list(enumerate(args.pddls[1:], 1)),
         'checkpoint': args.resume_from,
+        'limit_turns': args.limit_turns,
         'eval_with_mcts': args.eval_with_mcts,
         'seed': args.seed,
         'minimization': args.minimization,
@@ -886,6 +897,9 @@ def evaluation_signature(args):
             args.eval_mcts_enforce_remaining_horizon),
         'mcts_terminal_safe_action_selection': (
             args.eval_mcts_terminal_safe_action_selection),
+        'mcts_context_diagnostics': args.eval_mcts_context_diagnostics,
+        'mcts_contextual_nodes': args.eval_mcts_contextual_nodes,
+        'mcts_context_witness_limit': args.eval_mcts_context_witness_limit,
     }, separators=(',', ':'), ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
@@ -1402,6 +1416,11 @@ def main():
         parser.error(
             '--eval-mcts-terminal-safe-action-selection requires '
             '--eval-with-mcts')
+    if ((args.eval_mcts_context_diagnostics
+         or args.eval_mcts_contextual_nodes) and not args.eval_with_mcts):
+        parser.error('MCTS context options require --eval-with-mcts')
+    if args.eval_mcts_context_witness_limit < 0:
+        parser.error('--eval-mcts-context-witness-limit cannot be negative')
     if args.mcts_pw_min_width < 1:
         parser.error('--mcts-pw-min-width must be at least 1')
     if args.mcts_pw_min_width > args.mcts_expansion_size:

@@ -1,4 +1,5 @@
 import gc
+import hashlib
 import logging
 from array import array
 import bisect
@@ -15,12 +16,27 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
 
+def action_history_digest(state: CanonicalState) -> bytes | None:
+    """Hash only the per-ground-action ``action_count`` feature."""
+    try:
+        action_counts = state.get_aux_data_dimension("action_count")
+    except (AttributeError, KeyError, ValueError):
+        return None
+    canonical = np.asarray(action_counts, dtype="<f4").tobytes(order="C")
+    return hashlib.blake2b(
+        canonical,
+        digest_size=16,
+        person=b"asnet-act-count",
+    ).digest()
+
+
 class MCTSNode:
     delete_counter = 0
     __slots__ = (
         "state", "cost_until_now", "children", "goal_state", "terminal_state", "as_network_input",
         "applicable_action_mask", "act_dist", "pred_value", "Q_value", "known_distance_to_goal", "best_goal_child",
         "visit_count", "last_select_id", "parents", "root_visit_count", "on_trajectory",
+        "action_history_digest",
     )
 
     def __init__(self,
@@ -44,6 +60,7 @@ class MCTSNode:
         self.last_select_id = -1
         self.parents: list[tuple["MCTSNode", int]] = [] # list of tuples of (parent, action)
         self.on_trajectory = False
+        self.action_history_digest = None
 
     def is_terminal(self):
         """Returns True if the node has no children"""
@@ -208,7 +225,7 @@ class MCTS:
         self.original_tree_root: Optional[MCTSNode] = None
         self.exploration_weight = exploration_weight
         self.path_until_goal = None
-        self.state_key_to_node: dict[bytes, MCTSNode] = {}
+        self.state_key_to_node: dict[Any, MCTSNode] = {}
         self.network = network
 
         self.sign = -1 if minimization else 1 # This turns selection to argmax(U-Q) instead of argmax(Q+U) in the maximization setting
@@ -242,6 +259,14 @@ class MCTS:
             self.select_stop_frontier = 0
             self.select_stop_cycle_blocked = 0
             self.cycle_blocked_depths = []
+
+    def node_registry_key(self, state: CanonicalState):
+        """Return the node-statistics identity for a canonical state.
+
+        The default remains the physical-state key.  Context-aware subclasses
+        may override this while retaining the physical key for cycle safety.
+        """
+        return state.state_key
 
     def get_select_depth_stats(self):
         import numpy as np
@@ -368,10 +393,12 @@ class MCTS:
             same_action_streak = 0
             max_same_action_streak = 0
         node_path = []
+        physical_path = set()
         self._select_counter += 1
         depth = 0
         while True:
             node_path.append(node)
+            physical_path.add(node.state_key)
             selection_depth = depth
             if node.children is not None:
                 band = self._depth_band(selection_depth)
@@ -398,7 +425,14 @@ class MCTS:
             childmap = node.children
             if childmap is None or childmap.is_empty():
                 return node_path, "frontier"
-            action, child = self._puct_select_argmax(node)
+            action, child = self._puct_select_argmax(
+                node,
+                forbidden_physical_keys=(
+                    physical_path
+                    if getattr(self, "contextual_nodes", False)
+                    else None
+                ),
+            )
 
             if self.select_logging:
                 if prev_action is not None and action == prev_action:
@@ -561,7 +595,7 @@ class MCTS:
     def get_applicable_action_mask(self, node: MCTSNode):
         return node.applicable_action_mask
 
-    def _puct_select_argmax(self, node):
+    def _puct_select_argmax(self, node, forbidden_physical_keys=None):
         children = node.children
         actions = children.actions_np
         child_list = children._values
@@ -580,6 +614,9 @@ class MCTS:
                 scores.append(s)
             if child.last_select_id == sid:
                 continue
+            if (forbidden_physical_keys is not None
+                    and child.state_key in forbidden_physical_keys):
+                continue
             if s > best_score:
                 best_score = s
                 best_idx = i
@@ -589,7 +626,9 @@ class MCTS:
             threshold = best_score - 1e-1
             effective_branching = 0
             for i, child in enumerate(child_list):
-                if child.last_select_id == sid:
+                if (child.last_select_id == sid
+                        or (forbidden_physical_keys is not None
+                            and child.state_key in forbidden_physical_keys)):
                     continue
                 if scores[i] >= threshold:
                     effective_branching += 1

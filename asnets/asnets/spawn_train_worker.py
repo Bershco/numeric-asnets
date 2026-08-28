@@ -1322,6 +1322,9 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
             pw_min_width=inp.spec.mcts_pw_min_width,
             pw_c=inp.spec.mcts_pw_c,
             pw_alpha=inp.spec.mcts_pw_alpha,
+            context_diagnostics=inp.spec.mcts_context_diagnostics,
+            contextual_nodes=inp.spec.mcts_contextual_nodes,
+            context_witness_limit=inp.spec.mcts_context_witness_limit,
         )
         cstate = ctx.get_init_state()
         max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))

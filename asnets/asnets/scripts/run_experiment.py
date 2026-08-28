@@ -432,6 +432,18 @@ parser.add_argument(
         'During final MCTS evaluation, exclude known terminal non-goal '
         'children whenever a safe child exists.'))
 parser.add_argument(
+    '--eval-mcts-context-diagnostics', action='store_true', default=False,
+    help='Measure action-history aliasing during MCTS evaluation.')
+parser.add_argument(
+    '--eval-mcts-contextual-nodes', action='store_true', default=False,
+    help='Use action-count-aware MCTS node statistics during evaluation.')
+parser.add_argument(
+    '--eval-mcts-context-witness-limit', type=int, default=128,
+    help='Maximum detailed context-collision witnesses per worker.')
+parser.add_argument(
+    '--eval-max-actions', type=int, default=None,
+    help='Override the architecture evaluation action limit.')
+parser.add_argument(
     '--eval-start-wave',
     type=int,
     default=1,
@@ -736,6 +748,12 @@ def main():
                    args.eval_mcts_enforce_remaining_horizon),
                eval_mcts_terminal_safe_action_selection=(
                    args.eval_mcts_terminal_safe_action_selection),
+               eval_mcts_context_diagnostics=(
+                   args.eval_mcts_context_diagnostics),
+               eval_mcts_contextual_nodes=args.eval_mcts_contextual_nodes,
+               eval_mcts_context_witness_limit=(
+                   args.eval_mcts_context_witness_limit),
+               eval_max_actions=args.eval_max_actions,
                eval_start_wave=args.eval_start_wave,
                eval_scheduling=args.eval_scheduling,
                skip_instance_numbers=args.skip_instance_numbers,
@@ -796,6 +814,10 @@ def main_inner(*,
                eval_with_mcts=False,
                eval_mcts_enforce_remaining_horizon=False,
                eval_mcts_terminal_safe_action_selection=False,
+               eval_mcts_context_diagnostics=False,
+               eval_mcts_contextual_nodes=False,
+               eval_mcts_context_witness_limit=128,
+               eval_max_actions=None,
                eval_start_wave=1,
                eval_scheduling='wave',
                skip_instance_numbers='',
@@ -985,6 +1007,21 @@ evaluation = {"off" if no_eval else "on"}
                 '--eval-with-mcts')
         main_test_flags.append(
             '--eval-mcts-terminal-safe-action-selection')
+    if eval_mcts_context_diagnostics:
+        if not eval_with_mcts:
+            raise ValueError(
+                '--eval-mcts-context-diagnostics requires --eval-with-mcts')
+        main_test_flags.append('--eval-mcts-context-diagnostics')
+    if eval_mcts_contextual_nodes:
+        if not eval_with_mcts:
+            raise ValueError(
+                '--eval-mcts-contextual-nodes requires --eval-with-mcts')
+        main_test_flags.append('--eval-mcts-contextual-nodes')
+    if eval_mcts_context_witness_limit != 128:
+        main_test_flags.extend([
+            '--eval-mcts-context-witness-limit',
+            str(eval_mcts_context_witness_limit),
+        ])
     if eval_start_wave != 1:
         main_test_flags.extend(['--eval-start-wave', str(eval_start_wave)])
     main_test_flags.extend(['--eval-scheduling', eval_scheduling])
@@ -1004,6 +1041,10 @@ evaluation = {"off" if no_eval else "on"}
     main_test_flags.extend(build_arch_flags(
         arch_mod, is_train=False,
         override_enhsp_config=override_enhsp_config))
+    if eval_max_actions is not None:
+        if eval_max_actions < 1:
+            raise ValueError('--eval-max-actions must be positive')
+        main_test_flags.extend(['-L', str(eval_max_actions)])
 
     if random_seed is not None:
         main_test_flags.extend(['--seed', str(random_seed)])

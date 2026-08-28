@@ -10,7 +10,9 @@ from asnets.spawn_context import LocalExploreContext
 from asnets.state_reprs import CanonicalState
 from asnets.utils.pddl_utils import replace_init_state, hlist_to_sexprs
 from .enhspwrapper import EstimatorMode
-from .monte_carlo_tree_search import MCTS, wrapInMCTSNode, FixedChildMap, MCTSNode
+from .monte_carlo_tree_search import (
+    MCTS, wrapInMCTSNode, FixedChildMap, MCTSNode, action_history_digest,
+)
 
 
 class TrainingMCTS(MCTS):
@@ -24,7 +26,9 @@ class TrainingMCTS(MCTS):
                  exploration_weight=1.0, sharpen_pi=1.0, one_hot_distance_gamma=0.999,
                  select_logging=False, estimator_coeff=0.0, puct_debug=False,
                  minimization=False, progressive_widening=False,
-                 pw_min_width=2, pw_c=0.6, pw_alpha=0.5):
+                 pw_min_width=2, pw_c=0.6, pw_alpha=0.5,
+                 context_diagnostics=False, contextual_nodes=False,
+                 context_witness_limit=128):
         super().__init__(exploration_weight, network=network, select_logging=select_logging, minimization=minimization)
         if expansion_k < 1:
             raise ValueError("expansion_k must be at least 1")
@@ -52,6 +56,74 @@ class TrainingMCTS(MCTS):
         self.admitted_policy_rank_hist = Counter()
         self.successor_generation_seconds = 0.0
         self.network_inference_seconds = 0.0
+        self.context_diagnostics = bool(context_diagnostics)
+        self.contextual_nodes = bool(contextual_nodes)
+        self.context_witness_limit = int(context_witness_limit)
+        if self.context_witness_limit < 0:
+            raise ValueError("context_witness_limit cannot be negative")
+        self.context_observations = 0
+        self.context_physical_revisits = 0
+        self.context_mismatches = 0
+        self.context_tracking_overflow = 0
+        self.context_first_digest = {}
+        self.context_first_node = {}
+        self.context_witnesses = []
+
+    def node_registry_key(self, state: CanonicalState):
+        if not self.contextual_nodes:
+            return state.state_key
+        digest = action_history_digest(state)
+        if digest is None:
+            raise ValueError(
+                "contextual_nodes requires the action_count input feature")
+        return (state.state_key, digest)
+
+    @staticmethod
+    def _action_counts(state: CanonicalState):
+        try:
+            return state.get_aux_data_dimension("action_count")
+        except (AttributeError, KeyError, ValueError):
+            return None
+
+    def _observe_context(self, state: CanonicalState, reused_node=None):
+        if not self.context_diagnostics:
+            return None
+        self.context_observations += 1
+        digest = action_history_digest(state)
+        physical = state.state_key
+        first = self.context_first_digest.get(physical)
+        if first is None:
+            if len(self.context_first_digest) < 100_000:
+                self.context_first_digest[physical] = digest
+            else:
+                self.context_tracking_overflow += 1
+            return
+        self.context_physical_revisits += 1
+        if first == digest:
+            return None
+        self.context_mismatches += 1
+        comparison_node = reused_node or self.context_first_node.get(physical)
+        if (comparison_node is None
+                or len(self.context_witnesses) >= self.context_witness_limit):
+            return None
+        current = self._action_counts(state)
+        cached = self._action_counts(comparison_node.state)
+        l1 = None
+        if current is not None and cached is not None:
+            l1 = float(np.abs(current - cached).sum())
+        witness = {
+            "physical_key": physical.hex(),
+            "cached_digest": (
+                None if comparison_node.action_history_digest is None
+                else comparison_node.action_history_digest.hex()),
+            "current_digest": None if digest is None else digest.hex(),
+            "action_count_l1": l1,
+            "policy_l1": None,
+            "policy_max_abs": None,
+            "value_abs": None,
+        }
+        self.context_witnesses.append(witness)
+        return witness, comparison_node
 
     def get_single_node_policy_value(self, node, training=False):
         if self.network.value_network_enabled:
@@ -128,6 +200,7 @@ class TrainingMCTS(MCTS):
 
         actions, children_nodes, edge_priors = [], [], []
         children_network_repr = []
+        context_comparisons = []
 
         ranked_actions = self._ranked_unexpanded_actions(node)
         if force_single_admission:
@@ -161,9 +234,14 @@ class TrainingMCTS(MCTS):
                 applicable_action_mask,
         ) in results:
 
-            state_key = cstate.state_key
+            state_key = self.node_registry_key(cstate)
 
             node_entry = self.state_key_to_node.get(state_key)
+            context_observation = self._observe_context(cstate, node_entry)
+            if context_observation is not None:
+                witness, comparison_node = context_observation
+                context_comparisons.append((
+                    witness, comparison_node, cstate.to_network_input()))
 
             if node_entry is None:
 
@@ -176,6 +254,14 @@ class TrainingMCTS(MCTS):
             else:
 
                 wrapped_output_cstate = node_entry
+            if ((self.context_diagnostics or self.contextual_nodes)
+                    and wrapped_output_cstate.action_history_digest is None):
+                wrapped_output_cstate.action_history_digest = (
+                    action_history_digest(wrapped_output_cstate.state))
+            if (self.context_diagnostics
+                    and cstate.state_key not in self.context_first_node
+                    and len(self.context_first_node) < 100_000):
+                self.context_first_node[cstate.state_key] = wrapped_output_cstate
             if self.puct_debug:
                 wrapped_output_cstate.add_parent(node, action_id)
 
@@ -203,6 +289,30 @@ class TrainingMCTS(MCTS):
                 for i, child in enumerate(children_nodes):
                     child.act_dist = pred_pi_batch[i]
                     child.pred_value = self.worst_value() if not child.goal_state else self.best_value()
+            self.network_inference_seconds += perf_counter() - started
+
+        if context_comparisons:
+            started = perf_counter()
+            comparison_batch = tf.stack(
+                [entry[2] for entry in context_comparisons])
+            if self.network.value_head_enabled:
+                new_pi, new_v = self.network(
+                    comparison_batch, training=False)
+                new_v = new_v.numpy().flatten()
+            else:
+                new_pi = self.network(comparison_batch, training=False)
+                new_v = [None] * len(context_comparisons)
+            new_pi = new_pi.numpy().astype(np.float32, copy=False)
+            for idx, (witness, cached_node, _) in enumerate(
+                    context_comparisons):
+                if cached_node.act_dist is not None:
+                    delta = np.abs(new_pi[idx] - cached_node.act_dist)
+                    witness["policy_l1"] = float(delta.sum())
+                    witness["policy_max_abs"] = float(delta.max())
+                if (new_v[idx] is not None
+                        and cached_node.pred_value is not None):
+                    witness["value_abs"] = float(
+                        abs(float(new_v[idx]) - cached_node.pred_value))
             self.network_inference_seconds += perf_counter() - started
 
         if node.children is None:
@@ -290,10 +400,16 @@ class TrainingMCTS(MCTS):
     def initialise_tree(self, cstate) -> None:
         """Start a new tree for a fresh episode."""
         self.curr_tree_root = wrapInMCTSNode(state=cstate, cost_until_now=0)
+        if self.context_diagnostics or self.contextual_nodes:
+            self.curr_tree_root.action_history_digest = (
+                action_history_digest(cstate))
         self.curr_tree_root.on_trajectory = True
         self.original_tree_root = self.curr_tree_root
         self.ensure_root_act_dist_value()
-        self.state_key_to_node[cstate.state_key] = self.curr_tree_root
+        self.state_key_to_node[self.node_registry_key(cstate)] = self.curr_tree_root
+        if self.context_diagnostics:
+            self.context_first_digest[cstate.state_key] = action_history_digest(cstate)
+            self.context_first_node[cstate.state_key] = self.curr_tree_root
 
     def compute_pi_z_for_node(self, node: MCTSNode, act_dim) -> tuple[np.ndarray, float]:
         assert node.children is not None
@@ -502,6 +618,21 @@ class TrainingMCTS(MCTS):
             f"backpropagation={self.backpropagation_seconds:.6f}s",
             flush=True,
         )
+        if self.context_diagnostics:
+            print(
+                "[MCTS CONTEXT SUMMARY] "
+                f"contextual_nodes={self.contextual_nodes} "
+                f"observations={self.context_observations} "
+                f"physical_revisits={self.context_physical_revisits} "
+                f"context_mismatches={self.context_mismatches} "
+                f"tracked_physical={len(self.context_first_digest)} "
+                f"node_multiplier={(len(self.state_key_to_node) / max(1, len(self.context_first_digest))):.3f} "
+                f"tracking_overflow={self.context_tracking_overflow} "
+                f"witnesses={len(self.context_witnesses)}",
+                flush=True,
+            )
+            for witness in self.context_witnesses:
+                print(f"[MCTS CONTEXT WITNESS] {witness}", flush=True)
 
     def step_forward(self, action_id):
         """Re-root at chosen child and prune irrelevant branches."""
@@ -523,7 +654,7 @@ class TrainingMCTS(MCTS):
             if cstate is None:
                 node = self.curr_tree_root
             else:
-                node = self.state_key_to_node[cstate.state_key]
+                node = self.state_key_to_node[self.node_registry_key(cstate)]
         assert node.children is not None, "No children, no mask!"
         mask = np.zeros(act_dim, dtype=bool)
 
@@ -580,7 +711,8 @@ class TrainingMCTS(MCTS):
 
     def get_children_of(self, cstate: CanonicalState) -> list:
         return [(act, child_node.state) for act, child_node in
-                self.state_key_to_node[cstate.state_key].children.items()]
+                self.state_key_to_node[
+                    self.node_registry_key(cstate)].children.items()]
 
     def count_subtrees_with_goal(self):
         return sum(1 for node in self.state_key_to_node.values() if node.known_distance_to_goal)
@@ -622,7 +754,8 @@ class TrainingMCTS(MCTS):
         closest: Optional[MCTSNode] = None
         closest_ind: int = -1
         for i, item in enumerate(trajectory_info):
-            node = self.state_key_to_node[item['state'].state_key]
+            node = self.state_key_to_node[
+                self.node_registry_key(item['state'])]
             if node.known_distance_to_goal < np.inf:
                 if closest is None or node.known_distance_to_goal < closest.known_distance_to_goal:
                     closest = node
@@ -637,7 +770,8 @@ class TrainingMCTS(MCTS):
         seen_states: set[CanonicalState] = set()
         all_paths = []
         for i, item in enumerate(trajectory_info):
-            node = self.state_key_to_node[item['state'].state_key]
+            node = self.state_key_to_node[
+                self.node_registry_key(item['state'])]
             if node.known_distance_to_goal == np.inf:
                 continue
             path = self.reconstruct_goal_path(node, seen_states, one_hot_pi_z=one_hot_pi_z)
