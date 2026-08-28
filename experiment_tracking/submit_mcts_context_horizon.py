@@ -43,6 +43,11 @@ def submit(campaign, dry_run=False):
             TRACKING / "mcts_horizon_binding/evaluate_horizon.sbatch",
             TRACKING / "mcts_horizon_binding/submissions.tsv",
         ),
+        "context-full": (
+            TRACKING / "mcts_safe_context/full_manifest.csv",
+            TRACKING / "mcts_safe_context/evaluate_full.sbatch",
+            TRACKING / "mcts_safe_context/full_submissions.tsv",
+        ),
     }[campaign]
     manifest, sbatch, ledger = cfg
     with manifest.open(newline="", encoding="utf-8") as stream:
@@ -63,11 +68,12 @@ def submit(campaign, dry_run=False):
         if stream.tell() == 0:
             writer.writeheader()
         for idx, row in enumerate(rows, 1):
-            manifest_id = (
-                f"context-{row['domain']}-{row['value_head']}-{row['seed']}"
-                if campaign == "context" else
-                f"horizon-drone-{row['value_head']}-{row['seed']}-{row['arm']}"
-            )
+            if campaign == "context":
+                manifest_id = f"context-{row['domain']}-{row['value_head']}-{row['seed']}"
+            elif campaign == "context-full":
+                manifest_id = f"context-full-drone-{row['value_head']}-{row['seed']}-{row['arm']}"
+            else:
+                manifest_id = f"horizon-drone-{row['value_head']}-{row['seed']}-{row['arm']}"
             if manifest_id in existing:
                 continue
             key = (row["domain"], row["value_head"], row["seed"])
@@ -90,14 +96,16 @@ def submit(campaign, dry_run=False):
             output_root = (
                 "/home/hersco/training_new_domains/2026-08-28/"
                 + ("mcts_safe_context" if campaign == "context"
-                   else "mcts_horizon_binding"))
+                   else ("mcts_safe_context_full" if campaign == "context-full"
+                         else "mcts_horizon_binding")))
             if dry_run:
                 print(
                     f"DRY_RUN|{manifest_id}|checkpoint={checkpoint}|"
                     f"sbatch={sbatch}")
                 continue
             result = subprocess.run([
-                "sbatch", f"--job-name={manifest_id}",
+                "sbatch", *( ["--hold"] if campaign == "context-full" else [] ),
+                f"--job-name={manifest_id}",
                 f"--output={output_root}/%x_%j.out",
                 "--export=" + ",".join(exports), str(sbatch),
             ], check=True, text=True, capture_output=True)
@@ -113,7 +121,8 @@ def submit(campaign, dry_run=False):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("campaign", choices=("context", "horizon"))
+    parser.add_argument(
+        "campaign", choices=("context", "context-full", "horizon"))
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     submit(args.campaign, dry_run=args.dry_run)
