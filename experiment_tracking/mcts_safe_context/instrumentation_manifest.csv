@@ -1,5 +1,5 @@
 experiment_id,domain,value_head,seed,instances,workers,max_actions,width,iterations,context_diagnostics,contextual_nodes,witness_limit,status,job_id,source_log
-MCTS-SAFE-CONTEXT-DIAG,drone,off,1963100312,"easy;median;hard",1,100,20,70,true,false,128,ready,,
-MCTS-SAFE-CONTEXT-DIAG,rover,off,1963100312,"easy;median;hard",1,100,20,70,true,false,128,ready,,
-MCTS-SAFE-CONTEXT-DIAG,counters,off,1963100312,"easy;median;hard",1,100,20,70,true,false,128,ready,,
-MCTS-SAFE-CONTEXT-DIAG,block_grouping,off,1963100312,"easy;median;hard",1,100,20,70,true,false,128,ready,,
+MCTS-SAFE-CONTEXT-DIAG,drone,off,1963100312,"easy;median;hard",1,100,20,70,true,true,128,ready,,
+MCTS-SAFE-CONTEXT-DIAG,rover,off,1963100312,"easy;median;hard",1,100,20,70,true,true,128,ready,,
+MCTS-SAFE-CONTEXT-DIAG,counters,off,1963100312,"easy;median;hard",1,100,20,70,true,true,128,ready,,
+MCTS-SAFE-CONTEXT-DIAG,block_grouping,off,1963100312,"easy;median;hard",1,100,20,70,true,true,128,ready,,
