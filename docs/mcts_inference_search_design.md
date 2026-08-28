@@ -381,12 +381,9 @@ timeouts, lower runtime and retained-node work, feasible-only known-goal
 chasing, and nonzero cutoff evidence showing that search was actually prevented
 from exceeding the remaining executable horizon.
 
-Ten matched Drone jobs were submitted as `20652251`--`20652260`. At the
-2026-08-28 07:50 snapshot, nine were running and one had completed inference at
-6/20 but failed only because the wrapper referenced a missing validator script.
-Its inference evidence is recoverable through post-hoc VAL. Current completion
-manifests already meet or exceed every matched fixed-top-20 baseline score as a
-lower bound.
+Ten matched Drone jobs were submitted as `20652251`--`20652260`; all ten
+inference logs were subsequently post-hoc VAL-confirmed. VH-off averaged 8.4,
+identical to its historical baseline. VH-on averaged 9.4 versus 8.8 historically.
 
 However, all compact summaries currently report `horizon_cutoffs=(count=0)`.
 Drone trajectories are far below the 10,000-action evaluation limit and its
@@ -397,6 +394,18 @@ horizon-constrained problem. A later efficacy experiment must predeclare a
 smaller common executable budget for both arms or use instances whose executed
 trajectories approach their existing limit.
 
+The apparent VH-on gain is not a horizon effect. Every run recorded zero
+cutoffs and zero horizon-infeasible known-goal decisions. The two differing
+seeds also changed successful-instance membership and plan lengths: seed
+1963100312 added `problem_8_1_2`; seed 2011206605 lost `problem_8_1_4` but added
+`problem_4_2_5`, `problem_5_2_2`, and `problem_6_8_1`. Shared successful plans
+were sometimes different too. Historical and new commands match except for the
+horizon flag, but the new run uses the newer worker-lifecycle/code checkout;
+separate TensorFlow/MDPSim worker executions are not bitwise reproducible. The
+gain is therefore recorded as run-to-run/build variation. A causal horizon
+claim requires fresh aware and unaware arms from one commit on a binding
+horizon.
+
 ## 13. Deferred experiments
 
 Do not run yet:
@@ -405,7 +414,8 @@ Do not run yet:
 - network-first preliminary-Q ablation;
 - estimator-at-admission ablation;
 - large `c`/`alpha` sweep;
-- widening across multiple selected-path nodes in one simulation;
+- MCTS-PW-PATHBATCH widening across multiple selected-path nodes in one
+  simulation;
 - combined progressive widening plus horizon correction before their separate
   effects are established.
 
@@ -516,10 +526,51 @@ The sound refactor would use:
 - the existing physical-state estimator cache where the estimator itself is
   genuinely history-independent.
 
+The context identifier must not be a growing Python list. Compute a canonical
+128-bit BLAKE2 digest from the already-existing contiguous `float32`
+`CanonicalState.aux_data` bytes. Each dictionary key then adds one fixed-size
+digest rather than another action-count vector. In debug/sampled runs, retain a
+small bounded digest-to-vector witness cache to assert that no observed digest
+collision maps two different vectors to the same context. The main memory risk
+is therefore not the 16-byte digest; it is creating multiple full `MCTSNode`
+objects for one physical state when multiple histories are genuinely present.
+
 Edges would point to context nodes. Cycle detection would compare only each
 node's physical key along the current trajectory, so creating multiple context
 nodes would not bypass duplicate safety. This costs transposition sharing and
 memory, hence collision instrumentation comes before the behavioral refactor.
+
+### Proposed MCTS-CONTEXT implementation diff
+
+1. `post_training/monte_carlo_tree_search.py`
+   - add fixed `physical_key` and `context_digest` fields to `MCTSNode`;
+   - rename the node registry to `context_key_to_node`;
+   - add counters for physical-key collisions, distinct contexts per physical
+     key, sampled action-count distance, and sampled policy/value disagreement.
+2. `post_training/training_mcts.py`
+   - compute the digest from `CanonicalState.aux_data` before node lookup;
+   - key node reuse by `(state.state_key, context_digest)`;
+   - keep estimator caching physical-state-only unless the estimator is later
+     shown to consume auxiliary history;
+   - keep trajectory cycle checks on `physical_key`, not `context_key`.
+3. `post_training/action_selection_policy.py`
+   - explicitly use physical identity for duplicate masks and SAFE fallbacks.
+4. `asnets/asnets/scripts/run_asnets.py` and `run_experiment.py`
+   - expose an instrumentation-only flag first; the behavioral contextual-node
+     flag remains separate and opt-in.
+5. Tests
+   - same physical state plus same history reuses a node;
+   - same physical state plus different history creates two context nodes;
+   - those two nodes still trigger physical-cycle protection;
+   - cached priors/values never cross contexts;
+   - bounded witness sampling and aggregate counters do not grow per visit.
+
+The instrumentation pilot is deliberately short: one seed and one VH mode in
+Drone, Rover, Counters and Block Grouping; three representative instances per
+domain; one worker; at most 100 external actions per instance; fixed width-20,
+70-simulation MCTS. It records aggregate collision/context counts and samples
+at most 128 disagreement witnesses per job. It is not a coverage experiment and
+does not run complete test suites.
 
 ## MCTS-SAFE-2: fully horizon-indexed search
 
@@ -531,3 +582,48 @@ incompatible remaining budgets. The live MCTS-HORIZON experiment implements
 only cutoff and feasible-goal chasing over state-only statistics; it is not
 MCTS-SAFE-2. This design remains held because it can multiply node statistics
 and memory substantially.
+
+### Proposed MCTS-SAFE-2 implementation diff
+
+1. Add `remaining_horizon` to `MCTSNode` and define exact node identity as
+   `(physical_key, remaining_horizon)`; do not bucket horizons in the
+   correctness implementation.
+2. In selection/expansion, create a child with horizon `parent_horizon - 1`.
+   Refuse expansion at zero and evaluate the cutoff without writing a failure
+   penalty into any other horizon's statistics.
+3. Store Q-values, visits, children, known-goal distance/feasibility and
+   backpropagation statistics on the horizon-specific node.
+4. Keep physical-key ancestor checks for cycle safety. The same physical state
+   at another horizon remains a distinct statistics node but is still a
+   physical repeat on the current trajectory.
+5. Keep state-only estimator results shareable only if the estimator is truly
+   horizon-independent; estimator blending happens separately in each
+   horizon-specific MCTS node.
+6. Add counters for physical states multiplied across horizons, peak
+   horizon-specific node count, memory, cutoffs, and infeasible known goals.
+7. Add regression tests for cross-horizon Q isolation, horizon decrement,
+   zero-horizon expansion refusal, goal feasibility, cycle safety, and root
+   reuse after an external action.
+
+MCTS-CONTEXT and MCTS-SAFE-2 should remain separate first. Their combined exact
+identity would be `(physical_key, action_history_digest, remaining_horizon)` and
+could multiply nodes along both dimensions; combining before measuring each
+dimension would obscure both causality and memory cost.
+
+## MCTS-PW-PATHBATCH: held multi-node widening
+
+This held experiment implements the previously proposed nonstandard variant:
+selection continues to a leaf while collecting every node on that path whose
+permitted progressive width exceeds its current child count. After the path is
+fixed, one new policy-ordered child is generated for each collected node and
+their network inputs are evaluated as one batch. The simulation still performs
+one declared leaf backup; additional admitted nodes receive an explicit,
+separately defined initialization update rather than pretending that several
+independent simulations occurred.
+
+This can recover TensorFlow batching and widen several useful depths at once,
+but it is not standard one-path/one-expansion MCTS and may spend multiple
+successor generations per simulation. It therefore remains held until the
+standard PW sensitivity and compact depth/width histograms are complete. A
+future matched pilot must report generated states per simulation, network batch
+size, successor-generation time, retained nodes, memory, runtime and coverage.

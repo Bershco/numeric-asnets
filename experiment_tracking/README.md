@@ -95,9 +95,16 @@ cluster filesystem.
   logging-preflight IDs and must not be interpreted as result rows.
 - `mcts_progressive_widening_sensitivity/results.csv`: static VAL-confirmed
   terminal results accumulated from the active two-seed sensitivity campaign.
+- `mcts_progressive_widening_sensitivity/kmin3_extension_manifest.csv` and
+  `kmin3_extension_submissions.tsv`: four additional matched seeds in both VH
+  modes for the promoted Kmin=3 arm (eight jobs, `20684748`--`20684755`).
 - `mcts_horizon_pilot/results.csv` and `posthoc_val_20666467.csv`: complete
   cutoff-only horizon results and their separate post-hoc VAL evidence. This is
   distinct from the held, fully horizon-indexed MCTS-SAFE-2 design.
+- `mcts_horizon_pilot/difference_audit.csv`: exact changed successful-instance
+  membership for the two horizon reruns that exceeded historical coverage. Zero
+  cutoffs and zero infeasible-goal decisions classify the differences as
+  run-to-run/build variation rather than a horizon effect.
 - `drone_mcts_release_20260828.csv`: exact twenty-seven-job release ledger for
   terminal-led Stage-2, validation-led Stage-2 and long-training Drone MCTS
   endpoints. FO Counters and Rover remained held.
@@ -178,6 +185,12 @@ Comparison tables must contain actual comparable numeric observations in every
 score column. Never present a dash as though it were a score. A seed lacking a
 matched policy or baseline belongs in a separate progress/provenance table until
 that value is recovered.
+
+Every progressive-widening result table includes the matched policy-only and
+fixed top-20 score when those observations exist. Every Counters narrow Stage-1
+row includes its matched policy and normal width-20/70 result; Stage-2 narrow
+rows include policy only because Stage-2 normal MCTS is intentionally outside
+the current comparison.
 
 `experiments.csv` is the legacy seed used to construct `experiment_registry.csv`.
 The obsolete `completed_results.csv`, `statistics.csv`, and `held_work.csv`

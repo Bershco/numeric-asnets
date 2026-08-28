@@ -1,0 +1,3 @@
+value_head,seed,baseline_score,horizon_run_score,retained_successes,lost_successes,added_successes,horizon_cutoffs,infeasible_known_goal_decisions,interpretation
+on,1963100312,3,4,"problem_1_1_2;problem_1_1_4;problem_1_8_1",,problem_8_1_2,0,0,run_to_run_or_build_variation_not_horizon_effect
+on,2011206605,8,10,"problem_1_1_2;problem_1_1_4;problem_1_8_1;problem_2_9_1;problem_5_10_1;problem_8_1_2;problem_8_7_1",problem_8_1_4,"problem_4_2_5;problem_5_2_2;problem_6_8_1",0,0,run_to_run_or_build_variation_not_horizon_effect
