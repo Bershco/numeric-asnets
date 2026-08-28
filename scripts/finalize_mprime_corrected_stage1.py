@@ -23,6 +23,7 @@ LAST_CHECKPOINT_RE = re.compile(
     r"^Last valid checkpoint is (.+?)/snapshots/snapshot_\d+_[^\s]+$",
     re.MULTILINE,
 )
+SNAPSHOT_DIR_RE = re.compile(r"^Snapshot directory: (.+/snapshots)$", re.MULTILINE)
 TRAINING = [
     (20618716, "off", 1963100312), (20618717, "off", 2011206605),
     (20618718, "off", 1073581256), (20618719, "off", 1239739722),
@@ -77,9 +78,13 @@ def main() -> None:
         text = log.read_text(encoding="utf-8", errors="replace")
         roots = [f"{root}/snapshots"
                  for root in LAST_CHECKPOINT_RE.findall(text)]
+        # Scheduler-timeout jobs do not reach the final "Last valid checkpoint"
+        # line, but the immutable snapshot root is printed during startup.
+        if not roots:
+            roots = SNAPSHOT_DIR_RE.findall(text)
         if not roots:
             raise RuntimeError(
-                f"job {job}: no 'Last valid checkpoint' snapshot marker")
+                f"job {job}: no snapshot-directory marker")
         snapshot_dir = Path(roots[-1])
         snapshots = []
         for path in snapshot_dir.glob("snapshot_*"):

@@ -90,6 +90,9 @@ cluster filesystem.
   exclusions. Refresh it whenever training creates new checkpoints.
 - `mcts_progressive_widening_sensitivity/manifest.csv`: predeclared two-seed
   SAFE+PW sensitivity gate with sixteen one-factor-at-a-time jobs.
+- `mcts_progressive_widening_sensitivity/submissions.tsv`: active corrected
+  submission ledger. `cancelled_verbose_submissions.tsv` preserves stopped
+  logging-preflight IDs and must not be interpreted as result rows.
 - `mcts_safe_drone/targeted_results_20260828.csv`: frozen outcomes for the four
   targeted SAFE cases. The broader jobs were cancelled after those targets
   completed because the older skip-list transport expanded their scope.

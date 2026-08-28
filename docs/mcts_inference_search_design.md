@@ -366,9 +366,14 @@ Compare:
 - identical MCTS with `--eval-mcts-enforce-remaining-horizon`.
 
 Use the same checkpoints and seeds. Historical top-20 coverage can provide the
-unaware baseline only when all settings match. Fresh unaware baselines may still
-be desirable because historical logs lack the new depth, horizon, and timing
-diagnostics.
+unaware baseline when all settings match. The intervening changes do not alter
+fixed-width search when their new flags are disabled: progressive widening and
+MCTS-SAFE are opt-in, the maximization default matches what existing callers
+already passed, and the lifecycle repair changes timeout cleanup rather than
+pre-timeout search decisions. Fresh unaware runs are therefore unnecessary for
+coverage, but remain necessary for exact same-build runtime/profiling because
+historical logs lack the new diagnostics and separate multiprocess runs are not
+bitwise reproducible.
 
 The primary success criterion is paired coverage non-inferior to the matched
 horizon-unaware width-20/70 baseline. Secondary criteria are fewer per-instance
@@ -457,6 +462,14 @@ The compact-v1 logger prints exact child-count histograms, visit-count bins,
 selection-depth bins, and exact child widths by depth band. Each instance keeps
 its own summary, allowing the evaluator result to partition distributions into
 success, ordinary failure, timeout, and interruption without per-node dumps.
+
+The two-seed gate was launched as jobs `20667974`--`20667989`. An earlier
+preflight submission was cancelled within minutes because the SAFE diagnostic
+printed complete root vectors on every external action. Bulk SAFE logging is
+now event-only; complete root vectors are reserved for invariant failures. The
+cancelled attempt IDs and their reason are preserved in
+`experiment_tracking/mcts_progressive_widening_sensitivity/cancelled_verbose_submissions.tsv`
+and are not experimental results.
 
 ## MCTS-SAFE-2: contextual transposition follow-up
 
