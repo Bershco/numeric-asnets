@@ -27,5 +27,6 @@ apptainer exec --bind /home/hersco:/home/hersco \
       asnets/asnets/scripts/run_experiment.py \
       asnets/asnets/parllel_explore_spawn_grads.py \
       asnets/asnets/spawn_train_worker.py
-    python -m unittest asnets.tests.test_progressive_widening
+    python -m unittest discover \
+      -s asnets/tests -p test_progressive_widening.py
   "
