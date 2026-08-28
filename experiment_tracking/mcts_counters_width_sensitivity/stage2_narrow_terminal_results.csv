@@ -1,0 +1,3 @@
+job_id,value_head,seed,score,total,val_valid,val_invalid,elapsed,source_training_job_id,checkpoint_epoch,source_evaluation_log,status
+20649850,off,2082152039,59,59,59,0,03:58:23,20430423,0,/home/hersco/training_new_domains/2026-08-27/statistical_replication_stage2_mcts_eval/20649850_Ev_counters_counters_mcts_orig_novh_e.5_c.1_s2082152039_K0_SR10M_src20430423_e0000.txt,terminal_val_confirmed
+20649859,on,534933607,59,59,59,0,08:15:16,20430432,2,/home/hersco/training_new_domains/2026-08-27/statistical_replication_stage2_mcts_eval/20649859_Ev_counters_counters_mcts_orig_vh_e.5_c.1_s534933607_K0_SR10M_src20430432_e0002.txt,terminal_val_confirmed

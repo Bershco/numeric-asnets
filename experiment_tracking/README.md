@@ -93,6 +93,18 @@ cluster filesystem.
 - `mcts_progressive_widening_sensitivity/submissions.tsv`: active corrected
   submission ledger. `cancelled_verbose_submissions.tsv` preserves stopped
   logging-preflight IDs and must not be interpreted as result rows.
+- `mcts_progressive_widening_sensitivity/results.csv`: static VAL-confirmed
+  terminal results accumulated from the active two-seed sensitivity campaign.
+- `mcts_horizon_pilot/results.csv` and `posthoc_val_20666467.csv`: complete
+  cutoff-only horizon results and their separate post-hoc VAL evidence. This is
+  distinct from the held, fully horizon-indexed MCTS-SAFE-2 design.
+- `drone_mcts_release_20260828.csv`: exact twenty-seven-job release ledger for
+  terminal-led Stage-2, validation-led Stage-2 and long-training Drone MCTS
+  endpoints. FO Counters and Rover remained held.
+- `mcts_counters_width_sensitivity/stage1_narrow_terminal_results.csv` and
+  `stage2_narrow_terminal_results.csv`: static narrow width-5/20 terminal
+  outcomes. OOM rows retain classified-instance counts and conservative
+  VAL-confirmed lower bounds instead of being dropped.
 - `mcts_safe_drone/targeted_results_20260828.csv`: frozen outcomes for the four
   targeted SAFE cases. The broader jobs were cancelled after those targets
   completed because the older skip-list transport expanded their scope.
@@ -161,6 +173,11 @@ Every status report must list:
 - current running/pending/held workload;
 - results sourced from `experiment_results.csv` and
   `experiment_statistics.csv`.
+
+Comparison tables must contain actual comparable numeric observations in every
+score column. Never present a dash as though it were a score. A seed lacking a
+matched policy or baseline belongs in a separate progress/provenance table until
+that value is recovered.
 
 `experiments.csv` is the legacy seed used to construct `experiment_registry.csv`.
 The obsolete `completed_results.csv`, `statistics.csv`, and `held_work.csv`

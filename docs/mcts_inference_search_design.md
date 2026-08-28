@@ -401,7 +401,7 @@ trajectories approach their existing limit.
 
 Do not run yet:
 
-- horizon-indexed `(s, h)` statistics;
+- MCTS-SAFE-2 horizon-indexed `(s, h)` statistics;
 - network-first preliminary-Q ablation;
 - estimator-at-admission ablation;
 - large `c`/`alpha` sweep;
@@ -471,20 +471,20 @@ cancelled attempt IDs and their reason are preserved in
 `experiment_tracking/mcts_progressive_widening_sensitivity/cancelled_verbose_submissions.tsv`
 and are not experimental results.
 
-## MCTS-SAFE-2: contextual transposition follow-up
+## MCTS-CONTEXT: action-history-aware transposition follow-up
 
 MCTS-SAFE-1 is considered successful but incomplete: it repaired two of the
 four targeted policy-only Drone failures. The other two no longer ended through
 the same known-terminal selection, but still wandered to an unsolved outcome.
 
-The next architectural question is contextual aliasing. The network input
+The next separate architectural question is contextual aliasing. The network input
 contains a per-grounded-action application-count vector, while the current
 transposition key contains only the physical planning state. Multiple histories
 can therefore reuse one node even when the network would assign different
 priors or values. The current key also intentionally omits the special
 `total-time` fluent.
 
-MCTS-SAFE-2 is staged rather than immediately changing node identity:
+MCTS-CONTEXT is staged rather than immediately changing node identity:
 
 1. Instrument collisions where one physical-state key is observed with more
    than one action-count vector. Record collision frequency, action-count
@@ -492,10 +492,42 @@ MCTS-SAFE-2 is staged rather than immediately changing node identity:
 2. Preserve physical-state identity for cycle and trajectory-duplicate safety.
 3. Add a separate network-context identity—physical state plus action-count
    vector—for cached network predictions and MCTS statistics.
-4. Compare MCTS-SAFE-1 against contextual MCTS-SAFE-2 on matched Drone seeds.
+4. Compare MCTS-SAFE-1 against MCTS-CONTEXT on matched Drone seeds.
 
 This is not domain-specific and is not cheating: it prevents a
 history-dependent network from being evaluated with another history's cached
 statistics. It may improve cyclic domains, but reduces transposition sharing
 and can increase runtime and memory. Instrumentation must therefore precede the
 behavioral experiment.
+
+The current implementation explains why this needs two identities. `MCTSNode`
+stores one `CanonicalState`, its `as_network_input`, policy prediction, value,
+visits and children. `state_key_to_node` is indexed only by the physical
+`state_key`; when that key is revisited, the existing node and its cached
+network input are reused even if the new `CanonicalState.aux_data` action-count
+vector differs.
+
+The sound refactor would use:
+
+- `physical_key = state.state_key` for ancestor-cycle and trajectory-duplicate
+  checks;
+- `context_key = (physical_key, digest(state.aux_data))` for MCTS nodes,
+  network inputs, priors, values, visits and children;
+- the existing physical-state estimator cache where the estimator itself is
+  genuinely history-independent.
+
+Edges would point to context nodes. Cycle detection would compare only each
+node's physical key along the current trajectory, so creating multiple context
+nodes would not bypass duplicate safety. This costs transposition sharing and
+memory, hence collision instrumentation comes before the behavioral refactor.
+
+## MCTS-SAFE-2: fully horizon-indexed search
+
+`MCTS-SAFE-2` is reserved for the fully horizon-correct design requested by the
+experiment owner. Its search state is `(s, h)`, where `h` is remaining
+executable actions. Q-values, visits, goal feasibility and child statistics are
+therefore horizon-specific instead of sharing one physical-state node across
+incompatible remaining budgets. The live MCTS-HORIZON experiment implements
+only cutoff and feasible-goal chasing over state-only statistics; it is not
+MCTS-SAFE-2. This design remains held because it can multiply node statistics
+and memory substantially.

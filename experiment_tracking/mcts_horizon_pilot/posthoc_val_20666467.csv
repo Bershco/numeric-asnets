@@ -1,0 +1,11 @@
+evaluation_job_id,validator_exit_code,evaluator_score,val_valid,val_invalid,evaluation_log,validation_log
+20652251,0,10.0/20,10,0,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/20652251_horizon-drone-off-1963100312.txt,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/posthoc_val_20652251.log
+20652252,0,7.0/20,7,0,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/20652252_horizon-drone-off-2011206605.txt,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/posthoc_val_20652252.log
+20652253,0,6.0/20,6,0,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/20652253_horizon-drone-off-1073581256.txt,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/posthoc_val_20652253.log
+20652254,0,8.0/20,8,0,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/20652254_horizon-drone-off-1239739722.txt,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/posthoc_val_20652254.log
+20652255,0,11.0/20,11,0,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/20652255_horizon-drone-off-1472491096.txt,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/posthoc_val_20652255.log
+20652256,0,4.0/20,4,0,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/20652256_horizon-drone-on-1963100312.txt,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/posthoc_val_20652256.log
+20652257,0,10.0/20,10,0,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/20652257_horizon-drone-on-2011206605.txt,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/posthoc_val_20652257.log
+20652258,0,16.0/20,16,0,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/20652258_horizon-drone-on-1073581256.txt,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/posthoc_val_20652258.log
+20652259,0,6.0/20,6,0,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/20652259_horizon-drone-on-1239739722.txt,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/posthoc_val_20652259.log
+20652260,0,11.0/20,11,0,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/20652260_horizon-drone-on-1472491096.txt,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_drone/posthoc_val_20652260.log
