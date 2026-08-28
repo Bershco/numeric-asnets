@@ -481,7 +481,7 @@ cancelled attempt IDs and their reason are preserved in
 `experiment_tracking/mcts_progressive_widening_sensitivity/cancelled_verbose_submissions.tsv`
 and are not experimental results.
 
-## MCTS-CONTEXT: action-history-aware transposition follow-up
+## MCTS-SAFE-CONTEXT: action-history-aware transposition follow-up
 
 MCTS-SAFE-1 is considered successful but incomplete: it repaired two of the
 four targeted policy-only Drone failures. The other two no longer ended through
@@ -494,7 +494,7 @@ can therefore reuse one node even when the network would assign different
 priors or values. The current key also intentionally omits the special
 `total-time` fluent.
 
-MCTS-CONTEXT is staged rather than immediately changing node identity:
+MCTS-SAFE-CONTEXT is staged rather than immediately changing node identity:
 
 1. Instrument collisions where one physical-state key is observed with more
    than one action-count vector. Record collision frequency, action-count
@@ -502,7 +502,7 @@ MCTS-CONTEXT is staged rather than immediately changing node identity:
 2. Preserve physical-state identity for cycle and trajectory-duplicate safety.
 3. Add a separate network-context identity—physical state plus action-count
    vector—for cached network predictions and MCTS statistics.
-4. Compare MCTS-SAFE-1 against MCTS-CONTEXT on matched Drone seeds.
+4. Compare MCTS-SAFE-1 against MCTS-SAFE-CONTEXT on matched Drone seeds.
 
 This is not domain-specific and is not cheating: it prevents a
 history-dependent network from being evaluated with another history's cached
@@ -540,7 +540,7 @@ node's physical key along the current trajectory, so creating multiple context
 nodes would not bypass duplicate safety. This costs transposition sharing and
 memory, hence collision instrumentation comes before the behavioral refactor.
 
-### Proposed MCTS-CONTEXT implementation diff
+### Proposed MCTS-SAFE-CONTEXT implementation diff
 
 1. `post_training/monte_carlo_tree_search.py`
    - add fixed `physical_key` and `context_digest` fields to `MCTSNode`;
@@ -605,7 +605,7 @@ and memory substantially.
    zero-horizon expansion refusal, goal feasibility, cycle safety, and root
    reuse after an external action.
 
-MCTS-CONTEXT and MCTS-SAFE-2 should remain separate first. Their combined exact
+MCTS-SAFE-CONTEXT and MCTS-SAFE-2 should remain separate first. Their combined exact
 identity would be `(physical_key, action_history_digest, remaining_horizon)` and
 could multiply nodes along both dimensions; combining before measuring each
 dimension would obscure both causality and memory cost.
