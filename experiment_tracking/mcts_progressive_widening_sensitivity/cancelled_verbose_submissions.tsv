@@ -1,0 +1,17 @@
+manifest_id	slurm_job_id	submitted_at	terminal_state	reason
+pw-safe-drone-off-1963100312-safe_pw_baseline	20667718	2026-08-28T07:59:11.231195+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-off-1963100312-safe_pw_kmin3	20667719	2026-08-28T07:59:11.343064+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-off-1963100312-safe_pw_alpha0p65	20667720	2026-08-28T07:59:11.404068+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-off-1963100312-safe_pw_iter140	20667721	2026-08-28T07:59:11.466623+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-off-2011206605-safe_pw_baseline	20667722	2026-08-28T07:59:11.530117+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-off-2011206605-safe_pw_kmin3	20667723	2026-08-28T07:59:11.591692+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-off-2011206605-safe_pw_alpha0p65	20667724	2026-08-28T07:59:11.649314+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-off-2011206605-safe_pw_iter140	20667725	2026-08-28T07:59:11.711154+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-on-1963100312-safe_pw_baseline	20667726	2026-08-28T07:59:11.773225+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-on-1963100312-safe_pw_kmin3	20667727	2026-08-28T07:59:11.822150+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-on-1963100312-safe_pw_alpha0p65	20667728	2026-08-28T07:59:11.884149+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-on-1963100312-safe_pw_iter140	20667729	2026-08-28T07:59:11.945477+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-on-2011206605-safe_pw_baseline	20667730	2026-08-28T07:59:12.006630+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-on-2011206605-safe_pw_kmin3	20667731	2026-08-28T07:59:12.075682+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-on-2011206605-safe_pw_alpha0p65	20667732	2026-08-28T07:59:12.137494+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose
+pw-safe-drone-on-2011206605-safe_pw_iter140	20667733	2026-08-28T07:59:12.212403+00:00	CANCELLED	preflight stopped: per-action SAFE root-vector logging was too verbose

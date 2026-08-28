@@ -258,7 +258,6 @@ class TerminalSafeMixin:
         duplicate_mask = np.zeros(act_dim, dtype=bool)
         priors = np.zeros(act_dim, dtype=np.float64)
         visits = np.zeros(act_dim, dtype=np.int64)
-        child_rows = []
 
         if root.children is not None and not root.children.is_empty():
             trajectory = root.get_child_on_trajectory_mask()
@@ -273,25 +272,13 @@ class TerminalSafeMixin:
                 duplicate_mask[action] = is_duplicate
                 priors[action] = float(root.children.priors[index])
                 visits[action] = int(root.children.visits[index])
-                child_rows.append({
-                    "action": action,
-                    "N": int(root.children.visits[index]),
-                    "Q": float(child.Q_value),
-                    "U": float(
-                        mcts.exploration_weight
-                        * root.children.priors[index]
-                        * (np.sqrt(max(1.0, root.visit_count))
-                           / (1.0 + root.children.visits[index]))),
-                    "prior": float(root.children.priors[index]),
-                    "terminal": is_terminal,
-                    "goal": is_goal,
-                    "duplicate": is_duplicate,
-                })
 
         post_terminal = raw_pi.copy()
+        excluded_count = 0
         if np.any(safe_mask):
             excluded = terminal_mask & (raw_pi > 0.0)
-            self.terminal_actions_excluded += int(np.count_nonzero(excluded))
+            excluded_count = int(np.count_nonzero(excluded))
+            self.terminal_actions_excluded += excluded_count
             post_terminal[~safe_mask] = 0.0
             post_terminal = self._normalise_or_fallback(
                 post_terminal, priors, safe_mask)
@@ -299,29 +286,34 @@ class TerminalSafeMixin:
             self.no_safe_child_events += 1
 
         post_duplicate = post_terminal.copy()
+        duplicate_fallback = False
         eligible_safe = safe_mask if np.any(safe_mask) else (raw_pi > 0.0)
         if np.any(duplicate_mask & eligible_safe):
             post_duplicate[duplicate_mask] *= self.duplicate_penalty
             if float(post_duplicate.sum()) <= 0.0 and np.any(eligible_safe):
                 post_duplicate = post_terminal.copy()
                 self.safe_duplicate_fallbacks += 1
+                duplicate_fallback = True
             else:
                 post_duplicate = self._normalise_or_fallback(
                     post_duplicate, post_terminal, eligible_safe)
 
         action = super().select_action(
             mcts, post_duplicate, remaining_horizon=remaining_horizon)
-        print(
-            "[MCTS SAFE DECISION] "
-            f"raw_visits={visits.tolist()} "
-            f"raw_pi={raw_pi.tolist()} "
-            f"post_terminal={post_terminal.tolist()} "
-            f"post_duplicate={post_duplicate.tolist()} "
-            f"selected={int(action)} children={child_rows} "
-            f"excluded_total={self.terminal_actions_excluded} "
-            f"duplicate_fallbacks_total={self.safe_duplicate_fallbacks} "
-            f"no_safe_total={self.no_safe_child_events}"
-        )
+        # Bulk campaigns log only safety events. Full root vectors are emitted
+        # above solely when an invariant fails; printing them on every action
+        # can turn a normal evaluation into a multi-gigabyte debug log.
+        if excluded_count or duplicate_fallback or not np.any(safe_mask):
+            print(
+                "[MCTS SAFE EVENT] "
+                f"selected={int(action)} selected_N={int(visits[int(action)])} "
+                f"terminal_excluded={excluded_count} "
+                f"duplicate_fallback={int(duplicate_fallback)} "
+                f"no_safe_child={int(not np.any(safe_mask))} "
+                f"excluded_total={self.terminal_actions_excluded} "
+                f"duplicate_fallbacks_total={self.safe_duplicate_fallbacks} "
+                f"no_safe_total={self.no_safe_child_events}"
+            )
         return int(action)
 
 
