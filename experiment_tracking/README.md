@@ -118,6 +118,18 @@ cluster filesystem.
 - `mcts_counters_width_sensitivity/stage2_narrow_release.csv`: the twenty and
   only twenty Stage-2 Counters width-5/20 jobs released from the legacy hold on
   2026-08-28.
+- `mcts_counters_width_sensitivity/stage2_narrow_pair_audit.csv`: all 354
+  instances from the six terminal VH-off Stage-2 policy/narrow pairs, including
+  outcome class, termination cause, runtime and literal source logs.
+- `mprime_validation_ipc_scale_v1/validation_test_checkpoint_audit.csv` and
+  `validation_test_agreement_summary.csv`: the complete 290-checkpoint corrected
+  MPrime validation/test join and its 20 lineage plus two pooled correlations.
+- `four_domain_preservation/tpp_stage2_policy_ready.csv` and its submission
+  ledger: 63 every-five plus selected/final policy jobs released from the first
+  three terminal TPP confirmation lineages by controller 20687998.
+- `mcts_safe_context/stale_*_submissions_20260829.tsv`: immutable provenance for
+  the one-instance diagnostic jobs and twenty stale held full jobs replaced
+  after the restriction/validator wrapper repairs.
 
 ## Provenance rules
 

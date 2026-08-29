@@ -631,6 +631,35 @@ until the wrapper is repaired and a corrected three-instance diagnostic,
 including observed peak memory, passes the declared gate. Do not reinterpret
 the four Slurm `FAILED` states as failed inference.
 
+The two wrapper defects are repaired: the comma-bearing restriction is base64
+encoded across Slurm's `--export` boundary, and validation uses the production
+validator path. The stale held jobs 20684998--20685018 were cancelled without
+running and archived in `stale_full_submissions_20260829.tsv`. Corrected
+three-instance diagnostics 20688113--20688116 are resource-pending. Twenty
+replacement matched Drone jobs 20688117--20688136 were created from the
+repaired script and remain held behind that diagnostic gate.
+
+The original one-instance runtimes were approximately 57 seconds (Drone), 79
+seconds (Rover), 13 seconds (Counters) and 65 minutes (Block Grouping). Three
+representatives are required because one instance cannot bound context
+multiplication or peak memory; the corrected jobs retain a 12-hour limit.
+
+### Counters Stage-2 narrow policy-loss audit
+
+The six terminal VH-off Stage-2 pairs are joined instance by instance in
+`experiment_tracking/mcts_counters_width_sensitivity/stage2_narrow_pair_audit.csv`.
+The aggregate policy advantage comes entirely from two seeds:
+
+- seed 1963100312: policy 59, narrow 49; nine policy successes became MCTS
+  `unsolved` outcomes at exactly 10,000 actions and one reached the six-hour
+  per-instance timeout;
+- seed 1073581256: policy 53, narrow 51; two policy successes became MCTS
+  `unsolved` outcomes at exactly 10,000 actions;
+- the other four terminal seeds were equal or improved under narrow MCTS.
+
+The decline is therefore search wandering on the largest instances, not
+invalid output or a VAL discrepancy.
+
 ## MCTS-SAFE-2: fully horizon-indexed search
 
 `MCTS-SAFE-2` is reserved for the fully horizon-correct design requested by the
