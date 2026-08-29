@@ -14,7 +14,7 @@ from pathlib import Path
 
 VALID_RE = re.compile(
     r"\[VALIDATION\] Current network validation success rate: ([0-9.]+) "
-    r"with an average plan length of ([0-9.]+)"
+    r"with an average plan length of ([A-Za-z0-9.+-]+)"
 )
 FINAL_RE = re.compile(r"\[EVAL FINAL\] success=([0-9.]+)/([0-9.]+)=")
 
