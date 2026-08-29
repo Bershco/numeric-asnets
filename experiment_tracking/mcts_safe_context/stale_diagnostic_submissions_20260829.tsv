@@ -1,0 +1,5 @@
+manifest_id	slurm_job_id	submitted_at	terminal_state	reason
+context-drone-off-1963100312	20684971	2026-08-28T20:10:02.455444+00:00	FAILED	one-instance inference usable; stale wrapper lost comma-bearing restriction and validator path
+context-rover-off-1963100312	20684972	2026-08-28T20:10:02.495093+00:00	FAILED	one-instance inference usable; stale wrapper lost comma-bearing restriction and validator path
+context-counters-off-1963100312	20684973	2026-08-28T20:10:02.534440+00:00	FAILED	one-instance inference usable; stale wrapper lost comma-bearing restriction and validator path
+context-block_grouping-off-1963100312	20684974	2026-08-28T20:10:02.576741+00:00	FAILED	one-instance inference usable; stale wrapper lost comma-bearing restriction and validator path
