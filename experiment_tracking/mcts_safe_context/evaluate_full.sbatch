@@ -36,5 +36,5 @@ apptainer exec --bind /home/hersco:/home/hersco \
       --eval-instance-timeout 21600 --num-workers 3 --jpddl-max-heap 4g \
       --worker-logs $vh_arg --random-seed '$SEED'
   " 2>&1 | tee "$LOG"
-python "$CHECKOUT/asnets/tools/validate_eval_log.py" \
+python "$PRODUCTION/asnets/tools/validate_eval_log.py" \
   --log "$LOG" --domain drone --validator "$VALIDATOR"

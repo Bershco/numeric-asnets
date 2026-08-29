@@ -39,5 +39,5 @@ apptainer exec --bind /home/hersco:/home/hersco \
       $vh_arg --random-seed '$SEED'
   " 2>&1 | tee "$LOG"
 
-python "$CHECKOUT/asnets/tools/validate_eval_log.py" \
+python "$PRODUCTION/asnets/tools/validate_eval_log.py" \
   --log "$LOG" --domain drone --validator "$VALIDATOR"

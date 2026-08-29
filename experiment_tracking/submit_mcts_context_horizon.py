@@ -90,7 +90,14 @@ def submit(campaign, dry_run=False):
             ]
             if campaign == "context":
                 restrict = "0,29,58" if row["domain"] == "counters" else "0,9,19"
-                exports.extend((f"DOMAIN={row['domain']}", f"RESTRICT={restrict}"))
+                # Slurm parses commas inside --export as field separators.  Encode
+                # the comma-bearing restriction just like checkpoint paths so all
+                # three diagnostic indices reach the job unchanged.
+                restrict_b64 = base64.b64encode(restrict.encode()).decode()
+                exports.extend((
+                    f"DOMAIN={row['domain']}",
+                    f"RESTRICT_B64={restrict_b64}",
+                ))
             else:
                 exports.append(f"ARM={row['arm']}")
             output_root = (

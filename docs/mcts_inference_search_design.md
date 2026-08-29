@@ -606,6 +606,31 @@ domain; one worker; at most 100 external actions per instance; fixed width-20,
 at most 128 disagreement witnesses per job. It is not a coverage experiment and
 does not run complete test suites.
 
+### SAFE-CONTEXT diagnostic outcome (2026-08-29)
+
+The first cluster diagnostic invocation evaluated one representative instance
+per domain rather than the intended three. All four inference calls completed,
+but Slurm marked the wrappers failed afterward because the isolated checkout
+did not contain `asnets/tools/validate_eval_log.py`. This is a post-hoc
+validator-path defect, not an inference or SAFE-CONTEXT failure. The exact
+inference evidence is authoritative in
+`experiment_tracking/mcts_safe_context/diagnostic_results.csv`.
+
+| Domain | Physical observations | Context mismatches | Node multiplier | Mean / max policy L1 disagreement | Inference |
+|---|---:|---:|---:|---:|---:|
+| Drone | 64 | 11 | 1.204 | 0.0036 / 0.0374 | 1/1 |
+| Rover | 91 | 2 | 1.022 | 0.0620 / 0.0652 | 1/1 |
+| Counters | 139 | 113 | 5.440 | 0.3456 / 1.0131 | 1/1 |
+| Block Grouping | 140,000 | 56,239 | 1.902 | 0.0202 / 0.0358 | 0/1 at the diagnostic 100-action limit |
+
+The pilot therefore establishes that action-history aliasing is real and can
+materially change network predictions. Counters exhibits severe node
+multiplication and prediction disagreement; Block Grouping also exhibits a
+large structural effect. The full twenty-job Drone comparison remains held
+until the wrapper is repaired and a corrected three-instance diagnostic,
+including observed peak memory, passes the declared gate. Do not reinterpret
+the four Slurm `FAILED` states as failed inference.
+
 ## MCTS-SAFE-2: fully horizon-indexed search
 
 `MCTS-SAFE-2` is reserved for the fully horizon-correct design requested by the

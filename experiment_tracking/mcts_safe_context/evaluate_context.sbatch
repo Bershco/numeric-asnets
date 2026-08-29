@@ -6,8 +6,9 @@
 #SBATCH --exclude=ise-cpu256-[11-12],ise-cpu-intl-[01,08-15,18,24-28]
 
 set -euo pipefail
-: "${CHECKPOINT_B64:?}" "${DOMAIN:?}" "${SEED:?}" "${RESTRICT:?}" "${MANIFEST_ID:?}"
+: "${CHECKPOINT_B64:?}" "${DOMAIN:?}" "${SEED:?}" "${RESTRICT_B64:?}" "${MANIFEST_ID:?}"
 CHECKPOINT=$(printf '%s' "$CHECKPOINT_B64" | base64 -d)
+RESTRICT=$(printf '%s' "$RESTRICT_B64" | base64 -d)
 CHECKOUT=/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context
 PRODUCTION=/home/hersco/bershco-nu-asnets/numeric-asnets
 CONTAINER=/home/hersco/Docker/image.sif
@@ -37,6 +38,8 @@ apptainer exec --bind /home/hersco:/home/hersco \
       --disable-value-head --random-seed '$SEED'
   " 2>&1 | tee "$LOG"
 
-python "$CHECKOUT/asnets/tools/validate_eval_log.py" \
+# The isolated feature checkout intentionally contains only the SAFE-CONTEXT
+# branch.  Use the production checkout's versioned validator helper; inference
+# still runs entirely from CHECKOUT above.
+python "$PRODUCTION/asnets/tools/validate_eval_log.py" \
   --log "$LOG" --domain "$DOMAIN" --validator "$VALIDATOR"
-
