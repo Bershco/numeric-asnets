@@ -121,12 +121,24 @@ cluster filesystem.
 - `mcts_counters_width_sensitivity/stage2_narrow_pair_audit.csv`: all 354
   instances from the six terminal VH-off Stage-2 policy/narrow pairs, including
   outcome class, termination cause, runtime and literal source logs.
+- `mcts_counters_width_sensitivity/stage2_policy_only_trajectory_audit.csv`:
+  policy length, persisted MCTS length, common prefix, decrement count and
+  multiset overrun for all twelve Stage-2 policy-only successes.
 - `mprime_validation_ipc_scale_v1/validation_test_checkpoint_audit.csv` and
   `validation_test_agreement_summary.csv`: the complete 290-checkpoint corrected
   MPrime validation/test join and its 20 lineage plus two pooled correlations.
+- `mprime_validation_ipc_scale_v1/corrected_learning_curve_aggregate.csv` and
+  `corrected_learning_curves.{png,svg}`: the auditable every-five corrected
+  validation/test curve, with changing run counts retained explicitly.
+- `mprime_validation_ipc_scale_v1/anchor_tuning_manifest.csv` and
+  `anchor_tuning_submissions.tsv`: all 28 corrected MPrime Stage-2 tuning jobs.
 - `four_domain_preservation/tpp_stage2_policy_ready.csv` and its submission
-  ledger: 63 every-five plus selected/final policy jobs released from the first
-  three terminal TPP confirmation lineages by controller 20687998.
+  ledger: 105 every-five plus selected/final policy jobs from the first five
+  terminal TPP confirmation lineages. Controllers 20687998 and 20688711
+  submitted all rows that were newly available at their respective snapshots.
+  A sixth lineage then terminated; controller 20689471 is queued to add its
+  missing curve and endpoints using the reusable idempotent
+  `submit_confirmation_stage2_policy.py` mechanism.
 - `mcts_safe_context/stale_*_submissions_20260829.tsv`: immutable provenance for
   the one-instance diagnostic jobs and twenty stale held full jobs replaced
   after the restriction/validator wrapper repairs.

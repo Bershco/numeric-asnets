@@ -95,9 +95,32 @@ gate remains a recorded outcome. The corrected validation-selected Stage-1
 checkpoints still receive the same two-seed, seven-coefficient Stage-2 anchor
 tuning used elsewhere.
 
-Controller 20688286 is submitted and resource-pending. When scheduled it
-atomically writes the 28-row training manifest and submission ledger before
-launching the jobs; it uses seeds 1963100312 and 2011206605 in both VH modes.
+Controller 20688286 completed successfully and submitted all 28 tuning jobs,
+using seeds 1963100312 and 2011206605 in both VH modes. At the 2026-08-29
+15:28 snapshot, two jobs were running and 26 were resource-pending. The frozen
+manifest and submission ledger are retained beside the corrected Stage-1 data.
+
+### Learning-curve interpretation
+
+The every-five aggregate is stored in
+`corrected_learning_curve_aggregate.csv` and rendered as
+`corrected_learning_curves.{png,svg}`. It excludes off-grid selected/final
+endpoints rather than silently mixing them into regular epochs.
+
+The corrected validation signal is useful at the coarse scale but weak at
+fine-grained checkpoint ranking. Validation and held-out test coverage both
+generally decline during later training, and validation selection improves
+mean test coverage relative to the final checkpoint (15.0 versus 13.5/off;
+14.6 versus 13.2/on). Selected epochs are materially earlier than terminal
+epochs: medians 18.5 versus 68/off and 13.5 versus 63/on. However, the wide
+seed envelope and pooled Spearman correlations near 0.25 show that validation
+does not reliably order nearby checkpoints.
+
+The declared treatment is therefore: retain the corrected validation set for
+selection and report its weakness; do not call MPrime a stable historically
+perfect domain; and run MPrime through the same imperfect-domain Stage-2
+anchor/confirmation route as the other five imperfect domains. Test coverage
+remains an audit outcome and is never used to select a checkpoint.
 
 ## Frozen replacement implementation
 

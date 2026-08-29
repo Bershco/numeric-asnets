@@ -660,6 +660,21 @@ The aggregate policy advantage comes entirely from two seeds:
 The decline is therefore search wandering on the largest instances, not
 invalid output or a VAL discrepancy.
 
+The compact trajectory audit in
+`stage2_policy_only_trajectory_audit.csv` confirms the mechanism. Successful
+policy plans for the twelve lost instances require only 1,378--2,760 actions.
+Eleven MCTS failures persist a complete 10,000-action trajectory: they diverge
+from the policy at the first action, contain roughly 3,286--4,059 decrement
+actions, and contain 7,330--8,622 action occurrences above the successful
+policy plan's action multiset. The remaining six-hour-timeout instance has a
+2,607-action successful policy plan but no persisted partial MCTS trajectory
+because its worker was killed before writing a completion record.
+
+Both successful policy action lists and the eleven completed-unsolved MCTS
+action lists are retained verbatim in their original logs/JSONL. This is
+repeated increment/decrement wandering, not a terminal dead-end and therefore
+not something MCTS-SAFE-1's terminal mask can repair by itself.
+
 ## MCTS-SAFE-2: fully horizon-indexed search
 
 `MCTS-SAFE-2` is reserved for the fully horizon-correct design requested by the
