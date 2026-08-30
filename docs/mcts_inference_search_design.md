@@ -381,6 +381,18 @@ All 30 new jobs retain 70 simulations, PUCT 0.1, estimator coefficient 0.5,
 the `hadd-astar` teacher, three workers, a six-hour per-instance limit, and a
 three-day allocation. Remaining-horizon enforcement is disabled.
 
+The completed eight-job SAFE Kmin=3 extension used the same fixed ordered
+20-instance Drone test suite from `asnets/experiments_numeric/domain/drone.py`
+for four matched seeds in each VH mode. Mean whole-job runtime was 3m58s for
+policy-only inference, 11.76h for fixed top-20, and 9.99h for Kmin=3 PW.
+Among successful instances with historical elapsed records, fixed top-20 had
+median/mean/p90 runtimes of 130/395/893 seconds (n=84), while Kmin=3 had
+94/147/318 seconds (n=76). This conditional runtime gain must be reported
+beside the coverage loss: fixed top-20 solved 84 instances and Kmin=3 solved
+76. Historical policy logs lack per-instance elapsed records, so eight exact
+checkpoint timing recaptures were submitted as jobs 20720780--20720787; their
+results are profiling evidence and do not replace the original policy scores.
+
 ### Pilot profiling
 
 Profiling is part of the pilot, but it uses the new compact per-instance MCTS
@@ -550,6 +562,17 @@ visits and children. `state_key_to_node` is indexed only by the physical
 `state_key`; when that key is revisited, the existing node and its cached
 network input are reused even if the new `CanonicalState.aux_data` action-count
 vector differs.
+
+The failure is broader than reusing one cached value. In the physical-node
+baseline, inference can overwrite the reused node's `act_dist` and predicted
+value with the newly encountered action-history context while retaining the
+already-created fixed-width child set, edge priors, visits and child
+statistics from the first context. Fixed-width expansion then refuses to
+expand the node again because it already has children. The result can be a
+new policy distribution paired with stale top-k children and stale edge
+priors. SAFE-CONTEXT prevents this entire mixed-context node state: each
+context receives its own policy, value, children, priors, visits and child
+statistics, while physical-key cycle checks remain shared.
 
 The sound refactor would use:
 
@@ -739,6 +762,23 @@ MCTS-SAFE-CONTEXT and MCTS-SAFE-2 should remain separate first. Their combined e
 identity would be `(physical_key, action_history_digest, remaining_horizon)` and
 could multiply nodes along both dimensions; combining before measuring each
 dimension would obscure both causality and memory cost.
+
+### Binding-horizon counter audit (2026-08-30)
+
+The cutoff counter is wired correctly. Selection returns the explicit
+`horizon` stop reason at `selection_depth >= max_depth`, the iteration records
+that depth, and focused tests assert both a nonzero cutoff count and refusal to
+expand beyond the declared remaining depth. The first eight terminal jobs
+genuinely logged zero cutoffs, but that was not a campaign-wide result.
+Two still-running aware jobs have now exercised the mechanism:
+
+- job 20684990: one cutoff at selection depth 59;
+- job 20684994: 2,053 cutoffs over depths 11--41 (mean 25.47).
+
+The experiment is therefore binding on at least two observed instances. Any
+older statement that every run had zero cutoffs is superseded. Jobs
+20684982--20684985 are also now post-hoc VAL-confirmed, so 12/20 inference
+runs are terminal and validated while eight remain live.
 
 ## MCTS-PW-PATHBATCH: held multi-node widening
 

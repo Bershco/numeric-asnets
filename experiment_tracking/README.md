@@ -156,6 +156,29 @@ cluster filesystem.
 - `mcts_safe_context/stale_*_submissions_20260829.tsv`: immutable provenance for
   the one-instance diagnostic jobs and twenty stale held full jobs replaced
   after the restriction/validator wrapper repairs.
+- `drone_endpoint_mcts_results.csv`: static reconciliation of all 27 completed
+  Drone endpoint MCTS jobs with literal training/evaluation/VAL provenance.
+- `drone_endpoint_mcts_paired_results.csv` and
+  `drone_endpoint_mcts_summary.csv`: matched policy/MCTS joins and seed-level
+  paired summaries for those Drone endpoint campaigns.
+- `four_domain_preservation/zenotravel_stage2_lineages.tsv`: the complete
+  20-lineage Zenotravel confirmation roster, including the four reused tuning
+  winners. `zenotravel_stage2_missing_policy_submissions.tsv` records the 72
+  recovery evaluations that fill their missing curves/endpoints.
+- `mcts_progressive_widening_sensitivity/kmin3_runtime_*.csv`: immutable
+  whole-job and successful-instance runtime evidence for policy, fixed top-20
+  and PW Kmin3. Historical policy logs lacked per-instance elapsed records;
+  jobs 20720780--20720787 recapture timing on the exact checkpoints without
+  replacing the original scores.
+
+The 2026-08-30 policy refresh found a log-format compatibility bug in selected
+checkpoint materialization. Older logs wrote `New best reached ... iteration
+... snapshot name`, while current logs write `[VALIDATION] New best! ...
+iter_num=... snapshot_name=...`. Every-five and final endpoints were already
+present; only off-grid selected endpoints could be absent. The parser now
+accepts both forms, and idempotent controllers 20720613--20720616 recovered
+Delivery, TPP, MPrime and Zenotravel selected endpoints without duplicating
+existing evaluations.
 
 ## Provenance rules
 
