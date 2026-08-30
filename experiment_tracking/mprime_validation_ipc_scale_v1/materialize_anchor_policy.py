@@ -12,7 +12,10 @@ from pathlib import Path
 CAMPAIGN = Path("/home/hersco/training_new_domains/2026-08-28/mprime_corrected_downstream")
 SUBMISSIONS = CAMPAIGN / "anchor_tuning_submissions.tsv"
 OUTPUT = CAMPAIGN / "policy_ready.csv"
-BEST_RE = re.compile(r"\[VALIDATION\] New best reached! .*?iteration (\d+)")
+BEST_RE = re.compile(
+    r"\[VALIDATION\] New best(?: reached!)?.*?"
+    r"(?:iteration\s+|iter_num=)(\d+)"
+)
 LAST_RE = re.compile(r"Last valid checkpoint is (.+/snapshot_\d+_[^\s]+)")
 FIELDS = [
     "manifest_id", "domain", "value_head", "seed", "anchor", "stage",

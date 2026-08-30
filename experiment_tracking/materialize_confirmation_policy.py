@@ -17,7 +17,9 @@ from pathlib import Path
 
 
 BEST_RE = re.compile(
-    r"\[VALIDATION\] New best reached! .*?iteration (\d+) .*?snapshot name: (snapshot_\d+_[^\]]+)"
+    r"\[VALIDATION\] New best(?: reached!)?.*?"
+    r"(?:iteration\s+|iter_num=)(\d+).*?"
+    r"(?:snapshot name:\s*|snapshot_name=)(snapshot_\d+_[^\s\]]+)"
 )
 LAST_RE = re.compile(r"Last valid checkpoint is (.+/snapshot_\d+_[^\s]+)")
 TEACHERS = {"delivery": "hadd-astar", "tpp": "hadd-astar", "zenotravel": "hadd-gbfs"}
