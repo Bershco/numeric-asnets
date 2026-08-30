@@ -1,0 +1,4 @@
+arm,jobs,mean_job_runtime_seconds,successful_instances_with_runtime,success_runtime_min_seconds,success_runtime_q1_seconds,success_runtime_median_seconds,success_runtime_mean_seconds,success_runtime_q3_seconds,success_runtime_p90_seconds,success_runtime_max_seconds,note
+policy,8,238.125,0,,,,,,,,historical logs lack per-instance runtime
+fixed_top20,8,42323.000,84,35.030,49.917,130.360,395.084,442.915,892.745,6126.780,
+pw_kmin3,8,35961.125,76,41.000,55.862,94.155,146.862,205.955,317.685,593.530,

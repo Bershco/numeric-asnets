@@ -69,6 +69,7 @@ def main() -> None:
             "seed": row["seed"], "job_id": row["evaluation_job_id"],
             "score": row["score"], "total": row["total"],
             "elapsed": row["evaluation_elapsed"],
+            "source_checkpoint": row["checkpoint"],
             "source_log": row["source_evaluation_log"],
         })
     for row in fixed:
@@ -76,14 +77,16 @@ def main() -> None:
             "arm": "fixed_top20", "value_head": row["value_head"],
             "seed": row["seed"], "job_id": row["mcts_job_id"],
             "score": row["successes"], "total": row["total_instances"],
-            "elapsed": row["elapsed"], "source_log": row["source_evaluation_log"],
+            "elapsed": row["elapsed"], "source_checkpoint": "",
+            "source_log": row["source_evaluation_log"],
         })
     for row in pw:
         jobs.append({
             "arm": "pw_kmin3", "value_head": row["value_head"],
             "seed": row["seed"], "job_id": row["job_id"],
             "score": row["score"], "total": row["total"],
-            "elapsed": row["elapsed"], "source_log": row["source_evaluation_log"],
+            "elapsed": row["elapsed"], "source_checkpoint": "",
+            "source_log": row["source_evaluation_log"],
         })
     jobs.sort(key=lambda row: (row["arm"], row["value_head"], int(row["seed"])))
     instances = []
