@@ -392,6 +392,13 @@ beside the coverage loss: fixed top-20 solved 84 instances and Kmin=3 solved
 76. Historical policy logs lack per-instance elapsed records, so eight exact
 checkpoint timing recaptures were submitted as jobs 20720780--20720787; their
 results are profiling evidence and do not replace the original policy scores.
+All eight completed and reproduced the original scores. Whole policy jobs
+averaged 238 seconds, although the policy evaluator still did not emit
+per-instance elapsed records. Exactly two of 84 fixed-top-20 successes exceeded
+30 minutes (42.94 and 102.11 minutes); zero of 76 Kmin=3 successes exceeded 30
+minutes. Removing those two successes gives a 30-minute counterfactual of
+policy 7.00, fixed top-20 10.25 and Kmin=3 9.50 solved instances per seed. The
+underlying rows and plots are under `experiment_tracking/advisor_figures/`.
 
 ### Pilot profiling
 
@@ -427,22 +434,24 @@ timeouts, lower runtime and retained-node work, feasible-only known-goal
 chasing, and nonzero cutoff evidence showing that search was actually prevented
 from exceeding the remaining executable horizon.
 
-Ten matched Drone jobs were submitted as `20652251`--`20652260`; all ten
-inference logs were subsequently post-hoc VAL-confirmed. VH-off averaged 8.4,
-identical to its historical baseline. VH-on averaged 9.4 versus 8.8 historically.
+The first nonbinding ten-job Drone campaign remains provenance only. The fresh
+binding campaign uses a 750-action limit and matched aware/unaware arms from
+one commit. At the 2026-08-30 12:13 snapshot, 17/20 inference jobs were
+terminal and three were running. Five newly terminal inference logs were
+post-hoc VAL-confirmed by jobs 20723088--20723091 and 20723155 instead of
+repeating inference.
 
-However, all compact summaries currently report `horizon_cutoffs=(count=0)`.
-Drone trajectories are far below the 10,000-action evaluation limit and its
-observed MCTS selection depths are only tens of edges, so the horizon constraint
-has not bound. This campaign is therefore currently a useful non-regression
-check, but not evidence that horizon enforcement improves a genuinely
-horizon-constrained problem. A later efficacy experiment must predeclare a
-smaller common executable budget for both arms or use instances whose executed
-trajectories approach their existing limit.
+The cutoff counter is working: aware job 20684990 recorded one actual cutoff
+and scored 16/20 versus 15/20 for its matched unaware arm. All other terminal
+aware jobs currently recorded zero. The five complete VH-off pairs tie exactly
+at 8.8/20. Three complete VH-on pairs average 10.00 unaware versus 10.33 aware;
+this is incomplete and cannot support a causal claim until both remaining
+pairs terminate.
 
-The apparent VH-on gain is not a horizon effect. Every run recorded zero
-cutoffs and zero horizon-infeasible known-goal decisions. The two differing
-seeds also changed successful-instance membership and plan lengths: seed
+The apparent VH-on gain in the first nonbinding campaign is not a horizon
+effect. Every run in that campaign recorded zero cutoffs and zero
+horizon-infeasible known-goal decisions. The two differing seeds also changed
+successful-instance membership and plan lengths: seed
 1963100312 added `problem_8_1_2`; seed 2011206605 lost `problem_8_1_4` but added
 `problem_4_2_5`, `problem_5_2_2`, and `problem_6_8_1`. Shared successful plans
 were sometimes different too. Historical and new commands match except for the
@@ -451,6 +460,22 @@ separate TensorFlow/MDPSim worker executions are not bitwise reproducible. The
 gain is therefore recorded as run-to-run/build variation. A causal horizon
 claim requires fresh aware and unaware arms from one commit on a binding
 horizon.
+
+### SAFE-CONTEXT live matched experiment
+
+SAFE-CONTEXT uses a separate `MCTSNode` for every `(physical_state,
+action_history_digest)` registry key. Each node owns its own policy, value,
+children, priors and visit statistics; the explicit selection-path set still
+stores only physical-state keys for cycle prevention. No growing action history
+is stored in the node key.
+
+All twenty matched Drone physical/contextual jobs are running. The 2026-08-30
+12:17 snapshot is stored in
+`experiment_tracking/mcts_safe_context/live_progress_snapshot.csv`. Current
+contextual node multipliers range from 1.045x to 35.886x, confirming both that
+history aliasing occurs and that separating contexts can be expensive. Partial
+success counts are not compared because paired jobs have classified different
+numbers of instances; only terminal matched results will be used for coverage.
 
 ## 13. Deferred experiments
 

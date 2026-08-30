@@ -19,7 +19,7 @@ INSTANCE_RE = re.compile(
 )
 NAME_RE = re.compile(
     r"Ev_(?P<domain>[^_]+(?:_[^_]+)*)_(?P=domain)_mcts_orig_"
-    r"(?P<vh>novh|vh).*?_s(?P<seed>\d+)_K0_(?P<tag>[^_]+)_src"
+    r"(?P<vh>novh|vh).*?_s(?P<seed>\d+)_K0_(?P<tag>.+?)_src"
     r"(?P<src>\d+)_e(?P<epoch>\d+)"
 )
 BEST_RE = re.compile(

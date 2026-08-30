@@ -188,6 +188,16 @@ reused Zenotravel tuning winners and every off-grid selected endpoint were
 found. The 72 required Zenotravel recovery evaluations were submitted; no
 training lineage or weight file had to be recreated.
 
+The static Zenotravel reconciliation then exposed a second, lineage-level
+case: two VH-off tuning winners continued in new experiment directories, and
+their continuation-local validation baseline did not identify the global best
+from the original phase. Comparing success and average validation-plan length
+across both phases selects original-job 20553987 epoch 13 and original-job
+20553995 epoch 20. Their policy evaluations are jobs 20724194 and 20724195;
+`four_domain_preservation/zenotravel_stage2_global_selected_policy_submissions.tsv`
+records the exact checkpoints. Continuation-local epochs must never silently
+replace these global lineage-best endpoints.
+
 Future policy-only evaluations request ten CPUs for ten evaluator workers.
 Older six-CPU submissions remain valid evidence and are not repeated merely
 for resource symmetry. Generic and preservation/MPrime policy controllers now
