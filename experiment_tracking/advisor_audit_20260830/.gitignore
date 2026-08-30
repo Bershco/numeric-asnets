@@ -1,0 +1,3 @@
+_deck_build/node_modules/
+_deck_build/rendered/
+*.inspect.ndjson

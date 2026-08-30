@@ -1,0 +1,25 @@
+experiment_id,display_name,current_status,suggested_improvement,priority_1_to_5,relevance_1_to_5,predicted_benefit,already_present_or_overlap
+MAIN-VAL,Validation-led mainstream,completed,Use RQ-aligned Holm families and paired difference-in-differences for the value-head question.,5,5,high interpretive benefit,STAT-RQ analysis; no separate experiment
+MAIN-TERM,Terminal-led mainstream,completed,Add strict training-success stopping replication rather than treating terminal snapshots as perfect paper replication.,5,5,medium-high scientific benefit,STOP-ORIG
+PRESERVE-4,Three-domain preservation replication,live,Finish Delivery/TPP and report coefficient-tuning seeds separately from eight held-out confirmation seeds.,5,5,high,ANCHOR-4
+MPRIME-VAL,MPrime validation redesign,completed-reclassified,"Use a larger frozen validation ensemble or rank-robust selection objective, without test-guided tuning.",4,5,medium,none
+MAIN-EXT6-MPRIME,Six-domain imperfect mainstream extension,dependency-live,"Finish tuning and ten-seed Stage-2 confirmation, then publish both five-domain confirmatory and six-domain extension families.",5,5,high,MPRIME-VAL and ANCHOR-4
+ANCHOR-4,Stage-2 anchor selection,live,Automate terminal training -> policy curve -> coefficient freeze -> confirmation submission.,5,4,high operational benefit,PRESERVE-4 controller chain
+MCTS-WIDTH,MCTS fixed-width sensitivity,live,Report domain-specific width choices and conservative interrupted-job lower bounds side by side.,5,5,high,MCTS-PW-CROSS-DOMAIN
+MCTS-PW,MCTS progressive-widening pilot,completed,Raise minimum width to three while keeping policy ordering and SAFE behavior.,4,5,observed moderate recovery,already tested by MCTS-PW-SAFE
+MCTS-PW-SAFE,SAFE progressive-widening sensitivity,extension-completed,Expand only promising Kmin=3 domain arms from two to five seeds.,4,5,medium,MCTS-PW-CROSS-DOMAIN
+MCTS-PW-PATHBATCH,Path-batched multi-node progressive widening,held-design,Preflight backup semantics and memory before any grid; use one seed/instance first.,2,4,uncertain,none
+MCTS-SAFE,MCTS terminal-safety correction,completed-diagnostic,Separate node statistics by action-history context while retaining physical-state cycle detection.,5,5,potentially high,MCTS-SAFE-CONTEXT
+MCTS-HORIZON,MCTS remaining-horizon sensitivity,live,Stratify instances by actual cutoff opportunity; migrate to Counters if Drone remains nonbinding.,3,5,medium if cutoffs occur,MCTS-SAFE2 is different and held
+MCTS-SAFE-CONTEXT,Action-history-aware MCTS transpositions,live,"Make peak RSS, context multiplier, prediction disagreement and coverage co-primary diagnostics.",5,5,high correctness value,current instrumentation
+MCTS-SAFE2,Fully horizon-indexed MCTS safety,held-design,Estimate state-by-horizon multiplication before behavior change; keep unsent until memory is bounded.,2,4,uncertain correctness benefit,MCTS-HORIZON
+MAIN-VAL-S2-MCTS,Validation-led Stage-2 policy versus MCTS,live,"Finish the sixteen Drone gaps, then release fast/high-information domains before resource-heavy ones.",5,5,high RQ coverage,none
+MCTS-PW-CROSS-DOMAIN,Cross-domain progressive-widening screening,live,Use the two-seed screen to select domains for a five-seed confirmation rather than expanding every arm.,4,5,medium-high efficiency,MCTS-PW-SAFE
+MCTS-PW-30M,Fresh 30-minute progressive-widening budget confirmation,held-ready,"Run fresh 30-minute capped fixed/PW comparisons on promising screened cells, including Counters.",5,5,high advisor relevance,post-hoc 30-minute analysis already exists
+MCTS-RESOURCE,MCTS worker/resource resumption,held,Resume with two workers/160 GiB after lifecycle deployment and preserve fixed-budget lower bounds.,5,5,high reliability,MCTS-LEGACY-ROVER
+MCTS-LEGACY-ROVER,Rover Stage-2 endpoint MCTS release,resource-pending,Replace fragile three-worker/120-GiB releases with the documented resource-safe continuation.,5,5,high completion probability,MCTS-RESOURCE
+LONG-DRONE,Long-training Drone continuation,live,Restore lineage validation state and compare terminal—not peak—policy under the same budget.,3,4,medium,continuation-state fix
+STOP-ORIG,Original training-success stopping replication,held,Pilot strict original training-success stopping on three matched seeds before a full campaign.,5,5,high fidelity,MAIN-TERM
+PUCT-EST,PUCT/estimator causal sensitivity,held,Use a small paired factorial pilot instead of an open-ended coefficient sweep.,2,4,uncertain,BG-HIST historical sensitivity
+ENHSP-LEAF,Best-ENHSP leaf-estimator sensitivity,completed,Archive as exploratory and do not expand unless main estimands identify an estimator bottleneck.,1,2,low,none
+BG-HIST,Historical Block Grouping reproduction,completed,Retain provenance only; prevent historical width-5/3 results from re-entering primary tables.,1,3,high reporting hygiene,MCTS-WIDTH

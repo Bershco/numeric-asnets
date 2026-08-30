@@ -4,9 +4,15 @@ This directory is the canonical index for thesis experiments. Reports should
 read these files instead of repeatedly rediscovering completed results from the
 cluster filesystem.
 
+The current advisor-facing snapshot is
+`advisor_audit_20260830/current_status.md`, with the machine-readable equivalent
+in `advisor_audit_20260830/experiment_status.csv`. Cluster access must use the
+single `uni-cluster` Windows-profile alias documented in
+`cluster_access_and_ssh.md`.
+
 ## Files
 
-- `../docs/cluster_access_and_ssh.md`: canonical cluster-access procedure,
+- `cluster_access_and_ssh.md`: canonical cluster-access procedure,
   including the recurring wrong-Windows-profile versus stale-VPN-route failure
   and its bounded retry sequence.
 - `experiment_registry.csv`: one row per named experiment, including its scientific
@@ -171,6 +177,10 @@ cluster filesystem.
   the full six-hour result and the deterministic post-hoc 30-minute result;
   Block Grouping/Counters use 20 simulations to match narrow search, while
   FO Counters/Rover use 70 to match normal search.
+- `mcts_progressive_widening_cross_domain/README.md`: the explicit
+  budget-matched interpretation and predeclared cell-promotion rule. The Drone
+  PW campaigns use 70 simulations; a 20-simulation Block Grouping/Counters
+  result must never be described as the standard 70-simulation PW result.
 - `mcts_counters_width_sensitivity/validate_terminal_partial.sbatch`:
   lightweight YYMAXDEPTH=12000 post-hoc VAL for interrupted narrow-search
   logs. Jobs 20719777--20719786 cover the ten newly terminal OOM lineages that
@@ -307,3 +317,12 @@ were removed after reconciliation; they must not be recreated or cited.
 
 If the live cluster cannot be reached, report the snapshot timestamp explicitly
 instead of presenting it as current.
+
+## Advisor audit package
+
+The durable 30 August 2026 whole-project audit is under
+`experiment_tracking/advisor_audit_20260830/`. It contains RQ-aligned paired
+statistics, the exact grouped Slurm resource snapshot, the story-hole register,
+one scored improvement for every registered experiment, the meeting brief, and
+the advisor-ready PowerPoint. Use these files instead of reconstructing static
+results from raw logs during each status request.

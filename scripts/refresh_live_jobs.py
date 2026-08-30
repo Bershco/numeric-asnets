@@ -6,14 +6,24 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "experiment_tracking" / "live_jobs.csv"
-HOST = "hersco@slurm.bgu.ac.il"
+# Use the single documented Windows-profile alias. It pins the intended
+# cluster identity file and avoids the recurring wrong-profile/host-key issue.
+HOST = "uni-cluster"
 
 
 def classify(name: str, reason: str) -> str:
+    if name == "MPRIME_ANCHOR_POLICY_REFRESH":
+        return "MPRIME-ANCHOR-POLICY-CONTROLLER"
+    if name == "P4_DELIVERY_S2_POLICY_REFRESH":
+        return "PRESERVE-DELIVERY-S2-POLICY-CONTROLLER"
+    if name == "P4_TPP_S2_POLICY_REFRESH":
+        return "PRESERVE-TPP-S2-POLICY-CONTROLLER"
     if name.startswith("context-full-"):
         return "MCTS-SAFE-CONTEXT"
     if name.startswith("horizon-drone-") or name == "HORIZON_POSTHOC_VAL":
         return "MCTS-HORIZON-BINDING"
+    if name.startswith("pw-kmin3-"):
+        return "MCTS-PW-CROSS-DOMAIN"
     if "MPCAT" in name:
         return "MPRIME-ANCHOR"
     if "MPATPOL" in name:
@@ -27,7 +37,13 @@ def classify(name: str, reason: str) -> str:
     if name.startswith("Ev_tpp_"):
         return "PRESERVE-TPP-S2-POLICY"
     if name.startswith("Ev_counters_") and "SR10M" in name:
-        return "MCTS-WIDTH-COUNTERS"
+        return "MCTS-WIDTH-COUNTERS-S2"
+    if name.startswith("Ev_drone_") and "SR10M" in name:
+        return "MAIN-VAL-S2-MCTS"
+    if name.startswith("Ev_rover_"):
+        return "MCTS-RESOURCE-ROVER"
+    if name.startswith("Ev_fo_counters_"):
+        return "MCTS-RESOURCE-FO-HELD"
     if name.startswith("HORIZON_"):
         return "MCTS-HORIZON"
     if name.startswith("SAFE3_"):
