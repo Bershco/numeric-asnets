@@ -124,6 +124,11 @@ cluster filesystem.
 - `mcts_counters_width_sensitivity/stage2_policy_only_trajectory_audit.csv`:
   policy length, persisted MCTS length, common prefix, decrement count and
   multiset overrun for all twelve Stage-2 policy-only successes.
+- `mcts_counters_width_sensitivity/stage2_policy_only_failure_summary.csv`:
+  cause roll-up for those twelve losses. Eleven are exact 10,000-action
+  divergences and zero are six-hour instance timeouts; one instance was not
+  processed to a terminal record before the job ended and remains a
+  conservative unclassified failure.
 - `mprime_validation_ipc_scale_v1/validation_test_checkpoint_audit.csv` and
   `validation_test_agreement_summary.csv`: the complete 290-checkpoint corrected
   MPrime validation/test join and its 20 lineage plus two pooled correlations.
@@ -149,6 +154,23 @@ cluster filesystem.
   requested instance outcomes from corrected diagnostics 20688113--20688116,
   including context multipliers and original log pointers. The twenty matched
   full jobs were released after the bounded gate completed without overflow.
+- `mcts_safe_context/context_revisit_summary.csv`: reproducible instance and
+  aggregate accounting of physical-state revisits, different-action-history
+  revisits, true full-context reuses, and contextual node multiplication. It
+  is derived by `../scripts/summarize_safe_context_revisits.py` from the
+  immutable twelve-instance diagnostic ledger.
+- `main_val_stage2_drone_mcts_manifest.csv`: the sixteen MAIN-VAL Drone
+  Stage-2 selected-checkpoint MCTS evaluations proven absent by a complete
+  accounting search. Controller `20726009` submitted them as
+  `20726030`--`20726045`; the four pre-existing matched results remain in
+  `main_val_stage2_drone_mcts_gap.csv` and were not duplicated.
+- `mcts_progressive_widening_cross_domain/pilot_manifest.csv`: the frozen
+  twenty-job Kmin=3 cross-domain extension submitted as `20726010`--`20726029`.
+  It covers two seeds and both VH modes for Block Grouping, FO Counters,
+  Rover, and Counters Stage 1, plus Counters Stage 2. Every analysis must show
+  the full six-hour result and the deterministic post-hoc 30-minute result;
+  Block Grouping/Counters use 20 simulations to match narrow search, while
+  FO Counters/Rover use 70 to match normal search.
 - `mcts_counters_width_sensitivity/validate_terminal_partial.sbatch`:
   lightweight YYMAXDEPTH=12000 post-hoc VAL for interrupted narrow-search
   logs. Jobs 20719777--20719786 cover the ten newly terminal OOM lineages that

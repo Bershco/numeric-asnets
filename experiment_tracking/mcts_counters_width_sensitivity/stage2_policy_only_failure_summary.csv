@@ -1,0 +1,4 @@
+scope,value_head,terminal_pairs,policy_only_instances,cause,count,interpretation,source
+reconciled_stage2_narrow,off,6,12,action_limit_10000,11,"MCTS diverged immediately from the policy trajectory and terminated unsolved at exactly 10000 actions; elapsed time remained below the six-hour instance limit",11 rows in experiment_tracking/mcts_counters_width_sensitivity/stage2_policy_only_trajectory_audit.csv
+reconciled_stage2_narrow,off,6,12,instance_timeout_21600,0,"No policy-only loss in the reconciled subset was caused by the six-hour per-instance timeout",experiment_tracking/mcts_counters_width_sensitivity/stage2_narrow_pair_audit.csv
+reconciled_stage2_narrow,off,6,12,unprocessed_after_job_end,1,"fz_instance_58 for seed 1963100312 lacks a terminal completion record; conservatively classified as a failure but not attributed to action-limit divergence",experiment_tracking/mcts_counters_width_sensitivity/stage2_narrow_pair_audit.csv

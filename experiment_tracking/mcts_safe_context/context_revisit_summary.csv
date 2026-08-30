@@ -1,0 +1,11 @@
+scope,domain,instance,observations,physical_revisits,different_context_revisits,same_context_reuses,different_context_share_of_physical_revisits,node_multiplier,source_results
+instance,drone,problem_1_1_2.pddl,64,11,11,0,1.000000,1.204,experiment_tracking/mcts_safe_context/corrected_diagnostic_instance_results.csv
+instance,rover,pfile1.pddl,91,3,2,1,0.666667,1.022,experiment_tracking/mcts_safe_context/corrected_diagnostic_instance_results.csv
+instance,rover,pfile10.pddl,99311,70320,69854,466,0.993373,3.379,experiment_tracking/mcts_safe_context/corrected_diagnostic_instance_results.csv
+instance,counters,fz_instance_2.pddl,139,115,113,2,0.982609,5.440,experiment_tracking/mcts_safe_context/corrected_diagnostic_instance_results.csv
+instance,counters,fz_instance_31.pddl,140000,75372,28798,46574,0.382078,1.316,experiment_tracking/mcts_safe_context/corrected_diagnostic_instance_results.csv
+instance,counters,fz_instance_60.pddl,140000,61688,0,61688,0.000000,1.000,experiment_tracking/mcts_safe_context/corrected_diagnostic_instance_results.csv
+instance,block_grouping,instance_5_25_6_1.pddl,140000,83901,56239,27662,0.670302,1.902,experiment_tracking/mcts_safe_context/corrected_diagnostic_instance_results.csv
+instance,block_grouping,instance_20_5_2_2.pddl,39982,18625,11776,6849,0.632268,1.484,experiment_tracking/mcts_safe_context/corrected_diagnostic_instance_results.csv
+instance,block_grouping,instance_100_25_6_2.pddl,140000,54541,4866,49675,0.089217,1.042,experiment_tracking/mcts_safe_context/corrected_diagnostic_instance_results.csv
+aggregate,all,all measured instances,699587,364576,171659,192917,0.470846,,experiment_tracking/mcts_safe_context/corrected_diagnostic_instance_results.csv
