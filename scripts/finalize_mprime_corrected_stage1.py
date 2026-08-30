@@ -52,7 +52,7 @@ def submit_policy(row: dict[str, str]) -> str:
         str(SUBMITTER), "--dom-mprime", "--original-only",
         "--domain-architecture", "policy", "--eval-from", row["checkpoint"],
         "--seed", row["seed"], "--workers", "10", "--jpddl-max-heap", "4g",
-        "--time", "04:00:00", "--mem", "20G", "--cpus", "6",
+        "--time", "04:00:00", "--mem", "20G", "--cpus", "10",
         "--output-subdir", "mprime_corrected_stage1_policy",
         "--job-suffix", f"MPCP_src{row['training_job']}_e{int(row['epoch']):04d}",
     ]

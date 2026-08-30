@@ -49,7 +49,7 @@ def submit(row: dict[str, str], dry: bool) -> str:
         str(SUBMITTER), f"--dom-{domain}", "--original-only",
         "--domain-architecture", "mcts", "--seed", row["seed"],
         "--workers", "10", "--jpddl-max-heap", "4g",
-        "--time", "04:00:00", "--mem", "20G", "--cpus", "6",
+        "--time", "04:00:00", "--mem", "20G", "--cpus", "10",
         "--eval-from", row["source_checkpoint_ref"],
         "--job-suffix", suffix,
         "--output-subdir", f"preserve4_{domain}_stage2_policy_eval",

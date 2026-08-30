@@ -30,7 +30,7 @@ def submit(row: dict[str, str], dry: bool = False) -> str:
         str(SUBMITTER), "--dom-drone", "--original-only",
         "--domain-architecture", "mcts", "--seed", row["seed"],
         "--workers", "10", "--jpddl-max-heap", "4g",
-        "--time", "04:00:00", "--mem", "20G", "--cpus", "6",
+        "--time", "04:00:00", "--mem", "20G", "--cpus", "10",
         "--eval-from", row["source_checkpoint"],
         "--job-suffix", f"PWK3POLRT_{row['value_head']}_{row['seed']}",
         "--output-subdir", "mcts_pw_kmin3_policy_runtime",

@@ -56,8 +56,22 @@ HTML when useful, and an aggregate CSV. Plot captions state checkpoint rule,
 VH mode, seed count, search configuration, timeout treatment and whether the
 p-value is raw or multiplicity-corrected.
 
-Current readiness: MAIN-VAL/MAIN-TERM and the initial policy-versus-MCTS table
-are plot-ready; PW Kmin3 runtime/coverage is plot-ready except policy
-per-instance runtime, whose exact-checkpoint recapture is queued; MPrime's
-validation audit is plot-ready; PRESERVE-4, Binding Horizon and SAFE-CONTEXT
-remain live and must be regenerated from their final ledgers.
+## Concrete file locations
+
+The generated advisor package is indexed in
+`experiment_tracking/advisor_figures/README.md`. Available now:
+
+- `experiment_tracking/advisor_figures/mainstream_stage1_stage2_forest.{svg,png}`
+  with `mainstream_stage1_stage2_forest_data.csv`;
+- `experiment_tracking/advisor_figures/pw_kmin3_30min_coverage.{svg,png}`
+  with `pw_kmin3_30min_sensitivity.csv`;
+- `experiment_tracking/advisor_figures/pw_kmin3_success_runtime_ecdf.{svg,png}`;
+- `experiment_tracking/advisor_figures/drone_mainterm_policy_mcts.{svg,png}`;
+- `experiment_tracking/mprime_validation_ipc_scale_v1/corrected_learning_curves.{svg,png}`
+  and its aggregate CSV.
+
+The exact-checkpoint policy recaptures finished and reproduced all eight
+authoritative scores. They confirmed whole-job policy runtimes of only minutes,
+but the current policy evaluator still emits no per-instance elapsed record.
+PRESERVE-4, Binding Horizon and SAFE-CONTEXT remain live; their final figures
+must be regenerated only after their committed ledgers become terminal.

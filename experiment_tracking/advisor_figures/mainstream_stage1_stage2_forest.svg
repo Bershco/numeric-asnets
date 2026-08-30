@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="720" viewBox="0 0 1500 720">
+<rect width="100%" height="100%" fill="white"/>
+<text x="750.0" y="31.0" font-family="Arial,sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#222">Stage-1 → Stage-2 policy change across ten matched seeds</text>
+<text x="380.0" y="67.0" font-family="Arial,sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#222">Validation-led: S1 selected → S2 selected</text>
+<line x1="250.0" y1="88" x2="250.0" y2="625" stroke="#e3e3e3"/>
+<text x="250.0" y="647.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="middle" fill="#222">-20</text>
+<line x1="300.0" y1="88" x2="300.0" y2="625" stroke="#e3e3e3"/>
+<text x="300.0" y="647.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="middle" fill="#222">-10</text>
+<line x1="350.0" y1="88" x2="350.0" y2="625" stroke="#e3e3e3"/>
+<text x="350.0" y="647.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="middle" fill="#222">0</text>
+<line x1="400.0" y1="88" x2="400.0" y2="625" stroke="#e3e3e3"/>
+<text x="400.0" y="647.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="middle" fill="#222">10</text>
+<line x1="450.0" y1="88" x2="450.0" y2="625" stroke="#e3e3e3"/>
+<text x="450.0" y="647.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="middle" fill="#222">20</text>
+<line x1="500.0" y1="88" x2="500.0" y2="625" stroke="#e3e3e3"/>
+<text x="500.0" y="647.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="middle" fill="#222">30</text>
+<line x1="350.0" y1="88" x2="350.0" y2="625" stroke="#111" stroke-width="1.2"/>
+<text x="215.0" y="116.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Block Grouping · VH off</text>
+<line x1="344.0" y1="112" x2="353.0" y2="112" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="348.5" cy="112" r="5" fill="#4c78a8"/>
+<text x="524.0" y="116.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">16.3→16.0; p=0.625, pH=1.000</text>
+<text x="215.0" y="167.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Block Grouping · VH on</text>
+<line x1="324.2" y1="163" x2="344.8" y2="163" stroke="#d62728" stroke-width="3"/>
+<circle cx="334.5" cy="163" r="5" fill="#d62728"/>
+<text x="524.0" y="167.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">15.9→12.8; p=0.016, pH=0.156</text>
+<text x="215.0" y="218.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Drone · VH off</text>
+<line x1="343.6" y1="214" x2="364.4" y2="214" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="354.0" cy="214" r="5" fill="#4c78a8"/>
+<text x="524.0" y="218.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">5.9→6.7; p=0.504, pH=1.000</text>
+<text x="215.0" y="269.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Drone · VH on</text>
+<line x1="343.3" y1="265" x2="355.7" y2="265" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="349.5" cy="265" r="5" fill="#4c78a8"/>
+<text x="524.0" y="269.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">5.1→5.0; p=1.000, pH=1.000</text>
+<text x="215.0" y="320.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">FO Counters · VH off</text>
+<line x1="338.2" y1="316" x2="348.8" y2="316" stroke="#d62728" stroke-width="3"/>
+<circle cx="343.5" cy="316" r="5" fill="#d62728"/>
+<text x="524.0" y="320.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">4.2→2.9; p=0.047, pH=0.422</text>
+<text x="215.0" y="371.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">FO Counters · VH on</text>
+<line x1="342.5" y1="367" x2="351.5" y2="367" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="347.0" cy="367" r="5" fill="#4c78a8"/>
+<text x="524.0" y="371.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">3.7→3.1; p=0.250, pH=1.000</text>
+<text x="215.0" y="422.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Rover · VH off</text>
+<line x1="350.0" y1="418" x2="350.0" y2="418" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="350.0" cy="418" r="5" fill="#4c78a8"/>
+<text x="524.0" y="422.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">4.0→4.0; p=1.000, pH=1.000</text>
+<text x="215.0" y="473.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Rover · VH on</text>
+<line x1="348.5" y1="469" x2="352.5" y2="469" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="350.5" cy="469" r="5" fill="#4c78a8"/>
+<text x="524.0" y="473.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">3.8→3.9; p=1.000, pH=1.000</text>
+<text x="215.0" y="524.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Counters · VH off</text>
+<line x1="262.8" y1="520" x2="481.2" y2="520" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="372.0" cy="520" r="5" fill="#4c78a8"/>
+<text x="524.0" y="524.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">32.5→36.9; p=0.660, pH=1.000</text>
+<text x="215.0" y="575.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Counters · VH on</text>
+<line x1="319.3" y1="571" x2="412.7" y2="571" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="366.0" cy="571" r="5" fill="#4c78a8"/>
+<text x="524.0" y="575.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">18.6→21.8; p=0.562, pH=1.000</text>
+<text x="367.5" y="676.0" font-family="Arial,sans-serif" font-size="12" font-weight="normal" text-anchor="middle" fill="#222">Mean paired coverage change (plans)</text>
+<text x="1125.0" y="67.0" font-family="Arial,sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#222">Terminal-led: S1 final → S2 selected</text>
+<line x1="995.0" y1="88" x2="995.0" y2="625" stroke="#e3e3e3"/>
+<text x="995.0" y="647.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="middle" fill="#222">-20</text>
+<line x1="1045.0" y1="88" x2="1045.0" y2="625" stroke="#e3e3e3"/>
+<text x="1045.0" y="647.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="middle" fill="#222">-10</text>
+<line x1="1095.0" y1="88" x2="1095.0" y2="625" stroke="#e3e3e3"/>
+<text x="1095.0" y="647.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="middle" fill="#222">0</text>
+<line x1="1145.0" y1="88" x2="1145.0" y2="625" stroke="#e3e3e3"/>
+<text x="1145.0" y="647.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="middle" fill="#222">10</text>
+<line x1="1195.0" y1="88" x2="1195.0" y2="625" stroke="#e3e3e3"/>
+<text x="1195.0" y="647.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="middle" fill="#222">20</text>
+<line x1="1245.0" y1="88" x2="1245.0" y2="625" stroke="#e3e3e3"/>
+<text x="1245.0" y="647.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="middle" fill="#222">30</text>
+<line x1="1095.0" y1="88" x2="1095.0" y2="625" stroke="#111" stroke-width="1.2"/>
+<text x="960.0" y="116.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Block Grouping · VH off</text>
+<line x1="1090.2" y1="112" x2="1099.8" y2="112" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="1095.0" cy="112" r="5" fill="#4c78a8"/>
+<text x="1269.0" y="116.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">16.3→16.3; p=1.000, pH=1.000</text>
+<text x="960.0" y="167.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Block Grouping · VH on</text>
+<line x1="1068.7" y1="163" x2="1087.3" y2="163" stroke="#d62728" stroke-width="3"/>
+<circle cx="1078.0" cy="163" r="5" fill="#d62728"/>
+<text x="1269.0" y="167.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">15.0→11.6; p=0.008, pH=0.078</text>
+<text x="960.0" y="218.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Drone · VH off</text>
+<line x1="1088.4" y1="214" x2="1105.6" y2="214" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="1097.0" cy="214" r="5" fill="#4c78a8"/>
+<text x="1269.0" y="218.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">7.4→7.8; p=0.688, pH=1.000</text>
+<text x="960.0" y="269.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Drone · VH on</text>
+<line x1="1086.2" y1="265" x2="1096.8" y2="265" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="1091.5" cy="265" r="5" fill="#4c78a8"/>
+<text x="1269.0" y="269.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">7.2→6.5; p=0.250, pH=1.000</text>
+<text x="960.0" y="320.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">FO Counters · VH off</text>
+<line x1="1087.7" y1="316" x2="1094.3" y2="316" stroke="#d62728" stroke-width="3"/>
+<circle cx="1091.0" cy="316" r="5" fill="#d62728"/>
+<text x="1269.0" y="320.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">3.6→2.8; p=0.055, pH=0.438</text>
+<text x="960.0" y="371.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">FO Counters · VH on</text>
+<line x1="1093.0" y1="367" x2="1102.0" y2="367" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="1097.5" cy="367" r="5" fill="#4c78a8"/>
+<text x="1269.0" y="371.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">3.3→3.8; p=0.344, pH=1.000</text>
+<text x="960.0" y="422.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Rover · VH off</text>
+<line x1="1093.3" y1="418" x2="1096.7" y2="418" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="1095.0" cy="418" r="5" fill="#4c78a8"/>
+<text x="1269.0" y="422.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">3.8→3.8; p=1.000, pH=1.000</text>
+<text x="960.0" y="473.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Rover · VH on</text>
+<line x1="1093.4" y1="469" x2="1095.6" y2="469" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="1094.5" cy="469" r="5" fill="#4c78a8"/>
+<text x="1269.0" y="473.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">4.1→4.0; p=1.000, pH=1.000</text>
+<text x="960.0" y="524.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Counters · VH off</text>
+<line x1="1110.5" y1="520" x2="1243.5" y2="520" stroke="#2ca02c" stroke-width="3"/>
+<circle cx="1177.0" cy="520" r="5" fill="#2ca02c"/>
+<text x="1269.0" y="524.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">21.5→37.9; p=0.027, pH=0.246</text>
+<text x="960.0" y="575.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="end" fill="#222">Counters · VH on</text>
+<line x1="1037.8" y1="571" x2="1148.2" y2="571" stroke="#4c78a8" stroke-width="3"/>
+<circle cx="1093.0" cy="571" r="5" fill="#4c78a8"/>
+<text x="1269.0" y="575.0" font-family="Arial,sans-serif" font-size="10" font-weight="normal" text-anchor="start" fill="#222">17.2→16.8; p=0.961, pH=1.000</text>
+<text x="1112.5" y="676.0" font-family="Arial,sans-serif" font-size="12" font-weight="normal" text-anchor="middle" fill="#222">Mean paired coverage change (plans)</text>
+<text x="750.0" y="707.0" font-family="Arial,sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">95% paired t-intervals; p = exact sign-flip; pH = Holm-adjusted.</text>
+</svg>

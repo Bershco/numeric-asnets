@@ -1,0 +1,3 @@
+arm,value_head,seed,job_id,instance_number,instance,runtime_seconds,steps,source_log,runtime_minutes
+fixed_top20,on,534933607,20451720,6,problem_2_8_3.pddl,2576.44,551,/home/hersco/training_new_domains/2026-08-21/statistical_replication_stage1_mcts_eval/20451720_Ev_drone_drone_mcts_orig_vh_e.5_c.1_s534933607_K0_SR10M_src20401202_e0161.txt,42.941
+fixed_top20,on,1073581256,20431945,18,problem_8_7_1.pddl,6126.78,651,/home/hersco/training_new_domains/2026-08-21/statistical_replication_stage1_mcts_eval/20431945_Ev_drone_drone_mcts_orig_vh_e.5_c.1_s1073581256_K0_SR10M_src20401199_e0118.txt,102.113

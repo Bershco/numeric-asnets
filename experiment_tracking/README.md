@@ -180,6 +180,20 @@ accepts both forms, and idempotent controllers 20720613--20720616 recovered
 Delivery, TPP, MPrime and Zenotravel selected endpoints without duplicating
 existing evaluations.
 
+This was a regular-expression compatibility bug, not missing training data.
+The older form is emitted as `New best reached! ... iteration <epoch> ...
+snapshot name: <path>`; the current form is `[VALIDATION] New best! ...
+iter_num=<epoch> ... snapshot_name=<path>`. Source checkpoints for the four
+reused Zenotravel tuning winners and every off-grid selected endpoint were
+found. The 72 required Zenotravel recovery evaluations were submitted; no
+training lineage or weight file had to be recreated.
+
+Future policy-only evaluations request ten CPUs for ten evaluator workers.
+Older six-CPU submissions remain valid evidence and are not repeated merely
+for resource symmetry. Generic and preservation/MPrime policy controllers now
+upgrade older manifest rows to at least one requested CPU per worker at
+submission time.
+
 ## Provenance rules
 
 1. `source_training_log` points to the training or continuation log that

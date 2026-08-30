@@ -184,11 +184,16 @@ def output_subdir(row: dict[str, str]) -> str:
 
 def command(row: dict[str, str], dry_run: bool = False) -> tuple[list[str], dict[str, str]]:
     task = row["task_type"]
+    # Policy evaluation creates one evaluator process per worker.  Give future
+    # submissions at least one CPU per worker even when an older manifest row
+    # still records the historical six-CPU request.
+    cpus = str(max(integer(row, "cpus"), integer(row, "workers"))) \
+        if task == "policy_eval" else row["cpus"]
     cmd = [
         str(SUBMITTER), f"--dom-{row['domain']}", "--original-only",
         "--seed", row["seed"], "--workers", row["workers"],
         "--jpddl-max-heap", row["jpddl_heap"], "--time", row["time_limit"],
-        "--mem", row["memory"], "--cpus", row["cpus"],
+        "--mem", row["memory"], "--cpus", cpus,
         "--job-suffix", suffix(row),
     ]
     if row["value_head"] == "off":

@@ -42,7 +42,7 @@ def command(row: dict[str, str], dry: bool) -> tuple[list[str], dict[str, str]]:
         str(SUBMITTER), f"--dom-{row['domain']}", "--original-only",
         "--domain-architecture", "policy", "--seed", row["seed"],
         "--workers", "10", "--jpddl-max-heap", "4g", "--time", "04:00:00",
-        "--mem", "20G", "--cpus", "6", "--eval-from", row["source_checkpoint_ref"],
+        "--mem", "20G", "--cpus", "10", "--eval-from", row["source_checkpoint_ref"],
         "--job-suffix", f"CD4P_src{row['source_training_job_id']}_e{int(row['snapshot_epoch']):04d}",
         "--output-subdir", "completed_domains_stage1_policy_eval",
     ]

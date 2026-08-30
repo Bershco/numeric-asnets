@@ -1,0 +1,10 @@
+arm,value_head,seeds,total_instances,original_successes,successful_instances_over_30m,successes_under_30m_counterfactual,original_mean_coverage,mean_coverage_under_30m,mean_whole_job_runtime_seconds
+policy,off,4,80,31,0,31,7.750,7.750,284.250
+fixed_top20,off,4,80,35,0,35,8.750,8.750,43631.000
+pw_kmin3,off,4,80,35,0,35,8.750,8.750,39574.750
+policy,on,4,80,25,0,25,6.250,6.250,192.000
+fixed_top20,on,4,80,49,2,47,12.250,11.750,41015.000
+pw_kmin3,on,4,80,41,0,41,10.250,10.250,32347.500
+policy,overall,8,160,56,0,56,7.000,7.000,238.125
+fixed_top20,overall,8,160,84,2,82,10.500,10.250,42323.000
+pw_kmin3,overall,8,160,76,0,76,9.500,9.500,35961.125

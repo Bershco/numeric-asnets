@@ -41,7 +41,7 @@ def main() -> None:
         command = [
             str(SUBMITTER), "--dom-mprime", "--original-only", "--domain-architecture", "mcts",
             "--seed", row["seed"], "--workers", "10", "--jpddl-max-heap", "4g",
-            "--time", "04:00:00", "--mem", "20G", "--cpus", "6",
+            "--time", "04:00:00", "--mem", "20G", "--cpus", "10",
             "--eval-from", row["source_checkpoint_ref"],
             "--job-suffix", f"MPATPOL_a{token}_src{row['source_training_job_id']}_e{int(row['snapshot_epoch']):04d}",
             "--output-subdir", "mprime_corrected_anchor_policy_eval",
