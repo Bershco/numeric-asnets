@@ -274,8 +274,8 @@ def signature(row: dict[str, str]) -> tuple[str, ...]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--policy-manifest", type=Path, action="append", required=True)
-    parser.add_argument("--mcts-manifest", type=Path, action="append", required=True)
+    parser.add_argument("--policy-manifest", type=Path, action="append", default=[])
+    parser.add_argument("--mcts-manifest", type=Path, action="append", default=[])
     parser.add_argument("--training-manifest", type=Path, action="append", default=[])
     parser.add_argument("--ledger", type=Path, required=True)
     parser.add_argument("--queue-cap", type=int, default=1999)
@@ -284,12 +284,15 @@ def main() -> int:
     parser.add_argument("--validate-only", action="store_true")
     args = parser.parse_args()
 
-    phases = [
-        ("policy_eval", args.policy_manifest),
-        ("mcts_eval", args.mcts_manifest),
-    ]
+    phases = []
+    if args.policy_manifest:
+        phases.append(("policy_eval", args.policy_manifest))
+    if args.mcts_manifest:
+        phases.append(("mcts_eval", args.mcts_manifest))
     if args.training_manifest:
         phases.append(("train", args.training_manifest))
+    if not phases:
+        parser.error("at least one policy, MCTS, or training manifest is required")
     rows_by_phase: list[tuple[str, Path, list[dict[str, str]]]] = []
     all_ids: list[str] = []
     for task, paths in phases:
