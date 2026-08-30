@@ -75,3 +75,15 @@ authoritative scores. They confirmed whole-job policy runtimes of only minutes,
 but the current policy evaluator still emits no per-instance elapsed record.
 PRESERVE-4, Binding Horizon and SAFE-CONTEXT remain live; their final figures
 must be regenerated only after their committed ledgers become terminal.
+
+Zenotravel PRESERVE-4 is now terminal and reconciled. Its paired Stage-1 to
+Stage-2 endpoint results are in
+`experiment_tracking/four_domain_preservation/zenotravel_stage2_comparisons.csv`;
+all 410 Stage-2 curve/endpoint records and their original log paths are in
+`experiment_tracking/four_domain_preservation/zenotravel_stage2_policy_results.csv`.
+
+The incomplete MAIN-VAL Stage-2 Drone policy/MCTS join is tracked explicitly in
+`experiment_tracking/main_val_stage2_drone_mcts_gap.csv`. Policy evidence is
+complete for all twenty seed/VH cells; four MCTS endpoints are complete and the
+remaining sixteen are marked `ready_held` rather than being mistaken for
+missing policy results.

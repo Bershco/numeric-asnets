@@ -1,0 +1,5 @@
+domain,value_head,stage1_endpoint,n_pairs,stage1_mean,stage2_validation_selected_mean,paired_change,ci95_low,ci95_high,raw_sign_flip_p,notes
+zenotravel,off,validation_selected,10,20.0,20.0,0.0,0.0,0.0,1.0,Global lineage-selected Stage-2 checkpoints; includes original-phase corrections for seeds 1963100312 and 2011206605
+zenotravel,off,final,10,20.0,20.0,0.0,0.0,0.0,1.0,Global lineage-selected Stage-2 checkpoints
+zenotravel,on,validation_selected,10,20.0,19.9,-0.1,-0.33,0.13,1.0,Global lineage-selected Stage-2 checkpoints
+zenotravel,on,final,10,19.8,19.9,0.1,-0.31,0.51,1.0,Global lineage-selected Stage-2 checkpoints
