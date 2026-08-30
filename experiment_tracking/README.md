@@ -149,6 +149,10 @@ cluster filesystem.
   requested instance outcomes from corrected diagnostics 20688113--20688116,
   including context multipliers and original log pointers. The twenty matched
   full jobs were released after the bounded gate completed without overflow.
+- `mcts_counters_width_sensitivity/validate_terminal_partial.sbatch`:
+  lightweight YYMAXDEPTH=12000 post-hoc VAL for interrupted narrow-search
+  logs. Jobs 20719777--20719786 cover the ten newly terminal OOM lineages that
+  were not yet present in the static result CSVs; inference is never rerun.
 - `mcts_safe_context/stale_*_submissions_20260829.tsv`: immutable provenance for
   the one-instance diagnostic jobs and twenty stale held full jobs replaced
   after the restriction/validator wrapper repairs.
