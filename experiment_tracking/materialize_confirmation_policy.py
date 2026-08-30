@@ -80,10 +80,19 @@ def main() -> None:
         final_epoch = max(candidates)
         best = BEST_RE.findall(text)
         selected_epoch = int(best[-1][0]) if best else None
-        epochs = {epoch for epoch in candidates if epoch % 5 == 0}
-        epochs.add(final_epoch)
-        if selected_epoch is not None:
-            epochs.add(selected_epoch)
+        policy_scope = submitted.get("policy_scope", "all") or "all"
+        if policy_scope == "selected_only":
+            if selected_epoch is None:
+                raise RuntimeError(
+                    f"job {job_id}: selected_only requested but no validation best was parsed")
+            epochs = {selected_epoch}
+        elif policy_scope == "all":
+            epochs = {epoch for epoch in candidates if epoch % 5 == 0}
+            epochs.add(final_epoch)
+            if selected_epoch is not None:
+                epochs.add(selected_epoch)
+        else:
+            raise ValueError(f"job {job_id}: unsupported policy_scope={policy_scope}")
         terminal_lineages += 1
         domain = submitted["domain"]
         for epoch in sorted(epochs):
