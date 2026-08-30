@@ -19,10 +19,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--ledger", type=Path, required=True)
+    parser.add_argument("--expected-count", type=int, default=20)
     args = parser.parse_args()
     rows = list(csv.DictReader(args.manifest.open(newline="", encoding="utf-8")))
-    if len(rows) != 20:
-        raise RuntimeError(f"Expected 20 rows, got {len(rows)}")
+    if len(rows) != args.expected_count:
+        raise RuntimeError(f"Expected {args.expected_count} rows, got {len(rows)}")
     existing = set()
     if args.ledger.exists():
         existing = {
