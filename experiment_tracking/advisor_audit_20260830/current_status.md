@@ -1,121 +1,125 @@
-# Current experiment status — 30 August 2026, 20:45 IDT
+# Current experiment status — 31 August 2026, 00:13 IDT
 
-Exact jobs are in `../live_jobs.csv`; grouped resources are in
-`cluster_workload.csv`; machine-readable experiment states are in
-`experiment_status.csv`.
+Exact queue rows and log pointers are in `../live_jobs.csv`. This file is the
+human-readable interpretation of that immutable snapshot; completed mainstream
+policy results remain in the authoritative endpoint/statistics ledgers and are
+not repeated here by default.
 
 ## Cluster workload
 
 | Queue class | Jobs | CPUs | Requested RAM |
 |---|---:|---:|---:|
-| Running | 67 | 438 | 6,132 GiB |
-| Ordinary/resource/dependency pending | 271 | 2,538 | 9,063 GiB |
-| Deliberately held | 20 | 120 | 2,400 GiB |
-| Total pending shown by Slurm | 291 | 2,658 | 11,463 GiB |
+| Running | 86 | 672 | 6,132 GiB |
+| Ordinary/resource pending | 150 | 1,104 | 8,580 GiB |
+| Dependency pending | 2 | 4 | 3 GiB |
+| Deliberately Slurm-held | 20 | 120 | 2,400 GiB |
+| Total pending shown by Slurm | 172 | 1,228 | 10,983 GiB |
 
-The running allocation is exactly 6,132 GiB, twelve GiB below the 6-TiB
-per-user memory ceiling. New heavy jobs may be submitted and wait safely, but
-cannot start until running jobs release memory. The three one-GiB controllers
-are dependency-pending by design.
+Running memory is twelve GiB below the 6-TiB per-user ceiling. This is why the
+heavy newly submitted work is waiting rather than starting immediately. Held
+jobs count toward Slurm's pending-job count but request no allocated memory.
 
-## Automatic policy chain and its boundary
+## Live, eligible, and dependency-gated experiments
 
-- MPrime controller `20743983` waits for all nine remaining anchor-training
-  jobs.
-- Delivery controller `20743984` waits for its final two held-out Stage-2 jobs.
-- TPP controller `20743985` waits for its final three held-out Stage-2 jobs.
+| Experiment | Running / pending | Running resources | Scientific progress | Timing |
+|---|---:|---:|---|---|
+| MPrime anchor tuning | 1 / 0 | 6 CPU, 48 GiB | 27/28 terminal; final lineage at epoch 87/100 | Trainer ETA about 2h36m |
+| MPrime tuning-policy evidence | 30 / 0 | 300 CPU, 600 GiB | Running work retained; 73 not-started redundant all-coefficient evaluations cancelled | Individual jobs should clear over hours; no coefficient decision waits for them |
+| MPrime Stage-2 finalizer | 0 / 1 dependency | 0 | Job 20755820 freezes anchors and submits 16 held-out validation-led plus 20 terminal-led lineages | Begins immediately after the last tuning job terminates |
+| Delivery validation-led Stage-2 policy | 9 / 51 | 90 CPU, 180 GiB | Training is complete; remaining every-five/endpoints are queued | Memory-dependent; expected hours after slots open |
+| TPP validation-led Stage 2 | 3 / 0 | 18 CPU, 144 GiB | 13/16 held-out lineages terminal; four tuning winners are reused | Epochs 92/79/56: roughly 4–7h, 12–17h, and at most 23h to scheduler limit |
+| TPP policy finalizer | 0 / 1 dependency | 0 | Idempotent every-five/endpoints refresh | Starts after all three training jobs terminate |
+| PRESERVE-3-TERM | 0 / 60 | 0 | True final-Stage1-led Delivery/TPP/Zenotravel Stage 2, 60 unique lineages | Eligible; start follows memory availability; each has a 72h cap |
+| Counters Stage-2 narrow 5/20 | 5 / 0 | 30 CPU, 600 GiB | 15/20 terminal, 14 reconciled; five tails remain | About 10h42m to their 72h caps at snapshot |
+| Cross-domain PW20 screen | 14 / 3 | 84 CPU, 1,680 GiB | 3/20 terminal; Block Grouping/on n=2 and Counters-S2/off n=1 | Current jobs range under 1h to about 11h; tails may run to 72h |
+| PW70 correction | 0 / 12 | 0 | Same Block Grouping/Counters cells rerun with intended 70 simulations | Eligible; start unknown under memory ceiling |
+| Counters Horizon efficacy | 0 / 8 | 0 | Fresh same-commit aware/unaware pairs at the real 10,000-action cap | Eligible; start unknown under memory ceiling |
+| SAFE-CONTEXT | 3 / 0 | 18 CPU, 360 GiB | 17/20 terminal; final three have 11–16 classified instances and 3–6 timeouts | About 14–15h elapsed; timeout tails can extend to 72h |
+| MAIN-VAL Drone Stage-2 MCTS gap | 0 / 16 | 0 | Completes the 20-row validation-led Stage-2 policy/MCTS comparison | Eligible; memory-blocked |
+| Rover endpoint MCTS | 21 / 0 | 126 CPU, 2,520 GiB | Twenty terminal-led Stage-2 endpoints plus one older validation-led endpoint | 1–10.6h elapsed; historical median allocation about 30h; 72h cap |
 
-These idempotent controllers submit every-five and selected/final policy
-evaluations. They do **not** choose MPrime anchors or launch MPrime Stage 2.
-MPrime coefficient selection reads validation AUC/peak/final values directly
-from the training logs; external test-policy curves are evidence, not tuning
-inputs. A reviewed finalizer is still needed before the first forty MPrime
-Stage-2 lineages (twenty validation-led and twenty terminal-led) are released.
+## Deliberately held or design-held
 
-## Live experiment table
+| Experiment | Held scope | Reason / release condition |
+|---|---:|---|
+| FO Counters endpoint MCTS | 20 Slurm-held jobs; 120 CPU and 2,400 GiB requested if released | Preserve queue capacity; release only after higher-priority PW/Horizon/mainstream work |
+| MCTS-PW-30M | Manifest-ready design | Wait for cross-domain cells to qualify, then run fresh hard-30-minute comparisons |
+| MCTS-RESOURCE | Two-worker/160-GiB FO Counters/Rover resumptions | Deploy/use lifecycle-safe code and report separately as resource sensitivity |
+| SAFE-2 | Design-held | User explicitly deferred horizon-indexed `(state,h)` statistics |
+| PW path-batched widening | Design-held | Nonstandard multi-expansion update semantics require a separate pilot |
+| STOP-ORIG and PUCT/estimator sensitivities | Design-held | Not current resource priorities |
 
-| Experiment | Queue/resources now | Scientific position | Best current evidence | Timing |
-|---|---|---|---|---|
-| MPrime anchor tuning | 9 running; 54 CPU, 432 GiB | 19/28 terminal; validation-led tuning only | One coefficient per VH will be selected by two-seed validation AUC, then peak/final validation tie-breaks | Most remaining jobs were at epochs 64–96; roughly 1–5 h from the 19:55 audit |
-| MPrime tuning policy | 7 running + 207 pending; running 70 CPU/140 GiB | Analysis curves/endpoints, not the coefficient selector | Final controller attached to all remaining training | Starts/finishes as memory frees |
-| Delivery Stage 2 | 2 running; 12 CPU/96 GiB | 14/16 held-out lineages terminal; four tuning winners give 20 total eventual validation-led lineages | Frozen anchor 30 for both VH modes | Both at epoch 97; about 1–2 h |
-| Delivery policy | 2 running + 24 pending; running 20 CPU/40 GiB | Every-five and selected/final endpoints | Final dependency controller attached | Memory-dependent |
-| TPP Stage 2 | 3 running; 18 CPU/144 GiB | 13/16 held-out terminal; four tuning winners reused | Frozen anchors off=3 and on=10 | Epochs 52/74/86: about 27 h hard-bound for the slowest, approximately 16 h and 7 h for the others |
-| Counters Stage-2 narrow | 6 running; 36 CPU/720 GiB | 14/20 terminal | Off n=8: policy 43.13 vs narrow 42.50; on n=6: 30.83 vs 32.83 | At most about 16 h to the 72-h allocation cap |
-| Binding Horizon | 1 running; 6 CPU/120 GiB | 19/20 terminal; nine matched pairs | Seven ties, one aware +1, one aware -3; paired mean -0.22, 95% CI [-1.06, 0.62], raw sign-flip p=1.0 | Final aware arm has run about 9.5 h; hours expected, 72-h cap |
-| SAFE-CONTEXT | 18 running; 108 CPU/2,160 GiB | Physical-only versus action-history-contextual nodes | Diagnostic different-context revisits were frequent; node multiplier ranged 1.00–5.44x without tracker overflow | Many instances finish in 2–12 h; timeout tails may extend to 12–30 h |
-| Budget-matched cross-domain PW | 10 running + 9 pending; running 60 CPU/1,200 GiB | Two seeds per domain/stage/VH screen | First Counters S2 row: policy 59, fixed narrow 49, PW 59; PW 3:47 vs fixed 18:05 | Running arms: hours to about one day; pending start unknown under memory cap |
-| MAIN-VAL Drone S2 MCTS | 16 pending; 96 CPU/1,920 GiB requested | Four historical rows plus sixteen confirmed gaps | Completes Stage-2 policy-vs-MCTS evidence | Start unknown; memory-blocked |
-| Rover endpoint MCTS | 9 running + 12 pending; running 54 CPU/1,080 GiB | Released legacy endpoint work; fixed-budget OOM risk is part of outcome | Early running lower bounds are not final aggregate evidence | Historical median allocation about 30 h; 72-h cap |
+## Current comparative evidence
 
-## Counters Stage-2 narrow interim statistics
+### Counters validation-led Stage-2 policy versus narrow MCTS
 
-All unclassified instances after OOM/allocation termination remain failures;
-all printed successful plans in the terminal subset are VAL-confirmed.
+The reconciled rows are final fixed-budget outcomes; incomplete instances after
+OOM/allocation termination count as failures and every printed plan is VAL
+checked.
 
-| VH | Matched terminal n | Policy | Narrow 5/20 | Change | 95% CI | Raw exact p |
+| VH | Reconciled n | Policy | Narrow 5/20 | Change | 95% CI | Raw exact p |
 |---|---:|---:|---:|---:|---:|---:|
 | Off | 8 | 43.13/59 | 42.50/59 | -0.63 | [-4.00, 2.75] | .922 |
 | On | 6 | 30.83/59 | 32.83/59 | +2.00 | [-5.02, 9.02] | .563 |
 
-These rows are still interim because six matched seeds run.
+The fifteenth terminal job still needs static reconciliation; five jobs remain
+live. These are final scores for the terminal subset, not optimistic lower
+bounds.
 
-## Progressive widening: budget correction
+### Cross-domain PW screening
 
-The completed Drone PW pilot and Kmin=3 extension used 70 simulations. The new
-cross-domain screen is deliberately comparator-matched rather than uniform:
+The earlier Block Grouping/Counters rows accidentally used 20 simulations. We
+retain them as a valid narrow-budget experiment and have submitted a distinct
+PW70 correction. They must be displayed separately.
 
-- Block Grouping and Counters use 20 simulations to compare PW against fixed
-  narrow 5/20.
-- FO Counters and Rover use 70 simulations to compare PW against fixed normal
-  20/70.
+| Cell | n | Policy | Fixed 5/20 | PW20 | Fixed runtime | PW20 runtime | Classification |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Block Grouping Stage1/on | 2 | 17.0/20 | 17.0/20 | 18.0/20 | 8h38m | 9h22m | Coverage-positive candidate; no demonstrated runtime gain |
+| Counters Stage2/off | 1 | 59/59 | 49/59 | 59/59 | 18h05m | 3h47m | Strong provisional candidate; needs second seed |
 
-The first Counters result therefore shows a strong equal-small-budget
-improvement over fixed narrow search. It does not yet tell us how Counters PW70
-performs. Promotion occurs by domain-stage-VH cell, not by favourable seed: PW
-must preserve policy, stay within five percentage points of fixed search, and
-materially improve efficiency/safety. If either VH mode qualifies, both modes
-are expanded to five seeds. A promoted Block Grouping/Counters cell then needs
-a separately labelled PW70 confirmation for a standard-budget claim.
+No cell is yet formally promoted or rejected. Formal promotion requires the
+complete two-seed cell, no systematic policy-success regression, and an
+efficiency or retained-node benefit. The twelve PW70 jobs are a correction,
+not a replacement; final reporting will contain separate PW20 and PW70 columns.
 
-## Stable-domain Stage-2 correction and Zenotravel result
+### Drone binding-Horizon experiment — completed
 
-The existing Delivery, TPP and Zenotravel Stage-2 lineages were initialized
-from validation-selected Stage-1 checkpoints. Comparing their Stage-2 scores
-to Stage-1 final scores is descriptive; it is not a terminal-led intervention.
-A true stable-domain terminal-led branch therefore remains a sixty-lineage
-held design (three domains x two VH x ten seeds), with exact duplicates reusable
-only when selected and final checkpoints truly coincide.
+All twenty aware/unaware arms completed inference and are VAL-confirmed. Across
+ten matched pairs: seven ties, one aware +1, one aware -3, and one aware +2.
 
-Zenotravel validation-led Stage 2 is complete:
+| Statistic | Result |
+|---|---:|
+| Mean paired coverage change | 0.00/20 |
+| 95% paired t interval | [-0.89, +0.89] |
+| Exact sign-flip p | 1.000 |
 
-| VH | S1 validation-selected | S2 validation-selected | Paired change (95% CI) | Raw p |
+For the surprising -3 pair, the unaware-only successes used 170, 253, and 237
+external actions; the aware failures stopped unsolved after 206, 510, and 323.
+All are far below the 750-action cap and that aware run logged zero horizon
+cutoffs. The losses therefore were not rejected as horizon-infeasible paths.
+They are run/process variation in a non-bitwise-deterministic multiprocessing
+TensorFlow/MDPSim search stack. The zero mean over all ten pairs supports the
+conclusion that Drone-750 did not demonstrate a causal Horizon effect.
+
+### Zenotravel validation-led Stage 2 — completed comparison
+
+| VH | Stage1 selected | Stage2 selected | Change (95% CI) | Raw p |
 |---|---:|---:|---:|---:|
-| Off | 20.0/20 | 20.0/20 | 0.0 [0.0, 0.0] | 1.0 |
-| On | 20.0/20 | 19.9/20 | -0.1 [-0.33, 0.13] | 1.0 |
+| Off | 20.0 | 20.0 | 0.0 [0.0, 0.0] | 1.0 |
+| On | 20.0 | 19.9 | -0.1 [-0.33, 0.13] | 1.0 |
 
-There is no statistically supported degradation. Stage-1 final means were
-20.0/off and 19.8/on, but comparisons against them remain descriptive until a
-real final-led Stage-2 branch is run.
+The newly submitted PRESERVE-3-TERM branch is the separate causal test starting
+from Stage1 final checkpoints; numerical comparison against those finals alone
+would not substitute for that intervention.
 
-## Horizon next step
+## Immediate automatic sequence
 
-Drone-750 has produced only one recorded cutoff and the newest aware arm fell
-from 9/20 to 6/20 despite zero cutoffs in that run. The campaign is therefore a
-non-regression/variation study, not evidence that horizon enforcement helps.
-The preferred efficacy follow-up is Counters, where executions genuinely reach
-the 10,000-action budget. A held eight-job pilot is registered: two seeds, two
-VH modes, fresh aware/unaware arms from one commit, normal width20/70, no PW.
-It expands only if cutoffs actually occur.
-
-## Held and deferred
-
-- FO Counters endpoint MCTS: 20 Slurm-held jobs, 120 CPU/2,400 GiB requested.
-- Stable-domain terminal-led Stage 2: 60-lineage design hole, not submitted.
-- Counters Horizon efficacy: eight-job held design; wait for Drone closure and
-  memory capacity.
-- MCTS-PW-30M: held-ready until cross-domain cells are selected.
-- MCTS-RESOURCE: two-worker/160-GiB FO Counters/Rover sensitivity.
-- STOP-ORIG: original training-success stopping replication.
-- SAFE-2: fully horizon-indexed statistics, explicitly held by the user.
-- Path-batched PW and PUCT/estimator sensitivity remain design-held.
+1. The final MPrime anchor lineage terminates.
+2. Finalizer 20755820 freezes validation-selected coefficients and submits both
+   Stage-2 branches idempotently.
+3. Existing TPP dependency controller releases all newly available policy
+   curves/endpoints.
+4. Ready heavy jobs (PRESERVE-3-TERM, PW70, Counters Horizon, Drone Stage-2
+   MCTS) enter freed 120/48-GiB slots according to Slurm priority.
+5. The PW20 and Counters-narrow terminal ledgers are reconciled as each live job
+   ends; no completed inference is rerun merely for extraction.

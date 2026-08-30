@@ -14,6 +14,8 @@ HOST = "uni-cluster"
 def classify(name: str, reason: str) -> str:
     if name == "MPRIME_ANCHOR_POLICY_REFRESH":
         return "MPRIME-ANCHOR-POLICY-CONTROLLER"
+    if name == "MPRIME_FINALIZE_STAGE2":
+        return "MPRIME-STAGE2-FINALIZER"
     if name == "P4_DELIVERY_S2_POLICY_REFRESH":
         return "PRESERVE-DELIVERY-S2-POLICY-CONTROLLER"
     if name == "P4_TPP_S2_POLICY_REFRESH":
@@ -22,8 +24,18 @@ def classify(name: str, reason: str) -> str:
         return "MCTS-SAFE-CONTEXT"
     if name.startswith("horizon-drone-") or name == "HORIZON_POSTHOC_VAL":
         return "MCTS-HORIZON-BINDING"
+    if name.startswith("horizon-counters-"):
+        return "MCTS-HORIZON-COUNTERS"
     if name.startswith("pw-kmin3-"):
         return "MCTS-PW-CROSS-DOMAIN"
+    if name.startswith("pw70-kmin3-"):
+        return "MCTS-PW70-CROSS-DOMAIN"
+    if "P3TERMS2" in name:
+        return "PRESERVE-3-TERM"
+    if "MPEXT6V" in name:
+        return "MAIN-EXT6-MPRIME"
+    if "MPEXT6T" in name:
+        return "MAIN-TERM-EXT6-MPRIME"
     if "MPCAT" in name:
         return "MPRIME-ANCHOR"
     if "MPATPOL" in name:

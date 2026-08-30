@@ -65,25 +65,26 @@ require every-five Stage-2 policy curves, validation-selected/final policy
 endpoints, and validation-selected Stage-2 MCTS; Stage-2-final MCTS remains
 excluded.
 
-At the 2026-08-30 19:55 IDT snapshot, 19/28 anchor-tuning lineages are
-terminal and nine are running at epochs 64--96. Controller `20740567` completed
-successfully and submitted the policy entries available at its refresh. A final
-idempotent controller, `20743983`, is dependency-gated on all nine running jobs;
-it will also discover the nineteenth lineage that finished after the previous
-refresh. No terminal-led Stage-2 training is released before the anchor freeze:
-this is a deliberate safety gate that prevents an accidental coefficient
-mismatch.
+At the 2026-08-31 00:13 IDT snapshot, 27/28 anchor-tuning lineages are
+terminal.  The last lineage, job `20688852`, is at epoch 87/100 with an internal
+ETA of roughly 2h36m.  The old all-coefficient policy controller `20743983` and
+73 policy jobs that had not started were cancelled: external test-policy curves
+are not inputs to coefficient selection, so evaluating every checkpoint for
+every losing coefficient was redundant.  Thirty already-running policy jobs
+were left undisturbed and remain useful evidence.
 
 Coefficient selection uses validation measurements already written by the 28
 tuning-training logs: mean validation AUC across the two tuning seeds, then mean
 peak and final validation coverage as tie-breakers. It does not wait for
 test-policy evaluations and never uses test coverage to choose a coefficient.
-The policy-curve controller is an analysis/provenance pipeline only.
+The policy-curve controller is an analysis/provenance pipeline only.  After
+anchor selection, full policy learning curves and endpoints remain required for
+the winning tuning lineages and both mainstream confirmation branches.
 
-Automatic launch is technically possible after the nine training dependencies
-terminate, but no tested MPrime finalizer currently freezes the two coefficients
-and submits both 20-lineage mainstream branches. Because this is the first
-40-lineage MPrime Stage-2 release, the selected coefficients and dry-run
-manifests receive one manual review before submission. This review does not
-waste cluster capacity: the policy queue already fills the available resource
-slots.
+Automatic finalizer job `20755820` is dependency-gated on the final tuning
+lineage.  It verifies all 28 tuning logs, freezes one coefficient per VH mode by
+validation AUC/peak/final, reuses the four winning tuning lineages, submits the
+sixteen held-out validation-led lineages, and submits twenty separate
+terminal-led lineages.  Its submission ledger is idempotent, so a partial
+failure can be retried without duplicating already recorded jobs.  It does not
+use test-policy results for tuning.
