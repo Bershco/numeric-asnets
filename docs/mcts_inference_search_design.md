@@ -634,10 +634,24 @@ the four Slurm `FAILED` states as failed inference.
 The two wrapper defects are repaired: the comma-bearing restriction is base64
 encoded across Slurm's `--export` boundary, and validation uses the production
 validator path. The stale held jobs 20684998--20685018 were cancelled without
-running and archived in `stale_full_submissions_20260829.tsv`. Corrected
-three-instance diagnostics 20688113--20688116 are resource-pending. Twenty
-replacement matched Drone jobs 20688117--20688136 were created from the
-repaired script and remain held behind that diagnostic gate.
+running and archived in `stale_full_submissions_20260829.tsv`.
+
+The corrected three-instance diagnostics 20688113--20688116 completed on
+2026-08-30 with no tracking overflow. Exact per-instance evidence is in
+`corrected_diagnostic_instance_results.csv`. Observed node multipliers were:
+
+- Drone: 1.204 on the completed small instance; the two larger instances hit
+  their four-hour diagnostic timeout before emitting a terminal summary;
+- Rover: 1.022 on the successful instance and 3.379 on the 100-action failure;
+- Counters: 5.440, 1.316 and 1.000 across the three representatives;
+- Block Grouping: 1.902, 1.484 and 1.042.
+
+Because all bounded jobs completed without tracking overflow, the operational
+instrumentation gate passed. Twenty replacement matched Drone jobs
+20688117--20688136 were released from user hold on 2026-08-30. The two timed-out
+Drone diagnostics mean that hard-instance memory evidence is incomplete; any
+full-run OOM is therefore retained as an experimental outcome rather than
+silently retried with different resources.
 
 The original one-instance runtimes were approximately 57 seconds (Drone), 79
 seconds (Rover), 13 seconds (Counters) and 65 minutes (Block Grouping). Three
@@ -674,6 +688,19 @@ Both successful policy action lists and the eleven completed-unsolved MCTS
 action lists are retained verbatim in their original logs/JSONL. This is
 repeated increment/decrement wandering, not a terminal dead-end and therefore
 not something MCTS-SAFE-1's terminal mask can repair by itself.
+
+SAFE-CONTEXT is a plausible direct remedy only when the oscillation is caused
+by reusing physical-state node statistics across distinct action-count network
+contexts. The diagnostic evidence makes that mechanism especially plausible
+in Counters: one representative had a 5.440 context-node multiplier and large
+policy disagreement. It is not yet a causal result; the matched physical versus
+contextual experiment must establish whether coverage improves.
+
+MCTS-SAFE-2 could help indirectly when the same physical state is valued under
+incompatible remaining action budgets, but horizon-indexed statistics do not
+by themselves prevent increment/decrement cycles. A 10,000-action oscillation
+can remain possible within one horizon context. Consequently neither
+SAFE-CONTEXT nor SAFE-2 is claimed as a guaranteed cycle-prevention mechanism.
 
 ## MCTS-SAFE-2: fully horizon-indexed search
 

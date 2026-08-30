@@ -10,6 +10,24 @@ HOST = "hersco@slurm.bgu.ac.il"
 
 
 def classify(name: str, reason: str) -> str:
+    if name.startswith("context-full-"):
+        return "MCTS-SAFE-CONTEXT"
+    if name.startswith("horizon-drone-") or name == "HORIZON_POSTHOC_VAL":
+        return "MCTS-HORIZON-BINDING"
+    if "MPCAT" in name:
+        return "MPRIME-ANCHOR"
+    if "MPATPOL" in name:
+        return "MPRIME-ANCHOR-POLICY"
+    if name.startswith("Re-Tr_delivery_"):
+        return "PRESERVE-DELIVERY-S2"
+    if name.startswith("Ev_delivery_"):
+        return "PRESERVE-DELIVERY-S2-POLICY"
+    if name.startswith("Re-Tr_tpp_"):
+        return "PRESERVE-TPP-S2"
+    if name.startswith("Ev_tpp_"):
+        return "PRESERVE-TPP-S2-POLICY"
+    if name.startswith("Ev_counters_") and "SR10M" in name:
+        return "MCTS-WIDTH-COUNTERS"
     if name.startswith("HORIZON_"):
         return "MCTS-HORIZON"
     if name.startswith("SAFE3_"):

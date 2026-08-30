@@ -1,0 +1,13 @@
+job_id,domain,value_head,seed,instance,outcome,elapsed_seconds,steps,observations,physical_revisits,context_mismatches,tracked_physical,node_multiplier,tracking_overflow,witnesses,source_evaluation_log
+20688113,drone,off,1963100312,problem_1_1_2.pddl,success,53.34,4,64,11,11,54,1.204,0,11,/home/hersco/training_new_domains/2026-08-28/mcts_safe_context/20688113_context-drone-off-1963100312.txt
+20688113,drone,off,1963100312,problem_4_9_5.pddl,timeout,14400,,,,,,,,,/home/hersco/training_new_domains/2026-08-28/mcts_safe_context/20688113_context-drone-off-1963100312.txt
+20688113,drone,off,1963100312,problem_10_10_3.pddl,timeout,14400,,,,,,,,,/home/hersco/training_new_domains/2026-08-28/mcts_safe_context/20688113_context-drone-off-1963100312.txt
+20688114,rover,off,1963100312,pfile1.pddl,success,70.87,12,91,3,2,89,1.022,0,2,/home/hersco/training_new_domains/2026-08-28/mcts_safe_context/20688114_context-rover-off-1963100312.txt
+20688114,rover,off,1963100312,pfile10.pddl,unsolved,1896.12,100,99311,70320,69854,28992,3.379,0,128,/home/hersco/training_new_domains/2026-08-28/mcts_safe_context/20688114_context-rover-off-1963100312.txt
+20688114,rover,off,1963100312,pfile20.pddl,timeout,14400,,,,,,,,,/home/hersco/training_new_domains/2026-08-28/mcts_safe_context/20688114_context-rover-off-1963100312.txt
+20688115,counters,off,1963100312,fz_instance_2.pddl,success,8.76,1,139,115,113,25,5.440,0,113,/home/hersco/training_new_domains/2026-08-28/mcts_safe_context/20688115_context-counters-off-1963100312.txt
+20688115,counters,off,1963100312,fz_instance_31.pddl,unsolved,506.01,100,140000,75372,28798,64629,1.316,0,128,/home/hersco/training_new_domains/2026-08-28/mcts_safe_context/20688115_context-counters-off-1963100312.txt
+20688115,counters,off,1963100312,fz_instance_60.pddl,unsolved,3231.25,100,140000,61688,0,78313,1.000,0,0,/home/hersco/training_new_domains/2026-08-28/mcts_safe_context/20688115_context-counters-off-1963100312.txt
+20688116,block_grouping,off,1963100312,instance_5_25_6_1.pddl,unsolved,4153.03,100,140000,83901,56239,56100,1.902,0,128,/home/hersco/training_new_domains/2026-08-28/mcts_safe_context/20688116_context-block_grouping-off-1963100312.txt
+20688116,block_grouping,off,1963100312,instance_20_5_2_2.pddl,success,54.62,31,39982,18625,11776,21358,1.484,0,128,/home/hersco/training_new_domains/2026-08-28/mcts_safe_context/20688116_context-block_grouping-off-1963100312.txt
+20688116,block_grouping,off,1963100312,instance_100_25_6_2.pddl,unsolved,5743.03,100,140000,54541,4866,85460,1.042,0,128,/home/hersco/training_new_domains/2026-08-28/mcts_safe_context/20688116_context-block_grouping-off-1963100312.txt

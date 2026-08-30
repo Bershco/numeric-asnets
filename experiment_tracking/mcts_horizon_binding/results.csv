@@ -1,0 +1,9 @@
+job_id,value_head,seed,arm,score,total,val_valid,val_invalid,horizon_cutoffs,elapsed,source_evaluation_log,source_validation_log,status
+20684975,off,1963100312,unaware,10,20,10,0,not_applicable,12:16:07,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_binding/20684975_horizon-drone-off-1963100312-unaware.txt,slurm-20719059.out,terminal_val_confirmed
+20684976,off,1963100312,aware,10,20,10,0,0,12:15:22,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_binding/20684976_horizon-drone-off-1963100312-aware.txt,slurm-20719060.out,terminal_val_confirmed
+20684977,off,2011206605,unaware,7,20,7,0,not_applicable,12:18:54,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_binding/20684977_horizon-drone-off-2011206605-unaware.txt,slurm-20719061.out,terminal_val_confirmed
+20684978,off,2011206605,aware,7,20,7,0,0,12:17:24,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_binding/20684978_horizon-drone-off-2011206605-aware.txt,slurm-20719062.out,terminal_val_confirmed
+20684979,off,1073581256,unaware,7,20,7,0,not_applicable,12:16:49,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_binding/20684979_horizon-drone-off-1073581256-unaware.txt,slurm-20719063.out,terminal_val_confirmed
+20684980,off,1073581256,aware,7,20,7,0,0,12:18:03,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_binding/20684980_horizon-drone-off-1073581256-aware.txt,slurm-20719065.out,terminal_val_confirmed
+20684981,off,1239739722,unaware,8,20,8,0,not_applicable,12:12:22,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_binding/20684981_horizon-drone-off-1239739722-unaware.txt,slurm-20719066.out,terminal_val_confirmed
+20684986,on,1963100312,aware,4,20,4,0,0,08:01:47,/home/hersco/training_new_domains/2026-08-28/mcts_horizon_binding/20684986_horizon-drone-on-1963100312-aware.txt,slurm-20719368.out,terminal_val_confirmed

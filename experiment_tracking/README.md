@@ -133,12 +133,22 @@ cluster filesystem.
 - `mprime_validation_ipc_scale_v1/anchor_tuning_manifest.csv` and
   `anchor_tuning_submissions.tsv`: all 28 corrected MPrime Stage-2 tuning jobs.
 - `four_domain_preservation/tpp_stage2_policy_ready.csv` and its submission
-  ledger: 105 every-five plus selected/final policy jobs from the first five
-  terminal TPP confirmation lineages. Controllers 20687998 and 20688711
-  submitted all rows that were newly available at their respective snapshots.
-  A sixth lineage then terminated; controller 20689471 is queued to add its
-  missing curve and endpoints using the reusable idempotent
-  `submit_confirmation_stage2_policy.py` mechanism.
+  ledger: idempotent every-five plus selected/final Stage-2 policy work.
+  Controllers 20687998, 20688711 and 20689471 handled successive terminal
+  waves; controller 20718336 was submitted after the terminal count reached
+  thirteen of sixteen held-out lineages.
+- `four_domain_preservation/delivery_stage2_policy_ready.csv` and its submission
+  ledger: controller 20717925 materialized six terminal lineages and submitted
+  126 every-five plus endpoint policy evaluations.
+- `mprime_validation_ipc_scale_v1/materialize_anchor_policy.py` and
+  `submit_anchor_policy.py`: separate idempotent tuning-policy pipeline. After
+  restoring the authoritative 28-row training ledger and separating it from
+  the corrected-Stage-1 policy ledger, controller 20718118 submitted 105 policy
+  evaluations for five terminal MPrime anchor lineages.
+- `mcts_safe_context/corrected_diagnostic_instance_results.csv`: all twelve
+  requested instance outcomes from corrected diagnostics 20688113--20688116,
+  including context multipliers and original log pointers. The twenty matched
+  full jobs were released after the bounded gate completed without overflow.
 - `mcts_safe_context/stale_*_submissions_20260829.tsv`: immutable provenance for
   the one-instance diagnostic jobs and twenty stale held full jobs replaced
   after the restriction/validator wrapper repairs.
