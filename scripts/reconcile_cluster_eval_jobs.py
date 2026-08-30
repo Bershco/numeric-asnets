@@ -63,7 +63,9 @@ def sacct(*, ids: list[str] | None = None, start: str | None = None) -> list[dic
 
 def read_ids(path: Path, field: str) -> list[str]:
     with path.open(newline="", encoding="utf-8") as stream:
-        return [row[field] for row in csv.DictReader(stream) if row.get(field)]
+        delimiter = "\t" if path.suffix.lower() == ".tsv" else ","
+        return [row[field] for row in csv.DictReader(stream, delimiter=delimiter)
+                if row.get(field)]
 
 
 def terminal_training_metadata(source_ids: set[str]) -> dict[str, dict[str, str]]:
