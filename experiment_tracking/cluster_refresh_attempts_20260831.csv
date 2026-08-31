@@ -1,0 +1,4 @@
+attempt_time,ssh_profile,target,outcome,last_verified_scheduler_snapshot,interpretation
+2026-08-31T23:38:00+03:00,uni-cluster,slurm.bgu.ac.il:22,timeout_before_authentication,2026-08-31T20:35:18+03:00,"No cluster state inferred; route unavailable"
+2026-08-31T23:40:00+03:00,uni-cluster,slurm.bgu.ac.il:22,timeout_before_authentication,2026-08-31T20:35:18+03:00,"No cluster state inferred; route unavailable"
+2026-08-31T23:42:00+03:00,uni-cluster,slurm.bgu.ac.il:22,timeout_before_authentication,2026-08-31T20:35:18+03:00,"No cluster state inferred; current VPN OTP required"

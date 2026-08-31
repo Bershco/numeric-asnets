@@ -132,10 +132,13 @@ per-instance budget; they must never silently omit the cutoff columns.
 - `evaluation_stochasticity_audit.md`: evaluation-path audit separating
   inactive sampling code from active numerical, estimator, ordering, timing,
   and build sources that can cause repeated MCTS runs to diverge.
-- `mcts_determinism_audit/`: the completed bounded repeatability audit.
-  Preflight `20771356` passed, jobs `20771357`--`20771362` localized the first
-  numerical difference to CPU node type, and `followup_candidates.csv` ranks
-  same-commit Horizon pairs for an action-divergent node-pinned follow-up.
+- `mcts_determinism_audit/`: the initial bounded repeatability audit plus its
+  live node-pinned follow-up. Preflight `20771356` passed and jobs
+  `20771357`--`20771362` localized the first numerical difference to CPU node
+  type. Follow-up preflight `20788665` also passed; jobs
+  `20788666`--`20788671` were eligible pending at the 20:35 scheduler snapshot
+  and target the outcome-divergent zero-cutoff Horizon instance
+  `problem_3_3_4`.
 - `long_drone_endpoint_results.csv`: all static long-Drone selected/final
   policy and final-MCTS evidence, exact log pointers, and the one pending
   continuation-selected policy endpoint.

@@ -109,12 +109,18 @@ an instance already known to select different actions.
 See `mcts_determinism_audit/results.csv`, `checksum_summary.csv`,
 `manifest.csv` and `submissions.tsv` for exact job and log provenance.
 
-The first candidate gate for a node-pinned follow-up is the fresh same-commit
+The selected node-pinned follow-up is the fresh same-commit
 Drone VH-on seed `1239739722` Horizon pair: unaware job `20684991` scored 9/20
 and aware job `20684992` scored 6/20, while the aware arm recorded zero horizon
-cutoffs. Before submitting another audit, compare their per-instance success
-membership and action traces and choose one instance with an actual selected
-action divergence. See `mcts_determinism_audit/followup_candidates.csv`.
+cutoffs. Their per-instance membership was joined before submission. The aware
+arm lost three instances and gained none; `problem_3_3_4` was selected because
+the unaware arm solved it in 404.85 seconds while the aware arm ended unsolved
+in 379.24 seconds. Preflight `20788665` passed. Three repeats pinned to
+`cs-cpu-07` and three pinned to `ise-cpu-intl-07` are jobs
+`20788666`--`20788671`; each uses one worker, two CPUs, 20 GiB and a two-hour
+cap. They were eligible node-pending at the 20:35 snapshot. See
+`mcts_determinism_audit/followup_candidates.csv` and
+`followup_submissions.tsv`.
 
 ## Held architecture ablation: ACT-HISTORY-ABLATION
 
