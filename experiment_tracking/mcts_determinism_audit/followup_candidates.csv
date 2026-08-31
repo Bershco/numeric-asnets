@@ -1,4 +1,4 @@
 priority,domain,value_head,seed,arm_a_job,arm_b_job,arm_a_score,arm_b_score,recorded_horizon_cutoffs,why_candidate,required_static_check,submission_status
-1,drone,on,1239739722,20684991,20684992,9,6,0,"same-commit aware/unaware pair differs by three despite zero cutoffs","diff per-instance membership then select first action-divergent instance from source logs",not_submitted_route_unavailable
+1,drone,on,1239739722,20684991,20684992,9,6,0,"same-commit aware/unaware pair differs by three despite zero cutoffs","membership diff complete: aware lost problem_3_3_4 problem_4_2_5 and problem_8_1_4; problem_3_3_4 selected for bounded node-pinned audit because both historical executions finished within seven minutes",ready_for_node_pinned_submission
 2,drone,on,1472491096,20684993,20684994,11,13,not_recovered,"same-commit pair differs by two","recover cutoff count and diff per-instance membership before use",not_submitted
 3,drone,on,1073581256,20684989,20684990,15,16,1,"same-commit pair differs by one but horizon mechanism genuinely activated","use only as mechanism-positive contrast not primary determinism candidate",not_submitted

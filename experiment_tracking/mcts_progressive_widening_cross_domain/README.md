@@ -137,3 +137,16 @@ FO Counters Stage1/off is now a complete two-seed screening cell: policy mean
 but not yet an efficiency success because one PW job still OOMed after 18h09m.
 The paired VH-on job and the remaining Rover jobs are still live, so the domain
 promotion rule has not yet been evaluated in full.
+
+## Eleventh terminal job at 31 August 2026 20:13 IDT
+
+Counters validation-led Stage2/on seed `2011206605` completed its budget-matched
+PW20 run as job `20726021`. Policy scored 7/59, fixed narrow 5/20 scored 14/59,
+and PW20 scored 12/59. All 59 instances were classified and all 12 printed
+plans were VAL-valid. Every PW success completed within 482.39 seconds, so the
+PW score is 12/59 under 30-minute, 2-hour, and 6-hour per-instance cutoffs.
+PW20 therefore improves substantially over policy but does not match fixed
+narrow on this seed. Whole-job elapsed time was 20h30m because the remaining
+47 instances executed long unsuccessful 10,000-action trajectories; it was not
+caused by late successful plans. This remains PW20 evidence. Its distinct PW70
+counterpart is job `20755801`, currently resource-pending.

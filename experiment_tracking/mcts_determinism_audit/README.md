@@ -53,7 +53,11 @@ instance known to diverge in selected action.
 `followup_candidates.csv` ranks fresh same-commit Horizon pairs that changed
 coverage. The primary candidate is Drone VH-on seed `1239739722`: unaware job
 `20684991` scored 9/20 and aware job `20684992` scored 6/20 while recording zero
-horizon cutoffs. Once cluster access returns, their source logs must first be
-joined by instance to identify a genuine selected-action divergence. Only that
-single instance should then receive the node-pinned checksum audit. No follow-up
-MCTS job is submitted merely from aggregate score disagreement.
+horizon cutoffs. The per-instance join is complete. The aware run lost
+`problem_3_3_4`, `problem_4_2_5`, and `problem_8_1_4`; it gained no instance.
+`problem_3_3_4` is the bounded follow-up target because the unaware run solved
+it in 404.85 seconds and the aware run terminated unsolved in 379.24 seconds.
+This makes it cheap enough for matched, node-pinned checksum repeats. The
+archived logs do not contain the new per-root checksum records, so they
+establish divergent outcomes but cannot identify the first differing action
+without this rerun.
