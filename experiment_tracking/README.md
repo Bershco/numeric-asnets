@@ -94,6 +94,15 @@ single `uni-cluster` Windows-profile alias documented in
   training experiment. It records the required learning-curve policy work,
   required endpoint MCTS comparisons, materialized entry counts, and deliberate
   exclusions. Refresh it whenever training creates new checkpoints.
+- `mcts_runtime_cutoff_jobs_20260831.csv` and
+  `mcts_runtime_cutoff_instances_20260831.csv`: deterministic recensoring of
+  static MCTS results at 30-minute, two-hour, and six-hour per-instance limits.
+  These are post-hoc score counterfactuals over recorded instance runtimes;
+  they do not model extra scheduler throughput that a fresh hard-capped run
+  would create. Active-job rows are explicitly provisional lower bounds.
+- `evaluation_stochasticity_audit.md`: evaluation-path audit separating
+  inactive sampling code from active numerical, estimator, ordering, timing,
+  and build sources that can cause repeated MCTS runs to diverge.
 - `mcts_progressive_widening_sensitivity/manifest.csv`: predeclared two-seed
   SAFE+PW sensitivity gate with sixteen one-factor-at-a-time jobs.
 - `mcts_progressive_widening_sensitivity/submissions.tsv`: active corrected

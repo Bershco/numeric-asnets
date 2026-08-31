@@ -189,6 +189,7 @@ STORY_HOLES = [
     ("BUILD-VARIATION", "MCTS-HORIZON", "Historical and fresh MCTS processes are not bitwise reproducible across code/lifecycle builds.", "Use fresh aware and unaware arms from the same commit for causal claims.", "new compute", "closed in binding design"),
     ("CONTINUATION-STATE", "LONG-DRONE", "Legacy continuations reset their validation baseline, overstating continuation improvements.", "Use restored trainer-state metadata and label legacy continuation evidence as compatibility-limited.", "code/reporting", "fix implemented; historical caveat"),
     ("LOW-N", "all live", "Non-significance at n=2-5 is not evidence of no effect.", "Label exploratory rows; freeze confirmatory inference only after the preregistered matched seed count is terminal.", "reporting/compute", "open/live"),
+    ("REPEATABILITY", "MCTS-DETERMINISM-AUDIT", "Nominally identical seeded MCTS evaluations can diverge materially, while current logs do not identify the first differing layer.", "Repeat one exact checkpoint/instance under current, deterministic-CPU, and estimator-isolation arms; log root input/output and PUCT checksums until first divergence.", "instrumentation plus bounded compute", "held-design"),
 ]
 
 
@@ -218,6 +219,7 @@ IMPROVEMENTS = {
     "PUCT-EST": ("Use a small paired factorial pilot instead of an open-ended coefficient sweep.", 2, 4, "uncertain", "BG-HIST historical sensitivity"),
     "ENHSP-LEAF": ("Archive as exploratory and do not expand unless main estimands identify an estimator bottleneck.", 1, 2, "low", "none"),
     "BG-HIST": ("Retain provenance only; prevent historical width-5/3 results from re-entering primary tables.", 1, 3, "high reporting hygiene", "MCTS-WIDTH"),
+    "MCTS-DETERMINISM-AUDIT": ("Instrument the first divergent state/network/estimator/PUCT record before any broad same-seed reruns.", 5, 5, "high diagnostic value", "MCTS-HORIZON build-variation caveat"),
 }
 
 

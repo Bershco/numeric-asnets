@@ -58,16 +58,25 @@ To avoid choosing only a favourable VH result, if either VH cell for one
 domain/stage is promoted, both VH modes are expanded to at least five matched
 seeds. Fresh 30-minute confirmation remains a later, separately labelled arm.
 
-## Terminal PW20 evidence at 31 August 2026 03:50 IDT
+## Terminal PW20 evidence at 31 August 2026 08:45 IDT
 
-Five of twenty PW20 jobs are terminal. Block Grouping Stage1/off is a complete
+Seven of twenty PW20 jobs are terminal. Block Grouping Stage1/off is a complete
 two-seed cell: policy averages 16.5/20, fixed 5/20 and PW20 both average
 15.0/20, while whole-job runtime increases from about 7h39m to 12h26m. It is
 unpromising: PW loses policy coverage, gains nothing over fixed narrow, and is
 slower.
 
 Block Grouping Stage1/on remains coverage-positive (policy and fixed 17.0/20,
-PW20 18.0/20) but PW20 is slower (9h22m versus 8h38m). Counters Stage2/off has
-one strong screening seed: policy 59/59, fixed narrow 49/59, PW20 59/59, with
-runtime 3h47m versus 18h05m. One seed is not confirmatory. Exact rows and log
-pointers are in `live_reconciliation_20260831.csv`.
+PW20 18.0/20) but PW20 is slower (9h22m versus 8h38m). Neither fixed comparator
+OOMed or ended early. Selection itself is a small fraction of runtime;
+successor generation, evaluation, and longer searched trajectories dominate.
+Under post-hoc cutoffs, BG/off fixed versus PW is 11.0 versus 11.5 at 30m and
+13.5 versus 15.0 at 2h; BG/on is 11.5 versus 12.5 at 30m and 13.5 versus 17.0
+at 2h. Thus PW is slower over the complete allocation but slightly better when
+individual instances receive shorter budgets.
+
+Counters Stage2/off has one strong screening seed: policy 59/59, fixed narrow
+49/59 and PW20 59/59; whole-job runtime is 3h47m for PW versus 18h05m fixed.
+At 30m the scores are PW52 versus fixed40, and at 2h PW59 versus fixed49. One
+seed remains screening evidence, not a confidence-interval result. Exact rows
+and log pointers are in `live_reconciliation_20260831.csv`.
