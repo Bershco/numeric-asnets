@@ -109,6 +109,13 @@ an instance already known to select different actions.
 See `mcts_determinism_audit/results.csv`, `checksum_summary.csv`,
 `manifest.csv` and `submissions.tsv` for exact job and log provenance.
 
+The first candidate gate for a node-pinned follow-up is the fresh same-commit
+Drone VH-on seed `1239739722` Horizon pair: unaware job `20684991` scored 9/20
+and aware job `20684992` scored 6/20, while the aware arm recorded zero horizon
+cutoffs. Before submitting another audit, compare their per-instance success
+membership and action traces and choose one instance with an actual selected
+action divergence. See `mcts_determinism_audit/followup_candidates.csv`.
+
 ## Held architecture ablation: ACT-HISTORY-ABLATION
 
 `USE_ACT_HISTORY_FEATURES=True` is inherited through

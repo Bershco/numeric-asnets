@@ -41,6 +41,9 @@ per-instance budget; they must never silently omit the cutoff columns.
 - `live_experiment_status.csv`: replaceable experiment-level roll-up of the
   live queue and latest immutable result-ledger counts. It separates running,
   dependency/resource-pending, and deliberately held work.
+- `dependency_controllers_20260831.csv`: exact seven lightweight policy
+  controllers waiting on per-cell training dependencies, including the final
+  validation-led TPP refresh; these are not additional training jobs.
 - `held_experiment_priority_20260831.csv`: explicit scientific priority order,
   release gate and dependency/overlap check for every held experiment.
 - `main_val_stage2_drone_mcts_terminal_20260831.csv`: newly terminal Drone
@@ -129,9 +132,10 @@ per-instance budget; they must never silently omit the cutoff columns.
 - `evaluation_stochasticity_audit.md`: evaluation-path audit separating
   inactive sampling code from active numerical, estimator, ordering, timing,
   and build sources that can cause repeated MCTS runs to diverge.
-- `mcts_determinism_audit/`: the live bounded repeatability audit.  Preflight
-  `20771356` passed, and jobs `20771357`--`20771362` compare ordinary and
-  deterministic-CPU execution with root-level checksums.
+- `mcts_determinism_audit/`: the completed bounded repeatability audit.
+  Preflight `20771356` passed, jobs `20771357`--`20771362` localized the first
+  numerical difference to CPU node type, and `followup_candidates.csv` ranks
+  same-commit Horizon pairs for an action-divergent node-pinned follow-up.
 - `long_drone_endpoint_results.csv`: all static long-Drone selected/final
   policy and final-MCTS evidence, exact log pointers, and the one pending
   continuation-selected policy endpoint.

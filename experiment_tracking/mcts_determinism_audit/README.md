@@ -47,3 +47,13 @@ does not support random process timing as the cause, and it does not show an
 action or coverage change on this instance.  A stronger follow-up would pin
 matched repeats to one node type and separately compare node types on an
 instance known to diverge in selected action.
+
+## Follow-up candidate gate
+
+`followup_candidates.csv` ranks fresh same-commit Horizon pairs that changed
+coverage. The primary candidate is Drone VH-on seed `1239739722`: unaware job
+`20684991` scored 9/20 and aware job `20684992` scored 6/20 while recording zero
+horizon cutoffs. Once cluster access returns, their source logs must first be
+joined by instance to identify a genuine selected-action divergence. Only that
+single instance should then receive the node-pinned checksum audit. No follow-up
+MCTS job is submitted merely from aggregate score disagreement.

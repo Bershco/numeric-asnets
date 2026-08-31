@@ -1,0 +1,8 @@
+experiment_id,job_id,domain,value_head,branch,state,reason,cpus,ram_gib,time_limit,dependency_scope,next_action
+PRESERVE-3-TERM-DELIVERY-POLICY-CONTROLLER,20768207,delivery,off,terminal_led,pending,Dependency,2,1,06:00:00,Delivery off training cell,run automatically and materialize every-five selected final policy rows
+PRESERVE-3-TERM-DELIVERY-POLICY-CONTROLLER,20768208,delivery,on,terminal_led,pending,Dependency,2,1,06:00:00,Delivery on training cell,run automatically and materialize every-five selected final policy rows
+PRESERVE-3-TERM-TPP-POLICY-CONTROLLER,20768209,tpp,off,terminal_led,pending,Dependency,2,1,06:00:00,TPP off training cell,run automatically and materialize every-five selected final policy rows
+PRESERVE-3-TERM-TPP-POLICY-CONTROLLER,20768210,tpp,on,terminal_led,pending,Dependency,2,1,06:00:00,TPP on training cell,run automatically and materialize every-five selected final policy rows
+PRESERVE-3-TERM-ZENO-POLICY-CONTROLLER,20768211,zenotravel,off,terminal_led,pending,Dependency,2,1,06:00:00,Zenotravel off training cell,run automatically and materialize every-five selected final policy rows
+PRESERVE-3-TERM-ZENO-POLICY-CONTROLLER,20768212,zenotravel,on,terminal_led,pending,Dependency,2,1,06:00:00,Zenotravel on training cell,run automatically and materialize every-five selected final policy rows
+PRESERVE-TPP-S2-POLICY-CONTROLLER,20743985,tpp,both,validation_led,pending,Dependency,2,1,06:00:00,final remaining validation-led TPP lineage,idempotently add final every-five selected final policy rows
