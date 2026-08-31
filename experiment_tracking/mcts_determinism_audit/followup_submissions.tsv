@@ -1,0 +1,7 @@
+run_id	node_family	repeat	job_id	dependency_job_id	stdout
+det-follow-cs-cpu-07-r1	cs-cpu-07	1	20788666	20788665	/home/hersco/training_new_domains/2026-08-31/mcts_determinism_followup/20788666_cs-cpu-07_r1.txt
+det-follow-cs-cpu-07-r2	cs-cpu-07	2	20788667	20788665	/home/hersco/training_new_domains/2026-08-31/mcts_determinism_followup/20788667_cs-cpu-07_r2.txt
+det-follow-cs-cpu-07-r3	cs-cpu-07	3	20788668	20788665	/home/hersco/training_new_domains/2026-08-31/mcts_determinism_followup/20788668_cs-cpu-07_r3.txt
+det-follow-ise-cpu-intl-07-r1	ise-cpu-intl-07	1	20788669	20788665	/home/hersco/training_new_domains/2026-08-31/mcts_determinism_followup/20788669_ise-cpu-intl-07_r1.txt
+det-follow-ise-cpu-intl-07-r2	ise-cpu-intl-07	2	20788670	20788665	/home/hersco/training_new_domains/2026-08-31/mcts_determinism_followup/20788670_ise-cpu-intl-07_r2.txt
+det-follow-ise-cpu-intl-07-r3	ise-cpu-intl-07	3	20788671	20788665	/home/hersco/training_new_domains/2026-08-31/mcts_determinism_followup/20788671_ise-cpu-intl-07_r3.txt

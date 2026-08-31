@@ -61,3 +61,10 @@ This makes it cheap enough for matched, node-pinned checksum repeats. The
 archived logs do not contain the new per-root checksum records, so they
 establish divergent outcomes but cannot identify the first differing action
 without this rerun.
+
+The bounded follow-up was submitted after cluster-side shell syntax checks.
+Preflight job `20788665` gates six one-instance jobs `20788666`--`20788671`.
+Three repeats are pinned to `cs-cpu-07` and three to `ise-cpu-intl-07`; each
+requests two CPUs, 20 GiB and at most two hours. The target is VH-on seed
+`1239739722`, checkpoint epoch 23, `problem_3_3_4`, with one worker and the
+same fixed width-20/70-simulation search configuration.

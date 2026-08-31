@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo=/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context
 out=/home/hersco/training_new_domains/2026-08-31/mcts_determinism_followup
 preflight=/home/hersco/training_new_domains/2026-08-31/mcts_determinism_audit/overlay/mcts_determinism_preflight.sbatch
-batch="$repo/scripts/mcts_determinism_followup.sbatch"
+batch="$out/overlay/mcts_determinism_followup.sbatch"
 checkpoint='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.drone-experiments_numeric.architecture_2.drone-2026-08-20T18:13:54.901932/P[domain,problem_1_1_4,problem_1_8_1,problem_8_1_...]-S[0.003,50,enhsp-hadd-astar]-MO[]-T[518400]-04905448-7d9a779/snapshots/snapshot_23_0.375'
 checkpoint_b64=$(printf '%s' "$checkpoint" | base64 -w0)
 
