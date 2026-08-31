@@ -128,6 +128,27 @@ def run_epoch_spawn_grads(
     return outs
 
 
+def _send_eval_result(result_sink, payload):
+    """Send one worker result through either supported IPC primitive.
+
+    Rolling evaluation uses a one-way ``Connection`` so timed-out workers can
+    be reaped without retaining a shared queue.  The older validation-wave
+    evaluator still supplies a multiprocessing ``Queue``.  Keeping the small
+    compatibility boundary here prevents the two callers from silently
+    disagreeing about the worker entry-point contract.
+    """
+    send = getattr(result_sink, "send", None)
+    if callable(send):
+        send(payload)
+        return
+    put = getattr(result_sink, "put", None)
+    if callable(put):
+        put(payload)
+        return
+    raise TypeError(
+        "evaluation result sink must provide send() or put()")
+
+
 def _eval_process_entry(idx, worker_fn, inp, result_conn):
     os.setsid()  # worker becomes leader of a new process group/session, this gives us a way to kill all subprocesses of said worker when something crashed inside
     try:
@@ -135,9 +156,10 @@ def _eval_process_entry(idx, worker_fn, inp, result_conn):
             result = run_worker_opt_profiled(inp, worker_fn=worker_fn)
         else:
             result = worker_fn(inp)
-        result_conn.send((idx, "ok", result, None))
+        _send_eval_result(result_conn, (idx, "ok", result, None))
     except BaseException as e:
-        result_conn.send(
+        _send_eval_result(
+            result_conn,
             (idx, "err", None, f"{repr(e)}\n{traceback.format_exc()}"))
     finally:
         result_conn.close()

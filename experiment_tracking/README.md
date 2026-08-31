@@ -10,9 +10,24 @@ in `advisor_audit_20260830/experiment_status.csv`. Cluster access must use the
 single `uni-cluster` Windows-profile alias documented in
 `cluster_access_and_ssh.md`.
 
-The newest operational snapshot is `status_20260831_1236.md`; its exact Slurm
+The newest operational snapshot is `status_20260831_1544.md`; its exact Slurm
 rows are in `live_jobs.csv`, while `live_pipeline_snapshot.csv` and
 `live_experiment_status.csv` provide resource and experiment roll-ups.
+
+## MCTS comparison reporting contract
+
+Every policy/MCTS, fixed/PW, aware/unaware, or other search-result comparison
+must report conservative coverage at all three per-instance cutoffs:
+
+- 30 minutes (`1800` seconds);
+- 2 hours (`7200` seconds);
+- 6 hours (`21600` seconds, the declared full budget).
+
+Static results are deterministically recensored from recorded per-instance
+runtimes.  A successful plan counts at a cutoff only when its recorded runtime
+does not exceed that cutoff.  Unclassified instances remain failures.  Tables
+must say `N/A — policy comparison` when the comparison has no MCTS
+per-instance budget; they must never silently omit the cutoff columns.
 
 ## Files
 

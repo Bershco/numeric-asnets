@@ -83,11 +83,18 @@ for checkpoint in "${checkpoints[@]}"; do
         --worker-logs \
         ${vh_flag[*]} \
         2>&1 | tee '$log'
+      if grep -Eq \
+          'Worker (died without result|crashed)|CRASH_EXIT|AttributeError.*(send|put)' \
+          '$log'; then
+        echo '[ANCHOR RESCORE ERROR] evaluator worker failure in $log' >&2
+        exit 11
+      fi
       python '$validation_tool' \
         --log '$log' \
         --domain mprime_validation_ipc_scale_v1 \
         --validator /home/hersco/tools/VAL/build/bin/Validate \
         --summary-csv '$summary'
+      test -s '$summary'
     "
   printf 'checkpoint=%s\nanchor=%s\nsource_job=%s\n' \
     "$checkpoint" "$anchor" "$source_job" > "$done_marker"

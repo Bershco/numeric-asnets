@@ -109,6 +109,22 @@ peak and final tie-break contract used for the other domains:
 - full resumable 28-task array: `20768902_[0-27]`, dependent on the preflight;
 - batch implementation: `scripts/mprime_anchor_corrected_validation_rescore.sbatch`.
 
+### Rescore harness defect found at first execution
+
+Preflight `20768884` was a false pass.  The lifecycle refactor changed the
+worker entry point to send results over a one-way Pipe, while the legacy
+difficulty-wave evaluator still supplied a multiprocessing Queue.  Every
+worker therefore raised `AttributeError: 'Queue' object has no attribute
+'send'`.  The validator accepted the resulting zero-plan log and the wrapper
+wrote an invalid `.done` marker.  Full-array task `20768902_0` reproduced the
+same defect; no score from either job is evidence.
+
+The local repair supports both Pipe `send()` and legacy Queue `put()`, adds a
+regression test, and makes the rescore wrapper reject worker-crash markers and
+require a nonempty summary before writing `.done`.  The array must be recreated
+from that repaired checkout and the false marker removed.  The remaining saved
+checkpoints are intact; no Stage-2 retraining is implied by this harness bug.
+
 The originally materialized Stage-2 jobs remain preserved but explicitly held:
 
 - validation-led held-out jobs `20760292--20760307`;

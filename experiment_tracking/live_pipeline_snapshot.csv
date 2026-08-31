@@ -1,4 +1,13 @@
 snapshot_at,experiment_id,component,state,jobs,requested_cpus,requested_ram_gib,progress,eta,reason
+2026-08-31T15:44:22+03:00,ALL,allocated running work,running,64,384,6140,exact request total from squeue,active now,allocated
+2026-08-31T15:44:22+03:00,ALL,ordinary and dependency pending,pending,99,566,5395,excludes 58 user-held jobs/controllers,no reliable start estimate while memory ceiling is saturated,mixed dependencies and QOSMaxMemoryPerUser
+2026-08-31T15:44:22+03:00,ALL,user-held work,held,58,340,4130,MPrime 36 training plus 2 controllers and FO Counters 20,will not start until released,JobHeldUser
+2026-08-31T15:44:22+03:00,MAIN-VAL-S2-MCTS,Drone Stage2 selected MCTS,running,9,54,1080,9 running and 4 ordinary pending,hours to 72h hard bounds,active
+2026-08-31T15:44:22+03:00,MCTS-PW-CROSS-DOMAIN,cross-domain PW screen,running,13,78,1560,7 of 20 terminal,remaining rows range from hours to days,active
+2026-08-31T15:44:22+03:00,MCTS-RESOURCE-ROVER,released Rover endpoints,running,21,126,2520,repeated six-hour timeouts dominate,many may use most of the 72h allocation,active
+2026-08-31T15:44:22+03:00,PRESERVE-3-TERM,terminal-led stable-domain Stage2,running,18,108,864,18 Delivery running and 41 training tasks pending,cell policy controllers follow independently,active
+2026-08-31T15:44:22+03:00,PRESERVE-TPP-S2,validation-led TPP Stage2,running,2,12,96,epochs 97 and 72,about 2h for epoch97 and about 7.5h to scheduler limit for epoch72,active
+2026-08-31T15:44:22+03:00,MPRIME-ANCHOR-CORRECTED-VAL,corrected validation rescore,broken-running,1,6,20,first full task reproduces Queue versus Pipe worker crash,no valid score; repair and recreate array required,application defect
 2026-08-31T12:36:32+03:00,ALL,allocated running work,running,64,388,6140,"exact request total from squeue","active now",allocated
 2026-08-31T12:36:32+03:00,ALL,ordinary and dependency pending,pending,126,748,6027,"excludes 58 user-held jobs/controllers","no reliable start estimate while memory ceiling is saturated",mixed dependencies and QOSMaxMemoryPerUser
 2026-08-31T12:36:32+03:00,ALL,user-held work,held,58,340,4130,"MPrime 36 training plus 2 controllers and FO Counters 20","will not start until released",JobHeldUser

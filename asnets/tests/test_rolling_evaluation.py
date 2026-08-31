@@ -12,6 +12,7 @@ from types import SimpleNamespace
 
 from asnets.parllel_explore_spawn_grads import (
     _load_completed_evaluations,
+    _send_eval_result,
     _terminate_eval_process,
     run_rolling_spawn_eval,
 )
@@ -60,6 +61,26 @@ def _ignore_term_forever():
 
 
 class RollingEvaluationTests(unittest.TestCase):
+    def test_worker_result_sink_supports_pipe_and_legacy_queue_contracts(self):
+        class PipeSink:
+            def __init__(self):
+                self.payload = None
+
+            def send(self, payload):
+                self.payload = payload
+
+        class QueueSink:
+            def __init__(self):
+                self.payload = None
+
+            def put(self, payload):
+                self.payload = payload
+
+        for sink in (PipeSink(), QueueSink()):
+            with self.subTest(sink=type(sink).__name__):
+                _send_eval_result(sink, (7, "ok", "result", None))
+                self.assertEqual(sink.payload, (7, "ok", "result", None))
+
     def test_wave_prefix_and_explicit_skips_combine(self):
         instances = [f"instance_{number}.pddl" for number in range(1, 8)]
         output = io.StringIO()
