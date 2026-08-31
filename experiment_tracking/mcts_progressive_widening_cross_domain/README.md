@@ -116,3 +116,24 @@ logging; an exact fixed-versus-PW phase comparison would require one small
 matched profiling rerun rather than inference from unavailable data.
 
 The authoritative diagnostic aggregate is `pw20_block_grouping_diagnostics.csv`.
+
+## Ten terminal jobs at 31 August 2026 18:05 IDT
+
+Three additional PW70 jobs became terminal.  Every printed successful plan was
+VAL-valid, with zero invalid plans:
+
+- FO Counters Stage1/off, seed 2011206605: policy 4/20; matched fixed normal is
+  9/10/10 at 30m/2h/6h; PW70 is 10/10/10.  The
+  Slurm job OOMed after classifying 19/20 instances; the unclassified instance
+  remains a conservative failure.
+- FO Counters Stage1/on, seed 2011206605: policy 3/20; matched fixed normal is
+  7/7/7; PW70 is 8/8/8.  The job classified all
+  20 instances before its terminal OOM.
+- Rover Stage1/off, seed 1963100312: policy 4/20; matched fixed normal is
+  4/5/5; PW70 is 6/6/6.  The job completed normally.
+
+FO Counters Stage1/off is now a complete two-seed screening cell: policy mean
+3.5/20, fixed-normal mean 9.5/20 and PW70 mean 9.5/20.  It is coverage-positive
+but not yet an efficiency success because one PW job still OOMed after 18h09m.
+The paired VH-on job and the remaining Rover jobs are still live, so the domain
+promotion rule has not yet been evaluated in full.

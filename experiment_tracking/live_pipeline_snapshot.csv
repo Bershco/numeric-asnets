@@ -8,6 +8,15 @@ snapshot_at,experiment_id,component,state,jobs,requested_cpus,requested_ram_gib,
 2026-08-31T15:44:22+03:00,PRESERVE-3-TERM,terminal-led stable-domain Stage2,running,18,108,864,18 Delivery running and 41 training tasks pending,cell policy controllers follow independently,active
 2026-08-31T15:44:22+03:00,PRESERVE-TPP-S2,validation-led TPP Stage2,running,2,12,96,epochs 97 and 72,about 2h for epoch97 and about 7.5h to scheduler limit for epoch72,active
 2026-08-31T15:44:22+03:00,MPRIME-ANCHOR-CORRECTED-VAL,corrected validation rescore,broken-running,1,6,20,first full task reproduces Queue versus Pipe worker crash,no valid score; repair and recreate array required,application defect
+2026-08-31T18:24:26+03:00,ALL,allocated running work,running,68,408,6144,exact request total from squeue,active now,allocated
+2026-08-31T18:24:26+03:00,ALL,ordinary and dependency pending,pending,88,500,4623,excludes 58 user-held jobs/controllers,no reliable start estimate under memory ceiling,mixed dependencies and QOSMaxMemoryPerUser
+2026-08-31T18:24:26+03:00,ALL,user-held work,held,58,340,4130,38 MPrime tasks/controllers plus 20 FO Counters jobs,no start while held,JobHeldUser
+2026-08-31T18:24:26+03:00,MPRIME-ANCHOR-CORRECTED-VAL,corrected validation rescore,resource-pending,28,168,560,preflight 20784911 passed at 29/30 with 29/29 VAL-valid plans,corrected array 20785172 waits on memory,QOSMaxMemoryPerUser
+2026-08-31T18:24:26+03:00,MAIN-VAL-S2-MCTS,Drone Stage2 selected MCTS,live,9,54,1080,6/16 gap jobs terminal plus four historical rows,remaining nine running one pending,mixed
+2026-08-31T18:24:26+03:00,MCTS-PW-CROSS-DOMAIN,PW20/PW70 screen,live,10,60,1200,10/20 terminal,new FO and Rover terminal rows frozen,active
+2026-08-31T18:24:26+03:00,MCTS-RESOURCE-ROVER,Rover endpoint MCTS,live-timeout-tail,21,126,2520,all jobs in final timeout-heavy waves,roughly 1--17h to expected 30--36h terminal cluster,active
+2026-08-31T18:24:26+03:00,PRESERVE-3-TERM,terminal-led stable-domain Stage2,live-resource-pending,59,354,2832,1 terminal 27 running 32 pending,per-cell policy dependencies installed,mixed
+2026-08-31T18:24:26+03:00,PRESERVE-TPP-S2,validation-led TPP Stage2,live-tail,1,6,48,15/16 held-out terminal,remaining job likely scheduler-limited in about 5.2h,active
 2026-08-31T12:36:32+03:00,ALL,allocated running work,running,64,388,6140,"exact request total from squeue","active now",allocated
 2026-08-31T12:36:32+03:00,ALL,ordinary and dependency pending,pending,126,748,6027,"excludes 58 user-held jobs/controllers","no reliable start estimate while memory ceiling is saturated",mixed dependencies and QOSMaxMemoryPerUser
 2026-08-31T12:36:32+03:00,ALL,user-held work,held,58,340,4130,"MPrime 36 training plus 2 controllers and FO Counters 20","will not start until released",JobHeldUser
@@ -27,3 +36,14 @@ snapshot_at,experiment_id,component,state,jobs,requested_cpus,requested_ram_gib,
 2026-08-30T12:29:19+03:00,MCTS-RESOURCE,legacy FO Counters MCTS,held,20,120,2400,submitted but held by user,no start while held,JobHeldUser
 2026-08-30T12:29:19+03:00,MCTS-RESOURCE,legacy Rover MCTS,held,21,126,2520,submitted but held by user,no start while held,JobHeldUser
 2026-08-30T12:29:19+03:00,ALL,ordinary scheduler-pending,pending,0,0,0,no ordinary pending jobs at snapshot,not applicable,none
+2026-08-31T18:37:25+03:00,ALL,allocated running work,running,72,432,6136,exact request total from squeue,active now,allocated
+2026-08-31T18:37:25+03:00,ALL,ordinary and dependency pending,pending,82,464,4391,exact non-held total from squeue,unknown start,QOSMaxMemoryPerUser or dependency
+2026-08-31T18:37:25+03:00,ALL,user-held work,held,58,340,4130,exact held total from squeue,no start while held,JobHeldUser
+2026-08-31T18:37:25+03:00,MAIN-VAL-S2-MCTS,Drone Stage2 MCTS,running,7,42,840,8/16 new jobs terminal plus four historical rows,"running jobs are in their first day; 72h cap",active
+2026-08-31T18:37:25+03:00,MCTS-PW-CROSS-DOMAIN,cross-domain PW70 screen,running,10,60,1200,10/20 terminal,"hours to days; 72h cap",active
+2026-08-31T18:37:25+03:00,MCTS-PW70-CROSS-DOMAIN,corrected standard-70 reruns,pending,12,72,1440,0/12 terminal,unknown start,QOSMaxMemoryPerUser
+2026-08-31T18:37:25+03:00,MCTS-RESOURCE-ROVER,Rover resource campaign,running,21,126,2520,all 21 in timeout-heavy waves,"first terminals expected around 30--36h elapsed; 72h cap",active
+2026-08-31T18:37:25+03:00,MCTS-HORIZON-COUNTERS,binding-horizon pilot,pending,8,48,960,0/8 terminal,unknown start,QOSMaxMemoryPerUser
+2026-08-31T18:37:25+03:00,MPRIME-ANCHOR-CORRECTED-VAL,corrected coefficient validation,mixed,28,168,560,2 running and 26 pending,"preflight took 9m16s; full array timing depends on checkpoint cost",QOSMaxMemoryPerUser
+2026-08-31T18:37:25+03:00,PRESERVE-3-TERM,terminal-led stable-domain training,mixed,59,354,2832,1/60 terminal with 31 running and 28 pending,"staggered; 72h cap",active and memory-pending
+2026-08-31T18:37:25+03:00,PRESERVE-TPP-S2,validation-led TPP Stage2,running,1,6,48,15/16 held-out terminal,"about five hours to hard limit",active

@@ -53,7 +53,7 @@ argmax evaluation jobs. Their mere presence does not explain repeat-run drift.
    so launch order should not change an isolated result. It can still alter CPU
    contention and hence a result that is near a wall-clock boundary.
 
-## Live diagnostic: MCTS-DETERMINISM-AUDIT
+## Completed diagnostic: MCTS-DETERMINISM-AUDIT
 
 Use one exact checkpoint and one known variable instance with one worker from
 one commit/container.  The bounded first gate compares three exact repeats of:
@@ -77,10 +77,37 @@ selected action. The first differing record identifies the responsible layer:
 
 The opt-in logger is implemented behind `--action-debug`.  Container preflight
 `20771356` passed; ordinary jobs `20771357--20771359` and deterministic-CPU
-jobs `20771360--20771362` are queued.  Each requests one worker, 2 CPUs, 20 GiB
-and at most two hours.  The instrumented file is mounted from an
-experiment-local overlay, so the production checkout and running jobs are
-untouched.  See `mcts_determinism_audit/manifest.csv` and `submissions.tsv`.
+jobs `20771360--20771362` all completed.  Each used one worker, 2 CPUs and
+20 GiB.  All six solved the same Drone instance in exactly 105 external
+actions and finished in 137.51--151.03 seconds, so every arm is 1/1 at the
+30-minute, two-hour and six-hour cutoffs.
+
+The experiment localizes the observed variation more narrowly than the
+original list of hypotheses:
+
+- three ordinary repeats on `cs-cpu-07` were checksum-identical for all 105
+  decisions;
+- enabling deterministic TensorFlow/thread settings on the same
+  `cs-cpu-07` node changed no checksum;
+- two deterministic repeats on `ise-cpu-intl-07` were identical to each
+  other;
+- comparing `cs-cpu-07` with `ise-cpu-intl-07` changed the raw network-policy
+  checksum at 78/105 decisions and child-statistics checksum at 45/105, while
+  physical state, action history and selected action changed at 0/105.
+
+The supported cause is therefore **hardware/node-type-dependent numerical
+execution inside the network/low-level CPU math stack**, not random process
+timing and not a different MCTS depth.  Different CPU instruction sets,
+oneDNN/MKL kernels, vectorization or reduction order can produce slightly
+different floating-point tensors.  Those differences propagated into child
+statistics here, but did not cross an action-selection boundary.  The audit
+does not yet prove that node type changes coverage; it proves the first layer
+at which nominally identical runs can differ.  A causal follow-up should pin
+ordinary/deterministic repeats to one node type and compare node types only on
+an instance already known to select different actions.
+
+See `mcts_determinism_audit/results.csv`, `checksum_summary.csv`,
+`manifest.csv` and `submissions.tsv` for exact job and log provenance.
 
 ## Held architecture ablation: ACT-HISTORY-ABLATION
 

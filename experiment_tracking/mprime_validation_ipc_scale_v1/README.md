@@ -134,3 +134,31 @@ The originally materialized Stage-2 jobs remain preserved but explicitly held:
 They will be released only after corrected validation freezes one coefficient
 per VH.  The terminal-led branch will reuse that corrected validation-led
 coefficient; it does not need another 28-lineage tuning grid.
+
+### Corrected deployment and second submission
+
+The repaired compatibility layer was pushed in commit `53e1ec27`, with the
+current tracking reconciliation in `9851ebd1`.  Broken array `20768902` was
+cancelled.  Fourteen `.done` markers whose corresponding evaluation logs
+contained the confirmed Queue/`send()` crash were moved, not destroyed, to:
+
+`/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/false_done_markers_20768902`
+
+Corrected one-checkpoint preflight `20784911` completed in 9m16s.  It evaluated
+the actual frozen IPC-scale validation set, solved 29/30 instances, printed 29
+plans, and VAL confirmed 29/29 valid with zero invalid.  The nonempty summary
+and real `.done` marker prove that both the worker IPC and wrapper guardrails
+now function in the cluster container.
+
+Corrected full array `20785172_[0-27]` was then submitted.  Each task requests
+6 CPUs, 20 GiB and at most 24 hours.  Task zero reuses the valid preflight
+checkpoint marker and resumes the remaining checkpoints; every crash-derived
+marker was quarantined, so no invalid result can be skipped.
+
+Coefficient release remains deliberately manual.  After all 588 checkpoint
+summaries exist, freeze one coefficient per VH using two-seed mean corrected
+validation AUC, then peak, then final coverage.  If both VH modes again select
+zero, do not release Stage 2 until the per-coefficient curves are inspected for
+saturation or another provenance error.  If only one VH selects zero, verify
+that its AUC/peak/final margin is real and not solely the smallest-coefficient
+tie-break before releasing either mainstream branch.

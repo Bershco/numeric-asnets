@@ -10,7 +10,7 @@ in `advisor_audit_20260830/experiment_status.csv`. Cluster access must use the
 single `uni-cluster` Windows-profile alias documented in
 `cluster_access_and_ssh.md`.
 
-The newest operational snapshot is `status_20260831_1544.md`; its exact Slurm
+The newest operational snapshot is `status_20260831_1824.md`; its exact Slurm
 rows are in `live_jobs.csv`, while `live_pipeline_snapshot.csv` and
 `live_experiment_status.csv` provide resource and experiment roll-ups.
 
@@ -41,6 +41,13 @@ per-instance budget; they must never silently omit the cutoff columns.
 - `live_experiment_status.csv`: replaceable experiment-level roll-up of the
   live queue and latest immutable result-ledger counts. It separates running,
   dependency/resource-pending, and deliberately held work.
+- `held_experiment_priority_20260831.csv`: explicit scientific priority order,
+  release gate and dependency/overlap check for every held experiment.
+- `main_val_stage2_drone_mcts_terminal_20260831.csv`: newly terminal Drone
+  Stage-2 policy/MCTS pairs with 30m/2h/6h outcomes and literal VAL logs.
+- `mcts_progressive_widening_cross_domain/terminal_additions_20260831.csv`:
+  newly terminal FO Counters/Rover PW comparisons with policy, fixed search,
+  30m/2h/6h PW outcomes and scheduler state.
 - `experiment_results.csv`: canonical completed-result ledger. Each row identifies the
   checkpoint/configuration, checkpoint epoch (parsed directly from the checkpoint
   path), score, VAL evidence, terminal condition, and source
