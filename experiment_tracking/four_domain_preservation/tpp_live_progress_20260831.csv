@@ -1,0 +1,4 @@
+job_id,state,elapsed,time_limit,epoch,max_epoch,latest_validation,source_log
+20684884,RUNNING,2-04:32:04,3-00:00:00,98,100,1.0,/home/hersco/training_new_domains/2026-08-28/preserve4_tpp_stage2_confirmation/20684884_Re-Tr_tpp_tpp_mcts_orig_vh_e.5_c.1_s923500475_K0_P4S2A10_src20523029.txt
+20684885,RUNNING,2-04:30:45,3-00:00:00,83,100,0.16666666666666666,/home/hersco/training_new_domains/2026-08-28/preserve4_tpp_stage2_confirmation/20684885_Re-Tr_tpp_tpp_mcts_orig_vh_e.5_c.1_s1073581256_K0_P4S2A10_src20523010.txt
+20684890,RUNNING,2-04:18:44,3-00:00:00,60,100,1.0,/home/hersco/training_new_domains/2026-08-28/preserve4_tpp_stage2_confirmation/20684890_Re-Tr_tpp_tpp_mcts_orig_vh_e.5_c.1_s2082152039_K0_P4S2A10_src20523023.txt

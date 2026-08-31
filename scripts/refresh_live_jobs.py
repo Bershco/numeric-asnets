@@ -12,6 +12,16 @@ HOST = "uni-cluster"
 
 
 def classify(name: str, reason: str) -> str:
+    if name == "P3_DELIVERY_POLICY_CTRL":
+        return "PRESERVE-3-TERM-DELIVERY-POLICY-CONTROLLER"
+    if name == "P3_TPP_POLICY_CTRL":
+        return "PRESERVE-3-TERM-TPP-POLICY-CONTROLLER"
+    if name == "P3_ZENO_POLICY_CTRL":
+        return "PRESERVE-3-TERM-ZENO-POLICY-CONTROLLER"
+    if name == "MPRIME_VAL_POLICY_CTRL":
+        return "MAIN-EXT6-MPRIME-POLICY-CONTROLLER"
+    if name == "MPRIME_TERM_POLICY_CTRL":
+        return "MAIN-TERM-EXT6-MPRIME-POLICY-CONTROLLER"
     if name == "MPRIME_ANCHOR_POLICY_REFRESH":
         return "MPRIME-ANCHOR-POLICY-CONTROLLER"
     if name == "MPRIME_FINALIZE_STAGE2":

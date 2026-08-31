@@ -57,3 +57,17 @@ promising when PW:
 To avoid choosing only a favourable VH result, if either VH cell for one
 domain/stage is promoted, both VH modes are expanded to at least five matched
 seeds. Fresh 30-minute confirmation remains a later, separately labelled arm.
+
+## Terminal PW20 evidence at 31 August 2026 03:50 IDT
+
+Five of twenty PW20 jobs are terminal. Block Grouping Stage1/off is a complete
+two-seed cell: policy averages 16.5/20, fixed 5/20 and PW20 both average
+15.0/20, while whole-job runtime increases from about 7h39m to 12h26m. It is
+unpromising: PW loses policy coverage, gains nothing over fixed narrow, and is
+slower.
+
+Block Grouping Stage1/on remains coverage-positive (policy and fixed 17.0/20,
+PW20 18.0/20) but PW20 is slower (9h22m versus 8h38m). Counters Stage2/off has
+one strong screening seed: policy 59/59, fixed narrow 49/59, PW20 59/59, with
+runtime 3h47m versus 18h05m. One seed is not confirmatory. Exact rows and log
+pointers are in `live_reconciliation_20260831.csv`.

@@ -88,3 +88,16 @@ sixteen held-out validation-led lineages, and submits twenty separate
 terminal-led lineages.  Its submission ledger is idempotent, so a partial
 failure can be retried without duplicating already recorded jobs.  It does not
 use test-policy results for tuning.
+
+## Frozen Stage-2 launch — 31 August 2026
+
+Finalizer `20755820` completed successfully in eight seconds. All 28 tuning
+lineages were terminal and the frozen coefficient is **0 for both VH modes**.
+The finalizer materialized the intended forty-lineage Stage-2 ledger: four
+validation-led tuning winners are reused, sixteen new validation-led held-out
+jobs are `20760292--20760307`, and twenty terminal-led jobs are
+`20760308--20760327`.
+
+Policy-only controllers `20760692` and `20760693` are dependency-gated on the
+validation-led and terminal-led branches. They materialize every-five curves
+plus validation-selected/final policy endpoints and do not submit MCTS.
