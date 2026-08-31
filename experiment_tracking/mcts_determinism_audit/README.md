@@ -25,3 +25,25 @@ an experiment-local overlay into the isolated SAFE-CONTEXT checkout.
 Authoritative inputs and Slurm identities are in `manifest.csv`; stdout paths
 are recorded in `submissions.tsv` after submission.
 
+## Result — 31 August 2026
+
+All six runs solved `problem_5_2_2` in exactly 105 actions.  Successful runtime
+ranged from 137.51 to 151.03 seconds, so coverage is `1/1` at 30 minutes,
+2 hours and 6 hours for every arm.
+
+- The three ordinary repeats on `cs-cpu-07` were checksum-identical at every
+  one of the 105 committed decisions.
+- Deterministic-CPU repeat 1 also ran on `cs-cpu-07` and was identical to the
+  ordinary runs.  The deterministic environment itself therefore did not
+  alter this trajectory on matched hardware.
+- Deterministic-CPU repeats 2 and 3 ran on `ise-cpu-intl-07` and were identical
+  to each other.  Relative to `cs-cpu-07`, they differed in the raw network
+  policy checksum at 78/105 steps and child-statistics checksum at 45/105
+  steps, but physical-state, action-history and selected-action digests
+  differed at 0/105 steps.
+
+The audit therefore localizes real numerical variation to CPU/node type.  It
+does not support random process timing as the cause, and it does not show an
+action or coverage change on this instance.  A stronger follow-up would pin
+matched repeats to one node type and separately compare node types on an
+instance known to diverge in selected action.

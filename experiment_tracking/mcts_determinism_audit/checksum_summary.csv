@@ -1,0 +1,5 @@
+comparison,steps,physical_state_differences,action_history_differences,network_policy_differences,child_statistics_differences,selected_action_differences,interpretation
+within_ordinary_cs_cpu_07,105,0,0,0,0,0,three repeats bitwise identical
+ordinary_vs_deterministic_same_cs_cpu_07,105,0,0,0,0,0,deterministic environment alone did not alter trajectory
+cs_cpu_07_vs_ise_cpu_intl_07,105,0,0,78,45,0,node type changes numerical outputs but not selected actions on this instance
+within_deterministic_ise_cpu_intl_07,105,0,0,0,0,0,two repeats bitwise identical

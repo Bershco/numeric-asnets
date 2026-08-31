@@ -1,0 +1,7 @@
+arm,job_id,node,result,steps,elapsed_seconds,coverage_30m,coverage_2h,coverage_6h,source_log
+ordinary,20771357,cs-cpu-07,success,105,149.85,1,1,1,/home/hersco/training_new_domains/2026-08-31/mcts_determinism_audit/20771357_ordinary_r1.txt
+ordinary,20771358,cs-cpu-07,success,105,148.05,1,1,1,/home/hersco/training_new_domains/2026-08-31/mcts_determinism_audit/20771358_ordinary_r2.txt
+ordinary,20771359,cs-cpu-07,success,105,144.29,1,1,1,/home/hersco/training_new_domains/2026-08-31/mcts_determinism_audit/20771359_ordinary_r3.txt
+deterministic_cpu,20771360,cs-cpu-07,success,105,143.25,1,1,1,/home/hersco/training_new_domains/2026-08-31/mcts_determinism_audit/20771360_deterministic_cpu_r1.txt
+deterministic_cpu,20771361,ise-cpu-intl-07,success,105,151.03,1,1,1,/home/hersco/training_new_domains/2026-08-31/mcts_determinism_audit/20771361_deterministic_cpu_r2.txt
+deterministic_cpu,20771362,ise-cpu-intl-07,success,105,137.51,1,1,1,/home/hersco/training_new_domains/2026-08-31/mcts_determinism_audit/20771362_deterministic_cpu_r3.txt
