@@ -1,0 +1,7 @@
+run_id	arm	repeat	job_id	dependency_job_id	stdout
+det-ordinary-r1	ordinary	1	20771357	20771356	/home/hersco/training_new_domains/2026-08-31/mcts_determinism_audit/20771357_ordinary_r1.txt
+det-ordinary-r2	ordinary	2	20771358	20771356	/home/hersco/training_new_domains/2026-08-31/mcts_determinism_audit/20771358_ordinary_r2.txt
+det-ordinary-r3	ordinary	3	20771359	20771356	/home/hersco/training_new_domains/2026-08-31/mcts_determinism_audit/20771359_ordinary_r3.txt
+det-deterministic_cpu-r1	deterministic_cpu	1	20771360	20771356	/home/hersco/training_new_domains/2026-08-31/mcts_determinism_audit/20771360_deterministic_cpu_r1.txt
+det-deterministic_cpu-r2	deterministic_cpu	2	20771361	20771356	/home/hersco/training_new_domains/2026-08-31/mcts_determinism_audit/20771361_deterministic_cpu_r2.txt
+det-deterministic_cpu-r3	deterministic_cpu	3	20771362	20771356	/home/hersco/training_new_domains/2026-08-31/mcts_determinism_audit/20771362_deterministic_cpu_r3.txt

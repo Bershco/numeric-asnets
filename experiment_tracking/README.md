@@ -10,6 +10,10 @@ in `advisor_audit_20260830/experiment_status.csv`. Cluster access must use the
 single `uni-cluster` Windows-profile alias documented in
 `cluster_access_and_ssh.md`.
 
+The newest operational snapshot is `status_20260831_1236.md`; its exact Slurm
+rows are in `live_jobs.csv`, while `live_pipeline_snapshot.csv` and
+`live_experiment_status.csv` provide resource and experiment roll-ups.
+
 ## Files
 
 - `cluster_access_and_ssh.md`: canonical cluster-access procedure,
@@ -103,6 +107,18 @@ single `uni-cluster` Windows-profile alias documented in
 - `evaluation_stochasticity_audit.md`: evaluation-path audit separating
   inactive sampling code from active numerical, estimator, ordering, timing,
   and build sources that can cause repeated MCTS runs to diverge.
+- `mcts_determinism_audit/`: the live bounded repeatability audit.  Preflight
+  `20771356` passed, and jobs `20771357`--`20771362` compare ordinary and
+  deterministic-CPU execution with root-level checksums.
+- `long_drone_endpoint_results.csv`: all static long-Drone selected/final
+  policy and final-MCTS evidence, exact log pointers, and the one pending
+  continuation-selected policy endpoint.
+- `mcts_counters_width_sensitivity/stage2_narrow_summary_10seed.csv`: complete
+  ten-seed/VH conservative Counters Stage-2 narrow comparison at 30-minute,
+  two-hour and six-hour per-instance cutoffs.
+- `mcts_progressive_widening_cross_domain/pw20_block_grouping_diagnostics.csv`:
+  compact all-node/root width and phase-time evidence for the completed PW20
+  Block Grouping jobs.
 - `mcts_progressive_widening_sensitivity/manifest.csv`: predeclared two-seed
   SAFE+PW sensitivity gate with sixteen one-factor-at-a-time jobs.
 - `mcts_progressive_widening_sensitivity/submissions.tsv`: active corrected

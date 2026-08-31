@@ -1,0 +1,7 @@
+run_id,arm,repeat,domain,value_head,seed,checkpoint_epoch,target_instance,workers,cpus,memory_gib,time_limit_hours,instance_limit_seconds,status,job_id,dependency_job_id
+det-ordinary-r1,ordinary,1,drone,off,534933607,69,problem_5_2_2.pddl,1,2,20,2,7200,memory_pending,20771357,20771356
+det-ordinary-r2,ordinary,2,drone,off,534933607,69,problem_5_2_2.pddl,1,2,20,2,7200,memory_pending,20771358,20771356
+det-ordinary-r3,ordinary,3,drone,off,534933607,69,problem_5_2_2.pddl,1,2,20,2,7200,memory_pending,20771359,20771356
+det-cpu-r1,deterministic_cpu,1,drone,off,534933607,69,problem_5_2_2.pddl,1,2,20,2,7200,memory_pending,20771360,20771356
+det-cpu-r2,deterministic_cpu,2,drone,off,534933607,69,problem_5_2_2.pddl,1,2,20,2,7200,memory_pending,20771361,20771356
+det-cpu-r3,deterministic_cpu,3,drone,off,534933607,69,problem_5_2_2.pddl,1,2,20,2,7200,memory_pending,20771362,20771356

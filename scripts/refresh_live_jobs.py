@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Refresh the replaceable local Slurm live-job snapshot."""
 import csv
+import re
 import subprocess
 from pathlib import Path
 
@@ -11,7 +12,29 @@ OUT = ROOT / "experiment_tracking" / "live_jobs.csv"
 HOST = "uni-cluster"
 
 
+def array_task_count(job_id: str) -> int:
+    """Return represented task count for Slurm's compressed array notation."""
+    match = re.search(r"_\[([^]]+)\]$", job_id)
+    if not match:
+        return 1
+    total = 0
+    for part in match.group(1).split(","):
+        part = part.split("%", 1)[0]
+        if "-" in part:
+            start, end = (int(value) for value in part.split("-", 1))
+            total += end - start + 1
+        else:
+            total += 1
+    return total
+
+
 def classify(name: str, reason: str) -> str:
+    if name.startswith("P3_DELIVERY_") and name.endswith("_POLICY"):
+        return "PRESERVE-3-TERM-DELIVERY-POLICY-CONTROLLER"
+    if name.startswith("P3_TPP_") and name.endswith("_POLICY"):
+        return "PRESERVE-3-TERM-TPP-POLICY-CONTROLLER"
+    if name.startswith("P3_ZENOTRAVEL_") and name.endswith("_POLICY"):
+        return "PRESERVE-3-TERM-ZENO-POLICY-CONTROLLER"
     if name == "P3_DELIVERY_POLICY_CTRL":
         return "PRESERVE-3-TERM-DELIVERY-POLICY-CONTROLLER"
     if name == "P3_TPP_POLICY_CTRL":
@@ -72,6 +95,12 @@ def classify(name: str, reason: str) -> str:
         return "MCTS-SAFE"
     if name.startswith("MPRIME_VAL_V1_RESCORE"):
         return "MPRIME-VAL"
+    if name.startswith("MPRIME_ANCHOR_VAL_V1"):
+        return "MPRIME-ANCHOR-CORRECTED-VAL"
+    if name.startswith("COUNTERS_NARROW_POSTHOC_VAL"):
+        return "MCTS-WIDTH-COUNTERS-S2-VAL"
+    if name.startswith("MCTS_DET_") or name == "MCTS_DETERMINISM_PREFLIGHT":
+        return "MCTS-DETERMINISM-AUDIT"
     if name.startswith("MPRIME_POLICY_FINALIZER"):
         return "MPRIME-VAL"
     if name.startswith("STORAGE_POST_COMPACT"):
@@ -94,6 +123,8 @@ def classify(name: str, reason: str) -> str:
         return "ANCHOR-4"
     if reason == "JobHeldUser" and "mcts" in name:
         return "MCTS-HELD"
+    if "SR10LONGP" in name:
+        return "LONG-DRONE-POLICY"
     if name.startswith("Ev_") and "mcts" in name:
         return "MAIN-VAL"
     if name.startswith("Ev_"):
@@ -127,6 +158,7 @@ def main() -> None:
             "time_limit": limit,
             "cpus": cpus,
             "memory": memory,
+            "array_tasks": array_task_count(job),
             "job_name": name,
         })
     OUT.parent.mkdir(exist_ok=True)

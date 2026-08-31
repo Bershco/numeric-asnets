@@ -53,15 +53,17 @@ argmax evaluation jobs. Their mere presence does not explain repeat-run drift.
    so launch order should not change an isolated result. It can still alter CPU
    contention and hence a result that is near a wall-clock boundary.
 
-## Proposed held diagnostic: MCTS-DETERMINISM-AUDIT
+## Live diagnostic: MCTS-DETERMINISM-AUDIT
 
-Use one exact checkpoint and one known variable instance. Run ten repetitions
-with one worker from one commit/container. Compare these arms:
+Use one exact checkpoint and one known variable instance with one worker from
+one commit/container.  The bounded first gate compares three exact repeats of:
 
 1. current environment;
 2. deterministic CPU environment (`TF_DETERMINISTIC_OPS=1`, fixed
    `PYTHONHASHSEED`, OpenMP/MKL/TF intra/inter-op threads all 1);
-3. estimator disabled or estimator output logged without blending.
+The estimator is not disabled in the first gate because changing its coefficient
+would change the algorithm.  Its value is logged separately; an estimator-only
+follow-up is justified only if the first differing record is the estimator.
 
 At every root, record state digest, ordered applicable action IDs, network
 prior/value checksum, estimator value/action, every child's N/Q/U/prior and the
@@ -73,9 +75,30 @@ selected action. The first differing record identifies the responsible layer:
 - tensors agree but PUCT choice differs: ordering/statistics bug;
 - everything agrees until the limit: timing-only censoring.
 
-This audit is design-ready but deliberately unsubmitted. It is higher-value
-than explaining large divergence as generic "random timing," and small enough
-to run before any broad repeatability rerun.
+The opt-in logger is implemented behind `--action-debug`.  Container preflight
+`20771356` passed; ordinary jobs `20771357--20771359` and deterministic-CPU
+jobs `20771360--20771362` are queued.  Each requests one worker, 2 CPUs, 20 GiB
+and at most two hours.  The instrumented file is mounted from an
+experiment-local overlay, so the production checkout and running jobs are
+untouched.  See `mcts_determinism_audit/manifest.csv` and `submissions.tsv`.
+
+## Held architecture ablation: ACT-HISTORY-ABLATION
+
+`USE_ACT_HISTORY_FEATURES=True` is inherited through
+`experiments_numeric/architecture/actprop_2l_comparison.py`.  The feature is a
+cumulative count per grounded action, not just total time.  Numeric ASNets does
+not isolate its effect; the original ASNets work reported that action counters
+helped direct policies, while their interaction with transposition-based search
+remains untested.
+
+Disabling it may remove a source of network-context aliasing, slightly reduce
+the input and inference cost, and make physical-state transpositions internally
+consistent.  It may also remove a useful repetition/cycle signal and reduce
+policy quality.  Because input dimensionality and learned weights change, this
+requires fresh Stage-1 training and downstream policy/MCTS evaluation; existing
+weights cannot be reused.  The experiment is registered but held.  A defensible
+first gate uses Drone and Counters plus one acyclic control before any full
+campaign.
 
 ## Relevant implementation pointers
 
@@ -90,4 +113,3 @@ to run before any broad repeatability rerun.
 - `post_training/monte_carlo_tree_search.py`: deterministic PUCT/admission order.
 - `post_training/enhspwrapper.py`: external heuristic service boundary.
 - `asnets/asnets/utils/py_utils.py`: Python/NumPy/TensorFlow seed setup.
-

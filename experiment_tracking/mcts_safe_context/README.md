@@ -33,3 +33,10 @@ The 30-minute and two-hour post-hoc cutoffs do not rescue contextual nodes:
 For VH-off, contextual nodes create nine additional per-instance timeouts. For
 VH-on, they create fewer timeouts but nineteen additional ordinary-unsolved
 trajectories. Therefore the negative result is not merely scheduler censoring.
+
+Operational decision: preserve the implementation and evidence, but do not
+enable contextual nodes in production or future primary experiments.  A domain
+could theoretically benefit when action-history prediction disagreement is
+large and physical-state sharing is mostly harmful, but this campaign supplies
+no positive matched cell.  Any future revisit must be a small gated diagnostic,
+not an unannounced algorithm replacement.

@@ -80,3 +80,39 @@ Counters Stage2/off has one strong screening seed: policy 59/59, fixed narrow
 At 30m the scores are PW52 versus fixed40, and at 2h PW59 versus fixed49. One
 seed remains screening evidence, not a confidence-interval result. Exact rows
 and log pointers are in `live_reconciliation_20260831.csv`.
+
+## PW20 width and phase diagnostics
+
+For Kmin=3, c=0.6 and alpha=0.5, the permitted width is 3 through visit 44,
+4 for visits 45--69, 5 for 70--99, 6 for 100--136, 7 for 137--177 and 8 from
+178.  A newly created root therefore has exactly three children after a
+20-simulation call.  Across the four terminal Block Grouping PW20 jobs, the
+actual weighted means are 2.015 children over all node observations and 5.860
+children over root observations.  Roots can exceed three because an external
+action may promote a node that already accumulated visits while deeper in the
+retained tree.
+
+Across completed instances in those jobs, the compact phase counters contain:
+
+- successor generation: 93,800.6 seconds, 55.2% of completed wall time;
+- evaluation/estimator: 55,166.4 seconds, 32.4%;
+- network inference: 11,795.5 seconds, 6.9%;
+- selection: 7,505.6 seconds, 4.4%;
+- backpropagation: 559.3 seconds, 0.3%.
+
+Expansion time overlaps successor-generation and network time and must not be
+added to those percentages.  Thus “longer searched trajectory” means many
+costly repeated root searches across the external-action trajectory; it does
+not mean Python tree selection is the bottleneck.
+
+For Block Grouping Stage1/off seed 1963100312, fixed 5/20 exhausted the
+10,000-action budget on instances 19 and 20 in 4,817.67 and 15,772.01 seconds,
+whereas PW20 hit the 21,600-second timeout on both.  Timeout workers are killed
+before their final diagnostic summary, so exact phase totals for those two
+instances do not exist.  The nearest completed PW instance (18) spent 2,831.29
+of 5,464.02 seconds in successor generation and 2,493.73 seconds in evaluation,
+but only 4.13 seconds in selection.  Historical fixed logs predate phase
+logging; an exact fixed-versus-PW phase comparison would require one small
+matched profiling rerun rather than inference from unavailable data.
+
+The authoritative diagnostic aggregate is `pw20_block_grouping_diagnostics.csv`.

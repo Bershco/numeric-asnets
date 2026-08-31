@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 
 import tqdm
@@ -35,6 +36,7 @@ from asnets.utils.generator_utils import extract_domain_name_from_file, Domain, 
 from asnets.utils.py_utils import set_random_seeds, RandomPopContainer,strip_parens
 from post_training.enhspwrapper import ENHSPEstimator, EstimatorMode
 from post_training.training_mcts import TrainingMCTS, get_est_v
+from post_training.monte_carlo_tree_search import action_history_digest
 
 from enum import Enum, auto
 
@@ -1270,6 +1272,91 @@ def print_puct_debug(mcts, masked_pi) -> None:
     )
 
 
+def print_mcts_determinism_record(mcts, *, step, instance_name, selected_action):
+    """Print one stable, compact root record for repeatability audits.
+
+    This is called only by the opt-in ``--action-debug`` path.  It reruns the
+    network on the current root so the record contains the raw network output,
+    separately from the estimator-blended Q statistics already in the tree.
+    """
+    root = mcts.curr_tree_root
+
+    def digest_bytes(value: bytes, *, person: bytes) -> str:
+        return hashlib.blake2b(value, digest_size=16, person=person).hexdigest()
+
+    def digest_array(value, *, dtype, person: bytes) -> str:
+        canonical = np.asarray(value, dtype=dtype).tobytes(order="C")
+        return digest_bytes(canonical, person=person)
+
+    network_out = mcts.network(root.as_network_input, training=False)
+    if mcts.network.value_head_enabled:
+        raw_pi_tensor, raw_value_tensor = network_out
+        raw_value = float(raw_value_tensor.numpy().squeeze())
+    else:
+        raw_pi_tensor = network_out
+        raw_value = float(mcts.worst_value())
+    raw_pi = tf.squeeze(raw_pi_tensor).numpy().astype(np.float32, copy=False)
+
+    estimator_value = None
+    if mcts.estimator_coeff > 0.0 and mcts.ctx.estimator is not None:
+        estimator = mcts.ctx.estimator
+        cached = estimator.state_key_cache.get(root.state_key)
+        if cached is not None:
+            estimator_value = float(cached[0])
+        else:
+            estimator_value = float(get_est_v(
+                estimator,
+                root.state.to_tup_state(),
+                mcts.ctx.estimator_h_to_v_coeff,
+                mcts.minimization,
+            ))
+            estimator.state_key_cache[root.state_key] = (estimator_value, None)
+
+    children = root.children
+    child_rows = []
+    if children is not None:
+        sqrt_n = math.sqrt(max(1.0, root.visit_count))
+        for idx, (action, child) in enumerate(children.items()):
+            prior = float(children.priors[idx])
+            visits = int(children.visits[idx])
+            q_value = float(child.Q_value)
+            u_value = float(
+                mcts.exploration_weight * prior * sqrt_n / (1.0 + visits))
+            child_rows.append({
+                "action": int(action), "N": visits, "Q": q_value,
+                "U": u_value, "prior": prior,
+                "terminal": bool(child.terminal_state),
+                "goal": bool(child.goal_state),
+            })
+
+    act_history = action_history_digest(root.state)
+    payload = {
+        "step": int(step), "instance": instance_name,
+        "physical_state_digest": digest_bytes(
+            root.state_key, person=b"asnet-state-key"),
+        "action_history_digest": None if act_history is None else act_history.hex(),
+        "applicable_action_digest": digest_array(
+            root.applicable_action_mask, dtype=np.uint8,
+            person=b"asnet-app-mask"),
+        "network_policy_digest": digest_array(
+            raw_pi, dtype="<f4", person=b"asnet-net-policy"),
+        "network_value": raw_value,
+        "estimator_value": estimator_value,
+        "selected_action": int(selected_action),
+        "root_visits": int(root.visit_count),
+        "children": child_rows,
+    }
+    payload["child_statistics_digest"] = digest_bytes(
+        json.dumps(child_rows, sort_keys=True, separators=(",", ":")).encode(),
+        person=b"asnet-child-stat",
+    )
+    print(
+        "[MCTS DETERMINISM] "
+        + json.dumps(payload, sort_keys=True, separators=(",", ":")),
+        flush=True,
+    )
+
+
 def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
     estimator = None
     mcts = None
@@ -1400,6 +1487,12 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
                     f"goal_distance={goal_distance} | "
                     f"top5_mcts_visit_actions={[(int(a), float(masked_pi[a])) for a in mcts_ranked_actions[:5]]} | "
                     f"top5_raw_policy_actions={[(int(a), float(root_net_policy[a])) for a in raw_policy_ranked_actions[:5]]}"
+                )
+                print_mcts_determinism_record(
+                    mcts,
+                    step=step,
+                    instance_name=instance_name,
+                    selected_action=action_id,
                 )
             cstate = mcts.step_forward(action_id)
             bound_act, _ = cstate.acts_enabled[action_id]

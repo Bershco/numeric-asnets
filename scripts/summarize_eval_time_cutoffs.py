@@ -73,8 +73,19 @@ def parse_log(path: Path) -> dict[int, dict[str, object]]:
                 }
             previous = records.get(number)
             if previous is not None and previous != record:
+                # A rolling evaluation may time an instance out, restart its
+                # worker, and later emit the ordinary terminal record.  The
+                # terminal record is the authoritative outcome and elapsed
+                # time; a later replayed timeout must not overwrite it.
+                previous_timeout = previous["status"] == "timeout"
+                current_timeout = record["status"] == "timeout"
+                if previous_timeout and not current_timeout:
+                    records[number] = record
+                    continue
+                if not previous_timeout and current_timeout:
+                    continue
                 raise RuntimeError(
-                    f"conflicting completion records in {path} for instance "
+                    f"conflicting terminal records in {path} for instance "
                     f"{number}: {previous!r} versus {record!r}"
                 )
             records[number] = record

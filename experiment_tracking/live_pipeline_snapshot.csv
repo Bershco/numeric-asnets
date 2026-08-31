@@ -1,4 +1,13 @@
 snapshot_at,experiment_id,component,state,jobs,requested_cpus,requested_ram_gib,progress,eta,reason
+2026-08-31T12:36:32+03:00,ALL,allocated running work,running,64,388,6140,"exact request total from squeue","active now",allocated
+2026-08-31T12:36:32+03:00,ALL,ordinary and dependency pending,pending,126,748,6027,"excludes 58 user-held jobs/controllers","no reliable start estimate while memory ceiling is saturated",mixed dependencies and QOSMaxMemoryPerUser
+2026-08-31T12:36:32+03:00,ALL,user-held work,held,58,340,4130,"MPrime 36 training plus 2 controllers and FO Counters 20","will not start until released",JobHeldUser
+2026-08-31T12:36:32+03:00,MAIN-VAL-S2-MCTS,Drone Stage2 selected MCTS,running,9,54,1080,"16--18/20 instances classified per active job","many likely finish within hours; five remain memory-pending",active
+2026-08-31T12:36:32+03:00,MCTS-PW-CROSS-DOMAIN,cross-domain PW screen,running,13,78,1560,"7/20 terminal","Counters jobs approach their 72h limit in about 48h; FO/Rover likely hours to days",active
+2026-08-31T12:36:32+03:00,MCTS-RESOURCE-ROVER,released Rover endpoints,running,21,126,2520,"4--7 classified instances typical after 13--23h","many will consume the 72h allocation because six-hour timeouts dominate",active
+2026-08-31T12:36:32+03:00,PRESERVE-3-TERM,terminal-led stable-domain Stage2,running,18,108,864,"Delivery epochs 21--84; 42 more jobs pending","roughly 20--35h to epoch100 for many active Delivery rows; early stopping may shorten",active
+2026-08-31T12:36:32+03:00,PRESERVE-TPP-S2,validation-led TPP Stage2,running,2,12,96,"epochs 94 and 69","about 4h for epoch94; epoch69 likely reaches scheduler limit in about 11h",active
+2026-08-31T12:36:32+03:00,PRESERVE-TPP-S2-POLICY,TPP policy endpoint/curve,running,1,10,20,"one running and 13 memory-pending","normally minutes under a four-hour cap",active
 2026-08-30T12:29:19+03:00,MCTS-HORIZON,binding-horizon inference,running,3,18,360,17/20 inference terminal and all five newly required post-hoc VAL jobs completed successfully,"one long-running job is near the historical 12h completion range; two restarted aware jobs plausibly need about 10-12h more; 72h hard limit",active
 2026-08-30T12:29:19+03:00,MCTS-SAFE-CONTEXT,matched physical/contextual Drone evaluation,running,20,120,2400,"0/20 terminal; arms are progressing through different instance positions; observed contextual node multiplication ranges from approximately 1.0x to 35.9x","roughly 8-24h is plausible but high contextual multiplication makes this uncertain; 72h hard limit",active
 2026-08-30T12:29:19+03:00,MCTS-WIDTH,Counters narrow Stage-1/Stage-2 evaluation,running,6,36,720,34/40 jobs have terminal scheduler outcomes and six remain running,at most about 22.2h to scheduler limit,active

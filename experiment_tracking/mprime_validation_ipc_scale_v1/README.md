@@ -89,15 +89,32 @@ terminal-led lineages.  Its submission ledger is idempotent, so a partial
 failure can be retried without duplicating already recorded jobs.  It does not
 use test-policy results for tuning.
 
-## Frozen Stage-2 launch — 31 August 2026
+## Invalid first Stage-2 freeze and corrected rescore — 31 August 2026
 
-Finalizer `20755820` completed successfully in eight seconds. All 28 tuning
-lineages were terminal and the frozen coefficient is **0 for both VH modes**.
-The finalizer materialized the intended forty-lineage Stage-2 ledger: four
-validation-led tuning winners are reused, sixteen new validation-led held-out
-jobs are `20760292--20760307`, and twenty terminal-led jobs are
-`20760308--20760327`.
+Finalizer `20755820` did complete and initially froze coefficient **0** for both
+VH modes, but that freeze is invalid.  All seven coefficients tied exactly at
+validation AUC, peak and final coverage because every one of the 28 training
+commands referenced the obsolete `valid_easy`, `valid_medium` and `valid_hard`
+paths.  Those files were the earlier goals-already-true set: the tuning logs
+report validation coverage 1.0 and average plan length 0.0 from iteration zero.
+Coefficient zero won only through the predefined smallest-coefficient tie-break.
 
-Policy-only controllers `20760692` and `20760693` are dependency-gated on the
-validation-led and terminal-led branches. They materialize every-five curves
-plus validation-selected/final policy endpoints and do not submit MCTS.
+No training rerun is needed to correct coefficient selection.  The 28 tuning
+lineages already saved every-five and final checkpoints.  The corrected
+campaign evaluates 21 checkpoints per lineage—588 total—on the frozen
+`mprime_validation_ipc_scale_v1` set, then applies the same two-seed mean AUC,
+peak and final tie-break contract used for the other domains:
+
+- preflight array task: `20768884_[0]` (one checkpoint only);
+- full resumable 28-task array: `20768902_[0-27]`, dependent on the preflight;
+- batch implementation: `scripts/mprime_anchor_corrected_validation_rescore.sbatch`.
+
+The originally materialized Stage-2 jobs remain preserved but explicitly held:
+
+- validation-led held-out jobs `20760292--20760307`;
+- terminal-led jobs `20760308--20760327`;
+- policy controllers `20760692` and `20760693`.
+
+They will be released only after corrected validation freezes one coefficient
+per VH.  The terminal-led branch will reuse that corrected validation-led
+coefficient; it does not need another 28-lineage tuning grid.
