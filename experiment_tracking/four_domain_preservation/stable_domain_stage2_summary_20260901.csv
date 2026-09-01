@@ -1,0 +1,7 @@
+domain,value_head,stage1_selected_all10,stage1_selected_heldout8,stage1_selected_tuning2,stage2_selected_all10,stage2_selected_heldout8,stage2_selected_tuning2,status,notes
+delivery,off,19.8,19.75,20.0,,19.5,,pending_tuning_endpoints,"jobs20835064-20835065 recover the two exact tuning endpoints"
+delivery,on,19.2,19.125,19.5,,19.5,,pending_tuning_endpoints,"jobs20835066-20835067 recover the two exact tuning endpoints"
+tpp,off,20.0,20.0,20.0,,18.625,,pending_one_tuning_endpoint,"one tuning endpoint is20; job20835062 recovers the other"
+tpp,on,20.0,20.0,20.0,19.5,19.375,20.0,complete,"one held-out seed scored15; seven held-out and both tuning seeds scored20"
+zenotravel,off,20.0,20.0,20.0,20.0,20.0,20.0,complete,"preserved"
+zenotravel,on,20.0,20.0,20.0,19.9,19.875,20.0,complete_provenance_recap_pending,"jobs20835068-20835069 recapture already-known tuning endpoint provenance"

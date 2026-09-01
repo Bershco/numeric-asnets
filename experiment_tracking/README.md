@@ -361,6 +361,10 @@ the failed portability-check controller `20595666` submitted no experiments.
 
 ## Report convention
 
+The latest authoritative post-outage report is `status_20260901_2304.md`.
+Its scheduler allocation is `cluster_workload_20260901_2304.csv`; the unified
+Stage-2 policy/MCTS table is `stage2_policy_mcts_comparison_20260901.csv`.
+
 Every status report must list:
 
 - live experiments;

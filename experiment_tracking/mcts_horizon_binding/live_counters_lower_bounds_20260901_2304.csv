@@ -1,0 +1,9 @@
+job_id,value_head,seed,arm,score_30m_lower_bound,score_2h_lower_bound,score_6h_lower_bound,horizon_cutoffs_nonzero,elapsed,state,notes
+20755802,off,1963100312,aware,21,22,22,0,18:27:08,RUNNING,"22 instances classified"
+20755803,off,1963100312,unaware,22,22,22,0,18:18:28,RUNNING,"22 instances classified"
+20755804,off,2011206605,aware,22,22,22,0,17:53:28,RUNNING,"22 instances classified"
+20755805,off,2011206605,unaware,22,22,22,0,17:46:08,RUNNING,"22 instances classified"
+20755806,on,1963100312,aware,11,11,12,0,17:45:06,RUNNING,"12 instances classified"
+20755807,on,1963100312,unaware,11,12,12,0,17:45:06,RUNNING,"12 instances classified"
+20755808,on,2011206605,aware,11,12,13,0,17:42:16,RUNNING,"13 instances classified"
+20755809,on,2011206605,unaware,11,12,13,0,08:34:38,RUNNING,"13 instances classified"

@@ -1,3 +1,15 @@
-frozen_at,value_head,selected_anchor,points_present,points_total,validation_auc,peak_validation,final_validation,selection_basis,status
-2026-09-01T19:31:00+03:00,off,10,42,42,0.9667,1.0000,0.9667,"anchor 3 cannot exceed approximately 0.9492 even if all five missing points are perfect",mathematically_locked
-2026-09-01T19:31:00+03:00,on,10,42,42,0.9937,1.0000,1.0000,"anchor 0.03 cannot catch anchor 10 even if all eight missing points are perfect",mathematically_locked
+value_head,anchor,points,expected_points,observed_auc,auc_lower_bound,auc_upper_bound,mean_peak,mean_final,rescore_root
+off,0,42,42,0.838095,0.838095,0.838095,0.950000,0.850000,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore
+off,0.03,42,42,0.875397,0.875397,0.875397,0.950000,0.900000,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore
+off,0.3,42,42,0.859524,0.859524,0.859524,0.950000,0.900000,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore
+off,1,42,42,0.893651,0.893651,0.893651,0.966667,0.850000,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore
+off,3,42,42,0.946032,0.946032,0.946032,0.983333,0.950000,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore
+off,10,42,42,0.966667,0.966667,0.966667,1.000000,0.966667,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore
+off,30,42,42,0.962698,0.962698,0.962698,0.983333,0.950000,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore
+on,0,42,42,0.868254,0.868254,0.868254,0.966667,0.883333,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore
+on,0.03,42,42,0.871429,0.871429,0.871429,0.983333,0.816667,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore
+on,0.3,42,42,0.934127,0.934127,0.934127,0.983333,0.916667,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore
+on,1,42,42,0.963492,0.963492,0.963492,1.000000,0.950000,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore
+on,3,42,42,0.992857,0.992857,0.992857,1.000000,0.983333,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore
+on,10,42,42,0.993651,0.993651,0.993651,1.000000,1.000000,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore
+on,30,42,42,0.992857,0.992857,0.992857,1.000000,1.000000,/home/hersco/training_new_domains/2026-08-31/mprime_anchor_corrected_validation/rescore

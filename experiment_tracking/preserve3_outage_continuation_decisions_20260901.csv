@@ -1,0 +1,6 @@
+original_job,domain,value_head,seed,restarted_epoch_at_decision,preserved_stage2_epoch,decision,replacement_job,remaining_epochs,time_limit,reason
+20755737,delivery,on,1963100312,28,76,replace_with_true_resume,20834983,24,16h,"preserved state was 48 epochs ahead; replacement is running and restored weights optimizer anchor and validation state"
+20755739,delivery,on,2011206605,21,84,replace_with_true_resume,20834984,16,12h,"preserved state was 63 epochs ahead; replacement is memory-pending"
+20755747,tpp,off,1510771779,28,31,keep_restart,,72h,"only about two to three epochs behind; cancellation and queue/setup overhead would lose more"
+20755752,tpp,off,2082152039,24,84,replace_with_true_resume,20834985,16,16h,"preserved state was 60 epochs ahead; replacement is memory-pending"
+20755722,delivery,off,1239739722,,87,resume_preserved_snapshot,20834986,13,12h,"prior retries hit ENOSPC then SIGILL; replacement excludes implicated node families"

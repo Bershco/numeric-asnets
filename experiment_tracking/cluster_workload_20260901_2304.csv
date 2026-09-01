@@ -1,0 +1,15 @@
+snapshot_time,state,experiment,jobs,cpus,ram_gib,pending_reason,notes
+2026-09-01T23:03:58+03:00,running,PRESERVE-3-TERM,17,102,816,,"16 original lineages plus one true snapshot-76 continuation"
+2026-09-01T23:03:58+03:00,pending,PRESERVE-3-TERM,3,18,144,QOSMaxMemoryPerUser,"true continuations from snapshots 84,84,87"
+2026-09-01T23:03:58+03:00,running,MAIN-EXT6-MPRIME,16,96,768,,"validation-led Stage 2; anchor 10"
+2026-09-01T23:03:58+03:00,running,MAIN-TERM-EXT6-MPRIME,20,120,960,,"terminal-led Stage 2; anchor 10"
+2026-09-01T23:03:58+03:00,pending,MPRIME-POLICY-CONTROLLERS,2,4,2,Dependency,"one controller per Stage-2 branch"
+2026-09-01T23:03:58+03:00,running,MCTS-PW70-CROSS-DOMAIN,12,72,1440,,"all values remain lower bounds"
+2026-09-01T23:03:58+03:00,running,MCTS-HORIZON-COUNTERS,8,48,960,,"four matched aware/unaware pairs"
+2026-09-01T23:03:58+03:00,running,MCTS-LEGACY-FO-COUNTERS,10,60,1200,,"terminal-led Stage-2 normal width20/70"
+2026-09-01T23:03:58+03:00,pending,MCTS-LEGACY-FO-COUNTERS,10,60,1200,QOSMaxMemoryPerUser,"released, not held"
+2026-09-01T23:03:58+03:00,pending,PRESERVE-4-TUNING-ENDPOINT-POLICY,7,70,140,QOSMaxMemoryPerUser,"exact missing tuning-seed selected endpoints"
+2026-09-01T23:03:58+03:00,pending,PRESERVE-3-POLICY-CONTROLLERS,3,6,3,Dependency,"Delivery-on and TPP off/on cell controllers"
+2026-09-01T23:03:58+03:00,total,running,83,498,6144,,
+2026-09-01T23:03:58+03:00,total,pending,25,158,1489,,"20 resource-pending plus five dependency-pending"
+2026-09-01T23:03:58+03:00,total,held,0,0,0,,"held designs are registered locally; no held Slurm jobs"
