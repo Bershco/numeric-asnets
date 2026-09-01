@@ -186,3 +186,12 @@ markers preserve the other 540. Neither MPrime Stage-2 branch may be released
 until the continuation completes and the per-VH AUC/peak/final curves are
 manually inspected. Exact counts and failed-job provenance are frozen in
 `anchor_rescore_status_20260901_1022.csv`.
+
+The approved continuation is implemented as
+`scripts/submit_mprime_anchor_rescore_continuation.sh`. It verifies that array
+indices 0, 4 and 15 still map exactly to the three failed VH/seed/anchor rows,
+then submits only those indices. Existing per-epoch done markers skip the 540
+completed validation points. The known failing nodes
+`ise-cpu-intl-[11-12,18]` are excluded for this continuation without claiming
+that their entire node family is invalid. Dispatch is pending restoration of
+the documented SSH route.

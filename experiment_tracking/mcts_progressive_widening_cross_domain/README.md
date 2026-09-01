@@ -125,6 +125,31 @@ matched profiling rerun rather than inference from unavailable data.
 
 The authoritative diagnostic aggregate is `pw20_block_grouping_diagnostics.csv`.
 
+## Two-hour PW20 appendix conclusion
+
+Across the completed Block Grouping and Counters PW20 screening cells, the
+two-hour and six-hour aggregate scores are identical except for Block Grouping
+Stage1/on. That cell gains two additional solved instances across its two seeds
+after two hours, moving its mean from 17/20 to 18/20. Every other completed
+PW20 cell has the same mean at two and six hours.
+
+This is an important efficiency appendix result: a two-hour post-hoc PW20 cap
+would preserve nearly all observed PW20 coverage while bounding the long tail.
+It is not yet a fair causal comparison against other search methods unless the
+same two-hour cap is applied to fixed narrow, fixed normal and PW70. All main
+tables therefore continue to report 30m/2h/6h together rather than promoting
+the two-hour PW20 number alone.
+
+Expansion recommendation after the two-seed screen:
+
+- FO Counters qualifies most clearly for a five-seed PW70 confirmation because
+  both VH cells match or exceed fixed normal coverage; add three matched seeds
+  per VH rather than jumping directly to ten.
+- Rover also qualifies on coverage, but its small gain and long/OOM-heavy jobs
+  make it the second confirmation priority.
+- Block Grouping and Counters should wait for the active PW70 correction before
+  selecting confirmatory cells or a fresh hard-30-minute arm.
+
 ## Ten terminal jobs at 31 August 2026 18:05 IDT
 
 Three additional PW70 jobs became terminal.  Every printed successful plan was

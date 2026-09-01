@@ -14,6 +14,16 @@ The newest comprehensive operational report is `status_20260901_1037.md`; its
 experiment/resource roll-up is `live_snapshot_20260901_1037.csv`. Earlier
 08:26--08:52 snapshots are retained as historical queue observations, while
 `live_experiment_status.csv` retains the longer timestamped status history.
+The later `status_20260901_1250.md` records approved corrective work prepared
+locally during a verified SSH-route outage; it is not a newer scheduler
+snapshot. Exact approved dispatch scopes are in
+`approved_recovery_actions_20260901.csv`.
+
+For live Slurm snapshots, a transient `COMPLETING` observation must be checked
+again after approximately 30 seconds. If the job leaves the queue, record it as
+terminal after confirming `sacct`; if it remains in `COMPLETING`, inspect its
+job state and output before reporting it as stuck. Reports must distinguish a
+brief scheduler teardown from a genuinely persistent completing state.
 
 ## MCTS comparison reporting contract
 

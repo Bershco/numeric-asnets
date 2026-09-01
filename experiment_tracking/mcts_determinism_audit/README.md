@@ -106,3 +106,20 @@ exists, hardware variation, random process timing and the Horizon flag itself
 have not been shown to cause the historical three-instance coverage change.
 
 Exact compact hashes and source-log pointers are in `followup_results.csv`.
+
+## Correct causal replay implementation
+
+The corrected audit is implemented in
+`scripts/mcts_horizon_determinism_causal.sbatch` and
+`scripts/submit_mcts_horizon_determinism_causal.sh`. It runs three aware and
+three unaware repeats on the same `cs-cpu-07` node, checkpoint, seed, target
+instance, three-worker configuration, 750-action horizon and fixed width-20/70
+search. The Horizon flag is the only arm-level command difference. Each root
+record retains the physical/action-history digests, raw network policy/value,
+estimator value, complete per-child N/Q/U/prior data, selected action and
+terminal/goal flags.
+
+Five local recovery/audit tests and Python compilation passed. A cluster
+container preflight is mandatory before the six dependent jobs. The user
+approved submission on 1 September 2026; dispatch is pending restoration of
+the documented SSH route.
