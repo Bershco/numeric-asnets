@@ -10,9 +10,9 @@ in `advisor_audit_20260830/experiment_status.csv`. Cluster access must use the
 single `uni-cluster` Windows-profile alias documented in
 `cluster_access_and_ssh.md`.
 
-The newest operational snapshot is `status_20260831_1824.md`; its exact Slurm
-rows are in `live_jobs.csv`, while `live_pipeline_snapshot.csv` and
-`live_experiment_status.csv` provide resource and experiment roll-ups.
+The newest operational snapshot is `status_20260901_0826.md`; its exact
+experiment/resource roll-up is `live_snapshot_20260901_0826.csv`, while
+`live_experiment_status.csv` retains the timestamped status history.
 
 ## MCTS comparison reporting contract
 

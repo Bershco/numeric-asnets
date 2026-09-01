@@ -1,0 +1,7 @@
+experiment_id,target_instance,node_family,repeat,job_id,slurm_state,actions,success,total,selected_action_sha,physical_state_sha,action_history_sha,policy_sha,child_stats_sha,source_log
+MCTS-DETERMINISM-FOLLOWUP,problem_3_3_4,cs-cpu-07,1,20788666,COMPLETED,165,0,1,7ddfa2ee,bc9fea,d9ea21,c41c1a,d0ea88,/home/hersco/training_new_domains/2026-08-31/mcts_determinism_followup/20788666_*.out
+MCTS-DETERMINISM-FOLLOWUP,problem_3_3_4,cs-cpu-07,2,20788667,COMPLETED,165,0,1,7ddfa2ee,bc9fea,d9ea21,c41c1a,d0ea88,/home/hersco/training_new_domains/2026-08-31/mcts_determinism_followup/20788667_*.out
+MCTS-DETERMINISM-FOLLOWUP,problem_3_3_4,cs-cpu-07,3,20788668,COMPLETED,165,0,1,7ddfa2ee,bc9fea,d9ea21,c41c1a,d0ea88,/home/hersco/training_new_domains/2026-08-31/mcts_determinism_followup/20788668_*.out
+MCTS-DETERMINISM-FOLLOWUP,problem_3_3_4,ise-cpu-intl-07,1,20788669,COMPLETED,165,0,1,7ddfa2ee,bc9fea,d9ea21,36cf3c,657b3e,/home/hersco/training_new_domains/2026-08-31/mcts_determinism_followup/20788669_*.out
+MCTS-DETERMINISM-FOLLOWUP,problem_3_3_4,ise-cpu-intl-07,2,20788670,COMPLETED,165,0,1,7ddfa2ee,bc9fea,d9ea21,36cf3c,657b3e,/home/hersco/training_new_domains/2026-08-31/mcts_determinism_followup/20788670_*.out
+MCTS-DETERMINISM-FOLLOWUP,problem_3_3_4,ise-cpu-intl-07,3,20788671,COMPLETED,165,0,1,7ddfa2ee,bc9fea,d9ea21,36cf3c,657b3e,/home/hersco/training_new_domains/2026-08-31/mcts_determinism_followup/20788671_*.out

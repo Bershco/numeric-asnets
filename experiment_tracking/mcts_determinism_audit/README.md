@@ -68,3 +68,28 @@ Three repeats are pinned to `cs-cpu-07` and three to `ise-cpu-intl-07`; each
 requests two CPUs, 20 GiB and at most two hours. The target is VH-on seed
 `1239739722`, checkpoint epoch 23, `problem_3_3_4`, with one worker and the
 same fixed width-20/70-simulation search configuration.
+
+## Follow-up result — 1 September 2026
+
+Preflight `20788665` completed in 1m29s.  Jobs `20788666`--`20788671`
+all completed in 6m28s--7m42s and produced 165 committed-decision records.
+Every repeat followed the same 165-action trajectory and failed the target
+instance (`0/1`).
+
+- Within each node family, all three repeats were exactly reproducible.
+- Across `cs-cpu-07` and `ise-cpu-intl-07`, physical-state, action-history and
+  selected-action sequences remained identical.
+- The raw network-policy sequence and child-statistics sequence differed by
+  node family, reproducibly, despite the identical selected actions.
+
+The two audits therefore establish a precise result: node-family numerical
+variation changes network predictions and derived tree statistics, but it did
+not change a selected action, trajectory, or outcome on either tested
+instance. Random worker timing is not supported as the explanation. Hardware
+variation alone also does not explain the historical Horizon aware/unaware
+coverage divergence, because the known divergent instance remained
+action-identical under the pinned-node rerun. The audit is complete; a further
+audit is justified only after a naturally action-divergent same-commit pair is
+identified.
+
+Exact compact hashes and source-log pointers are in `followup_results.csv`.

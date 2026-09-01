@@ -1,4 +1,9 @@
 snapshot_at,experiment_id,component,state,jobs,requested_cpus,requested_ram_gib,progress,eta,reason
+2026-09-01T08:26:18+03:00,ALL,allocated running work,running,121,914,6124,exact expanded-task Slurm count,active now,allocated
+2026-09-01T08:26:18+03:00,ALL,completing work,completing,1,10,20,one PRESERVE-3 policy job,active now,completing
+2026-09-01T08:26:18+03:00,ALL,ordinary scheduler pending,pending,161,1610,3220,PRESERVE-3 Zenotravel/off policy rows,start as memory frees,QOSMaxMemoryPerUser
+2026-09-01T08:26:18+03:00,ALL,dependency controllers,pending,5,10,5,remaining PRESERVE-3 cell controllers,each cell completion,Dependency
+2026-09-01T08:26:18+03:00,ALL,user-held work,held,58,340,4130,38 MPrime Stage2 plus 20 FO Counters MCTS,no start while held,JobHeldUser
 2026-08-31T15:44:22+03:00,ALL,allocated running work,running,64,384,6140,exact request total from squeue,active now,allocated
 2026-08-31T15:44:22+03:00,ALL,ordinary and dependency pending,pending,99,566,5395,excludes 58 user-held jobs/controllers,no reliable start estimate while memory ceiling is saturated,mixed dependencies and QOSMaxMemoryPerUser
 2026-08-31T15:44:22+03:00,ALL,user-held work,held,58,340,4130,MPrime 36 training plus 2 controllers and FO Counters 20,will not start until released,JobHeldUser
