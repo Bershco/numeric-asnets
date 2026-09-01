@@ -12,9 +12,10 @@ single `uni-cluster` Windows-profile alias documented in
 
 The newest comprehensive operational report is `status_20260901_0826.md`; its
 experiment/resource roll-up is `live_snapshot_20260901_0826.csv`. The newer
-scheduler-only refresh `live_snapshot_20260901_0849.csv` records subsequent
+scheduler-only refresh `live_snapshot_20260901_0852.csv` records subsequent
 queue movement, while `live_experiment_status.csv` retains the timestamped
-experiment-status history.
+experiment-status history. The 08:49 snapshot is retained as an intermediate
+historical observation.
 
 ## MCTS comparison reporting contract
 
