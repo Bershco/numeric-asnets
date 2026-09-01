@@ -19,6 +19,13 @@ locally during a verified SSH-route outage; it is not a newer scheduler
 snapshot. Exact approved dispatch scopes are in
 `approved_recovery_actions_20260901.csv`.
 
+If the cluster suffered a wider service or power outage, use
+`cluster_outage_recovery_plan.md`. The exact pre-outage job inventory is
+`pre_outage_job_inventory_20260901_1037.csv`; the read-only first-response tool
+is `../scripts/post_outage_cluster_audit.py`. Its timestamped reports belong in
+`post_outage_audit/`. The recovery tool never submits, cancels, releases, or
+edits jobs.
+
 For live Slurm snapshots, a transient `COMPLETING` observation must be checked
 again after approximately 30 seconds. If the job leaves the queue, record it as
 terminal after confirming `sacct`; if it remains in `COMPLETING`, inspect its

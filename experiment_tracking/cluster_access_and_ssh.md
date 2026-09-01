@@ -47,3 +47,14 @@ Do not spend that minute repeatedly retrying, guessing another alias, using a
 direct login-node hostname, or diagnosing the VPN from a sandbox-profile
 failure. Only after three correctly spaced failures through this exact route
 should the VPN be reported as the likely blocker.
+
+## After a suspected cluster-wide outage
+
+A restored SSH route does not prove that Slurm, compute nodes, accounting, or
+shared storage recovered cleanly. Before releasing or submitting anything,
+follow `cluster_outage_recovery_plan.md` and run the read-only
+`scripts/post_outage_cluster_audit.py` inventory. The frozen pre-outage baseline
+is `pre_outage_job_inventory_20260901_1037.csv`. Never blanket-resubmit all jobs:
+some may have completed before shutdown, some may retain resumable checkpoints
+or per-instance completion records, and deliberate scientific holds must remain
+held.
