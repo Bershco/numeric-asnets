@@ -3,7 +3,7 @@ block_grouping,stage1,off,2,16.5,20,fixed_narrow_5_width_20_sim,11.0,13.5,15.0,1
 block_grouping,stage1,on,2,17.0,20,fixed_narrow_5_width_20_sim,11.5,13.5,17.0,12.5,17.0,18.0,">=9.0",">=11.5",">=12.5",pw70_live,"PW20 and fixed rows terminal/VAL-confirmed; PW70 values are current lower bounds"
 counters,stage1,off,2,18.0,59,fixed_narrow_5_width_20_sim,21.5,21.5,21.5,20.5,20.5,20.5,">=21.0",">=21.0",">=21.0",pw70_live,"mixed-screen PW arm used 20 simulations; PW70 correction is active"
 counters,stage1,on,2,5.0,59,fixed_narrow_5_width_20_sim,13.5,13.5,13.5,12.5,12.5,12.5,">=12.0",">=12.5",">=12.5",pw70_live,"mixed-screen PW arm used 20 simulations; PW70 correction is active"
-counters,stage2,off,2,49.0,59,fixed_narrow_5_width_20_sim,">=37.0",">=41.5",44.5,46.0,49.5,49.5,">=34.0",">=39.5",">=41.0",pw70_live,"six fixed-search successes from an interrupted seed lack recoverable elapsed times; final fixed score is exact"
+counters,stage2,off,2,49.0,59,fixed_narrow_5_width_20_sim,">=37.0",">=41.5",44.5,46.0,49.5,49.5,">=34.0",">=39.5",">=41.5",pw70_live,"six fixed-search successes from an interrupted seed lack recoverable elapsed times; final fixed score is exact; PW70 refreshed 2026-09-01T16:02+03:00"
 counters,stage2,on,2,5.0,59,fixed_narrow_5_width_20_sim,16.5,17.5,17.5,15.0,15.0,15.0,">=13.5",">=14.0",">=14.0",pw70_live,"mixed-screen PW arm used 20 simulations; PW70 correction is active"
 fo_counters,stage1,off,2,3.5,20,fixed_normal_20_width_70_sim,9.0,9.5,9.5,NA,NA,NA,9.5,9.5,9.5,terminal_val_confirmed,"original mixed-screen arm correctly used 70 simulations"
 fo_counters,stage1,on,2,3.5,20,fixed_normal_20_width_70_sim,6.0,7.5,7.5,NA,NA,NA,8.0,8.0,8.0,terminal_val_confirmed,"original mixed-screen arm correctly used 70 simulations"
