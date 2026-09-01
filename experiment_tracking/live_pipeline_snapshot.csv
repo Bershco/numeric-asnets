@@ -72,3 +72,20 @@ snapshot_at,experiment_id,component,state,jobs,requested_cpus,requested_ram_gib,
 2026-09-01T10:37:46+03:00,ALL,operationally held/requeued,held,1,10,20,one Zenotravel policy job,"diagnose environment retrieval then release",held
 2026-09-01T10:37:46+03:00,ALL,deliberately Slurm-held,held,58,340,4130,"38 MPrime plus 20 FO Counters","release only after experiment-specific gates",held
 2026-09-01T10:37:46+03:00,ALL,completing,completing,0,0,0,none,none,none
+2026-09-01T15:10:34+03:00,ALL,allocated running work,running,77,530,4576,exact expanded-task Slurm count,active now,allocated
+2026-09-01T15:10:34+03:00,ALL,ordinary and dependency pending,pending,11,46,725,"six Horizon-audit repeats five policy controllers and one MPrime resource row counted by Slurm array expansion",unknown,dependency or resources
+2026-09-01T15:10:34+03:00,ALL,deliberately Slurm-held,held,58,340,4130,"38 MPrime jobs/controllers and 20 FO Counters jobs",no start while held,JobHeldUser
+2026-09-01T15:10:34+03:00,MCTS-PW70-CROSS-DOMAIN,standard-budget correction,running,12,72,1440,all twelve persistent jobs active,"roughly 10--13h active plus preserved progress",active
+2026-09-01T15:10:34+03:00,MCTS-HORIZON-COUNTERS,binding-horizon pilot,running,8,48,960,all eight persistent jobs active,"roughly 10h active plus preserved progress",active
+2026-09-01T15:10:34+03:00,PRESERVE-3-TERM,Delivery training,running,13,78,624,"twelve original plus one epoch87 continuation","continuation roughly5--7h; heterogeneous originals",active
+2026-09-01T15:10:34+03:00,PRESERVE-3-TERM,TPP training,running,19,114,912,nineteen lineages active,"heterogeneous; 72h caps",active
+2026-09-01T15:10:34+03:00,PRESERVE-3-TERM,Zenotravel training,running,2,12,96,two VH-on lineages active,"72h caps",active
+2026-09-01T15:10:34+03:00,PRESERVE-4,TPP policy timeout recovery,running,17,170,340,seventeen missing rows active,"minutes typical; 4h cap",active
+2026-09-01T15:10:34+03:00,PRESERVE-3-TERM,Zenotravel policy repair,running,1,10,20,last of209 VH-off rows active,"4h cap",active
+2026-09-01T15:10:34+03:00,MPRIME-ANCHOR-CORRECTED-VAL,final checkpoint validation,mixed,4,24,80,"three active one resource-pending","hours; 24h cap",active and resources
+2026-09-01T15:10:34+03:00,MAIN-VAL-S2-MCTS,Drone final row,running,1,6,120,nineteen of twenty terminal,"72h cap",active
+2026-09-01T15:10:34+03:00,MCTS-DETERMINISM-AUDIT,Horizon causal followup,mixed,7,38,724,"preflight active six dependency-pending","preflight under10m then runs capped2h",dependency
+2026-09-01T15:19:50+03:00,ALL,allocated running work,running,58,352,4184,exact expanded-task Slurm count after short jobs left queue,active now,allocated
+2026-09-01T15:19:50+03:00,ALL,ordinary and dependency pending,pending,11,46,725,"six Horizon causal runs and five cell policy controllers",unknown,resources requested-node availability or dependency
+2026-09-01T15:19:50+03:00,ALL,deliberately Slurm-held,held,58,340,4130,"38 MPrime jobs/controllers and20 FO Counters jobs",no start while held,JobHeldUser
+2026-09-01T15:19:50+03:00,ALL,completing,completing,0,0,0,none,none,none
