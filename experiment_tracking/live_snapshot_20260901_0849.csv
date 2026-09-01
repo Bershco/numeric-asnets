@@ -1,0 +1,6 @@
+snapshot,state,jobs,cpus,ram_gib,reason
+2026-09-01T08:49:09+03:00,running,123,950,6108,
+2026-09-01T08:49:09+03:00,completing,1,10,20,
+2026-09-01T08:49:09+03:00,ordinary_pending,60,592,1256,QOSMaxMemoryPerUser
+2026-09-01T08:49:09+03:00,dependency_pending,5,10,5,Dependency
+2026-09-01T08:49:09+03:00,user_held,58,340,4130,JobHeldUser

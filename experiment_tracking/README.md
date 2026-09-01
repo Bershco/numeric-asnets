@@ -10,9 +10,11 @@ in `advisor_audit_20260830/experiment_status.csv`. Cluster access must use the
 single `uni-cluster` Windows-profile alias documented in
 `cluster_access_and_ssh.md`.
 
-The newest operational snapshot is `status_20260901_0826.md`; its exact
-experiment/resource roll-up is `live_snapshot_20260901_0826.csv`, while
-`live_experiment_status.csv` retains the timestamped status history.
+The newest comprehensive operational report is `status_20260901_0826.md`; its
+experiment/resource roll-up is `live_snapshot_20260901_0826.csv`. The newer
+scheduler-only refresh `live_snapshot_20260901_0849.csv` records subsequent
+queue movement, while `live_experiment_status.csv` retains the timestamped
+experiment-status history.
 
 ## MCTS comparison reporting contract
 
