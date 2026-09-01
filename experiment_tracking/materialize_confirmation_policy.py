@@ -22,6 +22,7 @@ BEST_RE = re.compile(
     r"(?:snapshot name:\s*|snapshot_name=)(snapshot_\d+_[^\s\]]+)"
 )
 LAST_RE = re.compile(r"Last valid checkpoint is (.+/snapshot_\d+_[^\s]+)")
+SNAPSHOT_DIR_RE = re.compile(r"^Snapshot directory: (.+/snapshots)$", re.MULTILINE)
 TEACHERS = {"delivery": "hadd-astar", "tpp": "hadd-astar", "zenotravel": "hadd-gbfs"}
 FIELDS = [
     "manifest_id", "task_type", "domain", "value_head", "seed", "stage",
@@ -50,6 +51,24 @@ def accounting(job_ids: list[str]) -> dict[str, tuple[str, Path]]:
     return result
 
 
+def resolve_snapshot_dir(text: str, state: str) -> tuple[Path | None, str]:
+    """Resolve a saved snapshot directory, including scheduler-killed jobs.
+
+    Normal shutdown prints ``Last valid checkpoint``.  A scheduler timeout can
+    occur after a snapshot is durably written but before that final line is
+    emitted.  In that case the immutable snapshot directory printed at startup
+    is the authoritative fallback; the caller still verifies every selected
+    path exists and is a directory before materializing evaluations.
+    """
+    last = LAST_RE.findall(text)
+    if last:
+        return Path(last[-1]).parent, "normal_shutdown_marker"
+    roots = SNAPSHOT_DIR_RE.findall(text)
+    if roots and state not in {"RUNNING", "PENDING", "REQUEUED", "COMPLETING"}:
+        return Path(roots[-1]), "terminal_snapshot_directory_fallback"
+    return None, "missing"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("ledger", type=Path)
@@ -65,15 +84,22 @@ def main() -> None:
         if state in {"RUNNING", "PENDING", "REQUEUED", "COMPLETING"} or not log.is_file():
             continue
         text = log.read_text(encoding="utf-8", errors="replace")
-        last = LAST_RE.findall(text)
-        if not last:
+        snapshot_dir, checkpoint_source = resolve_snapshot_dir(text, state)
+        if snapshot_dir is None:
             print(f"[SKIP] job={job_id} state={state} no valid checkpoint")
             continue
-        snapshot_dir = Path(last[-1]).parent
+        if not snapshot_dir.is_dir():
+            print(
+                f"[SKIP] job={job_id} state={state} "
+                f"snapshot directory missing: {snapshot_dir}")
+            continue
+        print(
+            f"[CHECKPOINT] job={job_id} state={state} "
+            f"source={checkpoint_source} directory={snapshot_dir}")
         candidates: dict[int, list[Path]] = {}
         for entry in snapshot_dir.iterdir():
             match = re.fullmatch(r"snapshot_(\d+)_.+", entry.name)
-            if match:
+            if match and entry.is_dir():
                 candidates.setdefault(int(match.group(1)), []).append(entry)
         if not candidates:
             continue

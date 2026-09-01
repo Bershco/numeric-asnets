@@ -397,10 +397,25 @@ def main() -> int:
     print(f"[VAL] Plan records found  : {len(plans)}", flush=True)
     print(f"[VAL] Unique instances    : {len(grouped_plans)}", flush=True)
 
-    if evaluator_successes is not None and len(grouped_plans) != evaluator_successes:
+    if (
+        evaluator_successes is not None
+        and len(grouped_plans) != evaluator_successes
+        and not args.allow_incomplete
+    ):
         fail(
             f"Printed successful-instance count differs from evaluator success count: "
             f"instances={len(grouped_plans)}, evaluator_successes={evaluator_successes}"
+        )
+    if (
+        evaluator_successes is not None
+        and len(grouped_plans) != evaluator_successes
+        and args.allow_incomplete
+    ):
+        print(
+            "[VAL] Retry-aware partial mode: validating every unique printed "
+            f"successful instance (instances={len(grouped_plans)}, "
+            f"last_final_successes={evaluator_successes})",
+            flush=True,
         )
 
     if evaluator_successes == 0:
@@ -531,7 +546,9 @@ def main() -> int:
         print("[VAL] =================================", flush=True)
 
         expected_successes = (
-            evaluator_successes
+            len(grouped_plans)
+            if args.allow_incomplete
+            else evaluator_successes
             if evaluator_successes is not None
             else len(grouped_plans)
         )
@@ -557,9 +574,10 @@ def main() -> int:
 
             return 1
 
-        if evaluator_successes is None:
+        if args.allow_incomplete:
             print(
-                "[VAL] Partial validation successful: all printed successful instances pass VAL",
+                "[VAL] Retry-aware partial validation successful: all unique "
+                "printed successful instances pass VAL",
                 flush=True,
             )
         else:
