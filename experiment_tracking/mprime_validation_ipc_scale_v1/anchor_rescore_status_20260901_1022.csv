@@ -1,0 +1,5 @@
+value_head,seed,anchor,expected_points,recovered_points,missing_points,last_failed_jobs,failure_mechanism,status
+off,1963100312,0,21,15,6,"20785520; historical requeues","run_asnets return code -4 means SIGILL from the native child process",resumable
+off,1963100312,3,21,0,21,"20789415; historical requeues","run_asnets return code -4 means SIGILL from the native child process",resumable
+on,1963100312,0.03,21,0,21,"20792488; historical requeues","run_asnets return code -4 means SIGILL from the native child process",resumable
+all,all,all,588,540,48,"three terminal failed attempts","not the old Queue/send or false-marker defect; native signal 4 with no Python traceback",blocked_coefficient_freeze

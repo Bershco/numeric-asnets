@@ -52,3 +52,23 @@ snapshot_at,experiment_id,component,state,jobs,requested_cpus,requested_ram_gib,
 2026-08-31T18:37:25+03:00,MPRIME-ANCHOR-CORRECTED-VAL,corrected coefficient validation,mixed,28,168,560,2 running and 26 pending,"preflight took 9m16s; full array timing depends on checkpoint cost",QOSMaxMemoryPerUser
 2026-08-31T18:37:25+03:00,PRESERVE-3-TERM,terminal-led stable-domain training,mixed,59,354,2832,1/60 terminal with 31 running and 28 pending,"staggered; 72h cap",active and memory-pending
 2026-08-31T18:37:25+03:00,PRESERVE-TPP-S2,validation-led TPP Stage2,running,1,6,48,15/16 held-out terminal,"about five hours to hard limit",active
+2026-09-01T10:22:22+03:00,PRESERVE-3-TERM,terminal-led stable-domain training,running,40,240,1920,20/60 terminal,"heterogeneous; 72h per job",active
+2026-09-01T10:22:22+03:00,PRESERVE-3-TERM,Zenotravel off policy,mixed,5,50,100,204/209 left live queue,"four running; one operationally requeued/held",active
+2026-09-01T10:22:22+03:00,MCTS-PW70-CROSS-DOMAIN,standard-budget correction,running,12,72,1440,0/12 terminal,"6.0--10.6h elapsed; 72h cap",active
+2026-09-01T10:22:22+03:00,MCTS-HORIZON-COUNTERS,binding-horizon pilot,running,8,48,960,0/8 terminal,"4.8--5.8h elapsed; 72h cap",active
+2026-09-01T10:22:22+03:00,MAIN-VAL-S2-MCTS,Drone final row,running,1,6,120,19/20 terminal,"4.6h elapsed; 72h cap",active
+2026-09-01T10:22:22+03:00,MCTS-RESOURCE-ROVER,Rover terminal-led tail,running,2,12,240,"clean aggregate off10/on7; one new OOM row awaits deduplicating VAL","about35h elapsed; about37h hard remaining",active
+2026-09-01T10:22:22+03:00,ALL,allocated running work,running,67,418,4760,exact expanded-task Slurm count,active now,allocated
+2026-09-01T10:37:46+03:00,PRESERVE-3-TERM,terminal-led stable-domain training,running,39,234,1872,21/60 terminal,"heterogeneous; 72h per job",active
+2026-09-01T10:37:46+03:00,PRESERVE-3-TERM,Zenotravel off policy,operationally-held,1,10,20,208/209 left the live queue,"release after environment-retrieval diagnosis",requeued-held
+2026-09-01T10:37:46+03:00,PRESERVE-3-TERM,cell policy controllers,dependency-pending,5,10,5,five unfinished cells,"automatic after each cell dependency",dependency
+2026-09-01T10:37:46+03:00,MCTS-PW70-CROSS-DOMAIN,standard-budget correction,running,12,72,1440,0/12 terminal,"6.3--10.9h elapsed; 72h cap",active
+2026-09-01T10:37:46+03:00,MCTS-HORIZON-COUNTERS,binding-horizon pilot,running,8,48,960,0/8 terminal,"5.0--6.0h elapsed; 72h cap",active
+2026-09-01T10:37:46+03:00,MAIN-VAL-S2-MCTS,Drone final row,running,1,6,120,19/20 terminal,"4.9h elapsed; 72h cap",active
+2026-09-01T10:37:46+03:00,MCTS-RESOURCE-ROVER,Rover terminal-led tail,running,1,6,120,"clean aggregate off10/on8; one retry-duplicated row awaits post-hoc VAL","35.4h elapsed; 36.6h hard remaining",active
+2026-09-01T10:37:46+03:00,ALL,allocated running work,running,61,366,4512,exact expanded-task Slurm count,active now,allocated
+2026-09-01T10:37:46+03:00,ALL,ordinary pending,pending,0,0,0,none,none,none
+2026-09-01T10:37:46+03:00,ALL,dependency pending,pending,5,10,5,five policy controllers,"wait for cell dependencies",dependency
+2026-09-01T10:37:46+03:00,ALL,operationally held/requeued,held,1,10,20,one Zenotravel policy job,"diagnose environment retrieval then release",held
+2026-09-01T10:37:46+03:00,ALL,deliberately Slurm-held,held,58,340,4130,"38 MPrime plus 20 FO Counters","release only after experiment-specific gates",held
+2026-09-01T10:37:46+03:00,ALL,completing,completing,0,0,0,none,none,none

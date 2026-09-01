@@ -162,3 +162,27 @@ zero, do not release Stage 2 until the per-coefficient curves are inspected for
 saturation or another provenance error.  If only one VH selects zero, verify
 that its AUC/peak/final margin is real and not solely the smallest-coefficient
 tie-break before releasing either mainstream branch.
+
+### Corrected rescore terminal state — 1 September 2026 10:22 IDT
+
+The full array has left the live queue with **540/588** checkpoint-validation
+summaries. Exactly 48 points remain, all confined to three resumable lineages:
+
+- VH-off, seed `1963100312`, anchor `0`: 15/21 recovered;
+- VH-off, seed `1963100312`, anchor `3`: 0/21 recovered;
+- VH-on, seed `1963100312`, anchor `0.03`: 0/21 recovered.
+
+The three failed attempts reported `run_asnets exited with code -4`. Python's
+`subprocess` represents signal termination as a negative return code, so this
+means the native child received POSIX signal 4 (`SIGILL`, illegal instruction),
+not an application-defined exit status 4. The child stderr contains native
+TensorFlow registration warnings but no Python traceback. This is distinct
+from the already-fixed Queue/`send()` and false-marker defects. Successful
+jobs also ran on the same `ise-cpu-intl` node family, so the evidence does not
+support declaring that family categorically incompatible.
+
+The continuation must target only these 48 missing points; the resumable done
+markers preserve the other 540. Neither MPrime Stage-2 branch may be released
+until the continuation completes and the per-VH AUC/peak/final curves are
+manually inspected. Exact counts and failed-job provenance are frozen in
+`anchor_rescore_status_20260901_1022.csv`.

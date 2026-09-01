@@ -5,8 +5,9 @@ distinction was added after discovering that the first Block Grouping/Counters
 cross-domain screen had inherited the narrow comparator's 20-simulation budget
 rather than the normal 70-simulation PW budget.
 
-1. `MCTS-PW-CROSS-DOMAIN` / `pw-kmin3-*`: the original **budget-matched PW20
-   screen**.  It remains valid as a comparison against fixed narrow 5/20.
+1. `MCTS-PW-CROSS-DOMAIN` / `pw-kmin3-*`: the original **mixed-budget
+   screen**. Block Grouping and Counters use PW20 against fixed narrow 5/20;
+   FO Counters and Rover use PW70 against fixed normal 20/70.
 2. `MCTS-PW70-CROSS-DOMAIN` / `pw70-kmin3-*`: the separately submitted
    **standard-budget PW70 follow-up**.  It uses the same checkpoints and PW
    schedule but 70 simulations.  Its twelve jobs cover Block Grouping Stage 1,
@@ -16,6 +17,13 @@ rather than the normal 70-simulation PW budget.
 The two arms must never be pooled or labelled interchangeably.  Final tables
 must show policy, fixed 5/20, PW20, and PW70 in separate columns, plus fixed
 20/70 wherever a matched result exists.
+
+The label `PW20 cross-domain screen` is prohibited for the complete 20-row
+screen: it is false for the eight FO Counters/Rover rows. Present it as
+`MCTS-PW-MIXED-SCREEN`, while preserving the registered experiment ID for
+provenance. The authoritative joined cutoff table is
+`comparative_summary_20260901_1022.csv`; every row identifies the fixed search
+as narrow 5/20 or normal 20/70 and keeps PW20 and PW70 separate.
 
 - Block Grouping Stage 1 and Counters Stage 1/Stage 2 use 20 simulations so
   Kmin=3 PW is matched to the scientifically relevant fixed-narrow 5/20 arm.

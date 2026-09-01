@@ -85,11 +85,24 @@ instance (`0/1`).
 The two audits therefore establish a precise result: node-family numerical
 variation changes network predictions and derived tree statistics, but it did
 not change a selected action, trajectory, or outcome on either tested
-instance. Random worker timing is not supported as the explanation. Hardware
-variation alone also does not explain the historical Horizon aware/unaware
-coverage divergence, because the known divergent instance remained
-action-identical under the pinned-node rerun. The audit is complete; a further
-audit is justified only after a naturally action-divergent same-commit pair is
-identified.
+instance. Random worker timing is not supported as the explanation.
+
+The follow-up does **not** directly explain the historical Horizon
+aware/unaware coverage divergence. Its six jobs all ran the unaware arm; the
+script did not pass `--eval-mcts-enforce-remaining-horizon`. It also used one
+worker and the current diagnostic/SAFE overlay, whereas the historical pair
+used the original multiprocess evaluation path. The follow-up therefore
+establishes hardware repeatability of one current baseline trajectory, not an
+aware-versus-unaware replay. Moreover, all six current runs failed after 165
+actions even though the historical unaware run solved the same instance. At
+least one non-horizon execution-path difference remains.
+
+The next causal audit, if prioritized, must run fresh aware and unaware arms
+from the same current commit on the same node family and worker configuration,
+then record the first differing root state, network output, estimator value,
+per-child N/Q/U/prior vector, goal-chase decision and selected action. A second
+block may reproduce the historical three-worker setup. Until that experiment
+exists, hardware variation, random process timing and the Horizon flag itself
+have not been shown to cause the historical three-instance coverage change.
 
 Exact compact hashes and source-log pointers are in `followup_results.csv`.

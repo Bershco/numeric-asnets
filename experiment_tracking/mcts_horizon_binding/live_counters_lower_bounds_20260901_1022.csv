@@ -1,0 +1,9 @@
+job_id,value_head,seed,arm,score_30m_lower_bound,score_2h_lower_bound,score_6h_lower_bound,horizon_cutoffs_nonzero,elapsed,state,source_log
+20755802,off,1963100312,aware,21,22,22,0,05:49:37,RUNNING,/home/hersco/training_new_domains/2026-08-31/mcts_horizon_counters/20755802_horizon-counters-off-1963100312-aware.txt
+20755803,off,1963100312,unaware,22,22,22,0,05:40:57,RUNNING,/home/hersco/training_new_domains/2026-08-31/mcts_horizon_counters/20755803_horizon-counters-off-1963100312-unaware.txt
+20755804,off,2011206605,aware,22,22,22,0,05:15:57,RUNNING,/home/hersco/training_new_domains/2026-08-31/mcts_horizon_counters/20755804_horizon-counters-off-2011206605-aware.txt
+20755805,off,2011206605,unaware,22,22,22,0,05:08:37,RUNNING,/home/hersco/training_new_domains/2026-08-31/mcts_horizon_counters/20755805_horizon-counters-off-2011206605-unaware.txt
+20755806,on,1963100312,aware,11,11,12,0,05:07:35,RUNNING,/home/hersco/training_new_domains/2026-08-31/mcts_horizon_counters/20755806_horizon-counters-on-1963100312-aware.txt
+20755807,on,1963100312,unaware,11,12,12,0,05:07:35,RUNNING,/home/hersco/training_new_domains/2026-08-31/mcts_horizon_counters/20755807_horizon-counters-on-1963100312-unaware.txt
+20755808,on,2011206605,aware,11,12,13,0,05:04:45,RUNNING,/home/hersco/training_new_domains/2026-08-31/mcts_horizon_counters/20755808_horizon-counters-on-2011206605-aware.txt
+20755809,on,2011206605,unaware,11,12,13,0,04:48:01,RUNNING,/home/hersco/training_new_domains/2026-08-31/mcts_horizon_counters/20755809_horizon-counters-on-2011206605-unaware.txt

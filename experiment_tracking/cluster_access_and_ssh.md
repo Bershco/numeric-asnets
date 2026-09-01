@@ -30,3 +30,20 @@ ssh -o BatchMode=yes -o ConnectTimeout=20 uni-cluster hostname
 If that command fails before authentication, verify `whoami`, `$env:USERPROFILE`,
 and the resolved SSH executable before blaming the VPN. Only treat the VPN as
 the likely cause after three attempts from the documented profile fail to route.
+
+## Mandatory retry procedure
+
+After **every** failed SSH attempt, wait at least one minute before retrying.
+Use that minute to reread this file and verify all of the following before the
+next attempt:
+
+- Windows account is `roee-mobile-pc\roeeh`.
+- Windows profile is `C:\Users\roeeh`.
+- Executable is `C:\Windows\System32\OpenSSH\ssh.exe`.
+- Alias is exactly `uni-cluster`.
+- The alias resolves to cluster user `hersco` at `slurm.bgu.ac.il`.
+
+Do not spend that minute repeatedly retrying, guessing another alias, using a
+direct login-node hostname, or diagnosing the VPN from a sandbox-profile
+failure. Only after three correctly spaced failures through this exact route
+should the VPN be reported as the likely blocker.
