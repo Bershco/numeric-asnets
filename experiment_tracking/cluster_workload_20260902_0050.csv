@@ -1,0 +1,14 @@
+state,experiment,jobs,requested_cpus,requested_ram_gib,reason_or_note,snapshot_time
+running,MCTS-LEGACY-FO terminal-led Stage2 off,10,60,1200,active,2026-09-02T00:50:28+03:00
+running,PRESERVE-3-TERM training and continuation,17,102,816,active,2026-09-02T00:50:28+03:00
+running,MCTS-PW70-CROSS-DOMAIN correction,12,72,1440,active,2026-09-02T00:50:28+03:00
+running,MCTS-HORIZON-COUNTERS,8,48,960,active,2026-09-02T00:50:28+03:00
+running,MAIN-EXT6-MPRIME validation-led Stage2,16,96,768,active,2026-09-02T00:50:28+03:00
+running,MAIN-TERM-EXT6-MPRIME terminal-led Stage2,20,120,960,active,2026-09-02T00:50:28+03:00
+pending,MCTS-LEGACY-FO terminal-led Stage2 on,10,60,1200,QOSMaxMemoryPerUser,2026-09-02T00:50:28+03:00
+pending,PRESERVE-3-TERM cell policy controllers,3,6,3,Dependency,2026-09-02T00:50:28+03:00
+pending,MPrime Stage2 cell policy controllers,2,4,2,Dependency,2026-09-02T00:50:28+03:00
+pending,PRESERVE-3-TERM true-checkpoint continuations,3,18,144,QOSMaxMemoryPerUser,2026-09-02T00:50:28+03:00
+pending,PRESERVE-3 tuning endpoint policy evaluations,7,70,140,QOSMaxMemoryPerUser,2026-09-02T00:50:28+03:00
+pending,MCTS-PW70-CONFIRMATORY low-priority expansion,18,108,2160,QOSMaxMemoryPerUser Nice10000,2026-09-02T00:50:28+03:00
+held,Slurm-held jobs,0,0,0,none,2026-09-02T00:50:28+03:00

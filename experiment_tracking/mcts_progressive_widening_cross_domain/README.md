@@ -150,6 +150,27 @@ Expansion recommendation after the two-seed screen:
 - Block Grouping and Counters should wait for the active PW70 correction before
   selecting confirmatory cells or a fresh hard-30-minute arm.
 
+## Five-seed confirmation submitted 2 September 2026
+
+The user approved expanding six cells: Counters validation-led Stage2,
+FO Counters Stage1, and Rover Stage1, with both VH modes retained for each
+domain/stage. The two original screening seeds remain part of each cell. Three
+new matched seeds (`534933607`, `923500475`, and `1073581256`) were therefore
+added per cell, producing 18 new jobs rather than restarting or duplicating the
+two existing seeds.
+
+The manifest is `pw70_confirmatory_expansion_manifest.csv` and exact submitted
+job IDs are in `pw70_confirmatory_expansion_submissions.tsv` (jobs
+`20838262`--`20838279`). All jobs use PW70: SAFE external selection, Kmin 3,
+c 0.6, alpha 0.5, Kmax 20 and 70 simulations. They use Slurm `Nice=10000`,
+verified to place them below the already pending ordinary work. This is an
+ordinary resource-pending confirmation, not a scientific hold.
+
+The expansion is defensible because it follows the predeclared screen-to-five
+seed rule and keeps both VH modes even when only one mode looked strongest. It
+does not establish a result until each cell has five matched terminal seeds.
+PW20 and PW70 remain separate experiments and must never be pooled.
+
 ## Ten terminal jobs at 31 August 2026 18:05 IDT
 
 Three additional PW70 jobs became terminal.  Every printed successful plan was

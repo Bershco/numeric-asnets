@@ -1,5 +1,23 @@
 # Thesis experiment registry
 
+Latest full verified snapshot: `status_20260902_0050.md`.
+
+The authoritative Stage2 policy/MCTS presentation is branch-aware:
+`stage2_policy_mcts_comparison_by_branch_20260902.csv` contains every complete
+ten-seed comparison, and `stage2_mcts_branch_coverage_20260902.csv` identifies
+which validation-led and terminal-led cells are complete, partial, live or not
+materialized. Do not recreate a single mixed table without its `stage2_branch`
+column.
+
+Urgent static regression audits are:
+
+- `tpp_stage2_vh_off_regression_audit_20260902.md/.csv`;
+- `mcts_counters_width_sensitivity/stage1_narrow_regression_audit_20260902.csv`.
+
+The five-seed PW70 confirmation submission is tracked by
+`mcts_progressive_widening_cross_domain/pw70_confirmatory_expansion_manifest.csv`
+and its submission ledger. PW20 and PW70 are separate experiments.
+
 This directory is the canonical index for thesis experiments. Reports should
 read these files instead of repeatedly rediscovering completed results from the
 cluster filesystem.

@@ -20,6 +20,10 @@ def main() -> None:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--ledger", type=Path, required=True)
     parser.add_argument("--expected-count", type=int, default=20)
+    parser.add_argument(
+        "--nice", type=int, default=0,
+        help="Positive Slurm nice value; larger values lower scheduling priority.",
+    )
     args = parser.parse_args()
     rows = list(csv.DictReader(args.manifest.open(newline="", encoding="utf-8")))
     if len(rows) != args.expected_count:
@@ -47,9 +51,15 @@ def main() -> None:
                 f"PW_MIN={row['pw_min_width']}", f"PW_C={row['pw_c']}",
                 f"PW_ALPHA={row['pw_alpha']}", f"ITERATIONS={row['iterations']}",
             ))
+            command = [
+                "sbatch", f"--job-name={row['manifest_id']}",
+                f"--output={OUT}/%x_%j.out", f"--export={exports}",
+            ]
+            if args.nice:
+                command.append(f"--nice={args.nice}")
+            command.append(str(SBATCH))
             result = subprocess.run(
-                ["sbatch", f"--job-name={row['manifest_id']}",
-                 f"--output={OUT}/%x_%j.out", f"--export={exports}", str(SBATCH)],
+                command,
                 check=True, text=True, capture_output=True,
             )
             job_id = result.stdout.strip().split()[-1]
