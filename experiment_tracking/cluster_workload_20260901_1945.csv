@@ -1,0 +1,14 @@
+snapshot_time,state,experiment,jobs,cpus,ram_gib,reason
+2026-09-01T19:45:55+03:00,running,corrected_mprime_stage2,36,216,1728,"16 validation-led and 20 terminal-led corrected-anchor jobs"
+2026-09-01T19:45:55+03:00,running,mcts_pw70_cross_domain,12,72,1440,"Block Grouping and Counters two-seed correction"
+2026-09-01T19:45:55+03:00,running,mcts_horizon_counters,8,48,960,"four matched aware/unaware pairs"
+2026-09-01T19:45:55+03:00,running,preserve3_terminal_tpp,16,96,768,"terminal-led Stage-2"
+2026-09-01T19:45:55+03:00,running,preserve3_terminal_delivery,4,24,192,"terminal-led Stage-2; one additional lineage interrupted"
+2026-09-01T19:45:55+03:00,running,mprime_anchor_validation_rescore,2,12,40,"577/588 saved-checkpoint validations present"
+2026-09-01T19:45:55+03:00,pending,mprime_policy_controllers,2,4,2,"dependency on corrected Stage-2 branches"
+2026-09-01T19:45:55+03:00,pending,preserve3_cell_policy_controllers,3,6,3,"dependency on Delivery-on and both TPP cells"
+2026-09-01T19:45:55+03:00,held,obsolete_mprime_anchor0,38,220,1730,"36 scientifically obsolete training jobs plus two controllers; do not release"
+2026-09-01T19:45:55+03:00,held,legacy_fo_counters_mcts,20,120,2400,"deliberate scientific/resource hold"
+2026-09-01T19:45:55+03:00,total,running,78,468,5128,
+2026-09-01T19:45:55+03:00,total,pending,5,10,5,"excludes held"
+2026-09-01T19:45:55+03:00,total,held,58,340,4130,
