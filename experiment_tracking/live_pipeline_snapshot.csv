@@ -89,3 +89,6 @@ snapshot_at,experiment_id,component,state,jobs,requested_cpus,requested_ram_gib,
 2026-09-01T15:19:50+03:00,ALL,ordinary and dependency pending,pending,11,46,725,"six Horizon causal runs and five cell policy controllers",unknown,resources requested-node availability or dependency
 2026-09-01T15:19:50+03:00,ALL,deliberately Slurm-held,held,58,340,4130,"38 MPrime jobs/controllers and20 FO Counters jobs",no start while held,JobHeldUser
 2026-09-01T15:19:50+03:00,ALL,completing,completing,0,0,0,none,none,none
+2026-09-01T15:24:00+03:00,ALL,allocated running work,running,58,352,4256,"one causal determinism run active; two more PRESERVE-3 lineages terminal",active now,allocated
+2026-09-01T15:24:00+03:00,ALL,ordinary and dependency pending,pending,10,40,605,"five Horizon causal runs and five cell policy controllers",unknown,requested-node availability or dependency
+2026-09-01T15:24:00+03:00,ALL,deliberately Slurm-held,held,58,340,4130,"38 MPrime jobs/controllers and20 FO Counters jobs",no start while held,JobHeldUser
