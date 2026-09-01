@@ -1,0 +1,11 @@
+experiment_id,domain,value_head,n,policy_mean,mcts_30m,mcts_2h,mcts_6h,paired_change_6h,ci95_low,ci95_high,raw_signflip_p,holm_p_within_rq,search,total,source
+MAIN-VAL,block_grouping,off,10,16.3,11.6,14.8,15.4,-0.9,-1.880268,0.080268,0.109375,0.22265625,width5_sim20,20,policy_mcts_instance_audit.csv
+MAIN-VAL,block_grouping,on,10,15.9,12.0,14.0,16.2,0.3,-0.288934,0.888934,0.453125,0.90625,width5_sim20,20,policy_mcts_instance_audit.csv
+MAIN-VAL,drone,off,10,5.9,6.9,6.9,6.9,1.0,0.046191,1.953809,0.07421875,0.22265625,width20_sim70,20,policy_mcts_instance_audit.csv
+MAIN-VAL,drone,on,10,5.1,10.0,10.4,10.4,5.3,3.420911,7.179089,0.001953125,0.009765625,width20_sim70,20,policy_mcts_instance_audit.csv
+MAIN-VAL,fo_counters,off,10,4.2,7.5,7.8,7.8,3.6,2.201441,4.998559,0.00390625,0.01953125,width20_sim70,20,policy_mcts_instance_audit.csv
+MAIN-VAL,fo_counters,on,10,3.7,5.3,5.7,5.7,2.0,1.046191,2.953809,0.00390625,0.015625,width20_sim70,20,policy_mcts_instance_audit.csv
+MAIN-VAL,rover,off,10,4.0,4.8,5.0,5.0,1.0,0.245948,1.754052,0.03125,0.125,width20_sim70,20,policy_mcts_instance_audit.csv
+MAIN-VAL,rover,on,10,3.8,4.4,4.4,4.4,0.6,-0.003242,1.203242,0.125,0.375,width20_sim70,20,policy_mcts_instance_audit.csv
+MAIN-VAL,counters,off,10,32.5,18.8,20.2,21.9,-10.6,-23.639657,2.439657,0.125,0.22265625,width20_sim70,59,policy_mcts_instance_audit.csv
+MAIN-VAL,counters,on,10,18.6,13.2,15.5,16.7,-1.9,-13.952815,10.152815,0.701171875,0.90625,width20_sim70,59,policy_mcts_instance_audit.csv
