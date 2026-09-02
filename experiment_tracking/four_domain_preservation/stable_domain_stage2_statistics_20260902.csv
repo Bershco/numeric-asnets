@@ -1,0 +1,7 @@
+domain,value_head,n,stage1_selected_mean,stage2_selected_mean_all10,stage2_selected_mean_heldout8,stage2_selected_mean_tuning2,mean_change,ci95_low,ci95_high,raw_sign_flip_p,holm_p,note,seed_ledger
+delivery,off,10,19.8,19.6,19.5,20.0,-0.2,-1.0121392176408646,0.6121392176408647,1.0,1.0,,experiment_tracking/four_domain_preservation/stable_domain_stage2_seed_pairs_20260902.csv
+delivery,on,10,19.2,19.6,19.5,20.0,0.4,-0.36898551238736754,1.1689855123873676,0.5,1.0,,experiment_tracking/four_domain_preservation/stable_domain_stage2_seed_pairs_20260902.csv
+tpp,off,10,20.0,18.9,18.625,20.0,-1.1,-3.5883727,1.3883726999999997,1.0,1.0,TPP/off: nine seeds=20/20; seed 1972442430=9/20,experiment_tracking/four_domain_preservation/stable_domain_stage2_seed_pairs_20260902.csv
+tpp,on,10,20.0,19.5,19.375,20.0,-0.5,-1.6310785,0.6310785000000001,1.0,1.0,,experiment_tracking/four_domain_preservation/stable_domain_stage2_seed_pairs_20260902.csv
+zenotravel,off,10,20.0,20.0,20.0,20.0,0.0,0.0,0.0,1.0,1.0,,experiment_tracking/four_domain_preservation/stable_domain_stage2_seed_pairs_20260902.csv
+zenotravel,on,10,20.0,19.9,19.875,20.0,-0.1,-0.3262157,0.12621570000000001,1.0,1.0,,experiment_tracking/four_domain_preservation/stable_domain_stage2_seed_pairs_20260902.csv

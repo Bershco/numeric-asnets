@@ -57,6 +57,10 @@ def main() -> None:
     parser.add_argument("output", type=Path)
     parser.add_argument("--domain")
     parser.add_argument("--branch")
+    parser.add_argument(
+        "--value-head", choices=("on", "off"),
+        help="Restrict materialization to one value-head cell.",
+    )
     parser.add_argument("--exclude-reused", action="store_true")
     parser.add_argument("--role-prefix", required=True)
     args = parser.parse_args()
@@ -68,6 +72,8 @@ def main() -> None:
         if args.domain and domain != args.domain:
             continue
         if args.branch and row.get("branch") != args.branch:
+            continue
+        if args.value_head and row.get("value_head") != args.value_head:
             continue
         if args.exclude_reused and row.get("reuse_tuning_job"):
             continue

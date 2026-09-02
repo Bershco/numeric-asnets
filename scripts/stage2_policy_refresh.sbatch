@@ -22,6 +22,7 @@ mkdir -p "$(dirname "$READY_MANIFEST")" "$(dirname "$POLICY_LEDGER")" \
 ARGS=("$TRAINING_LEDGER" "$READY_MANIFEST" --role-prefix "$ROLE_PREFIX")
 if [[ -n "${DOMAIN_FILTER:-}" ]]; then ARGS+=(--domain "$DOMAIN_FILTER"); fi
 if [[ -n "${BRANCH_FILTER:-}" ]]; then ARGS+=(--branch "$BRANCH_FILTER"); fi
+if [[ -n "${VALUE_HEAD_FILTER:-}" ]]; then ARGS+=(--value-head "$VALUE_HEAD_FILTER"); fi
 if [[ "${EXCLUDE_REUSED:-0}" == 1 ]]; then ARGS+=(--exclude-reused); fi
 
 "$PYTHON" "$CHECKOUT/experiment_tracking/materialize_stage2_policy_from_ledger.py" "${ARGS[@]}"

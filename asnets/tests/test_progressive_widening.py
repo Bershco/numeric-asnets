@@ -267,6 +267,26 @@ class ProgressiveWideningTests(unittest.TestCase):
         self.assertGreater(
             sum(self.mcts.horizon_cutoff_depth_hist.values()), 0)
 
+    def test_two_step_remaining_horizon_records_grandchild_cutoff(self):
+        """A search at external step max_len-2 must count depth-2 visits."""
+        self.mcts.iterations = 20
+
+        self.mcts.run_search(remaining_horizon=2)
+
+        self.assertGreater(
+            self.mcts.horizon_cutoff_depth_hist[2], 0,
+            "a non-terminal grandchild reached at the two-step boundary must "
+            "be recorded as a horizon cutoff",
+        )
+        self.assertEqual(
+            sum(
+                count for depth, count
+                in self.mcts.horizon_cutoff_depth_hist.items()
+                if depth > 2
+            ),
+            0,
+        )
+
     def test_invalid_widening_parameters_fail_clearly(self):
         with self.assertRaisesRegex(ValueError, "pw_min_width"):
             training.TrainingMCTS(

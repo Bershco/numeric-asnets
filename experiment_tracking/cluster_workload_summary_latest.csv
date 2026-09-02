@@ -1,13 +1,15 @@
 snapshot_time_idt,experiment,state,jobs,requested_cpus,requested_memory_gib,scheduler_source
-2026-09-02T12:02:05+03:00,MPrime policy controller,PENDING,2,4,2.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T12:02:05+03:00,PRESERVE-3 policy controller,PENDING,2,4,2.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T12:02:05+03:00,PRESERVE-3 policy evaluation,PENDING,333,3330,6660.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T12:02:05+03:00,PW70 confirmatory expansion,PENDING,16,96,1920.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T12:02:05+03:00,Binding Horizon Counters,RUNNING,8,48,960.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T12:02:05+03:00,FO Counters terminal-led Stage-2 MCTS,RUNNING,20,120,2400.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T12:02:05+03:00,MPrime terminal-led Stage-2,RUNNING,5,30,240.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T12:02:05+03:00,MPrime validation-led Stage-2,RUNNING,7,42,336.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T12:02:05+03:00,PRESERVE-3 policy evaluation,RUNNING,16,160,320.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T12:02:05+03:00,PRESERVE-3 terminal-led Stage-2,RUNNING,14,84,672.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T12:02:05+03:00,PW70 confirmatory expansion,RUNNING,2,12,240.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T12:02:05+03:00,PW70 cross-domain correction,RUNNING,8,48,960.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,Counters PW divergence recovery,PENDING,6,36,720.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,MPrime terminal-led policy evaluation,PENDING,406,4060,8120.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,MPrime validation-led off policy controller,PENDING,1,2,1.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,MPrime validation-led on policy controller,PENDING,1,2,1.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,PRESERVE-3 policy controller,PENDING,2,4,2.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,PW70 confirmatory expansion,PENDING,16,96,1920.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,Binding Horizon Counters,RUNNING,8,48,960.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,FO Counters terminal-led Stage-2 MCTS,RUNNING,20,120,2400.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,MPrime terminal-led policy evaluation,RUNNING,14,140,280.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,MPrime validation-led Stage-2,RUNNING,6,36,288.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,PRESERVE-3 policy evaluation,RUNNING,17,170,340.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,PRESERVE-3 terminal-led Stage-2,RUNNING,14,84,672.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,PW70 confirmatory expansion,RUNNING,2,12,240.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T14:26:17+03:00,PW70 cross-domain correction,RUNNING,8,48,960.0,experiment_tracking/cluster_workload_latest.csv

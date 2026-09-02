@@ -21,6 +21,10 @@ def main() -> None:
     parser.add_argument("--ledger", type=Path, required=True)
     parser.add_argument("--expected-count", type=int, default=20)
     parser.add_argument(
+        "--dry-run", action="store_true",
+        help="Validate and print submissions without calling Slurm or writing the ledger.",
+    )
+    parser.add_argument(
         "--nice", type=int, default=0,
         help="Positive Slurm nice value; larger values lower scheduling priority.",
     )
@@ -36,6 +40,17 @@ def main() -> None:
         }
     OUT.mkdir(parents=True, exist_ok=True)
     fields = ("manifest_id", "slurm_job_id", "submitted_at")
+    if args.dry_run:
+        for row in rows:
+            checkpoint = Path(row["source_checkpoint"])
+            if not checkpoint.exists():
+                raise FileNotFoundError(checkpoint)
+            print(
+                f"READY|{row['manifest_id']}|iterations={row['iterations']}|"
+                f"checkpoint={checkpoint}"
+            )
+        return
+
     with args.ledger.open("a", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields, delimiter="\t", lineterminator="\n")
         if stream.tell() == 0:

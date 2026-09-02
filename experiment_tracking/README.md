@@ -1,6 +1,6 @@
 # Thesis experiment registry
 
-Latest full verified snapshot: `status_20260902_0050.md`.
+Latest full verified snapshot: `status_20260902_latest.md`.
 
 The authoritative Stage2 policy/MCTS presentation is branch-aware:
 `stage2_policy_mcts_comparison_by_branch_20260902.csv` contains every complete
@@ -379,7 +379,7 @@ the failed portability-check controller `20595666` submitted no experiments.
 
 ## Report convention
 
-The latest authoritative report is `status_20260902_1154.md`. Its scheduler
+The latest authoritative report is `status_20260902_latest.md`. Its scheduler
 allocation is `cluster_workload_latest.csv`; the exact 20-cell Stage-2 MCTS
 availability matrix is `stage2_mcts_branch_coverage_20260902.csv` and its
 endpoint-level log audit is `stage2_mcts_historical_log_audit_20260902.csv`.

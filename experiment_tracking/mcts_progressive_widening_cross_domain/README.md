@@ -171,6 +171,21 @@ seed rule and keeps both VH modes even when only one mode looked strongest. It
 does not establish a result until each cell has five matched terminal seeds.
 PW20 and PW70 remain separate experiments and must never be pooled.
 
+## Exact-snapshot Counters divergence recovery submitted 2 September 2026
+
+This is an additive six-job side experiment; it does not replace or exclude
+the completed cross-domain screen. It reuses the three exact VH-off Stage-1
+snapshots where fixed narrow search lost severe policy coverage (policy/fixed
+narrow: 59/23, 59/29 and 35/18). Each snapshot has a PW20 and a PW70 arm, both
+with Kmin 3, c 0.6, alpha 0.5 and SAFE external selection. Jobs
+`20863184`--`20863189` were submitted with `Nice=10000`. The frozen manifest
+and exact submission ledger are
+`counters_stage1_divergence_recovery_manifest.csv` and
+`counters_stage1_divergence_recovery_submissions.tsv`.
+
+The result must compare the same snapshot under policy, fixed normal 20/70,
+fixed narrow 5/20, PW20 and PW70, with 30-minute, two-hour and six-hour columns.
+
 ## Ten terminal jobs at 31 August 2026 18:05 IDT
 
 Three additional PW70 jobs became terminal.  Every printed successful plan was

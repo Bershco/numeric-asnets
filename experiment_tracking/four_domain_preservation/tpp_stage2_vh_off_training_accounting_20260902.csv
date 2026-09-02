@@ -1,0 +1,9 @@
+job_id,state,elapsed_seconds,start,end,source_training_log
+20684875,COMPLETED,56356,2026-08-28T22:43:47,2026-08-29T14:23:03,/home/hersco/training_new_domains/2026-08-28/preserve4_tpp_stage2_confirmation/20684875_Re-Tr_tpp_tpp_mcts_orig_novh_e.5_c.1_s534933607_K0_P4S2A3_src20523050.txt
+20684876,COMPLETED,54029,2026-08-28T22:44:05,2026-08-29T13:44:34,/home/hersco/training_new_domains/2026-08-28/preserve4_tpp_stage2_confirmation/20684876_Re-Tr_tpp_tpp_mcts_orig_novh_e.5_c.1_s923500475_K0_P4S2A3_src20523059.txt
+20684877,COMPLETED,54193,2026-08-28T22:48:15,2026-08-29T13:51:28,/home/hersco/training_new_domains/2026-08-28/preserve4_tpp_stage2_confirmation/20684877_Re-Tr_tpp_tpp_mcts_orig_novh_e.5_c.1_s1073581256_K0_P4S2A3_src20523041.txt
+20684878,COMPLETED,50663,2026-08-28T22:54:28,2026-08-29T12:58:51,/home/hersco/training_new_domains/2026-08-28/preserve4_tpp_stage2_confirmation/20684878_Re-Tr_tpp_tpp_mcts_orig_novh_e.5_c.1_s1239739722_K0_P4S2A3_src20523044.txt
+20684879,COMPLETED,51047,2026-08-28T22:58:37,2026-08-29T13:09:24,/home/hersco/training_new_domains/2026-08-28/preserve4_tpp_stage2_confirmation/20684879_Re-Tr_tpp_tpp_mcts_orig_novh_e.5_c.1_s1472491096_K0_P4S2A3_src20523047.txt
+20684880,COMPLETED,80598,2026-08-28T23:00:38,2026-08-29T21:23:56,/home/hersco/training_new_domains/2026-08-28/preserve4_tpp_stage2_confirmation/20684880_Re-Tr_tpp_tpp_mcts_orig_novh_e.5_c.1_s1510771779_K0_P4S2A3_src20523056.txt
+20684881,COMPLETED,108623,2026-08-28T23:08:06,2026-08-30T05:18:29,/home/hersco/training_new_domains/2026-08-28/preserve4_tpp_stage2_confirmation/20684881_Re-Tr_tpp_tpp_mcts_orig_novh_e.5_c.1_s1972442430_K0_P4S2A3_src20523062.txt
+20684882,COMPLETED,57902,2026-08-28T23:10:52,2026-08-29T15:15:54,/home/hersco/training_new_domains/2026-08-28/preserve4_tpp_stage2_confirmation/20684882_Re-Tr_tpp_tpp_mcts_orig_novh_e.5_c.1_s2082152039_K0_P4S2A3_src20523053.txt

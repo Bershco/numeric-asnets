@@ -29,6 +29,33 @@ validation-versus-test curve comparison for this seed, including per-instance
 action traces for the eleven 10,000-action failures. Do not use the test set to
 retroactively select a replacement checkpoint.
 
+## Training-trajectory comparison against the other held-out seeds
+
+All eight held-out VH-off jobs ran the same 100 Stage-2 epochs, so the outlier
+did **not** receive more optimization updates. It took 30.17 hours versus 16.06
+hours on average for the other seven jobs. The extra wall time coincides with
+six worker-timeout warnings versus two in every peer, so it reflects more
+expensive/failed data generation, not a later epoch limit.
+
+The outlier is also distinct throughout training, rather than only at checkpoint
+selection:
+
+- mean validation coverage: 0.754 versus 0.957 across the seven peers;
+- mean total training loss: 1.891 versus 1.612;
+- mean policy loss: 1.273 versus 1.203;
+- mean anchor KL loss: 0.106 versus 0.052.
+
+Epoch 12 was not unusually late—the peer-selected epochs range from 0 to 92.
+It was chosen because its validation score was 29/30, above epoch 0's 27/30.
+The best observed every-five test checkpoint was epoch 5 at 13/20, four plans
+better than the selected epoch but still seven below the untouched Stage-1
+policy. Validation misranking therefore worsened the endpoint, but cannot
+explain the underlying collapse: the first saved Stage-2 checkpoint was already
+only 10/20.
+
+The complete peer comparison, including original training-log paths, is in
+`four_domain_preservation/tpp_stage2_vh_off_training_comparison_20260902.csv`.
+
 ## Why one seed can collapse while the other nine do not
 
 The training log rules out a saturated validation curve: its 30-problem

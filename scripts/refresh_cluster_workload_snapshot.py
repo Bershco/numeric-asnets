@@ -23,6 +23,7 @@ SSH = [
 def classify(name: str) -> str:
     name_upper = name.upper()
     rules = (
+        ("PW-COUNTERS-DIVERGENCE", "Counters PW divergence recovery"),
         ("PW70-CONFIRM", "PW70 confirmatory expansion"),
         ("PW70", "PW70 cross-domain correction"),
         ("HOR", "Binding Horizon Counters"),
@@ -30,7 +31,11 @@ def classify(name: str) -> str:
         ("MPEXT6VA", "MPrime validation-led Stage-2"),
         ("MPEXT6TA", "MPrime terminal-led Stage-2"),
         ("P3TERM", "PRESERVE-3 terminal-led Stage-2"),
+        ("MPRIME_CORR_VAL_OFF", "MPrime validation-led off policy controller"),
+        ("MPRIME_CORR_VAL_ON", "MPrime validation-led on policy controller"),
         ("MPRIME_CORR_", "MPrime policy controller"),
+        ("MPEXT6VP", "MPrime validation-led policy evaluation"),
+        ("MPEXT6TP", "MPrime terminal-led policy evaluation"),
         ("P3_TPP_", "PRESERVE-3 policy controller"),
         ("P3T_", "PRESERVE-3 policy evaluation"),
     )
