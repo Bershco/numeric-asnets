@@ -40,7 +40,7 @@ eligible pending jobs, not held jobs.
 | MPrime validation-led S2 off | 10/10 | 0 | cell policy evaluations running/pending | 74 total evaluations running; 212 pending across both VH cells |
 | MPrime validation-led S2 on | 10/10 | 0 | cell policy evaluations running/pending | evaluations have a 4h cap; starts depend on memory |
 | MPrime terminal-led S2 | 20/20 | 0 | 420/420 policy evaluations out of queue; selected endpoints reconciled | complete |
-| PRESERVE-3 Delivery | 20/20 | 0 | curve/endpoint compute finished | static reconciliation only |
+| PRESERVE-3 Delivery | 20/20 | 0 | curve/endpoint compute finished; results frozen below | complete |
 | PRESERVE-3 TPP off | 8/10 | 2 | cell controller dependency-pending | epochs74/95; about3--13h by recent rate |
 | PRESERVE-3 TPP on | 5/10 | 5 | cell controller dependency-pending | epochs63--93; four about3--13h; slowest likely reaches72h limit in about20h |
 | PRESERVE-3 Zenotravel | 20/20 | 0 | curve/endpoint compute finished | done |
@@ -261,7 +261,7 @@ not confused with absent work.
 | PRESERVE-3-VAL | complete | Delivery/TPP/Zenotravel validation-led policy; TPP/off tail failure prevents universal preservation claim |
 | PRESERVE-3-TERM | live | 53/60 training lineages terminal; seven TPP jobs run; cell controllers installed |
 | MPRIME-VAL | complete/reclassified | corrected Stage-1 validation and 290-checkpoint audit; MPrime moved to imperfect extension |
-| MAIN-EXT6-MPRIME | live policy | 20/20 training terminal; 66 policy running and280 pending |
+| MAIN-EXT6-MPRIME | live policy | 20/20 training terminal; 74 policy running and212 pending;134/420 have left the queue |
 | MAIN-TERM-EXT6-MPRIME | complete policy | 20/20 training and420/420 policy terminal; epoch0 selected result frozen |
 | ANCHOR-4 | complete | Delivery/TPP/Zenotravel and corrected MPrime coefficients frozen |
 | MCTS-WIDTH | complete | primary narrow corrections for Block Grouping/Counters |
