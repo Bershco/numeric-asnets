@@ -92,3 +92,20 @@ snapshot_at,experiment_id,component,state,jobs,requested_cpus,requested_ram_gib,
 2026-09-01T15:24:00+03:00,ALL,allocated running work,running,58,352,4256,"one causal determinism run active; two more PRESERVE-3 lineages terminal",active now,allocated
 2026-09-01T15:24:00+03:00,ALL,ordinary and dependency pending,pending,10,40,605,"five Horizon causal runs and five cell policy controllers",unknown,requested-node availability or dependency
 2026-09-01T15:24:00+03:00,ALL,deliberately Slurm-held,held,58,340,4130,"38 MPrime jobs/controllers and20 FO Counters jobs",no start while held,JobHeldUser
+2026-09-02T22:56:52+03:00,ALL,allocated running work,running,110,920,6144,"exact expanded-task Slurm count",live,allocated
+2026-09-02T22:56:52+03:00,ALL,ordinary pending work,pending,304,2936,8242,"302 memory-limited and2 dependency controllers",unknown,QOSMaxMemoryPerUser or Dependency
+2026-09-02T22:56:52+03:00,ALL,deliberately Slurm-held,held,0,0,0,"no live Slurm holds",none,none
+2026-09-02T22:56:52+03:00,MAIN-EXT6-MPRIME,validation-led policy evaluation,mixed,346,3460,6920,"20/20 training terminal;66 evaluation jobs running and280 pending",minutes to4h after start,memory-limited pending
+2026-09-02T22:56:52+03:00,PRESERVE-3-TERM,TPP training,running,8,48,384,"52/60 stable-domain lineages terminal;8 TPP jobs remain","five about0.5-13h; slowest scheduler bound about21h",active
+2026-09-02T22:56:52+03:00,PRESERVE-3-TERM,cell policy controllers,pending,2,4,2,"separate off/on controllers await only their remaining cell jobs",after cell completion,Dependency
+2026-09-02T22:56:52+03:00,MCTS-LEGACY-FO,terminal-led Stage2 MCTS,running,20,120,2400,"97 current-log successes plus retained pre-outage lower bounds","roughly6-59h based on comparable30-72h jobs",active
+2026-09-02T22:56:52+03:00,MCTS-HORIZON-COUNTERS,binding-horizon aware/unaware,running,8,48,960,"138 completed successes; zero audited cutoffs","hard bounds30-40h; no reliable early estimate",active
+2026-09-02T22:56:52+03:00,MCTS-PW70-CROSS-DOMAIN,two-seed correction,running,7,42,840,"164 classified; lower bounds123/133/141 at30m/2h/6h","hard bounds about24-41h",active
+2026-09-02T22:56:52+03:00,MCTS-PW70-CONFIRMATORY,five-seed expansion,mixed,18,108,2160,"2 running with65 classified and16 low-priority pending",pending starts unknown,memory-limited low priority
+2026-09-02T22:56:52+03:00,MCTS-PW-COUNTERS-DIVERGENCE,exact-snapshot recovery,pending,6,36,720,"PW20/PW70 on three severe fixed-narrow regression snapshots",pending start unknown,memory-limited low priority
+2026-09-02T23:22:38+03:00,ALL,allocated running work,running,117,998,6136,"exact expanded-task Slurm count",live,allocated
+2026-09-02T23:22:38+03:00,ALL,ordinary pending work,pending,260,2496,7362,"258 memory-limited and2 dependency controllers",unknown,QOSMaxMemoryPerUser or Dependency
+2026-09-02T23:22:38+03:00,ALL,deliberately Slurm-held,held,0,0,0,"no live Slurm holds",none,none
+2026-09-02T23:22:38+03:00,MAIN-EXT6-MPRIME,validation-led policy evaluation,mixed,310,3100,6200,"20/20 training terminal;74 evaluation jobs running and236 pending",minutes to4h after start,memory-limited pending
+2026-09-02T23:22:38+03:00,PRESERVE-3-TERM,TPP training,running,7,42,336,"53/60 stable-domain lineages terminal;7 TPP jobs remain","four about3-13h; slowest hard bound about20h",active
+2026-09-02T23:22:38+03:00,MCTS-LEGACY-FO,terminal-led Stage2 MCTS,running,19,114,2280,"one off-mode endpoint terminal at8/20;19 remain live","roughly6-59h based on comparable30-72h jobs",active

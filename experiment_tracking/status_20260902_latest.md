@@ -1,4 +1,4 @@
-# Experiment status — 2 September 2026, 16:59 IDT
+# Experiment status — 2 September 2026, 23:22 IDT
 
 This is the authoritative current snapshot. Live scheduler state comes from
 `cluster_workload_latest.csv`; per-job training and MCTS evidence comes from
@@ -11,22 +11,23 @@ in `result_provenance_index_20260902.csv`.
 
 | State | Jobs | Requested CPUs | Requested RAM |
 |---|---:|---:|---:|
-| Running | 97 | 770 | 6,004 GiB |
-| Pending | 503 | 4,918 | 12,203 GiB |
+| Running | 117 | 998 | 6,136 GiB |
+| Pending | 260 | 2,496 | 7,362 GiB |
 | Held | 0 | 0 | 0 GiB |
 
-Pending reasons are 499 Priority, three Dependency, and one Resources. The
-low-Nice PW jobs are ordinary eligible pending jobs, not held jobs.
+Pending reasons are 258 `QOSMaxMemoryPerUser` and two `Dependency`. One policy
+job briefly appeared as `COMPLETING` at 22:55 and left the queue on the required
+30-second recheck; nothing is stuck in teardown. Low-Nice PW jobs are ordinary
+eligible pending jobs, not held jobs.
 
 | Experiment | Running | Pending | CPUs R/P | RAM R/P |
 |---|---:|---:|---:|---:|
-| MPrime terminal-led policy | 47 | 268 | 470/2,680 | 940/5,360 GiB |
-| MPrime validation-led policy | 0 | 210 | 0/2,100 | 0/4,200 GiB |
-| MPrime validation-led Stage 2 | 2 | 0 | 12/0 | 96/0 GiB |
-| PRESERVE-3 TPP Stage 2 | 11 | 0 | 66/0 | 528/0 GiB |
+| MPrime terminal-led policy | 0 | 0 | 0/0 | 0/0 GiB |
+| MPrime validation-led policy | 74 | 236 | 740/2,360 | 1,480/4,720 GiB |
+| MPrime validation-led Stage 2 | 0 | 0 | 0/0 | 0/0 GiB |
+| PRESERVE-3 TPP Stage 2 | 7 | 0 | 42/0 | 336/0 GiB |
 | PRESERVE-3 cell controllers | 0 | 2 | 0/4 | 0/2 GiB |
-| MPrime VH-on controller | 0 | 1 | 0/2 | 0/1 GiB |
-| FO Counters terminal-led S2 MCTS | 20 | 0 | 120/0 | 2,400/0 GiB |
+| FO Counters terminal-led S2 MCTS | 19 | 0 | 114/0 | 2,280/0 GiB |
 | Counters binding Horizon | 8 | 0 | 48/0 | 960/0 GiB |
 | PW70 two-seed correction | 7 | 0 | 42/0 | 840/0 GiB |
 | PW70 five-seed confirmation | 2 | 16 | 12/96 | 240/1,920 GiB |
@@ -36,12 +37,12 @@ low-Nice PW jobs are ordinary eligible pending jobs, not held jobs.
 
 | Experiment/cell | Terminal | Running | Policy state | Estimate |
 |---|---:|---:|---|---|
-| MPrime validation-led S2 off | 10/10 | 0 | 210 every-five/endpoints pending | evaluations minutes to hours; starts depend on priority |
-| MPrime validation-led S2 on | 8/10 | 2 | controller 20863176 depends only on this cell | epochs97/98; about0.4--0.7h by current rate |
-| MPrime terminal-led S2 | 20/20 | 0 | 105/420 left queue,47 running,268 pending | evaluations minutes to hours; no defensible queue-start time |
+| MPrime validation-led S2 off | 10/10 | 0 | cell policy evaluations running/pending | 74 total evaluations running; 236 pending across both VH cells |
+| MPrime validation-led S2 on | 10/10 | 0 | cell policy evaluations running/pending | evaluations have a 4h cap; starts depend on memory |
+| MPrime terminal-led S2 | 20/20 | 0 | 420/420 policy evaluations out of queue; selected endpoints reconciled | complete |
 | PRESERVE-3 Delivery | 20/20 | 0 | curve/endpoint compute finished | static reconciliation only |
-| PRESERVE-3 TPP off | 7/10 | 3 | cell controller dependency-pending | epochs65/86/91; roughly5--18h |
-| PRESERVE-3 TPP on | 2/10 | 8 | cell controller dependency-pending | epochs57--98; most1--18h, slowest likely reaches72h in about27h |
+| PRESERVE-3 TPP off | 8/10 | 2 | cell controller dependency-pending | epochs74/95; about3--13h by recent rate |
+| PRESERVE-3 TPP on | 5/10 | 5 | cell controller dependency-pending | epochs63--93; four about3--13h; slowest likely reaches72h limit in about20h |
 | PRESERVE-3 Zenotravel | 20/20 | 0 | curve/endpoint compute finished | done |
 
 The MPrime and TPP controllers are VH-cell-specific: one VH mode cannot block
@@ -89,10 +90,10 @@ terminal-led ten-seed evidence:
 
 This establishes broader early-update instability, especially Block Grouping
 VH-on. Exact seed/log provenance: `stage2_epoch0_seed_audit_20260902.csv`.
-Interpretation and held ANCHOR-SCHEDULE design:
-`stage2_early_update_audit_20260902.md`.
+Interpretation: `stage2_early_update_audit_20260902.md`. The literature-grounded
+held continuation is `anchor_kl_control_literature_and_design_20260902.md`.
 
-## PRESERVE-4 validation-led policy — complete
+## PRESERVE-3-VAL policy — complete
 
 | Domain/VH | S1 selected | S2 selected all10 | held-out8 | tuning2 | Change [95% CI] | raw/Holm p |
 |---|---:|---:|---:|---:|---|---:|
@@ -107,6 +108,33 @@ Interpretation and held ANCHOR-SCHEDULE design:
 source was20/20 and Stage-2 epoch0 was10/20. All nine plans are VAL-valid; the
 eleven failures exhaust10,000 actions. See
 `tpp_stage2_vh_off_regression_audit_20260902.md`.
+
+Final conclusion: **Zenotravel is preserved; Delivery is essentially
+preserved; TPP is not fully preserved.** TPP/on is essentially preserved, but
+the 9/20 TPP/off catastrophic seed means the domain-level claim cannot be
+"preserved across seeds." The historical directory and manifest strings still
+say `four_domain_preservation`/`preserve4`; those are immutable provenance, not
+the current experiment name.
+
+## MPrime six-domain extension
+
+Terminal-led Stage-2 training and all 420 every-five/endpoint policy
+evaluations are complete. Corrected validation saturates at 30/30 at Stage-2
+epoch0 in every lineage, so the validation-selected Stage-2 endpoint is epoch0.
+
+| VH | n | Stage-1 final | Stage-2 selected | Change [95% CI] | raw p | Interpretation |
+|---|---:|---:|---:|---|---:|---|
+| off | 10 | 13.5 | 14.0 | +.5 [-1.29,2.29] | .672 | no reliable change |
+| on | 10 | 13.2 | 14.5 | +1.3 [-.49,3.09] | .172 | encouraging mean; not significant |
+
+The result is usable, but the universal epoch0 selection is a warning that the
+corrected MPrime validation set is saturated for anchor10 Stage-2 checkpoint
+selection. Exact seed scores and both training/evaluation log paths are in
+`mprime_validation_ipc_scale_v1/terminal_led_stage2_selected_results_20260902.csv`.
+Validation-led training is also 20/20 terminal. Six evaluated off-mode epoch0
+endpoints currently score 17,18,16,18,17,16 (mean17.0); the remaining
+selected endpoints are running or memory-pending, so no paired inference is
+reported yet.
 
 ## Stage-1 validation-selected policy versus MCTS — complete
 
@@ -133,7 +161,7 @@ Every MCTS score shows counterfactual per-instance limits 30m/2h/6h.
 | Block Grouping/on | 8/0/2 | 9/0/1 | narrow5/20 |
 | Drone/off | 10/0/0 | 10/0/0 | normal20/70 |
 | Drone/on | 10/0/0 | 10/0/0 | normal20/70 |
-| FO Counters/off | 6/0/4 | 0/10/0 | normal20/70 |
+| FO Counters/off | 6/0/4 | 1/9/0 | normal20/70 |
 | FO Counters/on | 9/0/1 | 0/10/0 | normal20/70 |
 | Rover/off | 1/0/9 | 10/0/0 | normal20/70 |
 | Rover/on | 0/0/10 | 10/0/0 | normal20/70 |
@@ -151,7 +179,7 @@ Counters =57 jobs. Causal history: `stage2_mcts_gap_explanation_20260902.md`.
 | Drone/on validation | 10 | 5.0 | 10.9/11.2/11.2 | +6.2 [4.33,8.07] | .002 |
 | Drone/off terminal | 10 | 7.8 | 9.7/9.8/9.9 | +2.1 [.65,3.55] | .020 |
 | Drone/on terminal | 10 | 6.5 | 12.9/13.1/13.1 | +6.6 [5.47,7.73] | .002 |
-| FO/off terminal | 0 terminal;10 live | 2.8 | n/a/>=6.3/>=6.3 | retained lower bound | n/a |
+| FO/off terminal | 1 terminal;9 live | 2.8 | n/a/>=6.3/>=6.3 | retained lower bound; terminal seed1239739722=8/20 | n/a |
 | FO/on terminal | 0 terminal;10 live | 3.8 | >=4.4/>=4.4/>=4.4 | live lower bound | n/a |
 | Rover/off terminal | 10 | 3.8 | 4.2/4.2/4.2 | +.4 [.03,.77] | .125 |
 | Rover/on terminal | 10 | 4.0 | 4.5/4.5/4.5 | +.5 [.12,.88] | .063 |
@@ -159,10 +187,13 @@ Counters =57 jobs. Causal history: `stage2_mcts_gap_explanation_20260902.md`.
 | Counters/on validation | 10 | 21.8 | 22.6/26.4/27.1 | +5.3 [-.70,11.30] | .082 |
 
 FO live stdout currently contains97 successes after the outage restart (off53,
-on44) and107 timeout messages. Pre-outage records retain at least63 off-mode
+on44) and151 timeout messages. One off-mode job is terminal at8/20 with zero
+VAL-invalid plans. Pre-outage records retain at least63 off-mode
 successes; these are lower bounds, not terminal aggregates. Comparable jobs
 historically take median48.3h (range30.1--72h);
-current allocations have run6--18h, so roughly12--54h remains.
+current allocations have run13--24h, so roughly6--59h remains. Jobs that reach
+the 72h cap still contribute every VAL-valid printed plan under the declared
+fixed-budget protocol.
 
 ## Progressive widening
 
@@ -184,7 +215,7 @@ and normal20/70 for FO Counters/Rover.
 
 Five-seed confirmation adds three seeds to six cells (18 jobs): two Counters
 S2/off run and16 are low-priority pending. Current two-job lower bounds total
-46/56/57 successes at30m/2h/6h across61 classified records. The approved
+46/56/61 successes at30m/2h/6h across65 classified records. The approved
 six-job exact-snapshot Counters divergence recovery is eligible low-priority
 pending. Running correction jobs have34--48h hard bounds remaining; a precise
 completion time is not defensible.
@@ -194,7 +225,7 @@ completion time is not defensible.
 Eight aware/unaware jobs run. Across138 completed instance records, all138 are
 successes:131 by30m,135 by2h,138 by6h. Longest completed plan:1,105 actions.
 No completed long failure has tested the boundary, and all cutoff summaries are
-zero. Jobs have run26--36h; hard bounds leave roughly36--45h.
+zero. Jobs have run32--42h; hard bounds leave roughly30--40h.
 
 External action count is the evaluator's outer step loop. Search depth is
 `len(path)-1` inside one root search. A long trajectory can consist of many
@@ -207,7 +238,7 @@ paths: `mcts_horizon_binding/horizon_completion_records_20260902.csv`.
 | Experiment | Why held | Activation criterion |
 |---|---|---|
 | MCTS-PW-30M | wait for PW70 screen | fresh hard30m confirmation on qualifying cells |
-| ANCHOR-SCHEDULE | schedule/protocol not frozen | small first-update diagnostic then held-out confirmation |
+| ANCHOR-KL-CONTROL | literature-grounded protocol frozen; code not yet implemented | PPO target-KL adaptive and Kickstarting linear-decay screen against constant baseline |
 | MCTS-PW-PATHBATCH | nonstandard multi-expansion design | implement after standard PW |
 | MCTS-SAFE2 | no audited horizon contamination; memory risk | nonzero cutoffs + horizon-dependent reuse + changed decision |
 | ACT-HISTORY-ABLATION | new network shape/full training | held Drone/Counters/TPP pilot |
@@ -217,6 +248,48 @@ paths: `mcts_horizon_binding/horizon_completion_records_20260902.csv`.
 
 No held design currently has Slurm jobs. Completed/negative diagnostic
 experiments remain registered in `experiments.csv`; they are not live work.
+
+## Complete experiment registry roll-up
+
+This table lists every named experiment so a completed or negative result is
+not confused with absent work.
+
+| Experiment | State | Current evidence / next event |
+|---|---|---|
+| MAIN-VAL | complete | five-domain validation-led Stage-1 -> Stage-2 policy |
+| MAIN-TERM | complete | five-domain terminal-led Stage-1 -> Stage-2 policy |
+| PRESERVE-3-VAL | complete | Delivery/TPP/Zenotravel validation-led policy; TPP/off tail failure prevents universal preservation claim |
+| PRESERVE-3-TERM | live | 53/60 training lineages terminal; seven TPP jobs run; cell controllers installed |
+| MPRIME-VAL | complete/reclassified | corrected Stage-1 validation and 290-checkpoint audit; MPrime moved to imperfect extension |
+| MAIN-EXT6-MPRIME | live policy | 20/20 training terminal; 66 policy running and280 pending |
+| MAIN-TERM-EXT6-MPRIME | complete policy | 20/20 training and420/420 policy terminal; epoch0 selected result frozen |
+| ANCHOR-4 | complete | Delivery/TPP/Zenotravel and corrected MPrime coefficients frozen |
+| MCTS-WIDTH | complete | primary narrow corrections for Block Grouping/Counters |
+| MAIN-VAL-S2-MCTS | complete | Drone validation-led Stage-2 policy/MCTS |
+| MCTS-LEGACY-ROVER | complete | Rover terminal-led Stage-2 policy/MCTS |
+| MCTS-LEGACY-FO | live | one off-mode endpoint terminal at8/20 and nineteen jobs running |
+| MCTS-PW | complete negative/efficiency | original Drone progressive-widening campaign |
+| MCTS-PW-SAFE | complete extension | Drone SAFE/Kmin3 extension |
+| MCTS-PW-CROSS-DOMAIN | complete screen | two-seed PW20/PW70 screen |
+| MCTS-PW70-CROSS-DOMAIN | live | seven long Block Grouping/Counters correction jobs remain |
+| MCTS-PW70-CONFIRMATORY | live low priority | two running and16 memory-pending |
+| MCTS-PW-COUNTERS-DIVERGENCE | pending low priority | six exact-snapshot PW20/PW70 recovery jobs |
+| MCTS-HORIZON | complete non-result | Drone horizon flag never bound |
+| MCTS-HORIZON-COUNTERS | live | eight aware/unaware Counters jobs running |
+| MCTS-SAFE | complete diagnostic | repaired two of four Drone terminal-choice failures |
+| MCTS-SAFE-CONTEXT | complete negative | contextual nodes hurt coverage and are not production behavior |
+| MCTS-DETERMINISM-AUDIT | complete diagnostic | CPU-family numerical differences observed; no selected-action/outcome change demonstrated |
+| LONG-DRONE | complete side experiment | three scheduler-limited Stage-1 lineages and their static endpoint requirements |
+| ENHSP-LEAF | complete | selected leaf-estimator endpoints |
+| BG-HIST | complete | historical Block Grouping configuration family |
+| MCTS-PW-30M | held | activate only for cells qualifying after PW70 screen |
+| MCTS-PW-PATHBATCH | held design | nonstandard multiple expansions per simulation |
+| MCTS-SAFE2 | held low priority | requires observed horizon contamination before `(state,h)` nodes |
+| MCTS-RESOURCE | held | two-worker/160-GiB FO/Rover sensitivity |
+| ACT-HISTORY-ABLATION | held | fresh networks for Drone/Counters/TPP |
+| ANCHOR-KL-CONTROL | held ready design | literature-grounded adaptive/decaying KL diagnostic; implementation gate remains |
+| STOP-ORIG | held | original training-success stopping replication |
+| PUCT-EST | held | PUCT/estimator causal sensitivity |
 
 ## Provenance contract
 
@@ -229,8 +302,13 @@ experiments remain registered in `experiments.csv`; they are not live work.
 - `mcts_horizon_binding/horizon_completion_records_20260902.csv`: job, instance,
   signature, stdout and completion-ledger paths.
 - `result_provenance_index_20260902.csv`: companion mapping for aggregate files.
+- `mprime_validation_ipc_scale_v1/terminal_led_stage2_selected_results_20260902.csv`:
+  all twenty selected endpoints with direct training and evaluation logs.
+- `mprime_validation_ipc_scale_v1/validation_led_stage2_selected_partial_20260902.csv`:
+  current validation-led selected endpoints with direct logs; regenerated as
+  the live evaluation queue drains.
 
 `result_provenance_audit_20260902.csv` is regenerated after every authoritative
-snapshot. It currently finds90 score-bearing CSVs:73 carry direct provenance,
+snapshot. It currently finds92 score-bearing CSVs:75 carry direct provenance,
 17 use an explicit companion mapping, and zero need mapping. Any future unmapped
 result file is a release blocker.

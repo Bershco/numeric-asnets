@@ -21,7 +21,7 @@ Existing MPrime validation artifacts remain under
 `experiment_tracking/mprime_validation_ipc_scale_v1/`, including
 `corrected_learning_curves.svg`, `.png`, and the corresponding aggregate CSV.
 
-Zenotravel's now-complete PRESERVE-4 paired endpoint table is
+Zenotravel's now-complete PRESERVE-3-VAL paired endpoint table is
 `experiment_tracking/four_domain_preservation/zenotravel_stage2_comparisons.csv`.
-Delivery and TPP remain live, so the combined PRESERVE-4 figure is intentionally
+Delivery and TPP remain live, so the combined PRESERVE-3-TERM figure is intentionally
 not frozen yet.

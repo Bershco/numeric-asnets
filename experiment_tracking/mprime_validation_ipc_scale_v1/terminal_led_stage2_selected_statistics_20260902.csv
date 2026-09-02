@@ -1,0 +1,3 @@
+experiment_id,value_head,n,stage1_mean,stage2_mean,paired_change,ci95_low,ci95_high,raw_signflip_p,selection_warning,seed_ledger
+MAIN-TERM-EXT6-MPRIME,off,10,13.5,14.0,0.5,-1.2922,2.2922,0.671875,All Stage-2 lineages selected epoch0 because corrected validation coverage saturated at1.0,experiment_tracking/mprime_validation_ipc_scale_v1/terminal_led_stage2_selected_results_20260902.csv
+MAIN-TERM-EXT6-MPRIME,on,10,13.2,14.5,1.3,-0.4859,3.0859,0.171875,All Stage-2 lineages selected epoch0 because corrected validation coverage saturated at1.0,experiment_tracking/mprime_validation_ipc_scale_v1/terminal_led_stage2_selected_results_20260902.csv

@@ -93,7 +93,10 @@ per-instance budget; they must never silently omit the cutoff columns.
   logs. A scheduler timeout or OOM is a terminal fixed-budget outcome; its
   already printed and VAL-valid plans remain part of the conservative score.
 - `policy_endpoint_results.csv`: complete seed-level policy endpoint evidence
-  for MAIN-VAL, MAIN-TERM, and PRESERVE-4, with literal source-log paths.
+  for MAIN-VAL, MAIN-TERM, and PRESERVE-3-VAL, with literal source-log paths.
+  Historical `preserve4` strings remain inside immutable job names and source
+  paths because MPrime was part of the original four-domain Stage-1 campaign;
+  they do not name the current three-domain preservation result.
 - `stage1_mcts_results.csv`: exact per-seed Stage-1 MCTS outcomes. Timeout
   instance IDs and unfinished instances after scheduler/OOM termination are
   separate fields.
