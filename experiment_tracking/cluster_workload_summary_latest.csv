@@ -1,11 +1,11 @@
 snapshot_time_idt,experiment,state,jobs,requested_cpus,requested_memory_gib,scheduler_source
-2026-09-02T23:22:38+03:00,Counters PW divergence recovery,PENDING,6,36,720.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T23:22:38+03:00,MPrime validation-led policy evaluation,PENDING,236,2360,4720.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T23:22:38+03:00,PRESERVE-3 policy controller,PENDING,2,4,2.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T23:22:38+03:00,PW70 confirmatory expansion,PENDING,16,96,1920.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T23:22:38+03:00,Binding Horizon Counters,RUNNING,8,48,960.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T23:22:38+03:00,FO Counters terminal-led Stage-2 MCTS,RUNNING,19,114,2280.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T23:22:38+03:00,MPrime validation-led policy evaluation,RUNNING,74,740,1480.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T23:22:38+03:00,PRESERVE-3 terminal-led Stage-2,RUNNING,7,42,336.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T23:22:38+03:00,PW70 confirmatory expansion,RUNNING,2,12,240.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-02T23:22:38+03:00,PW70 cross-domain correction,RUNNING,7,42,840.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T23:36:38+03:00,Counters PW divergence recovery,PENDING,6,36,720.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T23:36:38+03:00,MPrime validation-led policy evaluation,PENDING,212,2120,4240.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T23:36:38+03:00,PRESERVE-3 policy controller,PENDING,2,4,2.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T23:36:38+03:00,PW70 confirmatory expansion,PENDING,16,96,1920.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T23:36:38+03:00,Binding Horizon Counters,RUNNING,8,48,960.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T23:36:38+03:00,FO Counters terminal-led Stage-2 MCTS,RUNNING,19,114,2280.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T23:36:38+03:00,MPrime validation-led policy evaluation,RUNNING,74,740,1480.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T23:36:38+03:00,PRESERVE-3 terminal-led Stage-2,RUNNING,7,42,336.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T23:36:38+03:00,PW70 confirmatory expansion,RUNNING,2,12,240.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-02T23:36:38+03:00,PW70 cross-domain correction,RUNNING,7,42,840.0,experiment_tracking/cluster_workload_latest.csv

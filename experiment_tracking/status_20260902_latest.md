@@ -1,4 +1,4 @@
-# Experiment status — 2 September 2026, 23:22 IDT
+# Experiment status — 2 September 2026, 23:36 IDT
 
 This is the authoritative current snapshot. Live scheduler state comes from
 `cluster_workload_latest.csv`; per-job training and MCTS evidence comes from
@@ -12,10 +12,10 @@ in `result_provenance_index_20260902.csv`.
 | State | Jobs | Requested CPUs | Requested RAM |
 |---|---:|---:|---:|
 | Running | 117 | 998 | 6,136 GiB |
-| Pending | 260 | 2,496 | 7,362 GiB |
+| Pending | 236 | 2,256 | 6,882 GiB |
 | Held | 0 | 0 | 0 GiB |
 
-Pending reasons are 258 `QOSMaxMemoryPerUser` and two `Dependency`. One policy
+Pending reasons are 234 `QOSMaxMemoryPerUser` and two `Dependency`. One policy
 job briefly appeared as `COMPLETING` at 22:55 and left the queue on the required
 30-second recheck; nothing is stuck in teardown. Low-Nice PW jobs are ordinary
 eligible pending jobs, not held jobs.
@@ -23,7 +23,7 @@ eligible pending jobs, not held jobs.
 | Experiment | Running | Pending | CPUs R/P | RAM R/P |
 |---|---:|---:|---:|---:|
 | MPrime terminal-led policy | 0 | 0 | 0/0 | 0/0 GiB |
-| MPrime validation-led policy | 74 | 236 | 740/2,360 | 1,480/4,720 GiB |
+| MPrime validation-led policy | 74 | 212 | 740/2,120 | 1,480/4,240 GiB |
 | MPrime validation-led Stage 2 | 0 | 0 | 0/0 | 0/0 GiB |
 | PRESERVE-3 TPP Stage 2 | 7 | 0 | 42/0 | 336/0 GiB |
 | PRESERVE-3 cell controllers | 0 | 2 | 0/4 | 0/2 GiB |
@@ -37,7 +37,7 @@ eligible pending jobs, not held jobs.
 
 | Experiment/cell | Terminal | Running | Policy state | Estimate |
 |---|---:|---:|---|---|
-| MPrime validation-led S2 off | 10/10 | 0 | cell policy evaluations running/pending | 74 total evaluations running; 236 pending across both VH cells |
+| MPrime validation-led S2 off | 10/10 | 0 | cell policy evaluations running/pending | 74 total evaluations running; 212 pending across both VH cells |
 | MPrime validation-led S2 on | 10/10 | 0 | cell policy evaluations running/pending | evaluations have a 4h cap; starts depend on memory |
 | MPrime terminal-led S2 | 20/20 | 0 | 420/420 policy evaluations out of queue; selected endpoints reconciled | complete |
 | PRESERVE-3 Delivery | 20/20 | 0 | curve/endpoint compute finished | static reconciliation only |
