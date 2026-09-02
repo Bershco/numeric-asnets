@@ -59,8 +59,8 @@ The complete peer comparison, including original training-log paths, is in
 ## Why one seed can collapse while the other nine do not
 
 The training log rules out a saturated validation curve: its 30-problem
-validation coverage fluctuates roughly from 0.57 to 0.87, and epoch 12 was
-selected at about 0.87. The three leading explanations are therefore:
+validation coverage fluctuates roughly from 0.57 to 0.97, and epoch 12 was
+selected at 29/30 (0.967). The three leading explanations are therefore:
 
 1. **Seed-specific catastrophic forgetting.** Stage-2 MCTS targets and replay
    sampling create a nonlinear optimization trajectory. This seed left the
@@ -80,3 +80,14 @@ defensible follow-up compares replay-state coverage, KL drift, and
 validation/test per-instance membership for this seed against one stable
 matched seed; it does not discard the seed or choose a checkpoint using test
 coverage.
+
+The raw anchor KL mean, 0.1059, is 2.05 times the seven-peer mean of 0.0516,
+2.58 peer standard deviations above it, and the highest in the held-out group.
+At coefficient 3 it contributes about 0.318 to the mean objective, versus about
+0.155 for peers. This shows unusually large policy drift on sampled replay
+states despite the same anchor strength. It is a diagnostic symptom, not a
+standalone causal proof: an unusual replay distribution or bad MCTS targets can
+simultaneously cause the drift and the test collapse.
+
+The cross-domain first-update evidence and the held strong-then-decaying-anchor
+proposal are documented in `stage2_early_update_audit_20260902.md`.

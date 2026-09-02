@@ -30,12 +30,26 @@ reach depth 2, so a completed 10,000-action aware trajectory with zero cutoffs
 would be treated as an instrumentation/propagation defect and audited, not
 accepted casually.
 
-The four aware Counters jobs had each recorded only 22 terminal instances at
-the 13:35 IDT audit. Their most recently completed successful trajectories were
-218--1,105 actions; none of that terminal evidence approached 10,000 actions.
-Their zero cutoff counts are therefore expected so far. Long current instances
-have not emitted terminal completion records yet and cannot be classified as
-10,000-action outcomes before they finish.
+At the 16:22 IDT audit, 138 completion-ledger records existed and all 138 were
+successful trajectories. The maximum completed plan length was 1,105 actions;
+there was not yet a completed 10,000-action failure, OOM-terminal record, or
+other terminal long-trajectory record in the ledger. The aware logs do show
+local search depths as high as 3,059 edges, but every completed success still
+finished far from the remaining-action boundary. Their zero cutoff counts are
+therefore expected so far. Long current instances have not emitted terminal
+completion records yet and cannot be classified before they finish.
+
+The action count and search depth are deliberately different quantities. The
+evaluation worker increments `step` once per externally executed action and
+passes `remaining_horizon=max_len-step` into a fresh root search. The MCTS depth
+counter is `len(path)-1` inside that one root search. Consequently, a 10,000-step
+external trajectory can be assembled from 10,000 searches whose individual
+depths are much smaller. Near step 9,998, however, any aware simulation that
+reaches depth two must increment the cutoff counter; the two-step regression
+test verifies exactly that boundary.
+
+The 138 row-level records and their absolute completion-ledger/log pointers are
+in `horizon_completion_records_20260902.csv`.
 
 Original evidence is linked by `counters_submissions.tsv`,
 `counters_manifest.csv`, each job's completion JSONL under
