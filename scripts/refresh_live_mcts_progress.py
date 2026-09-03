@@ -8,6 +8,7 @@ import csv
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -112,12 +113,20 @@ def main() -> None:
             "source_evaluation_log": str(path),
             "source_completion_ledger": str(completion) if str(completion) != "." else "",
         })
-    args.output.parent.mkdir(parents=True, exist_ok=True)
     columns = list(rows[0]) if rows else ["experiment_id"]
-    with args.output.open("w", newline="", encoding="utf-8") as stream:
+    if str(args.output) == "-":
+        stream = sys.stdout
+    else:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        stream = args.output.open("w", newline="", encoding="utf-8")
+    try:
         writer = csv.DictWriter(stream, fieldnames=columns)
         writer.writeheader(); writer.writerows(rows)
-    print(f"wrote {len(rows)} running MCTS rows to {args.output}")
+    finally:
+        if stream is not sys.stdout:
+            stream.close()
+    message_stream = sys.stderr if stream is sys.stdout else sys.stdout
+    print(f"wrote {len(rows)} running MCTS rows to {args.output}", file=message_stream)
 
 
 if __name__ == "__main__":

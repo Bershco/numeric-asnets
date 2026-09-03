@@ -1,0 +1,11 @@
+rank,experiment_id,state,release_gate,why_this_priority,next_scope
+1,MPRIME-VAL-ADEQUACY,active_analysis_phase_b_held,"freeze two independent IPC-scale validation replicates without viewing network/test scores","MPrime validation is already demonstrably weak for Stage1 ranking and saturated for Stage2 selection","Phase A uses existing records; Phase B rescoring groups 1130 checkpoints into60 lineage jobs"
+2,MCTS-PW-30M,held_design,"finish PW70 correction and identify qualifying cells","directly answers the advisor concern about six-hour evaluation limits and current PW efficiency hypothesis","fresh hard30m confirmation only on qualifying cells"
+3,ANCHOR-KL-CONTROL,held_ready,"implement and smoke-test coefficient controller","tests a plausible remedy for documented first-update policy collapse","12-lineage constant versus adaptive-target-KL versus linear-decay screen"
+4,MCTS-RESOURCE,held_design,"finish current FO campaign and deploy lifecycle/resource configuration","separates algorithm quality from worker-concurrency and memory censoring","two workers and160GiB on affected FO/Rover cells"
+5,STOP-ORIG,held_design,"mainstream resource room","isolates original training-success stopping from validation-led stopping","small matched training pilot before expansion"
+6,LONG-DRONE-SELECTED-MCTS,held_design,"side-experiment priority","only three jobs and completes selected-versus-final long-training MCTS comparison","three continuation-selected checkpoints; policy and final-checkpoint MCTS are already complete"
+7,ACT-HISTORY-ABLATION,held_by_user,"fresh network campaign approval","tests policy benefit versus MCTS contextual-aliasing cost","Drone Counters and mostly-monotone TPP control"
+8,MCTS-PW-PATHBATCH,held_design,"standard PW conclusions first plus implementation tests","nonstandard multiple expansions per selection could improve search density","small matched PW pilot"
+9,PUCT-EST,deliberately_deferred,"primary RQ evidence complete enough for a causal grid","separates PUCT and estimator effects","one-factor matched sensitivity"
+10,MCTS-SAFE2,held_low_priority,"observe audited nonzero horizon cutoffs and a changed decision","current Horizon work has not demonstrated the contamination SAFE2 would fix","memory-instrumented state-horizon pilot only if gate passes"
