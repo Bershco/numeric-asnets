@@ -123,14 +123,14 @@ The adequacy test is:
 
 ## PRESERVE-3 validation-led — completed
 
-| Domain/VH | S1 selected | S2 selected all 10 | Held-out 8 | Tuning 2 | change [95% CI] |
-|---|---:|---:|---:|---:|---|
-| Delivery/off | 19.8 | 19.6 | 19.5 | 20.0 | -.2 [-1.01,.61] |
-| Delivery/on | 19.2 | 19.6 | 19.5 | 20.0 | +.4 [-.37,1.17] |
-| TPP/off | 20.0 | 18.9* | 18.625* | 20.0 | -1.1 [-3.59,1.39] |
-| TPP/on | 20.0 | 19.5 | 19.375 | 20.0 | -.5 [-1.63,.63] |
-| Zenotravel/off | 20.0 | 20.0 | 20.0 | 20.0 | 0 [0,0] |
-| Zenotravel/on | 20.0 | 19.9 | 19.875 | 20.0 | -.1 [-.33,.13] |
+| Domain/VH | S1 selected | S2 selected all 10 | Held-out 8 | Tuning 2 | change [95% CI] | raw/Holm p |
+|---|---:|---:|---:|---:|---|---:|
+| Delivery/off | 19.8 | 19.6 | 19.5 | 20.0 | -.2 [-1.01,.61] | 1/1 |
+| Delivery/on | 19.2 | 19.6 | 19.5 | 20.0 | +.4 [-.37,1.17] | .5/1 |
+| TPP/off | 20.0 | 18.9* | 18.625* | 20.0 | -1.1 [-3.59,1.39] | 1/1 |
+| TPP/on | 20.0 | 19.5 | 19.375 | 20.0 | -.5 [-1.63,.63] | 1/1 |
+| Zenotravel/off | 20.0 | 20.0 | 20.0 | 20.0 | 0 [0,0] | 1/1 |
+| Zenotravel/on | 20.0 | 19.9 | 19.875 | 20.0 | -.1 [-.33,.13] | 1/1 |
 
 Delivery and Zenotravel are preserved. TPP/on is nearly preserved. TPP/off is
 not a broad mild loss: nine seeds retain 20/20 and seed 1972442430 collapses to
