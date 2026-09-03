@@ -22,7 +22,17 @@ SSH = [
 
 def classify(name: str) -> str:
     name_upper = name.upper()
+    if "SR10M" in name_upper and "BLOCK_GROUPING_MCTS" in name_upper:
+        return "Stage-2 MCTS branch completion — Block Grouping"
+    if (
+        "SR10M" in name_upper
+        and "SR10TCM" not in name_upper
+        and "FO_COUNTERS_MCTS" in name_upper
+    ):
+        return "Stage-2 MCTS branch completion — FO Counters"
     rules = (
+        ("CTRL_STAGE2_MCTS_BRANCH_COMPLETION", "Stage-2 MCTS branch-completion controller"),
+        ("P4TPPS2P", "PRESERVE-3 terminal TPP/off policy evaluation"),
         ("PW-COUNTERS-DIVERGENCE", "Counters PW divergence recovery"),
         ("PW70-CONFIRM", "PW70 confirmatory expansion"),
         ("PW70", "PW70 cross-domain correction"),

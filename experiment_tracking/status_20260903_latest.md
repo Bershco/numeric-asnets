@@ -1,4 +1,4 @@
-# Experiment status — 3 September 2026, 14:17 IDT
+# Experiment status — 3 September 2026, 16:51 IDT
 
 This snapshot joins the live Slurm queue, current training/MCTS logs, and frozen
 static ledgers. Live sources are `cluster_workload_latest.csv`,
@@ -10,31 +10,37 @@ is mapped to its row-level evidence in `result_provenance_index_20260902.csv`.
 
 | State | Jobs | Requested CPU | Requested RAM |
 |---|---:|---:|---:|
-| Running | 51 | 306 | 6,048 GiB |
-| Pending | 4 | 20 | 361 GiB |
+| Running | 70 | 508 | 6,128 GiB |
+| Pending | 212 | 2,036 | 6,121 GiB |
 | Held | 0 | 0 | 0 GiB |
 
 | Experiment | Running | Pending | CPU running/pending | RAM running/pending |
 |---|---:|---:|---:|---:|
 | Counters Binding Horizon | 8 | 0 | 48/0 | 960/0 GiB |
-| Counters PW divergence recovery | 5 | 1 | 30/6 | 600/120 GiB |
-| FO Counters terminal-led S2 MCTS | 15 | 1 | 90/6 | 1,800/120 GiB |
+| Counters PW divergence recovery | 6 | 0 | 36/0 | 720/0 GiB |
+| FO Counters terminal-led S2 MCTS | 12 | 1 | 72/6 | 1,440/120 GiB |
 | PRESERVE-3 terminal-led S2 training | 1 | 0 | 6/0 | 48/0 GiB |
 | PRESERVE-3 policy controller | 0 | 1 | 0/2 | 0/1 GiB |
-| PW70 confirmatory expansion | 17 | 0 | 102/0 | 2,040/0 GiB |
-| PW70 two-seed correction | 5 | 1 | 30/6 | 600/120 GiB |
+| PRESERVE-3 terminal TPP/off policy | 22 | 191 | 220/1,910 | 440/3,820 GiB |
+| MPrime missing terminal policy point | 0 | 1 | 0/10 | 0/20 GiB |
+| PW70 confirmatory expansion | 15 | 0 | 90/0 | 1,800/0 GiB |
+| PW70 two-seed correction | 6 | 0 | 36/0 | 720/0 GiB |
+| Stage-2 MCTS branch completion — Block Grouping | 0 | 13 | 0/78 | 0/1,560 GiB |
+| Stage-2 MCTS branch completion — FO Counters | 0 | 5 | 0/30 | 0/600 GiB |
 
-The three ordinary MCTS jobs are pending for `QOSMaxMemoryPerUser`; the one
-controller is dependency-pending. No job is Slurm-held.
+The TPP/off policy scope includes exact replacements 20891761 and 20892200 for
+two jobs that failed on `ise-cpu128-03` semaphore ENOSPC. Job 20890696 suffered
+a node failure on `ise-cpu256-08` and was automatically requeued; it has not
+been duplicated. Failed originals are not usable evidence. No job is Slurm-held.
 
 ## Live training and policy pipeline
 
 | Experiment/cell | Terminal | Running | Current point | Realistic estimate |
 |---|---:|---:|---|---|
-| PRESERVE-3 terminal-led TPP/off | 10/10 | 0 | training terminal; continuation-aware materializer/controller tested locally | cluster upload/submission awaits renewed explicit egress approval; no retraining |
-| PRESERVE-3 terminal-led TPP/on | 9/10 | 1 | final lineage at epoch 78 after 66 h | about 6 h to scheduler limit; dependent controller already waits on this cell only |
+| PRESERVE-3 terminal-led TPP/off | 10/10 | 0 | 213 every-five/selected/final policy identities submitted; two ENOSPC failures have exact pending replacements and one node failure was automatically requeued | policy jobs normally finish within four hours after starting; final result follows their terminal reconciliation |
+| PRESERVE-3 terminal-led TPP/on | 9/10 | 1 | final lineage at epoch 81 after 68h45m | 3h15m hard bound; dependent controller 20768210 waits on this cell only and will submit its policy curve automatically |
 | MPrime validation-led S2 | 20/20 | 0 | all policy endpoints complete and reconciled | complete, but validation adequacy is under audit |
-| MPrime terminal-led S2 | 20/20 | 0 | all policy endpoints complete and reconciled | complete, but validation adequacy is under audit |
+| MPrime terminal-led S2 | 20/20 | 0 | 839/840 Phase-A points complete; exact epoch-55 replacement job 20890973 is pending | four-hour allocation after scheduling; validation adequacy remains under audit |
 | PRESERVE-3 Delivery | 20/20 | 0 | all policy curves/endpoints complete | complete |
 | PRESERVE-3 Zenotravel | 20/20 | 0 | all policy curves/endpoints complete | complete |
 
@@ -47,6 +53,11 @@ checkpoint. The repaired materializer combines the original directory at
 offset 0 with the continuation directory at offset 85. Two local regression
 tests pass. Both absolute checkpoints and both logs are frozen in
 `four_domain_preservation/tpp_off_continuation_provenance_20260903.csv`.
+The repaired controller 20890658 completed successfully and submitted all 213
+TPP/off policy identities. Their manifest retains the source checkpoint, source
+training job, epoch and training-log pointer for every row. The epoch-90 and
+epoch-15 replacements have their own two-row manifest and submission ledger so
+the ENOSPC failures are never mistaken for scores.
 
 ## Mainstream policy results — completed
 
@@ -150,23 +161,23 @@ same recorded run under 30-minute, 2-hour and 6-hour per-instance cutoffs.
 
 | Domain/VH | Validation-led terminal/live/missing | Terminal-led terminal/live/missing |
 |---|---:|---:|
-| Block Grouping/off | 0/0/10 | 10/0/0 |
-| Block Grouping/on | 8/0/2 | 9 exact logs/0/1 provenance gap |
+| Block Grouping/off | 0/10/0 | 10/0/0 |
+| Block Grouping/on | 8/2/0 | 9 exact logs/1/0 |
 | Drone/off | 10/0/0 | 10/0/0 |
 | Drone/on | 10/0/0 | 10/0/0 |
-| FO Counters/off | 6/0/4 | 4/6/0 |
-| FO Counters/on | 9/0/1 | 0/9/1 |
+| FO Counters/off | 6/4/0 | 4/6/0 |
+| FO Counters/on | 9/1/0 | 3/7/0 |
 | Rover/off | 1/0/9 | 10/0/0 |
 | Rover/on | 0/0/10 | 10/0/0 |
 | Counters/off | 10/0/0 | 0/0/10 |
 | Counters/on | 10/0/0 | 0/0/10 |
 
-Once the live FO branch terminates, 57 comparison jobs remain genuinely
-unsubmitted: Block Grouping 13, FO Counters 5, Rover 19, Counters 20. The exact
-approved first tranche is materialized locally as 18 rows: BG off 10 and on 3
-at narrow 5/20, plus FO off 4 and on 1 at normal 20/70. Upload/submission was not
-performed because the safety layer requires fresh explicit approval to send
-the path-bearing manifest and controller to `uni-cluster`.
+The complete 57-job branch-completion gap has now been acted on in the requested
+order. The first 18 jobs are submitted and ordinary resource-pending: BG off 10
+and on 3 at narrow 5/20, plus FO off 4 and on 1 at normal 20/70. The remaining
+39 are still unsubmitted by design: Rover 19 and terminal-led Counters 20. The
+18-row immutable submission ledger contains each job ID, source checkpoint,
+source training job, seed, VH mode, width and simulation budget.
 
 | Missing scope | Jobs | Per job | All-at-once request | Comparable whole-job median |
 |---|---:|---:|---:|---:|
@@ -174,7 +185,9 @@ the path-bearing manifest and controller to `uni-cluster`.
 | FO Counters | 5 | 6 CPU / 120 GiB | 30 CPU / 600 GiB | 48.3 h (30.1–72 h) |
 | Rover | 19 | 6 CPU / 120 GiB | 114 CPU / 2,280 GiB | 30.1 h (26.8–42.6 h) |
 | Counters narrow 5/20 | 20 | 6 CPU / 120 GiB | 120 CPU / 2,400 GiB | 49.9 h (3.6–72 h) |
-| Total | 57 | — | 342 CPU / 6,840 GiB | — |
+| Submitted now: BG + FO | 18 | — | 108 CPU / 2,160 GiB | pending |
+| Still unsubmitted: Rover + Counters | 39 | — | 234 CPU / 4,680 GiB | awaiting the next explicit release decision |
+| Full completion scope | 57 | — | 342 CPU / 6,840 GiB | — |
 
 The known complete Stage-2 comparisons are:
 
@@ -186,18 +199,21 @@ The known complete Stage-2 comparisons are:
 | Drone/on validation | normal 20/70 | 10 | 5.0 | 10.9 / 11.2 / 11.2 | +6.2 [4.33,8.07] | .002 |
 | Drone/off terminal | normal 20/70 | 10 | 7.8 | 9.7 / 9.8 / 9.9 | +2.1 [1.00,3.20] | .0078 |
 | Drone/on terminal | normal 20/70 | 10 | 6.5 | 12.9 / 13.1 / 13.1 | +6.6 [4.54,8.66] | .0020 |
-| FO/off terminal, current terminal subset | normal 20/70 | 4 | 3.25 | 6.25 / 6.25 / 6.25 | provisional only | — |
+| FO/off terminal, current terminal subset | normal 20/70 | 4 | 3.25 | 6.25 / 6.25 / 6.25 | provisional +3.00 | — |
+| FO/on terminal, current terminal subset | normal 20/70 | 3 | 4.33 | 5.00 / 5.00 / 5.00 | provisional +.67 | — |
 | Rover/off terminal | normal 20/70 | 10 | 3.8 | 4.2 / 4.2 / 4.2 | +.4 [.03,.77] | .125 |
 | Rover/on terminal | normal 20/70 | 10 | 4.0 | 4.5 / 4.5 / 4.5 | +.5 [.12,.88] | .0625 |
 | Counters/off validation | narrow 5/20 | 10 | 36.9 | 34.9 / 36.7 / 36.7 | -.2 [-2.87,2.47] | .969 |
 | Counters/on validation | narrow 5/20 | 10 | 21.8 | 22.6 / 26.4 / 27.1 | +5.3 [-.70,11.30] | .082 |
 
-FO terminal remains live; its four terminal VH-off jobs score 7, 5, 8 and 5,
-with all successes achieved by 30 minutes. Six VH-off and nine VH-on jobs are
-running; one VH-on job is ordinary memory-pending. The fifteen running jobs
-currently contain 33 classified successful instances. The live parser sees 66
-timeout messages across retries;
-attempts must be deduplicated by instance before a final mean is computed.
+FO terminal remains live. Four VH-off terminal jobs score 7, 5, 8 and 5; three
+VH-on terminal jobs score 5, 5 and 5. Every terminal success occurred within
+30 minutes, so their 30m/2h/6h columns are identical. Six off jobs and six on
+jobs are running; one on job is ordinary memory-pending. The running logs
+currently contain nine successful classified instances. Retry timeout messages
+are diagnostic only and will be deduplicated by instance before the final
+ten-seed statistics. The seven-row authoritative subset links each policy log,
+MCTS log, training log and checkpoint.
 
 ## Progressive widening
 
@@ -218,28 +234,34 @@ against fixed normal 20/70.
 | Rover S1/off | 4.0/20 | normal 20/70: 4.5 / 4.5 / 4.5 | 70 | 5.0 / 5.0 / 5.0 | complete screen |
 | Rover S1/on | 4.0/20 | normal 20/70: 4.5 / 4.5 / 4.5 | 70 | 5.5 / 5.5 / 5.5 | complete screen |
 
-The true PW70 correction has six terminal, five running and one ordinary
-memory-pending job:
+The true PW70 correction has six terminal and six running jobs:
 
 | Cell | Policy | Fixed comparator | PW70 30m / 2h / 6h | State |
 |---|---:|---:|---:|---|
 | BG S1/off | 16.5/20 | narrow 5/20: 11.0 / 13.5 / 15.0 | 10.5 / 11.5 / 13.0 | 2/2 terminal |
 | BG S1/on | 17.0/20 | narrow 5/20: 11.5 / 13.5 / 17.0 | 9.0 / 11.5 / 13.5 | 2/2 terminal |
-| Counters S1/off | 18.0/59 | narrow 5/20: 21.5 / 21.5 / 21.5 | >=21.0 / >=21.0 / >=21.0 | 1 running, 1 pending; retained/live evidence remains a lower bound |
+| Counters S1/off | 18.0/59 | narrow 5/20: 21.5 / 21.5 / 21.5 | >=21.0 / >=21.0 / >=21.0 | 2 running; retained/live evidence remains a lower bound |
 | Counters S1/on | 5.0/59 | narrow 5/20: 13.5 / 13.5 / 13.5 | >=12.0 / >=12.5 / >=12.5 | 2 running; 17/22 classified |
 | Counters S2/off | 49.0/59 | narrow 5/20: >=37.0 / >=41.5 / 44.5 | 34.0 / 39.5 / 43.5 | 2/2 terminal; both OOM-labelled but final scores retained |
 | Counters S2/on | 5.0/59 | narrow 5/20: 17.5 / 17.5 / 17.5 | >=13.5 / >=14.0 / >=14.0 | 2 running; live/requeue logs must be joined with retained ledgers |
 
-Running correction jobs have used about 47–58 h and have about 14–25 h to the
-hard limit. One of the 18 confirmatory jobs is terminal: FO Counters S1/on seed
-534933607 scored 7/20 in 10h37m and all seven plans are VAL-valid. Seventeen
-remain running. Across their 352 classified instances, live lower bounds are
-223/264/282 successes at 30m/2h/6h; elapsed ranges from about 3.5 h to 27 h,
-with hard bounds of roughly 45–68.5 h.
+The six running correction jobs currently contain 118 classified instances and
+lower bounds of >=93/>=95/>=95 successes at 30m/2h/6h. Their elapsed times range
+from 1h40m to 61h28m; the oldest hard bound is about 10h32m and younger requeues
+have substantially longer bounds.
 
-Five exact-snapshot Counters divergence jobs are running and one PW70 arm is
-ordinary memory-pending. Current live lower bounds across 144 classified
-instances are 106/120/121 at 30m/2h/6h.
+Three of the 18 confirmatory jobs are terminal. FO Counters S1/on seeds
+534933607 and 923500475 score 7/20 and 6/20 versus policy 2/20 and 3/20 and
+fixed 20/70 scores 4/20 and 4/20. Rover S1/off seed 1073581256 scores 4/20
+versus policy 4/20 and fixed 20/70 6/20. All 17 successes occurred within
+30 minutes and all are VAL-valid; the second FO allocation ended OOM only after
+its complete 6/20 result was printed. Fifteen jobs remain running. Their live
+322 classified instances have lower bounds >=213/>=254/>=273; including the
+three terminal jobs gives current campaign lower bounds >=230/>=271/>=290 over
+382 classified or terminal instance records.
+
+All six exact-snapshot Counters divergence jobs are running. Current live lower
+bounds across 173 classified instances are >=125/>=139/>=141 at 30m/2h/6h.
 They compare PW20 and PW70 against the same three policy snapshots whose fixed
 narrow search regressed severely; no result is excluded from the broader screen.
 
@@ -248,10 +270,11 @@ narrow search regressed severely; no result is excluded from the broader screen.
 Eight aware/unaware Counters jobs are running. Across 138 classified instances,
 the current lower bounds are 131/135/138 successes at 30m/2h/6h. No explicit
 instance timeout has yet been recorded and the longest completed plan is 1,105
-actions. All emitted horizon summaries still show zero cutoffs. With 56–57.5 h
-elapsed, hard remaining bounds are about 14.5–16 h. The jobs have not yet reached
-the late-trajectory regime needed to test whether cutoffs are counted correctly
-near 10,000 external actions, so no Horizon efficacy claim is available.
+actions. All emitted horizon summaries still show zero cutoffs. Seven jobs have
+run about 59–60 h and have 12–13 h hard bounds; one outage-requeued job has run
+about 50 h and has a 22 h hard bound. The jobs have not yet reached the
+late-trajectory regime needed to test whether cutoffs are counted correctly near
+10,000 external actions, so no Horizon efficacy claim is available.
 
 ## Held/design experiments in actual priority order
 
@@ -279,7 +302,7 @@ fourth arm is registered.
 
 | State | Experiment IDs |
 |---|---|
-| Live Slurm | PRESERVE-3-TERM; MCTS-HORIZON-COUNTERS; MCTS-LEGACY-FO; MCTS-PW70-CROSS-DOMAIN; MCTS-PW70-CONFIRMATORY; MCTS-PW-COUNTERS-DIVERGENCE |
+| Live Slurm | PRESERVE-3-TERM; MPRIME-VAL-ADEQUACY one-point repair; MCTS-HORIZON-COUNTERS; MCTS-LEGACY-FO; MCTS-STAGE2-BRANCH-COMPLETION; MCTS-PW70-CROSS-DOMAIN; MCTS-PW70-CONFIRMATORY; MCTS-PW-COUNTERS-DIVERGENCE |
 | Active local analysis | MPRIME-VAL-ADEQUACY |
 | Completed primary/policy | MAIN-VAL; MAIN-TERM; PRESERVE-3-VAL; MAIN-EXT6-MPRIME; MAIN-TERM-EXT6-MPRIME; ANCHOR-4 |
 | Completed search/sensitivity | MCTS-WIDTH; MCTS-PW; MCTS-PW-SAFE; MCTS-PW-CROSS-DOMAIN; MCTS-SAFE; MCTS-SAFE-CONTEXT; MCTS-HORIZON; MAIN-VAL-S2-MCTS; MCTS-LEGACY-ROVER; MCTS-DETERMINISM-AUDIT; ENHSP-LEAF; BG-HIST |

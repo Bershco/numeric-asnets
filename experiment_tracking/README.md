@@ -453,6 +453,31 @@ epochs 0--84 and validation-selected epoch 75; continuation job `20834985`
 supplies cumulative epochs 85--100 and the final checkpoint. This continuation
 was caused by the outage/requeue wrapper defect, not a normal scheduler limit.
 
+The repaired TPP/off controller `20890658` submitted 213 every-five and endpoint
+policy evaluations from the combined original/continuation checkpoint lineage.
+The immutable local manifest is
+`four_domain_preservation/terminal_stage2_tpp_off_policy_ready_20260903.csv` and
+the submission map is
+`four_domain_preservation/terminal_stage2_tpp_off_policy_submissions_20260903.tsv`.
+Jobs `20890690` and `20890697` failed before evaluation on node-local semaphore
+ENOSPC; exact replacements `20891761` and `20892200` are separately recorded in
+the retry manifest/ledger and exclude `ise-cpu128-03`. Job `20890696` suffered
+a node failure on `ise-cpu256-08` and Slurm automatically requeued it, so it was
+not duplicated.
+
+The first 18 of the 57 Stage-2 MCTS branch-completion gaps are now submitted:
+13 Block Grouping jobs at fixed narrow width 5 / 20 simulations and five FO
+Counters jobs at fixed normal width 20 / 70 simulations. Their exact IDs and
+checkpoints are in `stage2_mcts_branch_completion_submissions_20260903.tsv`.
+The remaining unsubmitted scope is Rover 19 plus terminal-led Counters 20; it
+must not be described as running or silently treated as zero.
+
+Current terminal FO Stage-2 MCTS evidence is joined to matched policy endpoints
+in `fo_terminal_stage2_mcts_terminal_results_20260903.csv`; its aggregate file
+is explicitly provisional until ten seeds per VH mode terminate. Terminal PW70
+confirmation evidence is in
+`mcts_progressive_widening_cross_domain/pw70_confirmatory_terminal_20260903.csv`.
+
 If the live cluster cannot be reached, report the snapshot timestamp explicitly
 instead of presenting it as current.
 

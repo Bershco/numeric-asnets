@@ -1,11 +1,14 @@
 snapshot_time_idt,experiment,state,jobs,requested_cpus,requested_memory_gib,scheduler_source
-2026-09-03T14:17:51+03:00,Counters PW divergence recovery,PENDING,1,6,120.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-03T14:17:51+03:00,FO Counters terminal-led Stage-2 MCTS,PENDING,1,6,120.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-03T14:17:51+03:00,PRESERVE-3 policy controller,PENDING,1,2,1.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-03T14:17:51+03:00,PW70 cross-domain correction,PENDING,1,6,120.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-03T14:17:51+03:00,Binding Horizon Counters,RUNNING,8,48,960.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-03T14:17:51+03:00,Counters PW divergence recovery,RUNNING,5,30,600.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-03T14:17:51+03:00,FO Counters terminal-led Stage-2 MCTS,RUNNING,15,90,1800.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-03T14:17:51+03:00,PRESERVE-3 terminal-led Stage-2,RUNNING,1,6,48.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-03T14:17:51+03:00,PW70 confirmatory expansion,RUNNING,17,102,2040.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-03T14:17:51+03:00,PW70 cross-domain correction,RUNNING,5,30,600.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-03T16:51:04+03:00,FO Counters terminal-led Stage-2 MCTS,PENDING,1,6,120.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-03T16:51:04+03:00,MPrime terminal-led policy evaluation,PENDING,1,10,20.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-03T16:51:04+03:00,PRESERVE-3 policy controller,PENDING,1,2,1.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-03T16:51:04+03:00,PRESERVE-3 terminal TPP/off policy evaluation,PENDING,191,1910,3820.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-03T16:51:04+03:00,Stage-2 MCTS branch completion — Block Grouping,PENDING,13,78,1560.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-03T16:51:04+03:00,Stage-2 MCTS branch completion — FO Counters,PENDING,5,30,600.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-03T16:51:04+03:00,Binding Horizon Counters,RUNNING,8,48,960.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-03T16:51:04+03:00,Counters PW divergence recovery,RUNNING,6,36,720.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-03T16:51:04+03:00,FO Counters terminal-led Stage-2 MCTS,RUNNING,12,72,1440.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-03T16:51:04+03:00,PRESERVE-3 terminal TPP/off policy evaluation,RUNNING,22,220,440.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-03T16:51:04+03:00,PRESERVE-3 terminal-led Stage-2,RUNNING,1,6,48.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-03T16:51:04+03:00,PW70 confirmatory expansion,RUNNING,15,90,1800.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-03T16:51:04+03:00,PW70 cross-domain correction,RUNNING,6,36,720.0,experiment_tracking/cluster_workload_latest.csv
