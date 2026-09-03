@@ -1,0 +1,3 @@
+value_head,lineages,checkpoints,mean_unique_validation_scores,mean_validation_max_fraction,positive_spearman_lineages,mean_within_lineage_spearman,mean_within_lineage_kendall_tau_b,mean_selected_test_regret,seed_ledger
+off,10,153,7.300,0.123903,5,0.096982,0.069527,3.100,experiment_tracking/mprime_validation_ipc_scale_v1/validation_adequacy_phase_a_stage1_seeds_20260903.csv
+on,10,137,7.700,0.104980,7,0.231581,0.173130,2.500,experiment_tracking/mprime_validation_ipc_scale_v1/validation_adequacy_phase_a_stage1_seeds_20260903.csv

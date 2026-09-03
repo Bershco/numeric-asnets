@@ -440,6 +440,19 @@ weak and all validation-led Stage-2 lineages select epoch 0. The test protocol
 first audits all existing checkpoints, then freezes two independent harder
 validation replicates before any validation-only rescoring.
 
+Phase A files dated `20260903` now store the complete Stage-1 audit and the
+839/840 available Stage-2 test-score audit. Their checkpoint rows contain the
+literal checkpoint, training-log and policy-log paths. The sole absent Stage-2
+score is recorded in a dedicated missing-evidence CSV rather than being treated
+as zero or silently omitted.
+
+TPP/off terminal-led continuation provenance is frozen in
+`four_domain_preservation/tpp_off_continuation_provenance_20260903.csv` and its
+Markdown explanation. The original pre-outage snapshot directory supplies
+epochs 0--84 and validation-selected epoch 75; continuation job `20834985`
+supplies cumulative epochs 85--100 and the final checkpoint. This continuation
+was caused by the outage/requeue wrapper defect, not a normal scheduler limit.
+
 If the live cluster cannot be reached, report the snapshot timestamp explicitly
 instead of presenting it as current.
 

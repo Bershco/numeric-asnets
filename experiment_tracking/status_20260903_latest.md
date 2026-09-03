@@ -1,4 +1,4 @@
-# Experiment status — 3 September 2026, 10:21 IDT
+# Experiment status — 3 September 2026, 14:17 IDT
 
 This snapshot joins the live Slurm queue, current training/MCTS logs, and frozen
 static ledgers. Live sources are `cluster_workload_latest.csv`,
@@ -10,41 +10,43 @@ is mapped to its row-level evidence in `result_provenance_index_20260902.csv`.
 
 | State | Jobs | Requested CPU | Requested RAM |
 |---|---:|---:|---:|
-| Running | 53 | 318 | 6,072 GiB |
-| Pending | 6 | 32 | 601 GiB |
+| Running | 51 | 306 | 6,048 GiB |
+| Pending | 4 | 20 | 361 GiB |
 | Held | 0 | 0 | 0 GiB |
 
 | Experiment | Running | Pending | CPU running/pending | RAM running/pending |
 |---|---:|---:|---:|---:|
 | Counters Binding Horizon | 8 | 0 | 48/0 | 960/0 GiB |
-| Counters PW divergence recovery | 6 | 0 | 36/0 | 720/0 GiB |
-| FO Counters terminal-led S2 MCTS | 11 | 5 | 66/30 | 1,320/600 GiB |
-| PRESERVE-3 terminal-led S2 training | 4 | 0 | 24/0 | 192/0 GiB |
+| Counters PW divergence recovery | 5 | 1 | 30/6 | 600/120 GiB |
+| FO Counters terminal-led S2 MCTS | 15 | 1 | 90/6 | 1,800/120 GiB |
+| PRESERVE-3 terminal-led S2 training | 1 | 0 | 6/0 | 48/0 GiB |
 | PRESERVE-3 policy controller | 0 | 1 | 0/2 | 0/1 GiB |
-| PW70 confirmatory expansion | 18 | 0 | 108/0 | 2,160/0 GiB |
-| PW70 two-seed correction | 6 | 0 | 36/0 | 720/0 GiB |
+| PW70 confirmatory expansion | 17 | 0 | 102/0 | 2,040/0 GiB |
+| PW70 two-seed correction | 5 | 1 | 30/6 | 600/120 GiB |
 
-The five ordinary MCTS jobs are pending for `QOSMaxMemoryPerUser`; the one
+The three ordinary MCTS jobs are pending for `QOSMaxMemoryPerUser`; the one
 controller is dependency-pending. No job is Slurm-held.
 
 ## Live training and policy pipeline
 
 | Experiment/cell | Terminal | Running | Current point | Realistic estimate |
 |---|---:|---:|---|---|
-| PRESERVE-3 terminal-led TPP/off | 10/10 | 0 | training terminal; cell controller failed on continuation provenance | controller repair only; no retraining required |
-| PRESERVE-3 terminal-led TPP/on | 6/10 | 4 | epochs 99, 98, 74, 99 | three about 1–3 h; epoch-74 lineage likely hits the 72 h limit in about 9.5 h |
+| PRESERVE-3 terminal-led TPP/off | 10/10 | 0 | training terminal; continuation-aware materializer/controller tested locally | cluster upload/submission awaits renewed explicit egress approval; no retraining |
+| PRESERVE-3 terminal-led TPP/on | 9/10 | 1 | final lineage at epoch 78 after 66 h | about 6 h to scheduler limit; dependent controller already waits on this cell only |
 | MPrime validation-led S2 | 20/20 | 0 | all policy endpoints complete and reconciled | complete, but validation adequacy is under audit |
 | MPrime terminal-led S2 | 20/20 | 0 | all policy endpoints complete and reconciled | complete, but validation adequacy is under audit |
 | PRESERVE-3 Delivery | 20/20 | 0 | all policy curves/endpoints complete | complete |
 | PRESERVE-3 Zenotravel | 20/20 | 0 | all policy curves/endpoints complete | complete |
 
 TPP/off continuation job 20834985 resumed from cumulative S2 epoch 84 and
-finished at epoch 100. Its final checkpoint is continuation snapshot 15. Its
-inherited validation-best checkpoint is parent job 20755752 snapshot 25
-(cumulative S2 epoch 80). Controller 20859876 incorrectly required both to be
-declared in the continuation log and failed before writing a manifest. The
-scientific evidence exists; the materializer needs continuation-aware
-provenance before the replacement controller is submitted.
+finished at epoch 100. This continuation was caused by the cluster-outage
+requeue/restart defect, not an ordinary scheduler timeout. Its final checkpoint
+is continuation snapshot 15. Restored validation state identifies parent job
+20755752 snapshot 75 (cumulative S2 epoch 75) as the inherited validation-best
+checkpoint. The repaired materializer combines the original directory at
+offset 0 with the continuation directory at offset 85. Two local regression
+tests pass. Both absolute checkpoints and both logs are frozen in
+`four_domain_preservation/tpp_off_continuation_provenance_20260903.csv`.
 
 ## Mainstream policy results — completed
 
@@ -78,11 +80,22 @@ set, but current evidence does not establish that it is adequate.
 | Terminal-led/on | 13.2 -> 14.5 | +1.3 [-.49,3.09] | .172 |
 
 All twenty validation-led S2 lineages selected epoch 0 because validation was
-already 30/30. For Stage 1, pooled validation/test Spearman correlation is only
-.255/off and .252/on; only 5/10 off and 7/10 on lineages have positive
-within-lineage correlation. Selection regret versus the retrospectively observed
-test-best checkpoint averages 3.1 plans/off and 2.5/on. The current set is thus
-weak for Stage-1 checkpoint ranking and saturated for Stage-2 selection.
+already 30/30. Phase A now contains all 290 Stage-1 checkpoint scores and
+839/840 Stage-2 checkpoint scores. The sole missing Stage-2 score is terminal-led
+VH-off seed 923500475, epoch 55: job 20862221 failed and produced no score.
+
+| Phase-A scope | VH | Lineages/checkpoints | Unique validation scores per lineage | Fraction at maximum | Positive validation/test Spearman | Mean selected-test regret |
+|---|---|---:|---:|---:|---:|---:|
+| Stage 1 | off | 10/153 | 7.3 mean | .124 mean | 5/10 | 3.1 plans |
+| Stage 1 | on | 10/137 | 7.7 mean | .105 mean | 7/10 | 2.5 plans |
+| S2 validation-led | off | 10/210 | exactly 1 | 1.000 | 0/10; undefined within-lineage correlation | 1.9 plans |
+| S2 validation-led | on | 10/210 | exactly 1 | 1.000 | 0/10; undefined within-lineage correlation | 2.6 plans |
+| S2 terminal-led | off | 10/209 scored | exactly 1 | 1.000 | 0/10; undefined within-lineage correlation | 3.0 plans |
+| S2 terminal-led | on | 10/210 | exactly 1 | 1.000 | 0/10; undefined within-lineage correlation | 2.5 plans |
+
+Stage 1 has weak checkpoint-ranking resolution; Stage 2 is completely
+saturated across every recorded checkpoint. That makes the two independently
+frozen harder validation replicates the highest-priority next design task.
 
 The adequacy test is:
 
@@ -142,14 +155,18 @@ same recorded run under 30-minute, 2-hour and 6-hour per-instance cutoffs.
 | Drone/off | 10/0/0 | 10/0/0 |
 | Drone/on | 10/0/0 | 10/0/0 |
 | FO Counters/off | 6/0/4 | 4/6/0 |
-| FO Counters/on | 9/0/1 | 0/5/5 |
+| FO Counters/on | 9/0/1 | 0/9/1 |
 | Rover/off | 1/0/9 | 10/0/0 |
 | Rover/on | 0/0/10 | 10/0/0 |
 | Counters/off | 10/0/0 | 0/0/10 |
 | Counters/on | 10/0/0 | 0/0/10 |
 
 Once the live FO branch terminates, 57 comparison jobs remain genuinely
-unsubmitted: Block Grouping 13, FO Counters 5, Rover 19, Counters 20.
+unsubmitted: Block Grouping 13, FO Counters 5, Rover 19, Counters 20. The exact
+approved first tranche is materialized locally as 18 rows: BG off 10 and on 3
+at narrow 5/20, plus FO off 4 and on 1 at normal 20/70. Upload/submission was not
+performed because the safety layer requires fresh explicit approval to send
+the path-bearing manifest and controller to `uni-cluster`.
 
 | Missing scope | Jobs | Per job | All-at-once request | Comparable whole-job median |
 |---|---:|---:|---:|---:|
@@ -176,10 +193,10 @@ The known complete Stage-2 comparisons are:
 | Counters/on validation | narrow 5/20 | 10 | 21.8 | 22.6 / 26.4 / 27.1 | +5.3 [-.70,11.30] | .082 |
 
 FO terminal remains live; its four terminal VH-off jobs score 7, 5, 8 and 5,
-with all successes achieved by 30 minutes. Two VH-off and nine VH-on jobs are
-running; four VH-off and one VH-on are ordinary memory-pending. The eleven
-running jobs currently contain 38 classified successful instances and 69
-explicit timeout records across retries;
+with all successes achieved by 30 minutes. Six VH-off and nine VH-on jobs are
+running; one VH-on job is ordinary memory-pending. The fifteen running jobs
+currently contain 33 classified successful instances. The live parser sees 66
+timeout messages across retries;
 attempts must be deduplicated by instance before a final mean is computed.
 
 ## Progressive widening
@@ -201,25 +218,28 @@ against fixed normal 20/70.
 | Rover S1/off | 4.0/20 | normal 20/70: 4.5 / 4.5 / 4.5 | 70 | 5.0 / 5.0 / 5.0 | complete screen |
 | Rover S1/on | 4.0/20 | normal 20/70: 4.5 / 4.5 / 4.5 | 70 | 5.5 / 5.5 / 5.5 | complete screen |
 
-The true PW70 correction has six terminal and six running jobs:
+The true PW70 correction has six terminal, five running and one ordinary
+memory-pending job:
 
 | Cell | Policy | Fixed comparator | PW70 30m / 2h / 6h | State |
 |---|---:|---:|---:|---|
 | BG S1/off | 16.5/20 | narrow 5/20: 11.0 / 13.5 / 15.0 | 10.5 / 11.5 / 13.0 | 2/2 terminal |
 | BG S1/on | 17.0/20 | narrow 5/20: 11.5 / 13.5 / 17.0 | 9.0 / 11.5 / 13.5 | 2/2 terminal |
-| Counters S1/off | 18.0/59 | narrow 5/20: 21.5 / 21.5 / 21.5 | >=21.0 / >=21.0 / >=21.0 | 2 running; 21/21 classified |
+| Counters S1/off | 18.0/59 | narrow 5/20: 21.5 / 21.5 / 21.5 | >=21.0 / >=21.0 / >=21.0 | 1 running, 1 pending; retained/live evidence remains a lower bound |
 | Counters S1/on | 5.0/59 | narrow 5/20: 13.5 / 13.5 / 13.5 | >=12.0 / >=12.5 / >=12.5 | 2 running; 17/22 classified |
 | Counters S2/off | 49.0/59 | narrow 5/20: >=37.0 / >=41.5 / 44.5 | 34.0 / 39.5 / 43.5 | 2/2 terminal; both OOM-labelled but final scores retained |
-| Counters S2/on | 5.0/59 | narrow 5/20: 17.5 / 17.5 / 17.5 | >=13.5 / >=14.0 / >=14.0 | 2 running; 15/22 classified |
+| Counters S2/on | 5.0/59 | narrow 5/20: 17.5 / 17.5 / 17.5 | >=13.5 / >=14.0 / >=14.0 | 2 running; live/requeue logs must be joined with retained ledgers |
 
-Running correction jobs have used about 42–55 h and have about 17–30 h to the
-hard limit. The 18-job confirmatory expansion is fully running. Across 359
-classified instances it currently has lower bounds 230/271/284 successes at
-30m/2h/6h; elapsed ranges from minutes to about 23.5 h, with at most 48.5–72 h
-to the hard bounds.
+Running correction jobs have used about 47–58 h and have about 14–25 h to the
+hard limit. One of the 18 confirmatory jobs is terminal: FO Counters S1/on seed
+534933607 scored 7/20 in 10h37m and all seven plans are VAL-valid. Seventeen
+remain running. Across their 352 classified instances, live lower bounds are
+223/264/282 successes at 30m/2h/6h; elapsed ranges from about 3.5 h to 27 h,
+with hard bounds of roughly 45–68.5 h.
 
-The six exact-snapshot Counters divergence jobs are now all running. Current
-lower bounds across 136 classified instances are 122/125/125 at 30m/2h/6h.
+Five exact-snapshot Counters divergence jobs are running and one PW70 arm is
+ordinary memory-pending. Current live lower bounds across 144 classified
+instances are 106/120/121 at 30m/2h/6h.
 They compare PW20 and PW70 against the same three policy snapshots whose fixed
 narrow search regressed severely; no result is excluded from the broader screen.
 
@@ -228,8 +248,8 @@ narrow search regressed severely; no result is excluded from the broader screen.
 Eight aware/unaware Counters jobs are running. Across 138 classified instances,
 the current lower bounds are 131/135/138 successes at 30m/2h/6h. No explicit
 instance timeout has yet been recorded and the longest completed plan is 1,105
-actions. All emitted horizon summaries still show zero cutoffs. With 43–53 h
-elapsed, hard remaining bounds are about 19–29 h. The jobs have not yet reached
+actions. All emitted horizon summaries still show zero cutoffs. With 56–57.5 h
+elapsed, hard remaining bounds are about 14.5–16 h. The jobs have not yet reached
 the late-trajectory regime needed to test whether cutoffs are counted correctly
 near 10,000 external actions, so no Horizon efficacy claim is available.
 

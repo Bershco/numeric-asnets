@@ -34,6 +34,38 @@ def read(path: Path, delimiter: str = "\t") -> list[dict[str, str]]:
         return list(csv.DictReader(stream, delimiter=delimiter))
 
 
+def read_overrides(path: Path | None) -> dict[str, dict[str, str]]:
+    if path is None:
+        return {}
+    rows = read(path, delimiter=",")
+    result = {row["manifest_id"]: row for row in rows}
+    if len(result) != len(rows):
+        raise RuntimeError("duplicate manifest_id in continuation overrides")
+    return result
+
+
+def override_candidates(row: dict[str, str]) -> dict[int, list[Path]]:
+    """Map local continuation snapshot indices to one cumulative Stage-2 axis."""
+    candidates: dict[int, list[Path]] = {}
+    for specification in row["snapshot_segments"].split(";"):
+        directory, separator, offset_text = specification.rpartition("@")
+        if not separator or not directory:
+            raise RuntimeError(f"invalid snapshot segment: {specification!r}")
+        offset = int(offset_text)
+        snapshot_dir = Path(directory)
+        if not snapshot_dir.is_dir():
+            raise RuntimeError(f"missing continuation snapshot directory: {snapshot_dir}")
+        for entry in snapshot_dir.iterdir():
+            match = re.fullmatch(r"snapshot_(\d+)_.+", entry.name)
+            if match:
+                cumulative_epoch = offset + int(match.group(1))
+                candidates.setdefault(cumulative_epoch, []).append(entry)
+    duplicates = {epoch: paths for epoch, paths in candidates.items() if len(paths) != 1}
+    if duplicates:
+        raise RuntimeError(f"overlapping/ambiguous continuation snapshots: {duplicates}")
+    return candidates
+
+
 def accounting(job_ids: list[str]) -> dict[str, tuple[str, Path]]:
     if not job_ids:
         return {}
@@ -62,8 +94,13 @@ def main() -> None:
         help="Restrict materialization to one value-head cell.",
     )
     parser.add_argument("--exclude-reused", action="store_true")
+    parser.add_argument(
+        "--continuation-overrides", type=Path,
+        help="Optional CSV describing multi-directory resumed lineages.",
+    )
     parser.add_argument("--role-prefix", required=True)
     args = parser.parse_args()
+    overrides = read_overrides(args.continuation_overrides)
 
     rows = read(args.ledger)
     selected: list[dict[str, str]] = []
@@ -94,20 +131,35 @@ def main() -> None:
         if not log.is_file():
             raise RuntimeError(f"terminal job {job_id} has no readable log: {log}")
         text = log.read_text(encoding="utf-8", errors="replace")
-        last = LAST_RE.findall(text)
-        if not last:
-            raise RuntimeError(f"terminal job {job_id} has no valid checkpoint: {log}")
-        snapshot_dir = Path(last[-1]).parent
-        candidates: dict[int, list[Path]] = {}
-        for entry in snapshot_dir.iterdir():
-            match = re.fullmatch(r"snapshot_(\d+)_.+", entry.name)
-            if match:
-                candidates.setdefault(int(match.group(1)), []).append(entry)
-        best = BEST_RE.findall(text)
-        if not best:
-            raise RuntimeError(f"terminal job {job_id} has no validation-selected checkpoint")
-        selected_epoch = int(best[-1][0])
-        final_epoch = max(candidates)
+        override = overrides.get(row["manifest_id"])
+        if override:
+            candidates = override_candidates(override)
+            selected_epoch = int(override["selected_epoch"])
+            final_epoch = int(override["final_epoch"])
+            training_log = override["training_logs"]
+        else:
+            last = LAST_RE.findall(text)
+            if not last:
+                raise RuntimeError(f"terminal job {job_id} has no valid checkpoint: {log}")
+            snapshot_dir = Path(last[-1]).parent
+            candidates: dict[int, list[Path]] = {}
+            for entry in snapshot_dir.iterdir():
+                match = re.fullmatch(r"snapshot_(\d+)_.+", entry.name)
+                if match:
+                    candidates.setdefault(int(match.group(1)), []).append(entry)
+            best = BEST_RE.findall(text)
+            if not best:
+                raise RuntimeError(f"terminal job {job_id} has no validation-selected checkpoint")
+            selected_epoch = int(best[-1][0])
+            final_epoch = max(candidates)
+            training_log = str(log)
+        for endpoint_name, endpoint_epoch in (
+            ("selected", selected_epoch), ("final", final_epoch)
+        ):
+            if endpoint_epoch not in candidates:
+                raise RuntimeError(
+                    f"job {job_id} {endpoint_name} epoch {endpoint_epoch} absent from snapshots"
+                )
         epochs = {epoch for epoch in candidates if epoch % 5 == 0}
         epochs.update({selected_epoch, final_epoch})
         terminal += 1
@@ -129,7 +181,7 @@ def main() -> None:
                 "source_checkpoint_ref": str(paths[0]),
                 "source_training_job_id": job_id, "snapshot_epoch": str(epoch),
                 "analysis_roles": ";".join(roles), "training_state": state,
-                "training_log": str(log),
+                "training_log": training_log,
             })
     manifest_ids = [row["manifest_id"] for row in output]
     if len(manifest_ids) != len(set(manifest_ids)):

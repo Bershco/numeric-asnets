@@ -125,15 +125,16 @@ require a nonempty summary before writing `.done`.  The array must be recreated
 from that repaired checkout and the false marker removed.  The remaining saved
 checkpoints are intact; no Stage-2 retraining is implied by this harness bug.
 
-The originally materialized Stage-2 jobs remain preserved but explicitly held:
+The originally materialized anchor-zero Stage-2 jobs were preserved temporarily
+but are now obsolete and cancelled:
 
 - validation-led held-out jobs `20760292--20760307`;
 - terminal-led jobs `20760308--20760327`;
 - policy controllers `20760692` and `20760693`.
 
-They will be released only after corrected validation freezes one coefficient
-per VH.  The terminal-led branch will reuse that corrected validation-led
-coefficient; it does not need another 28-lineage tuning grid.
+They were replaced by the corrected anchor-10 validation-led and terminal-led
+campaigns. Both replacement branches and their endpoint/learning-curve policy
+evaluations are complete. The obsolete jobs must never be recreated or used.
 
 ### Corrected deployment and second submission
 
@@ -195,3 +196,25 @@ completed validation points. The known failing nodes
 `ise-cpu-intl-[11-12,18]` are excluded for this continuation without claiming
 that their entire node family is invalid. Dispatch is pending restoration of
 the documented SSH route.
+
+### Validation adequacy Phase A — 3 September 2026
+
+Phase A now consolidates 290/290 Stage-1 and 839/840 Stage-2 checkpoint test
+scores. The one missing policy score is terminal-led VH-off seed `923500475`,
+epoch 55: job `20862221` failed without a final score. It is recorded explicitly
+in `validation_adequacy_phase_a_stage2_missing_20260903.csv`.
+
+Stage 1 has only 7.3/off and 7.7/on distinct validation scores per lineage on
+average; mean within-lineage validation/test Spearman is .097/off and .232/on.
+Stage 2 is more decisive: every recorded checkpoint in both branches has
+validation score 1.0. There is exactly one distinct validation score per
+lineage, maximum-score fraction 1.0, and therefore no defined validation/test
+rank correlation. The validation-selected checkpoint loses 1.9--3.0 test
+problems on average relative to the retrospectively observed test-best saved
+checkpoint, depending on branch/VH.
+
+This establishes that the corrected set is weak for Stage-1 ranking and wholly
+saturated for Stage-2 checkpoint selection. The next step is the already
+specified pair of independently generated, harder, structurally stratified
+validation replicates. Existing checkpoints are rescored first; no training is
+repeated until that design passes the frozen acceptance criteria.

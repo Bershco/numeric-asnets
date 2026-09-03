@@ -1,0 +1,5 @@
+branch,value_head,lineages,checkpoints,mean_unique_validation_scores,mean_validation_max_fraction,positive_spearman_lineages,mean_within_lineage_spearman,mean_within_lineage_kendall_tau_b,mean_selected_test_regret,seed_ledger
+validation_led,off,10,210,1.000,1.000000,0,nan,nan,1.900,experiment_tracking/mprime_validation_ipc_scale_v1/validation_adequacy_phase_a_stage2_seeds_20260903.csv
+validation_led,on,10,210,1.000,1.000000,0,nan,nan,2.600,experiment_tracking/mprime_validation_ipc_scale_v1/validation_adequacy_phase_a_stage2_seeds_20260903.csv
+terminal_led,off,10,209,1.000,1.000000,0,nan,nan,3.000,experiment_tracking/mprime_validation_ipc_scale_v1/validation_adequacy_phase_a_stage2_seeds_20260903.csv
+terminal_led,on,10,210,1.000,1.000000,0,nan,nan,2.500,experiment_tracking/mprime_validation_ipc_scale_v1/validation_adequacy_phase_a_stage2_seeds_20260903.csv

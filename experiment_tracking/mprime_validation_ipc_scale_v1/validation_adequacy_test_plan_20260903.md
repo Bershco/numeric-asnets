@@ -79,7 +79,17 @@ stable on both frozen validation replicates.
 
 ## Status
 
-Phase A is active analysis. Phase B is held-design: instance generation and
-checksums must be reviewed before any validation-only Slurm rescore is
-submitted. Existing MPrime results remain reported with an explicit validation
-adequacy warning.
+Phase A Stage-1 analysis is complete and stored in
+`validation_adequacy_phase_a_stage1_seeds_20260903.csv` plus its summary:
+
+| VH | Lineages/checkpoints | Mean unique validation scores | Mean fraction at validation maximum | Positive Spearman lineages | Mean within-lineage Spearman / Kendall | Mean selected-test regret |
+|---|---:|---:|---:|---:|---:|---:|
+| off | 10 / 153 | 7.3 | .124 | 5/10 | .097 / .070 | 3.1 plans |
+| on | 10 / 137 | 7.7 | .105 | 7/10 | .232 / .173 | 2.5 plans |
+
+These results independently confirm weak checkpoint-ranking resolution. Phase A
+Stage-2 consolidation remains active over the already completed 840 policy
+checkpoint evaluations; it requires no new inference. Phase B remains a
+held-design: instance generation and checksums must be reviewed before any
+validation-only Slurm rescore is submitted. Existing MPrime results remain
+reported with an explicit validation-adequacy warning.
