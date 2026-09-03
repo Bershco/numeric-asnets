@@ -478,6 +478,17 @@ is explicitly provisional until ten seeds per VH mode terminate. Terminal PW70
 confirmation evidence is in
 `mcts_progressive_widening_cross_domain/pw70_confirmatory_terminal_20260903.csv`.
 
+PRESERVE-3 terminal-led policy evidence is consolidated under
+`preserve3_terminal_led/`. The four completed Delivery/Zenotravel controller
+manifests and result ledgers are retained there with original Slurm log paths.
+The seed-level selected-endpoint file
+`terminal_led_selected_seed_results_20260903.csv` points to both Stage-1 and
+Stage-2 checkpoints and training/evaluation logs; its companion summary must
+not zero-fill missing endpoints. The consolidation exposed twelve scoreless
+Delivery rows, including one selected endpoint per VH mode. Exact retries
+`20892672`--`20892683` are recorded in
+`delivery_policy_retry_submissions_20260903.tsv`; no retraining is involved.
+
 If the live cluster cannot be reached, report the snapshot timestamp explicitly
 instead of presenting it as current.
 

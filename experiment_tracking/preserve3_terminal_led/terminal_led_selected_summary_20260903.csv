@@ -1,0 +1,5 @@
+experiment_id,domain,value_head,matched_n,stage1_final_mean,stage2_selected_mean,stage2_held_out_mean,stage2_tuning_mean,mean_change,ci95_low,ci95_high,raw_signflip_p,completion_status,row_level_companion
+PRESERVE-3-TERM,delivery,off,9,14.666666666666666,15.222222222222221,14.142857142857142,19.0,0.5555555555555556,-3.3471050626938164,4.458216173804927,0.80078125,provisional_missing_endpoint_retries,experiment_tracking/preserve3_terminal_led/terminal_led_selected_seed_results_20260903.csv
+PRESERVE-3-TERM,delivery,on,9,17.22222222222222,18.77777777777778,19.142857142857142,17.5,1.5555555555555556,-1.3993432603678733,4.510454371478985,0.34375,provisional_missing_endpoint_retries,experiment_tracking/preserve3_terminal_led/terminal_led_selected_seed_results_20260903.csv
+PRESERVE-3-TERM,zenotravel,off,10,20.0,19.8,19.875,19.5,-0.2,-0.5016,0.10160000000000002,0.5,complete,experiment_tracking/preserve3_terminal_led/terminal_led_selected_seed_results_20260903.csv
+PRESERVE-3-TERM,zenotravel,on,10,19.8,20.0,20.0,20.0,0.2,-0.10160000000000002,0.5016,0.5,complete,experiment_tracking/preserve3_terminal_led/terminal_led_selected_seed_results_20260903.csv

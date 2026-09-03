@@ -55,10 +55,10 @@ def main() -> None:
             "val_invalid": mcts["val_invalid"],
             "source_training_job_id": mcts["source_training_job_id"],
             "snapshot_epoch": mcts["snapshot_epoch"],
-            "source_checkpoint": matched["checkpoint"],
-            "source_training_log": matched["source_training_log"],
-            "source_policy_log": matched["source_evaluation_log"],
-            "source_mcts_log": mcts["source_evaluation_log"],
+            "source_checkpoint": matched["checkpoint"].replace("\\", "/"),
+            "source_training_log": matched["source_training_log"].replace("\\", "/"),
+            "source_policy_log": matched["source_evaluation_log"].replace("\\", "/"),
+            "source_mcts_log": mcts["source_evaluation_log"].replace("\\", "/"),
         })
     fields = list(rows[0]) if rows else ["experiment_id"]
     with OUT.open("w", newline="", encoding="utf-8") as stream:

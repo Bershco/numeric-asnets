@@ -1,4 +1,4 @@
-# Experiment status — 3 September 2026, 16:51 IDT
+# Experiment status — 3 September 2026, 17:14 IDT
 
 This snapshot joins the live Slurm queue, current training/MCTS logs, and frozen
 static ledgers. Live sources are `cluster_workload_latest.csv`,
@@ -11,7 +11,7 @@ is mapped to its row-level evidence in `result_provenance_index_20260902.csv`.
 | State | Jobs | Requested CPU | Requested RAM |
 |---|---:|---:|---:|
 | Running | 70 | 508 | 6,128 GiB |
-| Pending | 212 | 2,036 | 6,121 GiB |
+| Pending | 203 | 1,946 | 5,941 GiB |
 | Held | 0 | 0 | 0 GiB |
 
 | Experiment | Running | Pending | CPU running/pending | RAM running/pending |
@@ -21,7 +21,8 @@ is mapped to its row-level evidence in `result_provenance_index_20260902.csv`.
 | FO Counters terminal-led S2 MCTS | 12 | 1 | 72/6 | 1,440/120 GiB |
 | PRESERVE-3 terminal-led S2 training | 1 | 0 | 6/0 | 48/0 GiB |
 | PRESERVE-3 policy controller | 0 | 1 | 0/2 | 0/1 GiB |
-| PRESERVE-3 terminal TPP/off policy | 22 | 191 | 220/1,910 | 440/3,820 GiB |
+| PRESERVE-3 terminal TPP/off policy | 22 | 170 | 220/1,700 | 440/3,400 GiB |
+| PRESERVE-3 terminal Delivery policy retries | 0 | 12 | 0/120 | 0/240 GiB |
 | MPrime missing terminal policy point | 0 | 1 | 0/10 | 0/20 GiB |
 | PW70 confirmatory expansion | 15 | 0 | 90/0 | 1,800/0 GiB |
 | PW70 two-seed correction | 6 | 0 | 36/0 | 720/0 GiB |
@@ -37,11 +38,11 @@ been duplicated. Failed originals are not usable evidence. No job is Slurm-held.
 
 | Experiment/cell | Terminal | Running | Current point | Realistic estimate |
 |---|---:|---:|---|---|
-| PRESERVE-3 terminal-led TPP/off | 10/10 | 0 | 213 every-five/selected/final policy identities submitted; two ENOSPC failures have exact pending replacements and one node failure was automatically requeued | policy jobs normally finish within four hours after starting; final result follows their terminal reconciliation |
-| PRESERVE-3 terminal-led TPP/on | 9/10 | 1 | final lineage at epoch 81 after 68h45m | 3h15m hard bound; dependent controller 20768210 waits on this cell only and will submit its policy curve automatically |
+| PRESERVE-3 terminal-led TPP/off | 10/10 | 0 | 213 every-five/selected/final policy identities submitted; 23 completed, 22 running, 168 pending at 17:15; the two failed originals have exact replacements | policy jobs normally finish within four hours after starting; queue start times depend on memory availability |
+| PRESERVE-3 terminal-led TPP/on | 9/10 | 1 | final lineage at epoch 81 after about 69h17m | about 2h43m hard bound; dependent controller 20768210 waits on this cell only and will submit its policy curve automatically |
 | MPrime validation-led S2 | 20/20 | 0 | all policy endpoints complete and reconciled | complete, but validation adequacy is under audit |
 | MPrime terminal-led S2 | 20/20 | 0 | 839/840 Phase-A points complete; exact epoch-55 replacement job 20890973 is pending | four-hour allocation after scheduling; validation adequacy remains under audit |
-| PRESERVE-3 Delivery | 20/20 | 0 | all policy curves/endpoints complete | complete |
+| PRESERVE-3 Delivery | 20/20 | 0 | original curve campaigns terminal, but 12 rows lacked scores; exact checkpoint retries 20892672–20892683 are pending, including one selected endpoint per VH mode | four-hour allocation after scheduling; no retraining |
 | PRESERVE-3 Zenotravel | 20/20 | 0 | all policy curves/endpoints complete | complete |
 
 TPP/off continuation job 20834985 resumed from cumulative S2 epoch 84 and
@@ -138,6 +139,28 @@ not a broad mild loss: nine seeds retain 20/20 and seed 1972442430 collapses to
 validation-selected epoch 12 scores 9/20. Its anchor KL is .1059 versus peer
 mean .0516. The permanent audit records seed-specific first-update instability,
 not timeout/OOM/invalid plans, as the primary finding.
+
+## PRESERVE-3 terminal-led — current result state
+
+Both terminal-led branches were trained for Delivery, TPP and Zenotravel. The
+terminal-led experiment is not yet fully result-complete: Zenotravel is complete;
+Delivery has two selected-endpoint retries pending; TPP/off policy evaluations
+are live; TPP/on still has one training lineage plus its dependent policy
+controller. The currently defensible selected-endpoint results are:
+
+| Domain/VH | matched n | S1 final | S2 selected | held-out / tuning S2 | change [95% CI] | raw p | status |
+|---|---:|---:|---:|---:|---|---:|---|
+| Delivery/off | 9/10 | 14.67 | 15.22 | 14.14 / 19.00 | +.56 [-3.35,4.46] | .801 | provisional; selected endpoint retry 20892673 pending |
+| Delivery/on | 9/10 | 17.22 | 18.78 | 19.14 / 17.50 | +1.56 [-1.40,4.51] | .344 | provisional; selected endpoint retry 20892676 pending |
+| TPP/off | 0/10 | — | — | — | — | — | 213-point policy campaign live |
+| TPP/on | 0/10 | — | — | — | — | — | final training lineage and cell controller live |
+| Zenotravel/off | 10/10 | 20.00 | 19.80 | 19.875 / 19.50 | -.20 [-.50,.10] | .500 | complete; preserved |
+| Zenotravel/on | 10/10 | 19.80 | 20.00 | 20.00 / 20.00 | +.20 [-.10,.50] | .500 | complete; preserved |
+
+The seed-level file includes direct Stage-1 and Stage-2 training/evaluation-log
+pointers and both checkpoint paths. The Delivery table excludes rather than
+zero-fills the two failed selected endpoints. All twelve scoreless Delivery
+curve rows were resubmitted so the learning curves are also made whole.
 
 ## Stage-1 policy versus MCTS — completed
 
@@ -257,11 +280,11 @@ versus policy 4/20 and fixed 20/70 6/20. All 17 successes occurred within
 30 minutes and all are VAL-valid; the second FO allocation ended OOM only after
 its complete 6/20 result was printed. Fifteen jobs remain running. Their live
 322 classified instances have lower bounds >=213/>=254/>=273; including the
-three terminal jobs gives current campaign lower bounds >=230/>=271/>=290 over
-382 classified or terminal instance records.
+three terminal jobs gives current campaign lower bounds >=230/>=271/>=291 over
+383 classified or terminal instance records.
 
 All six exact-snapshot Counters divergence jobs are running. Current live lower
-bounds across 173 classified instances are >=125/>=139/>=141 at 30m/2h/6h.
+bounds across 176 classified instances are >=125/>=139/>=143 at 30m/2h/6h.
 They compare PW20 and PW70 against the same three policy snapshots whose fixed
 narrow search regressed severely; no result is excluded from the broader screen.
 

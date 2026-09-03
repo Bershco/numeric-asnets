@@ -33,6 +33,7 @@ def classify(name: str) -> str:
     rules = (
         ("CTRL_STAGE2_MCTS_BRANCH_COMPLETION", "Stage-2 MCTS branch-completion controller"),
         ("P4TPPS2P", "PRESERVE-3 terminal TPP/off policy evaluation"),
+        ("P4DELIVERYS2P", "PRESERVE-3 terminal Delivery policy retry"),
         ("PW-COUNTERS-DIVERGENCE", "Counters PW divergence recovery"),
         ("PW70-CONFIRM", "PW70 confirmatory expansion"),
         ("PW70", "PW70 cross-domain correction"),
