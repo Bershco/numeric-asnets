@@ -1,6 +1,34 @@
-# Thesis experiment status — 2026-09-04 12:08:47 IDT
+# Thesis experiment status — refreshed 2026-09-04 19:16 IDT
 
-This is the authoritative narrative snapshot for this refresh. Dynamic scheduler rows are in `cluster_workload_latest.csv`; grouped resources are in `cluster_workload_summary_latest.csv`. All scores below are coverage. Counters is out of 59; every other domain is out of 20. MCTS scores are always shown as 30-minute / 2-hour / 6-hour per-instance cutoffs when elapsed-time evidence exists.
+This is the authoritative narrative snapshot for this refresh. The newest
+verified scheduler observation remains **2026-09-04 12:08:47 IDT**: three
+correctly profiled and correctly spaced SSH attempts during this refresh timed
+out before authentication, including a 120-second connection grace period. Dynamic
+scheduler rows are therefore frozen in `cluster_workload_latest.csv`; grouped
+resources are in `cluster_workload_summary_latest.csv`. They must not be read as
+a 19:16 queue claim. All scores below are static evidence and remain current.
+Counters is out of 59; every other domain is out of 20. MCTS scores are always
+shown as 30-minute / 2-hour / 6-hour per-instance cutoffs when elapsed-time
+evidence exists.
+
+## 19:16 refresh decisions
+
+- No Slurm job was submitted, cancelled, released or altered while the current
+  queue could not be verified.
+- MPRIME-VAL-ADEQUACY Phase B was **not** submitted. Readiness confidence is
+  35%, below the user-approved 85% threshold. The protocol is sound, but the two
+  frozen replicates, checksum manifests, planner sanity evidence, 60-lineage
+  manifest and parameterized resumable wrapper do not yet exist.
+- The readiness audit found a more important generator issue: the present
+  validation generator inserts a direct two-action witness for every goal.
+  Merely increasing object counts can still yield behaviorally easy instances.
+  Phase B now requires a frozen planner-side plan-difficulty gate before any
+  network checkpoint is viewed.
+- MPrime policy-versus-MCTS completion is now explicit in
+  `mprime_mcts_table_gap_20260904.csv`: 20 selected Stage-1 MCTS jobs and 40
+  selected Stage-2 MCTS jobs are required after Phase B freezes defensible
+  checkpoints. The separate declared Stage-1 final-endpoint contract adds 20
+  more MCTS jobs, but those are not needed for the selected-checkpoint table.
 
 ## Actions and incident recovery in this refresh
 
@@ -13,7 +41,7 @@ This is the authoritative narrative snapshot for this refresh. Dynamic scheduler
 - Counters terminal-led Stage-2 MCTS was **not** submitted: the second gate requires all nineteen Rover identities to have a live running replacement and remaining memory capacity. That condition has not occurred.
 - Node exclusions are deliberately exact rather than family-wide: `ise-cpu128-03`, `ise-cpu128-04`, and the directly observed SIGILL nodes `ise-cpu-intl-08,09,10,13,14,26,28`. Successful work remains eligible for the other 48–72-core `intl` nodes. Both controllers explicitly apply and verify `ExcNodeList` after submission.
 
-## Exact cluster workload
+## Last verified cluster workload
 
 | State | Jobs | Requested CPUs | Requested RAM |
 |---|---:|---:|---:|
@@ -160,7 +188,7 @@ MPrime policy Stage-2 is complete but scientifically provisional because checkpo
 | Terminal/off | 13.5 | 14.0 | +0.5 [-1.29, 2.29] | .672 |
 | Terminal/on | 13.2 | 14.5 | +1.3 [-0.49, 3.09] | .172 |
 
-Phase A of MPRIME-VAL-ADEQUACY is now complete: 290/290 Stage-1 and 840/840 Stage-2 checkpoint records. Every Stage-2 checkpoint scores 30/30 on the current validation set, so the set cannot rank Stage-2 checkpoints or anchors. Phase B remains the highest-priority held design: freeze two harder independent stratified validation replicates before viewing network scores, then rescore existing checkpoints without new training.
+Phase A of MPRIME-VAL-ADEQUACY is complete: 290/290 Stage-1 and 840/840 Stage-2 checkpoint records. Every Stage-2 checkpoint scores 30/30 on the current validation set, so the set cannot rank Stage-2 checkpoints or anchors. Phase B remains the highest-priority active preparation task. It must replace the generator's guaranteed direct-witness difficulty with two independently seeded, planner-difficulty-stratified and checksum-frozen validation replicates before rescoring existing checkpoints without new training.
 
 ## Horizon and determinism
 

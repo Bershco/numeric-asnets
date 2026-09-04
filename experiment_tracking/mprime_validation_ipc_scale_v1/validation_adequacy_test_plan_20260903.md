@@ -49,6 +49,33 @@ features and include a harder upper tail so that current policies do not
 saturate immediately. Freeze generator commit, parameters, seeds, file list and
 SHA-256 checksums.
 
+### Phase-B readiness correction — 4 September 2026
+
+The existing `validation_ipc_scale_v1` generator cannot simply be rerun with
+larger object ranges. Its goal constructor deliberately adds a direct
+two-action witness (`overcome`, then `succumb`) for every generated goal. This
+guarantees solvability, but it can make structurally large instances
+behaviorally easy and is a plausible cause of complete Stage-2 saturation.
+
+Phase B therefore requires a planner-side difficulty gate before any network
+checkpoint is opened:
+
+1. generate a deterministic candidate pool from an IPC-style goal process
+   without inserting a direct witness for every goal;
+2. solve/filter candidates using a frozen planner configuration;
+3. stratify the two disjoint replicates by structural features and nontrivial
+   planner plan-length bands;
+4. freeze the generator commit, selection algorithm, seeds, selected file list,
+   planner outcome/plan length and SHA-256 checksums;
+5. run a one-checkpoint container preflight, then release the 60 resumable
+   lineage jobs only if both sets remain disjoint, solvable and nontrivial.
+
+The runnable Phase-B campaign is not yet submitted. The detailed readiness
+gate is recorded in `phase_b_readiness_20260904.csv`. Submission confidence is
+35%, below the user-approved 85% threshold, because neither replicate nor its
+checksum manifest, 60-lineage manifest or parameterized wrapper currently
+exists.
+
 Evaluate all saved Stage-1 and Stage-2 checkpoints on both candidate replicates.
 This is validation-only rescoring: existing networks are reused. For the full
 current MPrime evidence the upper-bound scope is 1,130 checkpoint evaluations
@@ -88,8 +115,7 @@ Phase A Stage-1 analysis is complete and stored in
 | on | 10 / 137 | 7.7 | .105 | 7/10 | .232 / .173 | 2.5 plans |
 
 These results independently confirm weak checkpoint-ranking resolution. Phase A
-Stage-2 consolidation remains active over the already completed 840 policy
-checkpoint evaluations; it requires no new inference. Phase B remains a
-held-design: instance generation and checksums must be reviewed before any
-validation-only Slurm rescore is submitted. Existing MPrime results remain
+Stage-2 consolidation is complete over all 840 policy checkpoint evaluations;
+it requires no new inference. Phase B remains an active top-priority
+preparation task, not a submitted Slurm campaign. Existing MPrime results remain
 reported with an explicit validation-adequacy warning.

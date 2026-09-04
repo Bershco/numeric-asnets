@@ -1,0 +1,2 @@
+refresh_time_idt,attempts,windows_account,user_profile,ssh_executable,ssh_alias,resolved_cluster_user,resolved_host,longest_connect_timeout_seconds,result,last_verified_scheduler_snapshot
+2026-09-04T19:16:10+03:00,3,roee-mobile-pc\\roeeh,C:\\Users\\roeeh,C:\\Windows\\System32\\OpenSSH\\ssh.exe,uni-cluster,hersco,slurm.bgu.ac.il,120,timeout_before_authentication,2026-09-04T12:08:47+03:00
