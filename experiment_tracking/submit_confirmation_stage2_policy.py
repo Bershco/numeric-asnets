@@ -60,6 +60,9 @@ def submit(row: dict[str, str], dry: bool) -> str:
         command.append("--dry-run")
     env = os.environ.copy()
     env["ENHSP_CONFIG_OVERRIDE"] = row["teacher"]
+    excluded_nodes = row.get("excluded_nodes", "").strip()
+    if excluded_nodes:
+        env["SBATCH_EXCLUDE"] = excluded_nodes
     result = subprocess.run(command, cwd=ROOT, env=env, text=True,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if result.returncode:
@@ -74,12 +77,31 @@ def submit(row: dict[str, str], dry: bool) -> str:
     return matches[0]
 
 
+def enforce_node_exclusion(job_id: str, excluded_nodes: str) -> None:
+    """Apply and verify exclusions explicitly after submission.
+
+    ``SBATCH_EXCLUDE`` is still exported for normal Slurm option handling, but
+    the cluster wrapper's nested ``sbatch`` has not applied it reliably.  An
+    explicit update makes the manifest contract observable and testable.
+    """
+    if not excluded_nodes:
+        return
+    subprocess.run(
+        ["scontrol", "update", f"JobId={job_id}", f"ExcNodeList={excluded_nodes}"],
+        check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    )
+    shown = subprocess.check_output(["scontrol", "show", "job", "-o", job_id], text=True)
+    if f"ExcNodeList={excluded_nodes}" not in shown:
+        raise RuntimeError(f"job {job_id}: exclusion verification failed: {shown}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--ledger", type=Path, required=True)
     parser.add_argument("--queue-cap", type=int, default=1999)
     parser.add_argument("--max-per-cycle", type=int, default=100)
+    parser.add_argument("--poll-seconds", type=int, default=60)
     args = parser.parse_args()
     rows = read(args.manifest)
     validate(rows)
@@ -100,6 +122,7 @@ def main() -> None:
         print(f"[CONTROLLER] queue={queued} remaining={len(remaining)} allowance={allowance}", flush=True)
         for row in remaining[:allowance]:
             job_id = submit(row, False)
+            enforce_node_exclusion(job_id, row.get("excluded_nodes", "").strip())
             new = not args.ledger.exists()
             with args.ledger.open("a", newline="", encoding="utf-8") as stream:
                 writer = csv.DictWriter(stream, fieldnames=LEDGER_FIELDS, delimiter="\t", lineterminator="\n")
@@ -117,7 +140,7 @@ def main() -> None:
             existing.add(row["manifest_id"])
             print(f"[SUBMITTED] {job_id} {row['manifest_id']}", flush=True)
         if allowance == 0:
-            time.sleep(60)
+            time.sleep(args.poll_seconds)
 
 
 if __name__ == "__main__":

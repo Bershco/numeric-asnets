@@ -1,10 +1,19 @@
 # Thesis experiment registry
 
-Latest full verified snapshot: `status_20260902_latest.md`.
+Latest full verified snapshot: `status_20260904_latest.md` (scheduler snapshot
+2026-09-04 12:08:47 IDT). Machine-readable companions are
+`cluster_workload_latest.csv`, `cluster_workload_summary_latest.csv`,
+`live_experiment_status_latest.csv`, and
+`stage2_mcts_branch_coverage_20260904.csv`.
+
+The 2026-09-04 pre-inference semaphore/SIGILL failures, exact retry scope, and explicit
+post-submission node-exclusion verification are documented in
+`node_local_semaphore_enospc_incident_20260904.md`. These failures are missing
+operational evidence, never zero coverage.
 
 The authoritative Stage2 policy/MCTS presentation is branch-aware:
 `stage2_policy_mcts_comparison_by_branch_20260902.csv` contains every complete
-ten-seed comparison, and `stage2_mcts_branch_coverage_20260902.csv` identifies
+ten-seed comparison, and `stage2_mcts_branch_coverage_20260904.csv` identifies
 which validation-led and terminal-led cells are complete, partial, live or not
 materialized. Do not recreate a single mixed table without its `stage2_branch`
 column.
@@ -28,8 +37,8 @@ in `advisor_audit_20260830/experiment_status.csv`. Cluster access must use the
 single `uni-cluster` Windows-profile alias documented in
 `cluster_access_and_ssh.md`.
 
-The newest comprehensive operational report is `status_20260901_1945.md`; its
-exact resource roll-up is `cluster_workload_20260901_1945.csv`. Earlier
+The newest comprehensive operational report is `status_20260904_latest.md`; its
+exact resource roll-up is `cluster_workload_summary_latest.csv`. Earlier
 08:26--08:52 snapshots are retained as historical queue observations, while
 `live_experiment_status.csv` retains the longer timestamped status history.
 The later `status_20260901_1250.md` records approved corrective work prepared

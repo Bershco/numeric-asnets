@@ -1,2 +1,1 @@
 job_id,state,job_name,elapsed,time_limit,cpus,memory,reason_or_node,latest_epoch,epoch_limit,latest_validation_coverage,last_valid_checkpoint,source_training_log
-20755755,RUNNING,Re-Tr_tpp_tpp_mcts_orig_vh_e.5_c.1_s1073581256_K0_P3TERMS2A10_src20523010,2-21:17:10,3-00:00:00,6,48G,ise-cpu-intl-23,81,100,0.4,,/home/hersco/training_new_domains/2026-08-31/preserve3_terminal_tpp_stage2/20755755_Re-Tr_tpp_tpp_mcts_orig_vh_e.5_c.1_s1073581256_K0_P3TERMS2A10_src20523010.txt

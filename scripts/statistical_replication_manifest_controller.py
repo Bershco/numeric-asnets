@@ -234,6 +234,12 @@ def command(row: dict[str, str], dry_run: bool = False) -> tuple[list[str], dict
         cmd.append("--dry-run")
     env = os.environ.copy()
     env["ENHSP_CONFIG_OVERRIDE"] = row["teacher"]
+    excluded_nodes = row.get("excluded_nodes", "").strip()
+    if excluded_nodes:
+        # sbatch consumes SBATCH_EXCLUDE itself.  Keeping this in the manifest
+        # makes exact-node operational exclusions reproducible without adding
+        # a domain-specific option to submit_training.sh.
+        env["SBATCH_EXCLUDE"] = excluded_nodes
     return cmd, env
 
 
@@ -263,12 +269,25 @@ def run_wrapper(row: dict[str, str], dry_run: bool = False) -> str:
     return ids[0]
 
 
+def enforce_node_exclusion(job_id: str, excluded_nodes: str) -> None:
+    """Explicitly apply and verify manifest node exclusions."""
+    if not excluded_nodes:
+        return
+    subprocess.run(
+        ["scontrol", "update", f"JobId={job_id}", f"ExcNodeList={excluded_nodes}"],
+        check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    )
+    shown = subprocess.check_output(["scontrol", "show", "job", "-o", job_id], text=True)
+    if f"ExcNodeList={excluded_nodes}" not in shown:
+        raise RuntimeError(f"job {job_id}: exclusion verification failed: {shown}")
+
+
 def signature(row: dict[str, str]) -> tuple[str, ...]:
     return tuple(row.get(field, "") for field in (
         "task_type", "domain", "value_head", "architecture", "teacher",
         "workers", "jpddl_heap", "memory", "time_limit", "estimator",
         "puct", "tree_sampling", "anchor", "width", "iterations",
-        "instance_timeout",
+        "instance_timeout", "excluded_nodes",
     ))
 
 
@@ -350,6 +369,7 @@ def main() -> int:
         for row in remaining[:allowance]:
             try:
                 job_id = run_wrapper(row)
+                enforce_node_exclusion(job_id, row.get("excluded_nodes", "").strip())
             except RuntimeError as exc:
                 # The queue count and sbatch admission are not atomic.  Another
                 # controller can fill the final slot after queued_count() but

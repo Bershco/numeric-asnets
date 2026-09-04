@@ -43,13 +43,32 @@ def main() -> None:
         and row["stage"] == "stage1"
         and row["endpoint"] == "final"
     }
-    stage2_checkpoints: dict[str, str] = {}
-    for path in sorted(BASE.glob("policy_ready_*.csv")):
+    stage2_checkpoints: dict[tuple[str, str, str, str], str] = {}
+    manifest_paths = list(BASE.glob("*tpp*policy*.csv"))
+    manifest_paths += list((ROOT / "experiment_tracking" / "four_domain_preservation").glob("*tpp*policy*.csv"))
+    manifest_paths += list(BASE.glob("policy_ready_*.csv"))
+    for path in sorted(set(manifest_paths)):
         for row in read(path):
-            stage2_checkpoints[row["manifest_id"]] = row["source_checkpoint_ref"]
+            if row.get("source_checkpoint_ref"):
+                key = (row["domain"], row["value_head"], row["seed"], row["snapshot_epoch"])
+                stage2_checkpoints[key] = row["source_checkpoint_ref"]
+    evidence: dict[tuple[str, str, str, str], dict[str, str]] = {}
+    source_paths = list(BASE.glob("preserve3_terminal_*_results.csv"))
+    source_paths += list(BASE.glob("delivery_policy_retry_results_*.csv"))
+    source_paths += list(BASE.glob("tpp_*_results_*.csv"))
+    source_paths += list(BASE.glob("terminal_stage2_tpp_*_policy_results_*.csv"))
+    for path in sorted(set(source_paths)):
+        for row in read(path):
+            manifest_id = row.get("manifest_id", "")
+            if not manifest_id:
+                continue
+            key = (row["domain"], row["value_head"], row["seed"], row["snapshot_epoch"])
+            previous = evidence.get(key)
+            if previous is None or (not previous.get("score") and row.get("score")):
+                evidence[key] = row
+
     rows: list[dict[str, str]] = []
-    for path in sorted(BASE.glob("preserve3_terminal_*_results.csv")):
-        for row in read(path):
+    for key, row in evidence.items():
             if "validation_selected_policy" not in row["analysis_roles"] or not row["score"]:
                 continue
             before = s1[(row["domain"], row["value_head"], row["seed"])]
@@ -64,7 +83,7 @@ def main() -> None:
                 "paired_change": str(float(row["score"]) - float(before["score"])),
                 "stage2_selected_epoch": row["snapshot_epoch"],
                 "stage1_checkpoint": before["checkpoint"].replace("\\", "/"),
-                "stage2_checkpoint": stage2_checkpoints.get(row["manifest_id"], "").replace("\\", "/"),
+                "stage2_checkpoint": stage2_checkpoints.get(key, "").replace("\\", "/"),
                 "stage1_training_log": before["source_training_log"].replace("\\", "/"),
                 "stage1_evaluation_log": before["source_evaluation_log"].replace("\\", "/"),
                 "stage2_training_job_id": row["source_training_job_id"],

@@ -22,6 +22,8 @@ SSH = [
 
 def classify(name: str) -> str:
     name_upper = name.upper()
+    if "SR10M" in name_upper and "EV_ROVER_ROVER_MCTS" in name_upper:
+        return "Stage-2 MCTS branch completion — Rover"
     if "SR10M" in name_upper and "BLOCK_GROUPING_MCTS" in name_upper:
         return "Stage-2 MCTS branch completion — Block Grouping"
     if (
@@ -32,7 +34,6 @@ def classify(name: str) -> str:
         return "Stage-2 MCTS branch completion — FO Counters"
     rules = (
         ("CTRL_STAGE2_MCTS_BRANCH_COMPLETION", "Stage-2 MCTS branch-completion controller"),
-        ("P4TPPS2P", "PRESERVE-3 terminal TPP/off policy evaluation"),
         ("P4DELIVERYS2P", "PRESERVE-3 terminal Delivery policy retry"),
         ("PW-COUNTERS-DIVERGENCE", "Counters PW divergence recovery"),
         ("PW70-CONFIRM", "PW70 confirmatory expansion"),
@@ -50,6 +51,12 @@ def classify(name: str) -> str:
         ("P3_TPP_", "PRESERVE-3 policy controller"),
         ("P3T_", "PRESERVE-3 policy evaluation"),
     )
+    if "P4TPPS2P" in name_upper:
+        if "_ORIG_NOVH_" in name_upper:
+            return "PRESERVE-3 terminal TPP/off policy evaluation"
+        if "_ORIG_VH_" in name_upper:
+            return "PRESERVE-3 terminal TPP/on policy evaluation"
+        return "PRESERVE-3 terminal TPP policy evaluation"
     for needle, label in rules:
         if needle in name_upper:
             return label

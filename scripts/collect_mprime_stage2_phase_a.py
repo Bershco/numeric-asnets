@@ -96,15 +96,16 @@ def kendall_tau_b(left: list[float], right: list[float]) -> float:
 
 def main() -> None:
     evaluation_text = ""
-    for directory in (
-        "mprime_terminal_led_stage2_policy_mprime",
-        "mprime_validation_led_stage2_policy_mprime",
+    for date, directory in (
+        ("2026-09-02", "mprime_terminal_led_stage2_policy_mprime"),
+        ("2026-09-03", "mprime_terminal_led_stage2_policy_mprime"),
+        ("2026-09-02", "mprime_validation_led_stage2_policy_mprime"),
     ):
         evaluation_text += remote(
             "grep -a -H -E 'Inference success rate:|\\[VAL\\] Evaluator successes' "
-            f"/home/hersco/training_new_domains/2026-09-02/{directory}/*.txt"
+            f"/home/hersco/training_new_domains/{date}/{directory}/*.txt"
         )
-        print(f"retrieved evaluation summaries: {directory}", flush=True)
+        print(f"retrieved evaluation summaries: {date}/{directory}", flush=True)
     scores: dict[tuple[str, int], dict[str, object]] = defaultdict(dict)
     for line in evaluation_text.splitlines():
         match = JOB_EPOCH_RE.search(line)
