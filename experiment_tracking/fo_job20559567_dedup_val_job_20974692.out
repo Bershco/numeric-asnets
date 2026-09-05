@@ -1,0 +1,34 @@
+------------------------------------
+Sat 05 Sep 2026 13:33:16 IDT
+SLURM_JOBID:		20974692
+SLURM_JOB_NODELIST:	cs-cpu-06
+SLURM_SCRATCH_DIR:	
+Allocated Resouces:	cpu - 2 / mem - 2048 MB / gpu - 
+SLURM_GPU_INDEX:	
+Running as hersco from shperbsh account with normal QOS
+------------------------------------
+[VAL] Starting validation guardrail
+[VAL] Log       : /home/hersco/training_new_domains/2026-08-25/statistical_replication_terminal_stage2_mcts_eval/20559567_Ev_fo_counters_fo_counters_mcts_orig_novh_e.5_c.1_s1510771779_K0_SR10TCM_src20489451_e0009.txt
+[VAL] Domain    : fo_counters
+[VAL] Validator : /home/hersco/tools/VAL/build/bin/Validate
+[VAL] Domain module : /home/hersco/bershco-nu-asnets/numeric-asnets-safe-context/asnets/experiments_numeric/domain/fo_counters.py
+[VAL] PDDL dir      : /home/hersco/bershco-nu-asnets/numeric-asnets-safe-context/problems/numeric/fo-counters
+[VAL] COMMON_PDDLS  : /home/hersco/bershco-nu-asnets/numeric-asnets-safe-context/problems/numeric/fo-counters/domain.pddl
+[VAL] Evaluator successes : 4
+[VAL] Evaluator total     : 20
+[VAL] Plan records found  : 8
+[VAL] Unique instances    : 4
+[VAL] OK   instance_2.pddl (1 candidate plan(s))
+[VAL] OK   instance_3.pddl (1 candidate plan(s))
+[VAL] OK   instance_4.pddl (1 candidate plan(s))
+[VAL] OK   instance_5.pddl (1 candidate plan(s))
+[VAL] Summary CSV        : /home/hersco/training_new_domains/2026-09-05/fo_job20559567_dedup_val_summary.csv
+
+[VAL] ===== VALIDATION SUMMARY =====
+[VAL] Evaluator successes : 4
+[VAL] Printed plan records: 8
+[VAL] Printed instances   : 4
+[VAL] VAL-valid plans     : 4
+[VAL] VAL-invalid plans   : 0
+[VAL] =================================
+[VAL] Retry-aware partial validation successful: all unique printed successful instances pass VAL

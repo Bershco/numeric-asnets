@@ -1,0 +1,5 @@
+instance,candidate_plans,selected_steps,val_valid,reason
+instance_2.pddl,1,2,1,
+instance_3.pddl,1,7,1,
+instance_4.pddl,1,12,1,
+instance_5.pddl,1,14,1,

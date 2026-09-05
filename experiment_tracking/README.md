@@ -1,10 +1,16 @@
 # Thesis experiment registry
 
-Latest full verified snapshot: `status_20260904_latest.md` (scheduler snapshot
-2026-09-04 12:08:47 IDT). Machine-readable companions are
+Latest full verified snapshot: `status_20260905_latest.md` (scheduler snapshot
+2026-09-05 13:36:12 IDT). Machine-readable companions are
 `cluster_workload_latest.csv`, `cluster_workload_summary_latest.csv`,
 `live_experiment_status_latest.csv`, and
-`stage2_mcts_branch_coverage_20260904.csv`.
+`stage2_mcts_branch_coverage_20260905.csv`.
+
+Use `snapshot_provenance_index_20260905.csv` to move from any current aggregate
+to its seed/job-level companion. `live_mcts_job_provenance_20260905_1314.csv`
+contains current job IDs, nodes, stdout paths, and compact completion-record
+paths. Historical dated snapshots remain immutable evidence and must not be
+mistaken for the current queue.
 
 The 2026-09-04 pre-inference semaphore/SIGILL failures, exact retry scope, and explicit
 post-submission node-exclusion verification are documented in
