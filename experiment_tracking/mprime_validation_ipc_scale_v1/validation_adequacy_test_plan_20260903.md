@@ -1,5 +1,10 @@
 # MPrime validation-adequacy test
 
+Current status (6 September): Phase B is running. The preparation-only and
+35-percent readiness statements below are historical. See
+`../mprime_validation_phase_b_20260906/README.md` for the frozen candidate
+protocol, planner array21039224, finalizer21039342 and gated rescore chain.
+
 ## Current evidence
 
 The concern is already empirically supported; the remaining question is how to

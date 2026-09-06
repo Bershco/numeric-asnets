@@ -1,0 +1,14 @@
+{
+  "version": "20260906",
+  "replicates": 2,
+  "per_tier": 10,
+  "candidate_order": "ascending seed, first ten certified per tier",
+  "planner": "hmrp-ha-gbfs",
+  "timeout_seconds": 60,
+  "minimum_plan_lengths": [
+    4,
+    6,
+    8
+  ],
+  "selection_uses_network_scores": false
+}

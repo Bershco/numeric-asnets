@@ -1,0 +1,62 @@
+21039342|MPRIME_PHASEB_FREEZE|PENDING|1|1G|0:00|10:00|(Dependency)
+21039220|pw70-ten-rover-on-2082152039-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039219|pw70-ten-rover-on-1972442430-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039218|pw70-ten-rover-on-1510771779-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039217|pw70-ten-rover-on-1472491096-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039216|pw70-ten-rover-on-1239739722-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039215|pw70-ten-rover-off-2082152039-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039214|pw70-ten-rover-off-1972442430-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039213|pw70-ten-rover-off-1510771779-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039212|pw70-ten-rover-off-1472491096-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039211|pw70-ten-rover-off-1239739722-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039210|pw70-ten-fo_counters-on-2082152039-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039209|pw70-ten-fo_counters-on-1972442430-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039208|pw70-ten-fo_counters-on-1510771779-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039207|pw70-ten-fo_counters-on-1472491096-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039206|pw70-ten-fo_counters-on-1239739722-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039205|pw70-ten-fo_counters-off-2082152039-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039204|pw70-ten-fo_counters-off-1972442430-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039203|pw70-ten-fo_counters-off-1510771779-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039202|pw70-ten-fo_counters-off-1472491096-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+21039201|pw70-ten-fo_counters-off-1239739722-s1|PENDING|6|120G|0:00|3-00:00:00|(Resources)
+20559579|Ev_fo_counters_fo_counters_mcts_orig_vh_e.5_c.1_s1963100312_K0_SR10TCM_src20489463_e0069|RUNNING|6|120G|2-09:55:49|3-00:00:00|ise-cpu256-27
+20755796|pw70-kmin3-counters-off-2011206605-s1|RUNNING|6|120G|2-21:24:56|3-00:00:00|ise-cpu-intl-04
+20559575|Ev_fo_counters_fo_counters_mcts_orig_vh_e.5_c.1_s1073581256_K0_SR10TCM_src20489458_e0077|RUNNING|6|120G|2-21:54:47|3-00:00:00|ise-cpu128-02
+20945846|Ev_fo_counters_fo_counters_mcts_orig_vh_e.5_c.1_s2011206605_K0_SR10M_src20430378_e0046|RUNNING|6|120G|1-21:55:07|3-00:00:00|ise-cpu256-07
+20945845|Ev_fo_counters_fo_counters_mcts_orig_novh_e.5_c.1_s923500475_K0_SR10M_src20430395_e0009|RUNNING|6|120G|1-21:58:38|3-00:00:00|ise-cpu256-17
+21039224_1|MPRIME_PHASEB_PLANNER|RUNNING|2|8G|5:38|1:30:00|ise-cpu128-14
+21039224_2|MPRIME_PHASEB_PLANNER|RUNNING|2|8G|5:38|1:30:00|ise-cpu128-12
+21039224_5|MPRIME_PHASEB_PLANNER|RUNNING|2|8G|5:38|1:30:00|ise-cpu128-06
+20974364|Ev_counters_counters_mcts_orig_vh_e.5_c.1_s1972442430_K0_SR10M_src20489422_e0028|RUNNING|6|120G|6:12:45|3-00:00:00|ise-cpu-intl-22
+20974542|Ev_counters_counters_mcts_orig_novh_e.5_c.1_s1510771779_K0_SR10M_src20489410_e0045|RUNNING|6|120G|23:05:42|3-00:00:00|ise-cpu128-05
+20974546|Ev_counters_counters_mcts_orig_vh_e.5_c.1_s923500475_K0_SR10M_src20489416_e0030|RUNNING|6|120G|23:05:42|3-00:00:00|ise-cpu128-11
+20974538|Ev_counters_counters_mcts_orig_novh_e.5_c.1_s1073581256_K0_SR10M_src20489407_e0031|RUNNING|6|120G|23:05:47|3-00:00:00|ise-cpu128-02
+20974539|Ev_counters_counters_mcts_orig_novh_e.5_c.1_s1239739722_K0_SR10M_src20489408_e0018|RUNNING|6|120G|23:05:47|3-00:00:00|ise-cpu128-02
+20974540|Ev_counters_counters_mcts_orig_novh_e.5_c.1_s1472491096_K0_SR10M_src20489409_e0002|RUNNING|6|120G|23:05:47|3-00:00:00|ise-cpu128-05
+20974354|Ev_counters_counters_mcts_orig_novh_e.5_c.1_s1972442430_K0_SR10M_src20489412_e0094|RUNNING|6|120G|23:18:01|3-00:00:00|ise-cpu-intl-19
+20974359|Ev_counters_counters_mcts_orig_vh_e.5_c.1_s1073581256_K0_SR10M_src20489417_e0070|RUNNING|6|120G|23:18:01|3-00:00:00|ise-cpu-intl-06
+20974360|Ev_counters_counters_mcts_orig_vh_e.5_c.1_s1239739722_K0_SR10M_src20489418_e0062|RUNNING|6|120G|23:18:01|3-00:00:00|ise-cpu-intl-06
+20974361|Ev_counters_counters_mcts_orig_vh_e.5_c.1_s1472491096_K0_SR10M_src20489419_e0070|RUNNING|6|120G|23:18:01|3-00:00:00|ise-cpu-intl-02
+20974362|Ev_counters_counters_mcts_orig_vh_e.5_c.1_s1510771779_K0_SR10M_src20489420_e0001|RUNNING|6|120G|23:18:01|3-00:00:00|ise-cpu-intl-04
+20974366|Ev_counters_counters_mcts_orig_vh_e.5_c.1_s2082152039_K0_SR10M_src20489425_e0002|RUNNING|6|120G|23:18:01|3-00:00:00|ise-cpu128-08
+20974346|Ev_counters_counters_mcts_orig_novh_e.5_c.1_s534933607_K0_SR10M_src20489405_e0036|RUNNING|6|120G|23:18:16|3-00:00:00|cs-cpu-05
+20943885|Ev_fo_counters_fo_counters_mcts_orig_novh_e.5_c.1_s2082152039_K0_SR10M_src20430393_e0017|RUNNING|6|120G|2-01:23:14|3-00:00:00|ise-cpu128-10
+20943880|Ev_fo_counters_fo_counters_mcts_orig_novh_e.5_c.1_s1510771779_K0_SR10M_src20430394_e0006|RUNNING|6|120G|2-01:24:15|3-00:00:00|ise-cpu-intl-20
+20863185|pw-counters-divergence-off-534933607-sim70|RUNNING|6|120G|6:12:45|3-00:00:00|cs-cpu-11
+20863189|pw-counters-divergence-off-2082152039-sim70|RUNNING|6|120G|2-20:24:54|3-00:00:00|ise-cpu128-09
+21039224_0|COMPLETED|00:01:36
+21039224_1|RUNNING|00:05:38
+21039224_2|RUNNING|00:05:38
+21039224_3|COMPLETED|00:01:35
+21039224_4|COMPLETED|00:04:39
+21039224_5|RUNNING|00:05:38
+21039342|PENDING|00:00:00
+21039344|COMPLETED|00:00:04
+[VAL] ===== VALIDATION SUMMARY =====
+[VAL] Evaluator successes : 29
+[VAL] Printed plan records: 29
+[VAL] Printed instances   : 29
+[VAL] VAL-valid plans     : 29
+[VAL] VAL-invalid plans   : 0
+[VAL] =================================
+[VAL] Retry-aware partial validation successful: all unique printed successful instances pass VAL

@@ -91,7 +91,7 @@ def log_summary(path: str) -> dict[str, str | int]:
     }
     if not path:
         return result
-    final_re = re.compile(r"\[EVAL FINAL\].*?(\d+)\s*/\s*(\d+)")
+    final_re = re.compile(r"\[EVAL FINAL\].*?success=(\d+(?:\.\d+)?)\s*/\s*(\d+(?:\.\d+)?)")
     val_re = re.compile(r"valid(?:_plans)?\s*[=:]\s*(\d+).*?invalid(?:_plans)?\s*[=:]\s*(\d+)", re.I)
     with open(path, encoding="utf-8", errors="replace") as stream:
         for line in stream:
@@ -105,6 +105,11 @@ def log_summary(path: str) -> dict[str, str | int]:
             if match:
                 result["val_valid"] = match.group(1)
                 result["val_invalid"] = match.group(2)
+            for key, pattern in (("val_valid", r"VAL-valid plans\s*:\s*(\d+)"),
+                                 ("val_invalid", r"VAL-invalid plans\s*:\s*(\d+)")):
+                match = re.search(pattern, line)
+                if match:
+                    result[key] = match.group(1)
     return result
 
 
