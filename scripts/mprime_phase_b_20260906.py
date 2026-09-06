@@ -48,7 +48,7 @@ def generate(root):
         name=f'mprime-b-{rep}-{tier}-{idx}'
         text=f'(define (problem {name}) (:domain mystery-prime-typed)\n(:objects '+ ' '.join(foods)+' - food '+ ' '.join(pleasures)+' - pleasure '+ ' '.join(pains)+' - pain)\n(:init '+' '.join(init)+')\n(:goal (and '+' '.join(f'(craves {a} {b})' for a,b in goals)+')))\n'
         path=root/'candidates'/f'{name}.pddl';path.parent.mkdir(parents=True,exist_ok=True)
-        path.write_text(text,encoding='utf-8')
+        path.write_bytes(text.encode('utf-8'))
         rows.append(dict(replicate=rep,tier=tier,index=idx,seed=seed,foods=nf,pains=np,pleasures=nv,edges=len(edges),goals=len(goals),min_goal_distance=min(dist[b] for a,b in goals),file=path.name,sha256=hashlib.sha256(text.encode()).hexdigest()))
     write_csv(root/'candidates.csv',rows)
     (root/'protocol.json').write_text(json.dumps(dict(version='20260906',replicates=2,per_tier=10,candidate_order='ascending seed, first ten certified per tier',planner='hmrp-ha-gbfs',timeout_seconds=60,minimum_plan_lengths=[4,6,8],selection_uses_network_scores=False),indent=2))
