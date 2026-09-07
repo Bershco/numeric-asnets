@@ -517,6 +517,27 @@ Delivery rows, including one selected endpoint per VH mode. Exact retries
 If the live cluster cannot be reached, report the snapshot timestamp explicitly
 instead of presenting it as current.
 
+## Test-order and interrupted-MCTS opportunity audit (7 September 2026)
+
+`domain_test_order_and_mcts_interruption_audit_20260907.md` is the durable
+interpretation.  Its machine-readable evidence is split into:
+
+- `domain_test_order_20260907.csv`: PDDL-order classification for Drone, FO
+  Counters, Rover and MPrime;
+- `mcts_interruption_opportunity_summary_20260907.csv`: aggregate counts;
+- `mcts_interruption_opportunity_jobs_20260907.csv`: job-level configuration,
+  interruption evidence and literal original-log/completion-ledger paths;
+- `mcts_interruption_opportunity_instances_20260907.csv`: one exact row per
+  instance that lacked a completed or explicit per-instance-timeout record.
+
+The primary non-monotone audit found 29 Rover opportunities across 21 OOM
+allocations.  Drone has zero scheduler-OOM/timeout opportunities in its curated
+163-job MCTS inventory; MPrime has no MCTS campaign yet.  FO Counters is
+strictly increasing and therefore supplementary: two audited OOM jobs leave
+one exact unclassified instance each.  These counts never replace the original
+fixed-budget scores; selective retries must be labelled recovered-suite
+evidence.
+
 ## Advisor audit package
 
 The durable 30 August 2026 whole-project audit is under

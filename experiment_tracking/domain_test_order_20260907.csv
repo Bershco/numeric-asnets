@@ -1,0 +1,5 @@
+domain,test_instances,order_class,include_primary_interruption_audit,observed_structural_sequence,logical_basis
+drone,20,non_monotone,yes,"objects/cells=2,4,8,27,40,48,18,36,40,180,20,50,48,168,16,32,40,56,189,300","Repeated large reversals (48->18, 180->20, 168->16); later index is not uniformly harder."
+fo_counters,20,strictly_increasing_by_construction,no_supplementary_only,instance_2..instance_21; n counters; n-1 chain goals; max_int=2n,"Every successive instance adds one counter, one chain requirement, and a larger numeric bound."
+rover,20,non_monotone_with_increasing_scale_trend,yes,"objects=13,14,16,18,18,19,20,25,27,29,27,28,30,31,32,33,44,50,51,60; goals=3,3,3,3,7,10,6,8,8,11,9,6,12,8,10,11,13,11,17,20","Overall scale rises, but adjacent reversals in both objects and goals make later unrun instances potentially easier."
+mprime,20,non_monotone,yes,"objects=10,31,18,27,24,75,74,41,27,38,37,33,52,55,42,55,8,21,16,13; goals vary 1..3",Large reversals throughout the ordered suite; file index is not a difficulty ordering.

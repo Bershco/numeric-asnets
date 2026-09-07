@@ -1,31 +1,31 @@
-# Complete experiment snapshot — 2026-09-07T16:53:24+03:00
+# Complete experiment snapshot — 2026-09-07T18:35:16+03:00
 
-This is the updated version of the 6 September report. It incorporates a fresh
-Slurm query and bounded reads of every live MCTS log. The MPrime Phase-B repair
-and rescore gate and the four-arm TPP catastrophic-seed diagnostic were
-submitted during this refresh.
+This snapshot incorporates a fresh expanded-array Slurm query.  The artificial
+MPrime Phase-B `%12` array throttle is removed: direct array 21090161 has all
+60 tasks eligible, with 13 running and 47 ordinary Priority-pending.  The
+test-order/interruption audit is documented separately in
+`domain_test_order_and_mcts_interruption_audit_20260907.md`.
 
 ## Current workload
 
 | State | Jobs | CPUs | Requested RAM |
 |---|---:|---:|---:|
-| Running | 17 | 100 | 1,940 GiB |
-| Pending | 60 | 180 requested; 36 concurrency-capped | 1,200 GiB requested; 240 GiB concurrency-capped |
+| Running | 25 | 126 | 1,800 GiB |
+| Pending | 47 | 141 | 940 GiB |
 | Held in Slurm | 0 | 0 | 0 GiB |
 
 | Live experiment | Running | Pending | Running CPU / RAM | Current position | Timing |
 |---|---:|---:|---:|---|---|
-| MPrime Phase-B validation adequacy | 1 | 60 | 4 CPUs / 20 GiB | Corrected one-checkpoint preflight running; 60 lineages dependency-gated, max 12 concurrent | Preflight ≤1h02m; full duration becomes estimable after first wave |
-| TPP catastrophic-seed MCTS | 4 | 0 | 24 CPUs / 480 GiB | Fixed normal, fixed narrow, PW20 and PW70 all started on the exact 9/20 checkpoint | Healthy startup; likely first results within hours, hard cap 72h |
-| Stage-2 MCTS: Counters terminal-led | 6 | 0 | 36 CPUs / 720 GiB | 14/20 scheduler-terminal; six live | Current allocations have 20h36m–20h49m hard bounds |
-| Stage-2 MCTS: FO terminal-led tail | 1 | 0 | 6 CPUs / 120 GiB | 19/20 scheduler-terminal; final seed at 5/20 | ≤44h12m |
-| PW70 two-seed correction | 1 | 0 | 6 CPUs / 120 GiB | 11/12 terminal; Counters S1/off tail at 21/59 | ≤45h08m |
-| PW70 ten-seed FO/Rover expansion | 3 | 0 | 18 CPUs / 360 GiB | 37/40 scheduler-terminal; FO/off final seed OOMed at 7/20 after ten classified, leaving n=9 complete | ≤43h30m; no reliable earlier straggler estimate |
+| MPrime Phase-B validation adequacy | 13 | 47 | 52 CPUs / 260 GiB | Direct 60-task array, no concurrency cap; first lineage has emitted a validated checkpoint | 15–33m elapsed; no reliable full-lineage estimate yet; 24h hard cap |
+| TPP catastrophic-seed MCTS | 4 | 0 | 24 CPUs / 480 GiB | Fixed normal, fixed narrow, PW20 and PW70 on the exact 9/20 checkpoint | 2h28m elapsed; 72h hard cap |
+| Stage-2 MCTS: Counters terminal-led | 5 | 0 | 30 CPUs / 600 GiB | Fifteen scheduler-terminal; five live | ~53.5h elapsed; ~18.5h hard remaining |
+| Stage-2 MCTS: FO terminal-led tail | 1 | 0 | 6 CPUs / 120 GiB | Nineteen scheduler-terminal; final seed live | ~30h elapsed; ~42h hard remaining |
+| PW70 two-seed correction / Rover tail | 2 | 0 | 12 CPUs / 240 GiB | Counters S1/off correction plus Rover/on ten-seed tail | ~29–30h elapsed; ~42–43h hard remaining |
 | Counters exact-snapshot PW70 recovery | 1 | 0 | 6 CPUs / 120 GiB | Two PW70 arms terminal; last arm at 22/59 | ≤37h42m |
 
-The queue is no longer resource-saturated: requested live RAM fell from 5,048
-GiB yesterday to 1,800 GiB. There is room to release more work, but this pass
-deliberately makes no submission so that the next choice can be reviewed first.
+The MPrime throttle removal is the only new compute release in this pass.  The
+47 pending tasks are scheduler-priority pending rather than dependency-held or
+artificially throttled.
 
 ## Changes since 6 September
 
@@ -33,9 +33,11 @@ deliberately makes no submission so that the next choice can be reviewed first.
   plans and 49 classified instances. Its evidence remains a lower bound.
 - FO validation-led/on is no longer live. Its final job timed out after 6/20;
   five successes were within 30 minutes and all six within two hours.
-- MPrime's unsupported validation-tier mapping was repaired without changing
-  the frozen manifests or checksums. Preflight 21084274 is running and the
-  60-lineage array 21084275 will release only if it succeeds.
+- MPrime's repaired preflight 21084274 scored 21/30 with all 21 plans VAL-valid,
+  then reached its two-hour limit seconds after printing `VALIDATED` but before
+  its done marker.  The dependent throttled array was therefore cancelled
+  without starting.  It is replaced by direct, unthrottled array 21090161;
+  13/60 tasks are running and 47 are ordinary Priority-pending.
 - The TPP/off 9/20 outlier now has four nonredundant diagnostic arms running:
   fixed 20/70, fixed 5/20, PW20 and PW70.
 - The 20-job PW70 FO/Rover expansion is now 37/40 scheduler-terminal with three
@@ -200,11 +202,13 @@ The obsolete attempt was blocked before scoring:
 
 That repair is now complete. The frozen lists are exposed through the supported
 `hard` validation tier without changing their contents or hashes. Corrected
-preflight 21084274 is running. Array 21084275 contains 60 tasks and is held by an
-`afterok` dependency, with at most 12 simultaneous tasks. If the preflight
-fails, the array will not run; if it succeeds, the rescore starts automatically.
-MPrime MCTS remains intentionally unsubmitted until this audit freezes
-defensible checkpoints.
+preflight 21084274 reached 21/30 with 21/21 VAL-valid plans and printed its
+`VALIDATED` record, but the allocation timed out seconds before writing the
+done marker.  Its dependent array 21084275 consequently never started.  Direct
+replacement array 21090161 contains all 60 lineage tasks with no `%12` cap;
+13 are running and 47 are ordinary Priority-pending at 18:35 IDT. MPrime MCTS
+remains intentionally unsubmitted until this audit freezes defensible
+checkpoints.
 
 ## Best currently demonstrated result by domain
 

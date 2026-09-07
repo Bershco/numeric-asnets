@@ -32,7 +32,12 @@ def classify(name: str) -> str:
         and "FO_COUNTERS_MCTS" in name_upper
     ):
         return "Stage-2 MCTS branch completion — FO Counters"
+    if "SR10M" in name_upper and "EV_COUNTERS_COUNTERS_MCTS" in name_upper:
+        return "Stage-2 MCTS branch completion — Counters"
+    if name_upper.startswith("TPPBAD-"):
+        return "TPP catastrophic-seed MCTS diagnostic"
     rules = (
+        ("MPRIME_PHASEB_RESCORE", "MPrime validation adequacy Phase B full rescore"),
         ("CTRL_STAGE2_MCTS_BRANCH_COMPLETION", "Stage-2 MCTS branch-completion controller"),
         ("P4DELIVERYS2P", "PRESERVE-3 terminal Delivery policy retry"),
         ("PW-COUNTERS-DIVERGENCE", "Counters PW divergence recovery"),
@@ -73,7 +78,7 @@ def mem_gib(value: str) -> float:
 raw = subprocess.check_output(
     SSH
     + [
-        "squeue -u hersco -h -o '%i|%j|%T|%C|%m|%M|%l|%R|%Q|%A'"
+        "squeue -r -u hersco -h -o '%i|%j|%T|%C|%m|%M|%l|%R|%Q|%A'"
     ],
     text=True,
     timeout=120,

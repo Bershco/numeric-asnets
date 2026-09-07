@@ -1,0 +1,6 @@
+domain,experiment_scope,interrupted_jobs_with_missing_instances,classified_instances,unclassified_opportunities
+fo_counters,pw70_confirmation_stage1,1,19,1
+fo_counters,stage1_validation_selected_fixed_20_70,1,19,1
+rover,stage1_validation_selected_fixed_20_70,8,147,13
+rover,stage2_terminal_led_fixed_20_70,9,168,12
+rover,stage2_validation_led_fixed_20_70,4,76,4
