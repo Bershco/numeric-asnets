@@ -155,7 +155,7 @@ the final ten-seed table and Holm family still cannot be frozen.
 
 | Seed | Policy | Fixed narrow 5/20 | PW20 30m / 2h / 6h | PW70 30m / 2h / 6h | Conclusion |
 |---|---:|---:|---:|---:|---|
-| 534933607 | 59 | 23 | 19 / 21 / 21 | ≥22 / ≥22 / ≥22 | Neither arm has recovered policy; PW70 live |
+| 534933607 | 59 | 23 | 19 / 21 / 21 | ≥19 / ≥21 / ≥22 | Neither arm has recovered policy; PW70 live |
 | 923500475 | 59 | 29 | 32 / 41 / 48 | 18 / 20 / 21 | PW20 strongly recovers fixed-search losses; PW70 does not |
 | 2082152039 | 35 | 18 | 18 / 18 / 18 | 19 / 19 / 19 | Neither arm recovers policy |
 
