@@ -1,0 +1,12 @@
+artifact,scope,authoritative_as_of,row_level_source,notes
+status_20260907_latest.md,Complete narrative snapshot,2026-09-07T13:08:54+03:00,All rows below,No cluster state changes made during refresh
+cluster_workload_20260907.csv,Every running Slurm job,2026-09-07T13:08:54+03:00,Direct Slurm job ID and cluster log path,Exact current allocation and progress
+cluster_workload_latest.csv,Every running Slurm job,2026-09-07T13:08:54+03:00,Mirror of cluster_workload_20260907.csv,Convenience alias
+live_experiment_status_latest.csv,Live experiment aggregation,2026-09-07T13:08:54+03:00,cluster_workload_20260907.csv,Separates scheduler state from scientific completeness
+stage2_mcts_branch_coverage_20260907.csv,All five mainstream domains both branches and VH modes,2026-09-07T13:08:54+03:00,Historical audit plus current workload and explicit row-level companions,Counts terminal live and unsubmitted identities
+stage2_policy_mcts_comparison_by_branch_20260907.csv,All Stage-2 policy-versus-MCTS comparisons,2026-09-07T13:08:54+03:00,Each row has row_level_provenance,Lower bounds explicitly use >= and omit inference where incomplete
+mcts_progressive_widening_cross_domain/pw70_ten_seed_jobs_20260907.csv,All twenty new PW70 expansion jobs,2026-09-07T13:08:54+03:00,Direct job log plus checkpoint manifest,Job-level score and interruption evidence
+mcts_progressive_widening_cross_domain/pw70_ten_seed_interim_20260907.csv,Four nine-seed PW70 cell summaries,2026-09-07T13:08:54+03:00,Five-seed row ledger plus twenty-job refresh,Provisional subset statistics only
+mcts_progressive_widening_cross_domain/counters_divergence_status_20260907.csv,Three exact Counters snapshots with PW20 and PW70,2026-09-07T13:08:54+03:00,Direct PW logs and original checkpoint manifest,One PW70 arm live
+mprime_validation_phase_b_status_20260907.csv,MPrime harder-validation Phase B,2026-09-07T13:08:54+03:00,Direct planner freeze preflight and submission paths,No checkpoint score produced due preflight argument error
+experiments.csv,Full experiment registry,2026-09-07T13:08:54+03:00,Per-experiment results_file and manifest_path,Mirrored by experiment_registry.csv

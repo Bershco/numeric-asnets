@@ -1,7 +1,6 @@
 # Thesis experiment registry
 
-Latest full verified snapshot: `status_20260906_latest.md`; standalone visual
-tables are in `status_20260906.html`. The exact scheduler timestamp is recorded
+Latest full verified snapshot: `status_20260907_latest.md`. The exact scheduler timestamp is recorded
 in `cluster_workload_20260906.csv`. Machine-readable companions are
 `cluster_workload_latest.csv`, `cluster_workload_summary_latest.csv`,
 `live_experiment_status_latest.csv`, and
