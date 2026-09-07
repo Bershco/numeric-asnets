@@ -1,12 +1,12 @@
 # Thesis experiment registry
 
 Latest full verified snapshot: `status_20260907_latest.md`. The exact scheduler timestamp is recorded
-in `cluster_workload_20260906.csv`. Machine-readable companions are
+in `cluster_workload_20260907.csv`. Machine-readable companions are
 `cluster_workload_latest.csv`, `cluster_workload_summary_latest.csv`,
 `live_experiment_status_latest.csv`, and
-`stage2_mcts_branch_coverage_20260906.csv`.
+`stage2_mcts_branch_coverage_20260907.csv`.
 
-Use `snapshot_provenance_index_20260906.csv` to move from any current aggregate
+Use `snapshot_provenance_index_20260907.csv` to move from any current aggregate
 to its seed/job-level companion. `live_mcts_job_provenance_20260905_1314.csv`
 contains current job IDs, nodes, stdout paths, and compact completion-record
 paths. Historical dated snapshots remain immutable evidence and must not be
@@ -43,7 +43,17 @@ in `advisor_audit_20260830/experiment_status.csv`. Cluster access must use the
 single `uni-cluster` Windows-profile alias documented in
 `cluster_access_and_ssh.md`.
 
-The newest comprehensive operational report is `status_20260904_latest.md`; its
+The four-arm TPP/off catastrophic-seed search diagnostic is tracked in
+`tpp_catastrophic_mcts/manifest_20260907.csv` and
+`tpp_catastrophic_mcts/submissions_20260907.csv`. The latter points directly
+to the source training log, policy log, checkpoint, Slurm job and evaluation
+log for every arm.
+
+The best currently demonstrated configuration for every domain, with explicit
+paper and Stage-1 comparisons plus row-level provenance, is
+`best_configuration_by_domain_20260907.csv`.
+
+The newest comprehensive operational report is `status_20260907_latest.md`; its
 exact resource roll-up is `cluster_workload_summary_latest.csv`. Earlier
 08:26--08:52 snapshots are retained as historical queue observations, while
 `live_experiment_status.csv` retains the longer timestamped status history.

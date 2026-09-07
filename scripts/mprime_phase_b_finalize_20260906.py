@@ -9,7 +9,11 @@ rows=list(csv.DictReader((ROOT/'frozen_validation_manifest.csv').open()))
 for rep in range(2):
  paths=[str(ROOT/'candidates'/r['file']) for r in rows if int(r['replicate'])==rep]
  module=REPO/f'asnets/experiments_numeric/domain/mprime_phase_b_20260906_{rep}.py'
- content='from experiments_numeric.domain.mprime import *\nTEST_RUNS = '+repr([([p],None) for p in paths])+'\nVALIDATION_PDDLS = '+repr({'phase_b':paths})+'\n'
+ # run_experiment exposes only the standard easy/medium/hard validation CLI
+ # flags.  Phase B is an experiment name, not a parser-supported difficulty
+ # key, so keep the frozen paths intact and expose each replicate through the
+ # supported hard tier.
+ content='from experiments_numeric.domain.mprime import *\nTEST_RUNS = '+repr([([p],None) for p in paths])+'\nVALIDATION_PDDLS = '+repr({'hard':paths})+'\n'
  if module.exists():assert module.read_text()==content
  else:module.write_text(content)
 ledger=ROOT/'rescore_submission.json'

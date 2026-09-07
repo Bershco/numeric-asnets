@@ -1,12 +1,14 @@
 artifact,scope,authoritative_as_of,row_level_source,notes
-status_20260907_latest.md,Complete narrative snapshot,2026-09-07T13:08:54+03:00,All rows below,No cluster state changes made during refresh
-cluster_workload_20260907.csv,Every running Slurm job,2026-09-07T13:08:54+03:00,Direct Slurm job ID and cluster log path,Exact current allocation and progress
-cluster_workload_latest.csv,Every running Slurm job,2026-09-07T13:08:54+03:00,Mirror of cluster_workload_20260907.csv,Convenience alias
-live_experiment_status_latest.csv,Live experiment aggregation,2026-09-07T13:08:54+03:00,cluster_workload_20260907.csv,Separates scheduler state from scientific completeness
+status_20260907_latest.md,Complete narrative snapshot,2026-09-07T16:53:24+03:00,All rows below,Includes MPrime Phase-B and TPP diagnostic submissions
+cluster_workload_20260907.csv,Every running or pending Slurm identity,2026-09-07T16:53:24+03:00,Direct Slurm job ID and cluster log path,Exact current allocation and progress
+cluster_workload_latest.csv,Every running or pending Slurm identity,2026-09-07T16:53:24+03:00,Mirror of cluster_workload_20260907.csv,Convenience alias
+live_experiment_status_latest.csv,Live experiment aggregation,2026-09-07T16:53:24+03:00,cluster_workload_20260907.csv,Separates scheduler state from scientific completeness
 stage2_mcts_branch_coverage_20260907.csv,All five mainstream domains both branches and VH modes,2026-09-07T13:08:54+03:00,Historical audit plus current workload and explicit row-level companions,Counts terminal live and unsubmitted identities
 stage2_policy_mcts_comparison_by_branch_20260907.csv,All Stage-2 policy-versus-MCTS comparisons,2026-09-07T13:08:54+03:00,Each row has row_level_provenance,Lower bounds explicitly use >= and omit inference where incomplete
 mcts_progressive_widening_cross_domain/pw70_ten_seed_jobs_20260907.csv,All twenty new PW70 expansion jobs,2026-09-07T13:08:54+03:00,Direct job log plus checkpoint manifest,Job-level score and interruption evidence
 mcts_progressive_widening_cross_domain/pw70_ten_seed_interim_20260907.csv,Four nine-seed PW70 cell summaries,2026-09-07T13:08:54+03:00,Five-seed row ledger plus twenty-job refresh,Provisional subset statistics only
 mcts_progressive_widening_cross_domain/counters_divergence_status_20260907.csv,Three exact Counters snapshots with PW20 and PW70,2026-09-07T13:08:54+03:00,Direct PW logs and original checkpoint manifest,One PW70 arm live
-mprime_validation_phase_b_status_20260907.csv,MPrime harder-validation Phase B,2026-09-07T13:08:54+03:00,Direct planner freeze preflight and submission paths,No checkpoint score produced due preflight argument error
+mprime_validation_phase_b_status_20260907.csv,MPrime harder-validation Phase B,2026-09-07T16:53:24+03:00,Direct planner freeze obsolete and corrected preflight and array paths,Tier repair complete; corrected preflight live and full array dependency-pending
+tpp_catastrophic_mcts/submissions_20260907.csv,Four-arm exact TPP outlier diagnostic,2026-09-07T16:53:24+03:00,Direct training policy checkpoint and evaluation log paths,All four nonredundant arms running
+best_configuration_by_domain_20260907.csv,Best current result per domain,2026-09-07T16:53:24+03:00,Per-row experiment companions and direct log ledgers,Explicitly labels provisional and live lower-bound rows
 experiments.csv,Full experiment registry,2026-09-07T13:08:54+03:00,Per-experiment results_file and manifest_path,Mirrored by experiment_registry.csv

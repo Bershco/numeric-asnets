@@ -1,4 +1,4 @@
-state,jobs,cpus,memory_gib,provenance
-RUNNING,15,90,1800,cluster_workload_20260907.csv
-PENDING,0,0,0,cluster_workload_20260907.csv
-HELD,0,0,0,cluster_workload_20260907.csv
+state,jobs,cpus,memory_gib,concurrency_cap_cpus,concurrency_cap_memory_gib,provenance
+RUNNING,17,100,1940,100,1940,cluster_workload_20260907.csv
+PENDING,60,180,1200,36,240,cluster_workload_20260907.csv
+HELD,0,0,0,0,0,cluster_workload_20260907.csv
