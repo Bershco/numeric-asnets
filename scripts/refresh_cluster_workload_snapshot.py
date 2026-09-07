@@ -22,6 +22,8 @@ SSH = [
 
 def classify(name: str) -> str:
     name_upper = name.upper()
+    if "ROVER_INTERRUPTION_RECOVERY" in name_upper:
+        return "Rover interrupted-instance MCTS recovery"
     if "SR10M" in name_upper and "EV_ROVER_ROVER_MCTS" in name_upper:
         return "Stage-2 MCTS branch completion — Rover"
     if "SR10M" in name_upper and "BLOCK_GROUPING_MCTS" in name_upper:
