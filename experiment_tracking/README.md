@@ -1,6 +1,6 @@
 # Thesis experiment registry
 
-Latest full verified snapshot: `status_20260908_latest.md`. Its exact scheduler
+Latest full verified snapshot: `status_20260909_latest.md`. Its exact scheduler
 timestamp is stored in `cluster_workload_latest.csv`. Machine-readable companions are
 `cluster_workload_latest.csv`, `cluster_workload_summary_latest.csv`,
 `dynamic_experiment_jobs_latest.csv`,
@@ -18,7 +18,7 @@ The Rover cleanup submission history, including the zero-compute parser failure
 and corrected exact two-instance job, is in
 `rover_interrupted_mcts_recovery_followup_submission_20260908.csv`.
 
-Use `snapshot_provenance_index_20260907.csv` to move from any current aggregate
+Use `snapshot_provenance_index_latest.csv` to move from any current aggregate
 to its seed/job-level companion. `live_mcts_job_provenance_20260905_1314.csv`
 contains current job IDs, nodes, stdout paths, and compact completion-record
 paths. Historical dated snapshots remain immutable evidence and must not be
@@ -65,7 +65,7 @@ The best currently demonstrated configuration for every domain, with explicit
 paper and Stage-1 comparisons plus row-level provenance, is
 `best_configuration_by_domain_20260907.csv`.
 
-The newest comprehensive operational report is `status_20260908_latest.md`; its
+The newest comprehensive operational report is `status_20260909_latest.md`; its
 exact resource roll-up is `cluster_workload_summary_latest.csv`. Earlier
 08:26--08:52 snapshots are retained as historical queue observations, while
 `live_experiment_status.csv` retains the longer timestamped status history.

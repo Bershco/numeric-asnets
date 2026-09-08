@@ -75,4 +75,7 @@
 "experiment_tracking/dynamic_experiment_jobs_latest.csv","Live and newly terminal MCTS evidence","source_evaluation_log;source_completion_ledgers","complete_inline"
 "experiment_tracking/rover_interrupted_mcts_recovery_followup_submission_20260908.csv","Rover exact-instance cleanup submission history","array_job_id;stdout;manifest","complete_inline_live"
 "experiment_tracking/mprime_validation_phase_b_progress_latest.csv","MPrime Phase-B checkpoint-replicate progress","active_job_ids;source_scheduler_csv;source_log_glob","complete_inline_live"
-"experiment_tracking/anchor_kl_control_tpp_screen_20260908.csv","Adaptive KL-control TPP/off screen","existing_constant_job_id;source_training_job_id;source_checkpoint;output_log","complete_inline_ready"
+"experiment_tracking/anchor_kl_control_tpp_screen_20260908.csv","Adaptive KL-control TPP/off screen","existing_constant_job_id;source_training_job_id;source_checkpoint;slurm_job_id;output_log","complete_inline_live"
+"experiment_tracking/anchor_kl_control_submissions_20260909.tsv","Adaptive KL initial submission provenance","job_id;source_training_job_id;source_checkpoint;output_log","complete_inline_failed_startup"
+"experiment_tracking/anchor_kl_control_retry_submissions_20260909.tsv","Adaptive KL corrected retry provenance","retry_of;job_id;source_training_job_id;source_checkpoint;output_log","complete_inline_live"
+"experiment_tracking/anchor_kl_control_live_progress_20260909.csv","Adaptive KL first-update progress","job_id;source_training_log","complete_inline_live"

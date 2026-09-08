@@ -17,3 +17,7 @@ rover_interrupted_mcts_recovery_followup_manifest_20260908.csv,Rover cleanup-fai
 rover_interrupted_mcts_recovery_followup_submission_20260908.csv,Rover cleanup-failure submission history,2026-09-08,Direct Slurm job ids and stdout paths,Separates zero-compute parser failure from corrected running job
 experiments.csv,Complete experiment registry,2026-09-08,Per-row results_file and manifest_path,Mirrored by experiment_registry.csv
 anchor_kl_control_tpp_screen_20260908.csv,Adaptive KL-control two-job screen,2026-09-08,existing_constant_job_id;source_training_job_id;source_checkpoint;output_log,Two adaptive jobs reuse existing constant baselines
+status_20260909_latest.md,Complete narrative snapshot,2026-09-09T00:43:18+03:00,All rows below,Current workload live experiments completed RQs held designs and best-domain table
+anchor_kl_control_submissions_20260909.tsv,Adaptive KL initial submissions,2026-09-09T00:43:18+03:00,Direct Slurm job ids source checkpoints and stdout paths,Both initial jobs failed before training due to missing ignored native operator in clean worktree
+anchor_kl_control_retry_submissions_20260909.tsv,Adaptive KL corrected retries,2026-09-09T00:43:18+03:00,retry_of;job_id;source_training_job_id;source_checkpoint;output_log,Both corrected jobs running after strengthened compute smoke21144340
+anchor_kl_control_live_progress_20260909.csv,Adaptive KL first-update progress,2026-09-09T00:49:30+03:00,Direct source_training_log and Slurm job id,Validation and KL diagnostics only; no test-policy result yet

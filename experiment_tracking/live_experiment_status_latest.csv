@@ -1,9 +1,8 @@
-experiment,running,pending,requested_cpus,requested_gib,terminal_or_static_progress,time_estimate,provenance
-MPrime validation adequacy Phase B,1,60,4 running plus180 pending,20 running plus1200 pending,Preflight running; sixty lineage tasks dependency-gated at max12 concurrent,Preflight hard bound1h02m; full finish cannot be estimated until first wave,cluster_workload_20260907.csv;mprime_validation_phase_b_status_20260907.csv
-TPP catastrophic-seed MCTS,4,0,24,480,Exact9/20 Stage2 policy checkpoint under fixed-normal fixed-narrow PW20 and PW70,Startup healthy; first results likely within hours but hard bound72h,cluster_workload_20260907.csv;tpp_catastrophic_mcts/submissions_20260907.csv
-Stage2 MCTS branch completion — FO validation-led,0,0,0,0,All10 identities terminal but two off and one on records remain interrupted lower bounds,No live compute; final inference withheld for affected cells,stage2_mcts_branch_coverage_20260907.csv;stage2_policy_mcts_comparison_by_branch_20260907.csv
-Stage2 MCTS branch completion — Counters terminal-led,6,0,36,720,14/20 scheduler-terminal; six live,Hard bounds20h36m-20h49m; earlier completion depends on remaining instance tails,cluster_workload_20260907.csv;stage2_mcts_branch_coverage_20260907.csv
-FO Counters terminal-led Stage2 MCTS tail,1,0,6,120,19/20 scheduler-terminal; final seed5/20,Hard bound44h12m,cluster_workload_20260907.csv
-PW70 two-seed correction,1,0,6,120,11/12 terminal; final Counters Stage1/off seed21/59,Hard bound45h08m,cluster_workload_20260907.csv;mcts_progressive_widening_cross_domain/pw70_live_summary_20260907.csv
-PW70 ten-seed FO/Rover expansion,3,0,18,360,37/40 scheduler-terminal; FO/off has9 complete seeds plus one OOM-partial7/20,Hard bounds about43h30m; no defensible earlier estimate for stragglers,cluster_workload_20260907.csv;mcts_progressive_widening_cross_domain/pw70_ten_seed_interim_20260907.csv
-Counters exact-snapshot PW70 divergence recovery,1,0,6,120,Two of3 PW70 arms terminal; final seed22/59,Hard bound37h42m,cluster_workload_20260907.csv;mcts_progressive_widening_cross_domain/counters_divergence_status_20260907.csv
+experiment,running,cpus,memory_gib,job_ids,source
+Adaptive KL-control TPP/off screen,2,12,96,21144388;21144389,experiment_tracking/cluster_workload_latest.csv
+Counters PW divergence recovery,1,6,120,20863185,experiment_tracking/cluster_workload_latest.csv
+FO Counters terminal-led Stage-2 MCTS,1,6,120,20559575,experiment_tracking/cluster_workload_latest.csv
+MPrime validation adequacy Phase B full rescore,52,208,1040,21090161_2;21090161_52;21143254_0;21143254_3;21143254_4;21143254_5;21143254_9;21143254_10;21143254_12;21143254_13;21143254_14;21143254_15;21143254_16;21143254_19;21143254_20;21143254_21;21143254_22;21143254_23;21143254_24;21143254_25;21143254_26;21143254_27;21143254_28;21143254_29;21143254_30;21143254_31;21143254_32;21143254_33;21143254_34;21143254_35;21143254_36;21143254_37;21143254_38;21143254_39;21143254_40;21143254_41;21143254_43;21143254_44;21143254_45;21143254_46;21143254_47;21143254_48;21143254_49;21143254_50;21143254_51;21143254_54;21143254_55;21143254_56;21143254_58;21143254_59;21128409_18;21128409_53,experiment_tracking/cluster_workload_latest.csv
+PW70 cross-domain correction,1,6,120,20755796,experiment_tracking/cluster_workload_latest.csv
+Rover interrupted-instance MCTS recovery,1,4,160,21107687_7,experiment_tracking/cluster_workload_latest.csv
+TPP catastrophic-seed MCTS diagnostic,1,6,120,21084616,experiment_tracking/cluster_workload_latest.csv

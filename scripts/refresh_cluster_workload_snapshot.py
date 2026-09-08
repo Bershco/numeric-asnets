@@ -22,6 +22,8 @@ SSH = [
 
 def classify(name: str) -> str:
     name_upper = name.upper()
+    if name_upper.startswith("ANCHOR-KL-TPP-OFF-"):
+        return "Adaptive KL-control TPP/off screen"
     if "ROVER_INTERRUPTION_RECOVERY" in name_upper:
         return "Rover interrupted-instance MCTS recovery"
     if "SR10M" in name_upper and "EV_ROVER_ROVER_MCTS" in name_upper:

@@ -120,4 +120,25 @@ Before submission, the generic trainer must support and test:
 - zero-coefficient behavior identical to the existing implementation;
 - an Apptainer smoke test covering fresh training and resume.
 
-Until those tests pass, this experiment remains held and must not be submitted.
+The adaptive-target controller and exact checkpoint restoration pass five local
+regression tests. Compute-node smoke job `21144340` additionally imports the
+compiled TensorFlow operator, verifies the two new CLI options and passes all
+five tests inside the production container.
+
+## Submission state — 9 September 2026
+
+The existing constant-anchor evidence is reused, so the live screen contains
+only the two adaptive jobs:
+
+- `21144388`: catastrophic outlier seed `1972442430`;
+- `21144389`: stable control seed `1963100312`.
+
+Both use six CPUs, 48 GiB, coefficient floor/start `3`, and target KL `0.1143`.
+Their exact source checkpoints and stdout paths are recorded in
+`anchor_kl_control_retry_submissions_20260909.tsv`.
+
+Initial jobs `21144210` and `21144211` failed before training because a clean
+Git worktree omitted the ignored compiled `_asnet_ops_impl.so`. The isolated
+checkout now links the checksum-verified production build. This was a deployment
+packaging failure, not an optimization result, and cost about one minute per
+job. The retry ledger's `retry_of` field preserves that lineage explicitly.
