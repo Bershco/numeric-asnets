@@ -1,4 +1,4 @@
-# Complete experiment snapshot — 2026-09-08T10:58:35+03:00
+# Complete experiment snapshot — 2026-09-08T16:03:21+03:00
 
 This report joins a fresh Slurm query with bounded reads of every live MCTS log,
 the MPrime Phase-B result tree, and the authoritative static result ledgers.
@@ -9,24 +9,25 @@ Policy-only scores are invariant across the 30-minute/2-hour/6-hour MCTS cutoffs
 
 | State | Jobs | CPUs | Requested RAM |
 |---|---:|---:|---:|
-| Running | 70 | 294 | 2,480 GiB |
-| Ordinary pending | 0 | 0 | 0 GiB |
+| Running | 65 | 270 | 2,040 GiB |
+| Ordinary pending | 1 | 4 | 160 GiB |
 | Slurm-held | 0 | 0 | 0 GiB |
 
 | Live experiment | Running | CPU / RAM | Current evidence | Remaining bound / expectation |
 |---|---:|---:|---|---|
-| MPrime validation adequacy Phase B | 60 | 240 / 1,200 GiB | 1,050/2,260 checkpoint-replicates complete; all 60 lineages active | 7.1–8.6h allocation remains; continuation is likely because 53.5% remains |
-| Counters terminal-led Stage-2 narrow MCTS | 3 | 18 / 360 GiB | Current live seed lower bounds: off 35/59; on 6/59 and 8/59 | 2.0–2.2h hard bound |
-| TPP catastrophic-seed MCTS | 2 | 12 / 240 GiB | fixed-normal >=4; PW70 >=7; PW20 is terminal at 10/20; all versus policy 9/20 | <=53.2h; likely sooner for already-classified tails |
-| FO terminal-led Stage-2 MCTS tail | 1 | 6 / 120 GiB | >=5/20; 17/20 classified | <=26.2h |
-| PW70 correction tail | 1 | 6 / 120 GiB | Counters S1/off >=21/59; 42/59 classified | <=26.6h |
-| Counters exact-snapshot PW70 recovery | 1 | 6 / 120 GiB | seed 534933607 >=22/59; 45/59 classified | <=19.1h |
-| Rover exact-instance recovery | 2 | 6 / 320 GiB | 25/29 original opportunities classified as 6h timeouts; two active in task 7; exact instances 16/17 relaunched separately | original <=2.6h; follow-up <=12.3h |
+| MPrime validation adequacy Phase B | 58 | 232 / 1,160 GiB | 1,359/2,260 checkpoint-replicates complete (60.1%); all 60 lineages represented, 2 complete | Original allocations have roughly 2.2–3.8h left; resumable continuation still required |
+| TPP catastrophic-seed MCTS | 2 | 12 / 240 GiB | fixed-normal 4/20 after 13 classified; PW70 7/20 after 10 classified; policy 9/20 | Fixed-normal about 12h; PW70 likely <=6h because only its final three workers remain active |
+| FO terminal-led Stage-2 MCTS tail | 1 | 6 / 120 GiB | Five persisted resumable successes; instances 6–8 active. Historical concatenated attempts contain 19 classifications but cannot all be skipped | Next three classifications <=2.6h; allocation has ~20.5h left and cannot guarantee all 15 unresolved instances |
+| PW70 correction tail | 1 | 6 / 120 GiB | Counters S1/off seed 2011206605: >=21/59; 44 classified | <=21.4h allocation bound; likely scheduler-limited |
+| Counters exact-snapshot PW70 recovery | 1 | 6 / 120 GiB | seed 534933607: >=22/59; 48 classified | <=14h allocation bound; likely scheduler-limited |
+| Rover exact-instance recovery | 1 running + 1 pending | 2 / 160 GiB running; 4 / 160 GiB pending | 25/29 classified, all six-hour timeouts; four exact opportunities remain | Running instance 16 should classify shortly, then 17 within 6h; pending task runs only 17/19 together in <=6h after start |
 
-No additional broad campaign was released. The only new job is Rover follow-up
-21114871: one worker, two CPUs, 160 GiB, exactly instances 16 and 17 from
-source job 20430090. The first submission 21114859 failed in zero seconds due
-to a quoted TSV index and produced no evaluation evidence.
+Two exact MPrime replacements were released as array 21128409 (tasks 18 and
+53). Both predecessor tasks failed immediately on `ise-cpu-intl-01` with
+native evaluator exit -4; the replacements are running on other nodes and
+skip every already validated checkpoint-replicate. Rover task 7's pending
+manifest now contains only instances 17 and 19, so its already observed
+six-hour timeouts on instances 15 and 16 will not be repeated.
 
 ## Stage-1 validation-selected policy versus preferred fixed MCTS
 
@@ -69,37 +70,50 @@ retained in the companion ledgers; interrupted lower-bound rows have no p-value.
 | FO/off | validation | normal 20/70 | 2.9 | >=6.0 / >=6.0 / >=6.0 | >=+3.1 | withheld | Two interrupted partial seeds |
 | FO/on | validation | normal 20/70 | 3.1 | >=5.3 / >=5.4 / >=5.4 | >=+2.3 | withheld | Positive lower bound |
 | FO/off | terminal | normal 20/70 | 2.8 | 5.3 / 5.3 / 5.3 | +2.5 [1.73,3.27] | .002/.010 | Significant gain |
-| FO/on | terminal | normal 20/70 | 3.8 | >=4.5 / >=4.5 / >=4.5 | >=+.7 | withheld | 9 terminal + 1 live, current tail >=5 |
+| FO/on | terminal | normal 20/70 | 3.8 | >=4.5 / >=4.5 / >=4.5 | >=+.7 | withheld | One restarted tail remains; five persisted successes, instances 6–8 active |
 | Rover/off | validation | normal 20/70 | 4.0 | 4.5 / 4.5 / 4.5 | +.5 [-.01,1.01] | .125 / pending | Small nonsignificant gain |
 | Rover/on | validation | normal 20/70 | 3.9 | 4.4 / 4.5 / 4.5 | +.6 [-.09,1.29] | .156 / pending | Small nonsignificant gain |
 | Rover/off | terminal | normal 20/70 | 3.8 | 4.2 / 4.2 / 4.2 | +.4 [.03,.77] | .125/.375 | Small nonsignificant gain |
 | Rover/on | terminal | normal 20/70 | 4.0 | 4.5 / 4.5 / 4.5 | +.5 [.12,.88] | .063/.313 | Small nonsignificant gain |
 | Counters/off | validation | narrow 5/20 | 36.9 | 34.9 / 36.7 / 36.7 | -.2 [-2.87,2.47] | .969/.969 | Neutral |
 | Counters/on | validation | narrow 5/20 | 21.8 | 22.6 / 26.4 / 27.1 | +5.3 [-.70,11.30] | .082/.328 | Positive, variable |
-| Counters/off | terminal | narrow 5/20 | 37.9 | >=34.9 / >=37.8 / >=38.4 | >=+.5 | withheld | Three jobs live; lower bound above policy at 6h |
-| Counters/on | terminal | narrow 5/20 | 16.8 | >=19.9 / >=22.0 / >=22.4 | >=+5.6 | withheld | Three jobs live across both modes |
+| Counters/off | terminal | narrow 5/20 | 37.9 | 34.9* / 37.8* / 38.4* | +.5 [-.34,1.34] | .313/.313† | Scheduler-terminal; no significant 6h change |
+| Counters/on | terminal | narrow 5/20 | 16.8 | 19.9* / 22.0* / 22.4* | +5.6 [1.84,9.36] | .0078/.0156† | Significant positive effect within the two-mode Counters family |
 
-**Conclusion:** Stage-2 inference-time MCTS is established for Drone/on and
-FO/off, harmful for terminal-led Block Grouping, modest for Rover, and still
-live for Counters/FO-on.
+`*` Declared-budget means include all ten seeds. OOM/scheduler-timeout
+allocations count unclassified instances as failures rather than disappearing
+from the mean. `†` Holm correction is across the two Counters VH modes; the
+complete cross-domain Stage-2 family correction will be frozen after FO/on.
+
+**Conclusion:** Stage-2 inference-time MCTS is established for Drone/on,
+FO/off and Counters/on; harmful for terminal-led Block Grouping; modest for
+Rover; and still live only for FO/on. Counters/off reaches a slightly higher
+mean than policy at six hours, but the +0.5 difference is not significant.
 
 ## PW70 ten-seed FO/Rover expansion
 
 All 20 expansion allocations are terminal: 16 completed and four ended OOM.
-The only unusable inferential seed is FO/off 2082152039, which has a 7/20 lower
-bound with one unclassified instance. Thus FO/off is n=9; the other cells are
-n=10. Every statistic below is paired; Holm is across the four cells at the
-same cutoff and comparator.
+Every declared-budget seed is retained. FO/off seed 2082152039 contributes
+7/20* after ten classified instances; the ten unclassified instances count as
+failures. A complete-allocation sensitivity analysis excluding that one seed
+remains available (n=9, mean 8.56), but it is not the headline mean. Every
+statistic below is paired; Holm is across the four cells at the same cutoff
+and comparator.
 
 | Cell | n | Policy | PW70 30m / 2h / 6h | PW-policy at 6h [95% CI]; raw/Holm p | PW-fixed 20/70 at 6h [95% CI]; raw/Holm p | Conclusion |
 |---|---:|---:|---:|---|---|---|
-| FO/off | 9 | 4.11 | 8.56 / 8.56 / 8.56 | +4.44 [3.58,5.31]; .004/.012 | +.78 [-.65,2.20]; .328/.984 | Significant policy gain; fixed parity; one OOM-partial seed |
+| FO/off | 10* | 4.20 | 8.40 / 8.40 / 8.40 | +4.20 [3.26,5.14]; .002/.008 | +.60 [-.71,1.91]; .422/1.0 | Significant policy gain; fixed parity; one OOM-partial seed |
 | FO/on | 10 | 3.70 | 7.30 / 7.30 / 7.30 | +3.60 [2.70,4.50]; .002/.008 | +1.60 [.52,2.68]; .023/.094 | Significant over policy; raw gain over fixed |
 | Rover/off | 10 | 4.00 | 4.70 / 4.70 / 4.70 | +.70 [.02,1.38]; .125/.250 | -.30 [-1.37,.77]; .688/1.0 | Fixed-search parity, not significant |
 | Rover/on | 10 | 3.80 | 4.50 / 4.60 / 4.60 | +.80 [-.08,1.68]; .125/.250 | +.20 [-.80,1.20]; .828/1.0 | Fixed-search parity, not significant |
 
-FO/on remains significant versus policy at 30m and 2h as well (Holm p=.008 at
-both); its fixed-search comparison is Holm p=.031 at 30m and .094 at 2h.
+`*` FO/off seed 2082152039 is the 7/20 OOM-partial declared result; all
+unclassified instances count unsuccessful. Excluding it gives the secondary
+complete-allocation estimate 8.56/20 over nine seeds.
+
+FO/off and FO/on are significant versus policy at 30m, 2h and 6h (Holm
+p=.008 at each cutoff). FO/on exceeds fixed search at 30m after Holm correction
+(p=.031), but its 2h/6h fixed-search differences do not survive correction.
 FO/off is unchanged across cutoffs. Rover remains nonsignificant at every
 cutoff. Full cutoff CIs/p-values are in `pw70_ten_seed_statistics_latest.csv`.
 
@@ -111,16 +125,20 @@ It is not a universal replacement for fixed search.
 ### TPP catastrophic seed
 
 The source policy is 9/20. Fixed narrow terminated OOM after 18 classified
-instances at 4/20; this is worse than policy. Fixed normal is >=4/20. PW20 is
-now terminal at 5/20 under 30m and 10/20 under 2h/6h; all ten printed plans are
-VAL-valid, so it recovers one net policy failure. PW70 is >=4/5/7. This is
-one-seed mechanism evidence, not a TPP mean.
+instances at 4/20; this is worse than policy. PW20 is terminal at 5/20 under
+30m and 10/20 under 2h/6h; all ten printed plans are VAL-valid, so it recovers
+one net policy failure. Fixed normal is 4/20 after 13 classified and is now on
+instances 14–16; its rolling three-worker schedule needs about 12 more hours
+to classify all 20 if every remaining instance times out. PW70 is 4/5/7 after
+ten classified; only instances 18–20 remain active, so it should terminate in
+at most about six hours, but earlier worker failures mean it may remain
+partially classified. This is one-seed mechanism evidence, not a TPP mean.
 
 ### Counters exact-snapshot widening
 
 | Seed | Policy | Fixed narrow | PW20 30m / 2h / 6h | PW70 30m / 2h / 6h | Status |
 |---|---:|---:|---:|---:|---|
-| 534933607 | 59 | 23 | 19 / 21 / 21 | >=19 / >=21 / >=22 | PW70 live; neither recovers policy |
+| 534933607 | 59 | 23 | 19 / 21 / 21 | >=19 / >=21 / >=22 | PW70 live at 48/59 classified; neither recovers policy |
 | 923500475 | 59 | 29 | 32 / 41 / 48 | 18 / 20 / 21 | PW20 partially recovers fixed-search loss |
 | 2082152039 | 35 | 18 | 18 / 18 / 18 | 19 / 19 / 19 | Neither recovers policy |
 
@@ -128,9 +146,26 @@ one-seed mechanism evidence, not a TPP mean.
 
 The two independently frozen harder validation replicates are now being scored
 against all 1,130 saved checkpoints (2,260 checkpoint-replicates). At this
-snapshot 1,050 (46.5%) are complete, every lineage has results, and no lineage
-is complete. The work is resumable. No MPrime MCTS should be submitted until
-the two replicates yield stable checkpoint and anchor rankings.
+snapshot 1,359 (60.1%) are complete; every lineage has results and two lineages
+are complete. Tasks 18 and 53 failed within two minutes on
+`ise-cpu-intl-01` with native evaluator exit -4. Their exact resumable
+replacements, array 21128409, are running on other nodes and skip every valid
+result. The original allocations end in roughly 2.2–3.8 hours, so a bounded
+continuation over only remaining checkpoint-replicates will still be needed.
+No MPrime Stage-2 training/MCTS should be submitted until the two replicates
+yield stable checkpoint and anchor rankings.
+
+### Rover interrupted-instance recovery
+
+Twenty-five of 29 previously unclassified opportunities have now been
+classified, and every one reached the declared six-hour per-instance timeout;
+none added a plan. This leaves all existing Rover aggregate scores unchanged.
+The four remaining opportunities are source 20430090 instances 16/17 and
+source 20430103 instances 17/19. Job 21114871 is handling the first pair
+sequentially with one worker; pending task 21107687_7 was narrowed to the
+second pair and will use two independent workers. Two workers are defensible
+because instances run in separate processes with instance-derived fixed seeds
+and share no MCTS tree or statistics; it only parallelizes independent trials.
 
 ## Best demonstrated result by domain
 
@@ -139,12 +174,12 @@ the two replicates yield stable checkpoint and anchor rankings.
 | Delivery | S1 selected policy, off | 19.8 / 19.8 / 19.8 | 19.8 | 20 | 0 / -.2 | S2 preserves but does not improve the best S1 result |
 | TPP | S1 policy | 20 / 20 / 20 | 20 | 20 | 0 / 0 | Perfect; one S2/off seed catastrophically forgets |
 | Zenotravel | S1 and multiple S2 policy cells | 20 / 20 / 20 | 20 | 17 | 0 / +3 | Solved and preserved |
-| MPrime | validation-led S2 policy, provisional | 15.2 / 15.2 / 15.2 | 15.0 | 19 | +.2 / -3.8 | Phase B may change checkpoint selection |
+| MPrime | validation-led S2 policy, provisional | 15.2 / 15.2 / 15.2 | 15.0 | 19 | +.2 / -3.8 | Phase B is 60.1% complete and may change checkpoint selection |
 | Block Grouping | S1 selected policy, off | 16.3 / 16.3 / 16.3 | 16.3 | 17 | 0 / -.7 | Neither S2 nor MCTS improves the best policy |
 | Drone | terminal-led S2 normal MCTS, on | 12.9 / 13.1 / 13.1 | 7.2 | 9 | +5.9 / +4.1 | Best established search result; Holm-significant |
-| FO Counters | S1 PW70/off, n=9 | 8.56 / 8.56 / 8.56 | 4.11 | 6 | +4.45 / +2.56 | Current maximum; one missing complete seed |
+| FO Counters | S1 PW70/off, n=10 declared-budget* | 8.40 / 8.40 / 8.40 | 4.20 | 6 | +4.20 / +2.40 | Current maximum; includes one 7/20 OOM-partial allocation |
 | Rover | S1 fixed normal MCTS/off | 4.8 / 5.0 / 5.0 | 4.0 | 7 | +1.0 / -2.0 | Modest gain, still below paper |
-| Counters | terminal-led S2 narrow/off, live | >=34.9 / >=37.8 / >=38.4 | 21.5 | 17 | >=+16.9 / >=+21.4 | Largest gain, but still a live lower bound |
+| Counters | terminal-led S2 narrow/off* | 34.9 / 37.8 / 38.4 | 21.5 | 17 | +16.9 / +21.4 | Largest result; versus its own S2 policy37.9 the 6h change is only +.5 and nonsignificant |
 
 ## Completed RQs
 
@@ -175,8 +210,9 @@ Only terminal-led Block Grouping is significant after correction.
 ### RQ2/RQ4 — inference-time MCTS and value-head interaction
 
 The complete branch-aware table is above. Current firm claims are: strong
-Drone/on and FO/off gains; terminal-led BG loss; small Rover gains; live
-Counters and FO/on cells. MPrime enters only after Phase B freezes checkpoints.
+Drone/on, FO/off and Counters/on gains; terminal-led BG loss; small Rover
+gains; and one still-live FO/on cell. MPrime enters only after Phase B freezes
+checkpoints.
 
 ## Completed preservation experiments
 
@@ -243,11 +279,16 @@ Counters and FO/on cells. MPrime enters only after Phase B freezes checkpoints.
 - Stage-1 all-cutoff inference: `stage1_policy_mcts_all_cutoff_statistics_latest.csv`.
 - PW70 seed/job/log rows: `mcts_progressive_widening_cross_domain/pw70_ten_seed_results_latest.csv`.
 - PW70 all-cutoff inference: `mcts_progressive_widening_cross_domain/pw70_ten_seed_statistics_latest.csv`.
+- Counters terminal-led Stage-2 ten-seed cutoff rows and direct logs:
+  `counters_terminal_stage2_narrow_seed_results_latest.csv`.
+- Counters terminal-led Stage-2 cutoff CIs/tests:
+  `counters_terminal_stage2_narrow_statistics_latest.csv`.
 - Rover exact recovery scope: `rover_interrupted_mcts_recovery_manifest_20260908.csv`
   and `rover_interrupted_mcts_recovery_followup_manifest_20260908.csv`.
 - Rover follow-up submission/job/log trace:
   `rover_interrupted_mcts_recovery_followup_submission_20260908.csv`.
 - Full lifecycle registry: `experiments.csv` and `experiment_registry.csv`.
+- Best demonstrated domain configurations: `best_configuration_by_domain_latest.csv`.
 
 Aggregate CSVs either carry direct log paths or point through their
 `row_level_provenance`/`results_file` companion to job-, checkpoint-, training-

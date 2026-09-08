@@ -1,2 +1,2 @@
 checkpoint_replicates_total,done_markers,val_summaries,logs_created,lineages_started,lineages_with_results,lineages_complete,lineages_expected,min_done_per_started_lineage,max_done_per_started_lineage,root
-2260,1050,1050,1110,60,60,0,60,10,27,/home/hersco/training_new_domains/2026-09-06/mprime_phase_b
+2260,1359,1359,1417,60,60,2,60,13,35,/home/hersco/training_new_domains/2026-09-06/mprime_phase_b

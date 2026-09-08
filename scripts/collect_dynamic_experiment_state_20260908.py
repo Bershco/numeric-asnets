@@ -42,8 +42,10 @@ def build_specs() -> list[dict[str, str]]:
     # Complete Counters branch-completion family, including jobs that left the
     # queue between snapshots.
     for job_id in (
-        20974537, 20974538, 20974539, 20974540, 20974542,
-        20974543, 20974544, 20974545, 20974546, 20974353, 20974361,
+        20974346, 20974537, 20974538, 20974539, 20974540,
+        20974542, 20974543, 20974544, 20974353, 20974354,
+        20974545, 20974546, 20974359, 20974360, 20974361,
+        20974362, 20974363, 20974364, 20974365, 20974366,
     ):
         add(str(job_id), "Stage-2 MCTS branch completion — Counters")
 

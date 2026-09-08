@@ -40,7 +40,7 @@ if INDEX.exists():
 rows = []
 for path in sorted(TRACKING.rglob("*.csv")):
     rel = path.relative_to(ROOT).as_posix()
-    if path == OUT:
+    if path == OUT or path.name.startswith("result_provenance_audit"):
         continue
     header = read_header(path)
     lowered = [column.lower() for column in header]
