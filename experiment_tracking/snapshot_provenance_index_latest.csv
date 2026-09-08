@@ -1,0 +1,16 @@
+artifact,scope,authoritative_as_of,row_level_source,notes
+status_20260908_latest.md,Complete narrative snapshot,2026-09-08T10:58:35+03:00,All rows below,Current workload live experiments completed RQs held designs and best-domain table
+cluster_workload_latest.csv,Every live Slurm identity,2026-09-08T10:58:35+03:00,squeue://hersco/<job_id>,Exact state CPU RAM elapsed and limit
+cluster_workload_summary_latest.csv,Experiment-level workload rollup,2026-09-08T10:58:35+03:00,cluster_workload_latest.csv,Exact running allocation by experiment
+dynamic_experiment_jobs_latest.csv,Bounded live and recently terminal MCTS results,2026-09-08T10:57:13+03:00,Direct source_evaluation_log and source_completion_ledgers,Includes job state cutoffs classified instances and VAL fields
+mprime_validation_phase_b_progress_latest.csv,MPrime Phase-B rescore progress,2026-09-08T10:57:13+03:00,/home/hersco/training_new_domains/2026-09-06/mprime_phase_b,Counts frozen checkpoint-replicate artifacts
+stage1_policy_mcts_all_cutoff_statistics_latest.csv,Stage1 preferred fixed-search comparison at all cutoffs,2026-09-08,stage1_policy_mcts_seed_cutoffs_latest.csv,Paired CI raw p and Holm p separately at30m 2h and6h
+stage1_policy_mcts_seed_cutoffs_latest.csv,Stage1 matched seed scores,2026-09-08,Direct source_policy_log source_mcts_log and completion ledger,One row per domain VH seed
+stage2_policy_mcts_comparison_by_branch_latest.csv,Stage2 branch-aware policy versus MCTS,2026-09-08,Each row_level_provenance field,Interrupted cells use explicit lower bounds and withhold inference
+mcts_progressive_widening_cross_domain/pw70_ten_seed_statistics_latest.csv,PW70 FO/Rover paired statistics,2026-09-08,mcts_progressive_widening_cross_domain/pw70_ten_seed_results_latest.csv,All cutoffs include CI raw p and Holm p versus policy and fixed search
+mcts_progressive_widening_cross_domain/pw70_ten_seed_results_latest.csv,PW70 FO/Rover matched seeds,2026-09-08,Direct policy fixed and PW log paths,FO/off OOM-partial seed excluded explicitly
+best_configuration_by_domain_latest.csv,Best demonstrated result per domain,2026-09-08,Per-row row_level_provenance,Compares Stage1 policy and paper reference
+rover_interrupted_mcts_recovery_manifest_20260908.csv,Rover exact interruption recovery,2026-09-08,Original evaluation log and completion ledger per lineage,Exactly29 originally unclassified instances
+rover_interrupted_mcts_recovery_followup_manifest_20260908.csv,Rover cleanup-failure follow-up,2026-09-08,Source job20430090 log and checkpoint,Exactly instances16 and17 with one worker
+rover_interrupted_mcts_recovery_followup_submission_20260908.csv,Rover cleanup-failure submission history,2026-09-08,Direct Slurm job ids and stdout paths,Separates zero-compute parser failure from corrected running job
+experiments.csv,Complete experiment registry,2026-09-08,Per-row results_file and manifest_path,Mirrored by experiment_registry.csv

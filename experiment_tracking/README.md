@@ -1,10 +1,22 @@
 # Thesis experiment registry
 
-Latest full verified snapshot: `status_20260907_latest.md`. The exact scheduler timestamp is recorded
-in `cluster_workload_20260907.csv`. Machine-readable companions are
+Latest full verified snapshot: `status_20260908_latest.md`. Its exact scheduler
+timestamp is stored in `cluster_workload_latest.csv`. Machine-readable companions are
 `cluster_workload_latest.csv`, `cluster_workload_summary_latest.csv`,
-`live_experiment_status_latest.csv`, and
-`stage2_mcts_branch_coverage_20260907.csv`.
+`dynamic_experiment_jobs_latest.csv`,
+`mprime_validation_phase_b_progress_latest.csv`, and
+`stage2_policy_mcts_comparison_by_branch_latest.csv`.
+
+All-cutoff Stage-1 seed rows and inference are in
+`stage1_policy_mcts_seed_cutoffs_latest.csv` and
+`stage1_policy_mcts_all_cutoff_statistics_latest.csv`. The completed PW70
+FO/Rover expansion is in
+`mcts_progressive_widening_cross_domain/pw70_ten_seed_results_latest.csv` and
+`mcts_progressive_widening_cross_domain/pw70_ten_seed_statistics_latest.csv`.
+These companions contain direct original policy, fixed-search and PW log paths.
+The Rover cleanup submission history, including the zero-compute parser failure
+and corrected exact two-instance job, is in
+`rover_interrupted_mcts_recovery_followup_submission_20260908.csv`.
 
 Use `snapshot_provenance_index_20260907.csv` to move from any current aggregate
 to its seed/job-level companion. `live_mcts_job_provenance_20260905_1314.csv`
@@ -53,7 +65,7 @@ The best currently demonstrated configuration for every domain, with explicit
 paper and Stage-1 comparisons plus row-level provenance, is
 `best_configuration_by_domain_20260907.csv`.
 
-The newest comprehensive operational report is `status_20260907_latest.md`; its
+The newest comprehensive operational report is `status_20260908_latest.md`; its
 exact resource roll-up is `cluster_workload_summary_latest.csv`. Earlier
 08:26--08:52 snapshots are retained as historical queue observations, while
 `live_experiment_status.csv` retains the longer timestamped status history.
