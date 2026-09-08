@@ -493,6 +493,12 @@ class SupervisedTrainer(BaseTrainer):
             mode=policy_anchor_kl_mode,
             coefficient=policy_anchor_kl_coeff,
             target=policy_anchor_kl_target,
+            # The adaptive arm may strengthen protection and later relax back
+            # to the validated constant baseline, but never below it.
+            min_coefficient=(
+                policy_anchor_kl_coeff
+                if policy_anchor_kl_mode == "adaptive_target" else 1e-6
+            ),
         )
         persisted_trainer_state = load_trainer_state(resume_from)
         self.policy_anchor_kl_controller.restore(
@@ -821,6 +827,11 @@ class SupervisedTrainer(BaseTrainer):
                     "train/policy_anchor_kl_controller_adjustments",
                     train_stats["policy_anchor_kl_controller_adjustments"],
                 )
+                if self.policy_anchor_kl_controller.target is not None:
+                    tf_and_log(
+                        "train/policy_anchor_kl_target",
+                        self.policy_anchor_kl_controller.target,
+                    )
                 tf_and_log("train/reg_loss", train_stats["reg_loss"])
                 tf_and_log("grad/global_norm_unclipped", train_stats["grad_norm"])
                 tf_and_log("grad/global_norm_clipped", train_stats["clipped_grad_norm"])
@@ -1174,6 +1185,15 @@ class SupervisedTrainer(BaseTrainer):
             post_update_anchor_kl)
         self.policy_anchor_kl_coeff = \
             self.policy_anchor_kl_controller.coefficient
+        if controller_record["adjusted"]:
+            print(
+                "[POLICY ANCHOR ADAPT] "
+                f"measured_kl={post_update_anchor_kl:.9g}; "
+                f"target={self.policy_anchor_kl_controller.target:.9g}; "
+                f"action={controller_record['action']}; "
+                f"coeff={anchor_coeff_before:.9g}->"
+                f"{self.policy_anchor_kl_coeff:.9g}"
+            )
 
         return {
             "total_loss": float(total_loss.numpy()),

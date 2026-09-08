@@ -24,6 +24,17 @@ updates the coefficient after each of the 60 replay optimizer steps, logs the
 pre/post coefficient and realized KL, and persists the complete controller
 state in every checkpoint. This within-epoch feedback is necessary because the
 observed TPP collapse is already present at the first saved Stage-2 epoch.
+The coefficient is never allowed below the validated constant baseline of 3;
+the adaptive arm may strengthen protection and relax back to 3, but cannot
+silently become a weaker-anchor treatment.
+
+The target is frozen at **0.1143**, the stable control's first Stage-2 epoch
+mean anchor KL (`0.11429792096217474`) from constant job `20553944`. This uses
+training diagnostics from the predeclared stable control, not the catastrophic
+seed's test outcome. With the PPO tolerance of 1.5, the upper adjustment
+threshold is 0.17145. The bad constant run's first-epoch KL was 0.17864, so it
+would have crossed that predeclared threshold; the new run tests whether
+within-epoch feedback prevents the coverage collapse.
 
 This replaces the informal `ANCHOR-SCHEDULE` idea. The experiment is not
 premised on an invented "strong first, then decay to the selected constant"
