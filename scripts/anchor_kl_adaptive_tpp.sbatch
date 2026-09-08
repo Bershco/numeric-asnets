@@ -12,7 +12,8 @@ set -euo pipefail
 : "${ANCHOR_TEACHER:?missing ANCHOR_TEACHER}"
 : "${ANCHOR_TARGET:?missing ANCHOR_TARGET}"
 
-REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context
+REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-anchor-kl
+PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
 
 echo "[ANCHOR-KL-CONTROL] commit=$(git -C "$REPO" rev-parse HEAD)"
 echo "[ANCHOR-KL-CONTROL] seed=$ANCHOR_SEED source=$ANCHOR_SOURCE_CHECKPOINT"
@@ -25,7 +26,7 @@ apptainer exec \
   /bin/bash -lc "
     set -euo pipefail
     cd '$REPO/asnets'
-    source '$REPO/venv-asnets/bin/activate'
+    source '$PRODUCTION_REPO/venv-asnets/bin/activate'
     export PYTHONPATH='$REPO':\${PYTHONPATH:-}
     ./run_experiment \
       experiments_numeric.architecture_2.tpp_mcts \
