@@ -267,6 +267,19 @@ def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
 
 def main() -> None:
     data = collect(build_specs())
+    workload = read_csv(TRACKING / "cluster_workload_latest.csv")
+    active_mprime = [
+        row["job_id"] for row in workload
+        if row.get("experiment") == "MPrime validation adequacy Phase B full rescore"
+    ]
+    data["mprime"].update({
+        "active_job_ids": ";".join(active_mprime),
+        "source_scheduler_csv": "experiment_tracking/cluster_workload_latest.csv",
+        "source_log_glob": (
+            "/home/hersco/training_new_domains/2026-09-06/mprime_phase_b/"
+            "rescore_%A_%a.log"
+        ),
+    })
     jobs = data["jobs"]
     write_csv(TRACKING / "dynamic_experiment_jobs_latest.csv", jobs)
     write_csv(TRACKING / "mprime_validation_phase_b_progress_latest.csv", [data["mprime"]])

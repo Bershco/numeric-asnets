@@ -1,362 +1,314 @@
-# Complete experiment snapshot — 2026-09-07T18:35:16+03:00
+# Complete experiment snapshot — 2026-09-08T23:39:41+03:00
 
-This snapshot incorporates a fresh expanded-array Slurm query.  The artificial
-MPrime Phase-B `%12` array throttle is removed: direct array 21090161 has all
-60 tasks eligible, with 13 running and 47 ordinary Priority-pending.  The
-test-order/interruption audit is documented separately in
-`domain_test_order_and_mcts_interruption_audit_20260907.md`.
+This report joins a fresh Slurm query with bounded reads of every live MCTS log,
+the MPrime Phase-B result tree, and the authoritative static result ledgers.
+`>=` denotes a conservative lower bound from an active or interrupted run.
+Policy-only scores are invariant across the 30-minute/2-hour/6-hour MCTS cutoffs.
 
 ## Current workload
 
 | State | Jobs | CPUs | Requested RAM |
 |---|---:|---:|---:|
-| Running | 25 | 126 | 1,800 GiB |
-| Pending | 47 | 141 | 940 GiB |
-| Held in Slurm | 0 | 0 | 0 GiB |
+| Running | 59 | 244 | 1,680 GiB |
+| Ordinary pending | 0 | 0 | 0 GiB |
+| Slurm-held | 0 | 0 | 0 GiB |
 
-| Live experiment | Running | Pending | Running CPU / RAM | Current position | Timing |
-|---|---:|---:|---:|---|---|
-| MPrime Phase-B validation adequacy | 13 | 47 | 52 CPUs / 260 GiB | Direct 60-task array, no concurrency cap; first lineage has emitted a validated checkpoint | 15–33m elapsed; no reliable full-lineage estimate yet; 24h hard cap |
-| TPP catastrophic-seed MCTS | 4 | 0 | 24 CPUs / 480 GiB | Fixed normal, fixed narrow, PW20 and PW70 on the exact 9/20 checkpoint | 2h28m elapsed; 72h hard cap |
-| Stage-2 MCTS: Counters terminal-led | 5 | 0 | 30 CPUs / 600 GiB | Fifteen scheduler-terminal; five live | ~53.5h elapsed; ~18.5h hard remaining |
-| Stage-2 MCTS: FO terminal-led tail | 1 | 0 | 6 CPUs / 120 GiB | Nineteen scheduler-terminal; final seed live | ~30h elapsed; ~42h hard remaining |
-| PW70 two-seed correction / Rover tail | 2 | 0 | 12 CPUs / 240 GiB | Counters S1/off correction plus Rover/on ten-seed tail | ~29–30h elapsed; ~42–43h hard remaining |
-| Counters exact-snapshot PW70 recovery | 1 | 0 | 6 CPUs / 120 GiB | Two PW70 arms terminal; last arm at 22/59 | ≤37h42m |
+| Live experiment | Running | CPU / RAM | Current evidence | Remaining bound / expectation |
+|---|---:|---:|---|---|
+| MPrime validation adequacy Phase B | 54 | 216 / 1,080 GiB | 1,547/2,260 checkpoint-replicates complete (68.5%); all 60 lineages represented, 6 complete | Continuation `21143254` is live across every still-incomplete inactive index; expect roughly 8–24h because work per lineage varies |
+| TPP catastrophic-seed MCTS | 1 | 6 / 120 GiB | fixed-normal 4/20 after 19 classified; policy 9/20. PW70 is terminal OOM at 7/20 after 12 classified | One fixed-normal instance remains; <=6h from the latest classification wave |
+| FO terminal-led Stage-2 MCTS tail | 1 | 6 / 120 GiB | 5/20 after 19 durably classified | One instance remains; <=6h |
+| PW70 correction tail | 1 | 6 / 120 GiB | Counters S1/off seed 2011206605: >=21/59; 47 classified | 12 instances remain but only ~13.8h allocation remains; likely scheduler-limited |
+| Counters exact-snapshot PW70 recovery | 1 | 6 / 120 GiB | seed 534933607: >=22/59; 51 classified | Eight instances remain but only ~6.4h allocation remains; likely scheduler-limited |
+| Rover exact-instance recovery | 1 | 4 / 160 GiB | 27/29 classified; all 27 are six-hour timeouts; exact final two instances are active | Both run independently; <=6h from 22:47 IDT |
 
-The MPrime throttle removal is the only new compute release in this pass.  The
-47 pending tasks are scheduler-priority pending rather than dependency-held or
-artificially throttled.
+Two exact MPrime replacements remain active as array `21128409` (tasks 18 and
+53), alongside original tasks 2 and 52. The other 56 indices were safely
+continued as array `21143254`; the wrapper skips every existing done marker,
+so completed checkpoint-replicates are not repeated. All continuation tasks
+were admitted immediately; five have already exited cleanly after finding their
+lineages complete or exhausting their remaining local scope.
 
-## Changes since 6 September
+## Stage-1 validation-selected policy versus preferred fixed MCTS
 
-- One Counters Stage-2/on job ended OOM after 31/59 successful, VAL-valid
-  plans and 49 classified instances. Its evidence remains a lower bound.
-- FO validation-led/on is no longer live. Its final job timed out after 6/20;
-  five successes were within 30 minutes and all six within two hours.
-- MPrime's repaired preflight 21084274 scored 21/30 with all 21 plans VAL-valid,
-  then reached its two-hour limit seconds after printing `VALIDATED` but before
-  its done marker.  The dependent throttled array was therefore cancelled
-  without starting.  It is replaced by direct, unthrottled array 21090161;
-  13/60 tasks are running and 47 are ordinary Priority-pending.
-- The TPP/off 9/20 outlier now has four nonredundant diagnostic arms running:
-  fixed 20/70, fixed 5/20, PW20 and PW70.
-- The 20-job PW70 FO/Rover expansion is now 37/40 scheduler-terminal with three
-  jobs live. FO/off seed 2082152039 ended OOM at 7/20 after ten classified
-  instances, so its completed inferential subset remains n=9 rather than
-  treating unknown instances as ordinary failures.
-- The 57-job Stage-2 branch-completion campaign advanced to 49
-  scheduler-terminal identities and eight live identities. Scheduler-terminal
-  does not automatically mean a complete scientific run: several FO/Counters
-  jobs ended with timeout, OOM or application failure after producing partial
-  valid evidence.
-- The older failed MPrime preflight and dependency-cancelled array remain in
-  provenance only; no expensive scoring was lost.
+Each cutoff cell is `MCTS mean; paired change [95% CI]; raw/Holm p`. Holm is
+computed separately across the ten domain/VH cells at each cutoff.
 
-## Live experiment results
+| Domain/VH | Search | Policy | 30 minutes | 2 hours | 6 hours | Conclusion |
+|---|---|---:|---|---|---|---|
+| BG/off | narrow 5/20 | 16.3 | 11.6; -4.7 [-5.53,-3.87]; .002/.020 | 14.8; -1.5 [-2.68,-.32]; .035/.188 | 15.4; -.9 [-1.88,.08]; .109/.438 | Short budgets harm; no 6h gain |
+| BG/on | narrow 5/20 | 15.9 | 12.0; -3.9 [-4.94,-2.86]; .002/.020 | 14.0; -1.9 [-2.94,-.86]; .010/.068 | 16.2; +.3 [-.29,.89]; .453/.906 | 6h neutral |
+| Drone/off | normal 20/70 | 5.9 | 6.9; +1.0 [.05,1.95]; .074/.313 | 6.9; +1.0 [.05,1.95]; .074/.250 | 6.9; +1.0 [.05,1.95]; .074/.375 | Positive, not corrected-significant |
+| Drone/on | normal 20/70 | 5.1 | 10.0; +4.9 [3.07,6.73]; .002/.020 | 10.4; +5.3 [3.42,7.18]; .002/.020 | 10.4; +5.3 [3.42,7.18]; .002/.020 | Significant at every cutoff |
+| FO/off | normal 20/70 | 4.2 | 7.5; +3.3 [2.04,4.56]; .004/.027 | 7.8; +3.6 [2.20,5.00]; .004/.035 | 7.8; +3.6 [2.20,5.00]; .004/.035 | Significant gain |
+| FO/on | normal 20/70 | 3.7 | 5.3; +1.6 [.83,2.37]; .004/.027 | 5.7; +2.0 [1.05,2.95]; .004/.035 | 5.7; +2.0 [1.05,2.95]; .004/.035 | Significant gain |
+| Rover/off | normal 20/70 | 4.0 | 4.8; +.8 [.06,1.54]; .063/.313 | 5.0; +1.0 [.25,1.75]; .031/.188 | 5.0; +1.0 [.25,1.75]; .031/.219 | Positive, not Holm-significant |
+| Rover/on | normal 20/70 | 3.8 | 4.4; +.6 [-.00,1.20]; .125/.313 | 4.4; +.6 [-.00,1.20]; .125/.250 | 4.4; +.6 [-.00,1.20]; .125/.438 | Neutral-positive |
+| Counters/off | narrow 5/20 | 32.5 | 24.9; -7.6 [-18.52,3.32]; .203/.406 | 25.6; -6.9 [-17.95,4.15]; .250/.500 | 25.7; -6.8 [-17.73,4.13]; .250/.750 | Negative and highly variable |
+| Counters/on | narrow 5/20 | 18.6 | 20.3; +1.7 [-8.94,12.34]; .787/.787 | 22.1; +3.5 [-5.56,12.56]; .453/.500 | 22.5; +3.9 [-4.33,12.13]; .328/.750 | Positive but highly variable |
 
-### Stage-1 validation-selected policy versus MCTS — complete
+**Conclusion:** fixed-search MCTS is robustly useful for Drone/on and both FO
+cells. It is not a safe blanket replacement: Block Grouping needs the full
+budget merely to reach parity and Counters/off regresses badly.
 
-All rows use ten matched seeds. The inferential family is the declared six-hour
-result; 30-minute and two-hour columns are deterministic reclassifications.
+## Stage-2 policy versus fixed MCTS
 
-| Domain/VH | Search | Policy | MCTS 30m / 2h / 6h | 6h change [95% CI] | Raw / Holm p | Conclusion |
-|---|---|---:|---:|---|---|---|
-| BG/off | Narrow 5/20 | 16.3 | 11.6 / 14.8 / 15.4 | −0.9 [−1.88, 0.08] | .109 / .547 | No reliable gain |
-| BG/on | Narrow 5/20 | 15.9 | 12.0 / 14.0 / 16.2 | +0.3 [−0.29, 0.89] | .453 / .750 | Neutral |
-| Drone/off | Normal 20/70 | 5.9 | 6.9 / 6.9 / 6.9 | +1.0 [0.05, 1.95] | .074 / .445 | Positive, not Holm-significant |
-| Drone/on | Normal 20/70 | 5.1 | 10.0 / 10.4 / 10.4 | +5.3 [3.42, 7.18] | .002 / .020 | **Large significant gain** |
-| FO/off | Normal 20/70 | 4.2 | 7.5 / 7.8 / 7.8 | +3.6 [2.20, 5.00] | .004 / .035 | **Significant gain** |
-| FO/on | Normal 20/70 | 3.7 | 5.3 / 5.7 / 5.7 | +2.0 [1.05, 2.95] | .004 / .035 | **Significant gain** |
-| Rover/off | Normal 20/70 | 4.0 | 4.8 / 5.0 / 5.0 | +1.0 [0.25, 1.75] | .031 / .219 | Small non-significant gain |
-| Rover/on | Normal 20/70 | 3.8 | 4.4 / 4.4 / 4.4 | +0.6 [−0.00, 1.20] | .125 / .547 | Neutral-positive |
-| Counters/off | Narrow 5/20 | 32.5 | 24.9 / 25.6 / 25.7 | −6.8 [−17.73, 4.13] | .250 / .750 | Negative mean; severe seed regressions |
-| Counters/on | Narrow 5/20 | 18.6 | 20.3 / 22.1 / 22.5 | +3.9 [−4.33, 12.13] | .328 / .750 | Positive but highly variable |
+The inferential endpoint is the declared six-hour result; lower cutoffs are
+deterministic recensorings. Full cutoff-specific seed rows and provenance are
+retained in the companion ledgers; interrupted lower-bound rows have no p-value.
 
-Visible conclusion: Stage-1 inference-time MCTS is convincingly beneficial for
-Drone/on and both FO Counters modes, neutral for Rover, and unsafe as a blanket
-replacement in Block Grouping/Counters.
+The 8 September rebuild corrected an older Block Grouping reporting defect:
+its 30-minute/2-hour columns had been derived from whole-job progress rather
+than each instance's elapsed time. The table below now uses the 180-row matched
+seed ledger; valid outcomes reconstructed from interrupted allocations are
+retained, while unclassified instances count as failures.
 
-### Stage-2 policy versus MCTS — every domain and both branches
+| Domain/VH | Branch | Search | Policy | MCTS 30m / 2h / 6h | 6h change [95% CI] | Raw/Holm p | Status/conclusion |
+|---|---|---|---:|---:|---|---|---|
+| BG/off | validation | narrow 5/20 | 16.0 | 11.4 / 15.0 / 15.7 | -.3 [-.89,.29] | .500 / family pending | Neutral at 6h |
+| BG/on | validation | narrow 5/20 | 12.8 | 10.1 / 10.6 / 12.6 | -.2 [-1.08,.68] | .813 / family pending | Neutral at 6h |
+| BG/off | terminal | narrow 5/20 | 16.3 | 11.1 / 13.1 / 14.5 | -1.8 [-3.22,-.38] | .031/.375 | Negative at every cutoff |
+| BG/on | terminal | narrow 5/20 | 11.6 | 9.2 / 9.5 / 10.5 | -1.1 [-2.08,-.12] | .063/.688 | Negative mean |
+| Drone/off | validation | normal 20/70 | 6.7 | 7.5 / 7.7 / 7.7 | +1.0 [-.43,2.43] | .195/.391 | Positive, nonsignificant |
+| Drone/on | validation | normal 20/70 | 5.0 | 10.9 / 11.2 / 11.2 | +6.2 [4.33,8.07] | .002/.020 | Significant gain |
+| Drone/off | terminal | normal 20/70 | 7.8 | 9.7 / 9.8 / 9.9 | +2.1 [.65,3.55] | .020/.156 | Positive, not Holm-significant |
+| Drone/on | terminal | normal 20/70 | 6.5 | 12.9 / 13.1 / 13.1 | +6.6 [5.47,7.73] | .002/.020 | Significant gain |
+| FO/off | validation | normal 20/70 | 2.9 | >=6.0 / >=6.0 / >=6.0 | >=+3.1 | withheld | Two interrupted partial seeds |
+| FO/on | validation | normal 20/70 | 3.1 | >=5.3 / >=5.4 / >=5.4 | >=+2.3 | withheld | Positive lower bound |
+| FO/off | terminal | normal 20/70 | 2.8 | 5.3 / 5.3 / 5.3 | +2.5 [1.73,3.27] | .002/.010 | Significant gain |
+| FO/on | terminal | normal 20/70 | 3.8 | >=4.5 / >=4.5 / >=4.5 | >=+.7 | withheld | One restarted tail remains; five persisted successes, instances 6–8 active |
+| Rover/off | validation | normal 20/70 | 4.0 | 4.5 / 4.5 / 4.5 | +.5 [-.01,1.01] | .125 / pending | Small nonsignificant gain |
+| Rover/on | validation | normal 20/70 | 3.9 | 4.4 / 4.5 / 4.5 | +.6 [-.09,1.29] | .156 / pending | Small nonsignificant gain |
+| Rover/off | terminal | normal 20/70 | 3.8 | 4.2 / 4.2 / 4.2 | +.4 [.03,.77] | .125/.375 | Small nonsignificant gain |
+| Rover/on | terminal | normal 20/70 | 4.0 | 4.5 / 4.5 / 4.5 | +.5 [.12,.88] | .063/.313 | Small nonsignificant gain |
+| Counters/off | validation | narrow 5/20 | 36.9 | 34.9 / 36.7 / 36.7 | -.2 [-2.87,2.47] | .969/.969 | Neutral |
+| Counters/on | validation | narrow 5/20 | 21.8 | 22.6 / 26.4 / 27.1 | +5.3 [-.70,11.30] | .082/.328 | Positive, variable |
+| Counters/off | terminal | narrow 5/20 | 37.9 | 34.9* / 37.8* / 38.4* | +.5 [-.34,1.34] | .313/.313† | Scheduler-terminal; no significant 6h change |
+| Counters/on | terminal | narrow 5/20 | 16.8 | 19.9* / 22.0* / 22.4* | +5.6 [1.84,9.36] | .0078/.0156† | Significant positive effect within the two-mode Counters family |
 
-The MCTS columns are recorded 30-minute, 2-hour and 6-hour per-instance
-cutoffs. `≥` marks a live or partially interrupted lower bound. Confidence
-intervals and p-values are shown only when all ten matched fixed-budget scores
-are scientifically usable.
+`*` Declared-budget means include all ten seeds. OOM/scheduler-timeout
+allocations count unclassified instances as failures rather than disappearing
+from the mean. `†` Holm correction is across the two Counters VH modes; the
+complete cross-domain Stage-2 family correction will be frozen after FO/on.
 
-| Domain/VH | Branch | Search | Terminal/live | Policy | MCTS 30m / 2h / 6h | 6h change [95% CI] | Raw / Holm p | Conclusion |
-|---|---|---|---:|---:|---:|---|---|---|
-| BG/off | Validation | Narrow 5/20 | 10/0 | 16.0 | 11.4 / 15.0 / 15.7 | −0.3 [−0.89, 0.29] | .500 / family pending | Neutral at 6h; 30m too short |
-| BG/on | Validation | Narrow 5/20 | 10/0 | 12.8 | 10.1 / 10.6 / 12.6 | −0.2 [−1.08, 0.68] | .813 / family pending | Neutral at 6h |
-| BG/off | Terminal | Narrow 5/20 | 10/0 | 16.3 | 4.4 / 12.3 / 14.5 | −1.8 [−3.22, −0.38] | .031 / .219 | Negative; not Holm-significant |
-| BG/on | Terminal | Narrow 5/20 | 10/0 | 11.6 | 4.4 / 8.7 / 9.4 | −2.2 [−4.60, 0.20] | .031 / .219 | Negative mean |
-| Drone/off | Validation | Normal 20/70 | 10/0 | 6.7 | 7.5 / 7.7 / 7.7 | +1.0 [−0.43, 2.43] | .195 / .391 | Positive; not significant |
-| Drone/on | Validation | Normal 20/70 | 10/0 | 5.0 | 10.9 / 11.2 / 11.2 | +6.2 [4.33, 8.07] | .002 / .020 | **Large significant gain** |
-| Drone/off | Terminal | Normal 20/70 | 10/0 | 7.8 | 9.7 / 9.8 / 9.9 | +2.1 [0.65, 3.55] | .020 / .156 | Positive; not Holm-significant |
-| Drone/on | Terminal | Normal 20/70 | 10/0 | 6.5 | 12.9 / 13.1 / 13.1 | +6.6 [5.47, 7.73] | .002 / .020 | **Large significant gain** |
-| FO/off | Validation | Normal 20/70 | 10/0 | 2.9 | ≥6.0 / ≥6.0 / ≥6.0 | ≥+3.1 | Withheld | Positive lower bound; two failed partial runs prevent final inference |
-| FO/on | Validation | Normal 20/70 | 10/0, one timeout-partial | 3.1 | ≥5.3 / ≥5.4 / ≥5.4 | ≥+2.3 | Withheld | Positive lower bound; final seed ended 6/20 |
-| FO/off | Terminal | Normal 20/70 | 10/0 | 2.8 | 5.3 / 5.3 / 5.3 | +2.5 [1.73, 3.27] | .002 / .010 | **Strong significant gain** |
-| FO/on | Terminal | Normal 20/70 | 9/1 | 3.8 | ≥4.4 / ≥4.4 / ≥4.4 | ≥+0.6 | Withheld | Positive lower bound; one live seed |
-| Rover/off | Validation | Normal 20/70 | 10/0 | 4.0 | 4.5 / 4.5 / 4.5 | +0.5 [−0.01, 1.01] | .125 / family pending | Small non-significant gain |
-| Rover/on | Validation | Normal 20/70 | 10/0 | 3.9 | 4.4 / 4.5 / 4.5 | +0.6 [−0.09, 1.29] | .156 / family pending | Small non-significant gain |
-| Rover/off | Terminal | Normal 20/70 | 10/0 | 3.8 | 4.2 / 4.2 / 4.2 | +0.4 [0.03, 0.77] | .125 / .375 | Small non-significant gain |
-| Rover/on | Terminal | Normal 20/70 | 10/0 | 4.0 | 4.5 / 4.5 / 4.5 | +0.5 [0.12, 0.88] | .063 / .313 | Small non-significant gain |
-| Counters/off | Validation | Narrow 5/20 | 10/0 | 36.9 | 34.9 / 36.7 / 36.7 | −0.2 [−2.87, 2.47] | .969 / .969 | No meaningful change |
-| Counters/on | Validation | Narrow 5/20 | 10/0 | 21.8 | 22.6 / 26.4 / 27.1 | +5.3 [−0.70, 11.30] | .082 / .328 | Positive but variable |
-| Counters/off | Terminal | Narrow 5/20 | 6/4 | 37.9 | ≥34.9 / ≥37.8 / ≥38.4 | ≥+0.5 | Withheld | Current lower bound slightly exceeds policy |
-| Counters/on | Terminal | Narrow 5/20 | 8/2 | 16.8 | ≥19.9 / ≥22.0 / ≥22.4 | ≥+5.6 | Withheld | Encouraging lower bound; newest OOM seed contributed 31/59 |
+**Conclusion:** Stage-2 inference-time MCTS is established for Drone/on,
+FO/off and Counters/on; harmful for terminal-led Block Grouping; modest for
+Rover; and still live only for FO/on. Counters/off reaches a slightly higher
+mean than policy at six hours, but the +0.5 difference is not significant.
 
-Visible conclusion: inference-time MCTS is already convincingly helpful for
-Drone/VH-on and FO/off, while Block Grouping terminal-led search is harmful at
-the declared narrow budget. Counters terminal-led looks promising but remains
-live. FO validation-led and terminal/on need interruption-aware completion
-before final inferential claims.
+## PW70 ten-seed FO/Rover expansion
 
-### PW70 ten-seed FO/Rover extension — provisional n=9 per cell
+All 20 expansion allocations are terminal: 16 completed and four ended OOM.
+Every declared-budget seed is retained. FO/off seed 2082152039 contributes
+7/20* after ten classified instances; the ten unclassified instances count as
+failures. A complete-allocation sensitivity analysis excluding that one seed
+remains available (n=9, mean 8.56), but it is not the headline mean. Every
+statistic below is paired; Holm is across the four cells at the same cutoff
+and comparator.
 
-These rows use only the nine terminal matched seeds in each cell. They are not
-final ten-seed claims and can be affected by the identity of the remaining
-straggler. The p-values are unadjusted exact paired sign-flip tests.
-
-| Cell | Policy | Fixed normal 20/70 | PW70 30m / 2h / 6h | PW−policy [95% CI]; p | PW−fixed [95% CI]; p | Current conclusion |
+| Cell | n | Policy | PW70 30m / 2h / 6h | PW-policy at 6h [95% CI]; raw/Holm p | PW-fixed 20/70 at 6h [95% CI]; raw/Holm p | Conclusion |
 |---|---:|---:|---:|---|---|---|
-| FO/off | 4.11 | 7.78 | 8.56 / 8.56 / 8.56 | +4.44 [3.58, 5.31]; .0039 | +0.78 [−0.65, 2.20]; .328 | Strong policy gain; indistinguishable from fixed search |
-| FO/on | 3.56 | 5.56 | 7.44 / 7.44 / 7.44 | +3.89 [3.18, 4.60]; .0039 | +1.89 [0.91, 2.86]; .0156 | Strong provisional gain over both comparators |
-| Rover/off | 4.00 | 5.11 | 4.78 / 4.78 / 4.78 | +0.78 [0.03, 1.52]; .125 | −0.33 [−1.55, 0.88]; .688 | Improves mean over policy; no fixed-search advantage |
-| Rover/on | 3.78 | 4.44 | 4.56 / 4.67 / 4.67 | +0.89 [−0.09, 1.86]; .125 | +0.22 [−0.92, 1.36]; .828 | Rough fixed-search parity; modest policy gain |
+| FO/off | 10* | 4.20 | 8.40 / 8.40 / 8.40 | +4.20 [3.26,5.14]; .002/.008 | +.60 [-.71,1.91]; .422/1.0 | Significant policy gain; fixed parity; one OOM-partial seed |
+| FO/on | 10 | 3.70 | 7.30 / 7.30 / 7.30 | +3.60 [2.70,4.50]; .002/.008 | +1.60 [.52,2.68]; .023/.094 | Significant over policy; raw gain over fixed |
+| Rover/off | 10 | 4.00 | 4.70 / 4.70 / 4.70 | +.70 [.02,1.38]; .125/.250 | -.30 [-1.37,.77]; .688/1.0 | Fixed-search parity, not significant |
+| Rover/on | 10 | 3.80 | 4.50 / 4.60 / 4.60 | +.80 [-.08,1.68]; .125/.250 | +.20 [-.80,1.20]; .828/1.0 | Fixed-search parity, not significant |
 
-Visible conclusion: FO Counters is the clearly promising PW70 domain. Rover is
-at best a parity/efficiency story. Three final seeds are live; the fourth,
-FO/off seed 2082152039, ended OOM with only ten instances classified. Therefore
-the final ten-seed table and Holm family still cannot be frozen.
+`*` FO/off seed 2082152039 is the 7/20 OOM-partial declared result; all
+unclassified instances count unsuccessful. Excluding it gives the secondary
+complete-allocation estimate 8.56/20 over nine seeds.
 
-### PW20 and PW70 interpretation
+FO/off and FO/on are significant versus policy at 30m, 2h and 6h (Holm
+p=.008 at each cutoff). FO/on exceeds fixed search at 30m after Holm correction
+(p=.031), but its 2h/6h fixed-search differences do not survive correction.
+FO/off is unchanged across cutoffs. Rover remains nonsignificant at every
+cutoff. Full cutoff CIs/p-values are in `pw70_ten_seed_statistics_latest.csv`.
 
-- Drone's completed Kmin-3 extension used eight matched seeds across both VH
-  modes. Mean policy coverage was 7.0/20, fixed top-20 MCTS was 10.5/20, and
-  PW was 9.5/20. Conditional on success, fixed-search runtime had median 130 s,
-  p90 893 s and maximum 6,127 s; PW had median 94 s, p90 318 s and maximum
-  594 s. At a post-hoc 30-minute cutoff fixed scored 10.25 and PW 9.5.
-  Therefore PW delivered a substantial tail-runtime and memory reduction and
-  improved over policy, but failed the primary non-inferiority target against
-  fixed search.
-- The original mixed cross-domain screen used PW20 for Block Grouping/Counters
-  and PW70 for FO/Rover. Those arms remain separate.
-- The corrected two-seed PW70 screen is complete except Counters S1/off seed
-  2011206605, currently at ≥21/59.
-- In the five-seed Counters Stage-2 screen, PW70 matched fixed narrow at 6h for
-  VH-off (36.4/59) but remained below the policy mean (37.8/59). VH-on PW70 was
-  below both policy and fixed narrow means. Counters was therefore not expanded
-  to ten as part of the FO/Rover confirmation.
-- Post-hoc 30m/2h cutoffs are defensible for coverage achievable within those
-  budgets. A fresh hard-cap campaign is only needed to validate whole-job
-  runtime/resource behavior or where interrupted logs make the post-hoc record
-  incomplete.
+**Conclusion:** PW70 is a strong FO Counters result and a Rover parity result.
+It is not a universal replacement for fixed search.
 
-### Counters exact-snapshot divergence recovery
+## Other live diagnostics
 
-| Seed | Policy | Fixed narrow 5/20 | PW20 30m / 2h / 6h | PW70 30m / 2h / 6h | Conclusion |
+### TPP catastrophic seed
+
+The source policy is 9/20. Fixed narrow terminated OOM after 18 classified
+instances at 4/20; this is worse than policy. PW20 is terminal at 5/20 under
+30m and 10/20 under 2h/6h; all ten printed plans are VAL-valid, so it recovers
+one net policy failure. Fixed normal is still 4/20 but now has 19 classified,
+leaving one active instance and at most six hours. PW70 terminated OOM at
+4/5/7 under 30m/2h/6h after 12 classified; the eight unclassified instances
+count unsuccessful in this declared allocation. This is one-seed mechanism
+evidence, not a TPP population mean.
+
+### Counters exact-snapshot widening
+
+| Seed | Policy | Fixed narrow | PW20 30m / 2h / 6h | PW70 30m / 2h / 6h | Status |
 |---|---:|---:|---:|---:|---|
-| 534933607 | 59 | 23 | 19 / 21 / 21 | ≥19 / ≥21 / ≥22 | Neither arm has recovered policy; PW70 live |
-| 923500475 | 59 | 29 | 32 / 41 / 48 | 18 / 20 / 21 | PW20 strongly recovers fixed-search losses; PW70 does not |
-| 2082152039 | 35 | 18 | 18 / 18 / 18 | 19 / 19 / 19 | Neither arm recovers policy |
+| 534933607 | 59 | 23 | 19 / 21 / 21 | >=19 / >=21 / >=22 | PW70 live at 50/59 classified; neither recovers policy |
+| 923500475 | 59 | 29 | 32 / 41 / 48 | 18 / 20 / 21 | PW20 partially recovers fixed-search loss |
+| 2082152039 | 35 | 18 | 18 / 18 / 18 | 19 / 19 / 19 | Neither recovers policy |
 
-Visible conclusion: widening is not a general guarantee against the severe
-Counters policy-to-MCTS regressions. PW20 produced one strong recovery, whereas
-PW70 did not; the last PW70 arm remains live.
+### MPrime Phase B
 
-### TPP catastrophic-seed MCTS — newly live
+The two independently frozen harder validation replicates are now being scored
+against all 1,130 saved checkpoints (2,260 checkpoint-replicates). At this
+snapshot 1,547 (68.5%) are complete; every lineage has results and six lineages
+are complete. Exact continuation array `21143254` now covers every inactive
+lineage while tasks 2, 18, 52 and 53 continue in their existing allocations.
+It requests 4 CPUs and 20 GiB per task, skips existing results, and all submitted
+tasks were admitted immediately. No MPrime Stage-2 retraining or MCTS should
+be submitted until the two replicates yield stable checkpoint and anchor
+rankings.
 
-This diagnostic is defensible and nonredundant. It asks whether search can
-recover failures from the exact validation-selected Stage-2 checkpoint that
-scored 9/20 while the other nine TPP/off seeds scored 20/20.
+### Rover interrupted-instance recovery
 
-| Arm | Job | Configuration | State | Comparator |
-|---|---:|---|---|---:|
-| Fixed normal | 21084616 | width 20, 70 simulations | Running | Policy 9/20 |
-| Fixed narrow | 21084617 | width 5, 20 simulations | Running | Policy 9/20 |
-| PW20 | 21084618 | Kmin 3, c 0.6, alpha 0.5, 20 simulations | Running | Policy 9/20 |
-| PW70 | 21084619 | Kmin 3, c 0.6, alpha 0.5, 70 simulations | Running | Policy 9/20 |
+Twenty-seven of 29 previously unclassified opportunities have now been
+classified, and every one reached the declared six-hour per-instance timeout;
+none added a plan. This leaves all existing Rover aggregate scores unchanged.
+Job `21114871` classified source 20430090 instances 16/17 as timeouts. Job
+`21107687_7` is now running the exact final source-20430103 instances 17/19 in
+two independent processes; it does not share MCTS state or alter per-instance
+seeds and should finish within six hours.
 
-All four use SAFE-1 and the same checkpoint, seed, VH-off mode, evaluator and
-six-hour per-instance cap. They have passed application startup. This is a
-mechanism diagnostic, not a ten-seed TPP MCTS mean.
+### Adaptive KL-control screen
 
-### MPrime validation adequacy Phase B
+The TPP/off screen reuses the existing constant-anchor evidence and therefore
+needs only two new adaptive jobs: collapsed seed `1972442430` and stable control
+seed `1963100312`. The controller starts at coefficient 3, never drops below 3,
+and doubles/halves protection around target KL `0.1143`; checkpoint continuation
+restores the controller exactly. Five focused controller regression tests pass. The branch contains
+commits `96a6d02d` and `9db17cc8`, but the remote branch still ends at
+`9851ebd1`. Cluster pull, compute-node smoke, and submission are therefore
+blocked only by the required explicit authorization to push those two commits
+to `Bershco/numeric-asnets` on `codex/mcts-safe-context`. Planned jobs request
+6 CPUs, 48 GiB and at most 72 hours each; the current queue has ample room.
 
-Completed successfully:
+## Best demonstrated result by domain
 
-- 240 candidates across two independent pools and three structural tiers.
-- Planner screening and VAL validation completed in jobs 21039224_0–5.
-- Sixty instances were frozen with paths and SHA-256 checksums in
-  `/home/hersco/training_new_domains/2026-09-06/mprime_phase_b/frozen_validation_manifest.csv`.
-
-The obsolete attempt was blocked before scoring:
-
-- Preflight 21040245 failed after 51 seconds.
-- The generated domain module used `VALIDATION_PDDLS = {'phase_b': [...]}`.
-- The wrapper converted that key to `--validation-pddls-phase_b`, but the parser
-  supports only `easy`, `medium`, and `hard` tier names.
-- No checkpoint score was produced. Array 21040246 was dependency-cancelled and
-  no expensive rescore work began.
-
-That repair is now complete. The frozen lists are exposed through the supported
-`hard` validation tier without changing their contents or hashes. Corrected
-preflight 21084274 reached 21/30 with 21/21 VAL-valid plans and printed its
-`VALIDATED` record, but the allocation timed out seconds before writing the
-done marker.  Its dependent array 21084275 consequently never started.  Direct
-replacement array 21090161 contains all 60 lineage tasks with no `%12` cap;
-13 are running and 47 are ordinary Priority-pending at 18:35 IDT. MPrime MCTS
-remains intentionally unsubmitted until this audit freezes defensible
-checkpoints.
-
-## Best currently demonstrated result by domain
-
-Paper values are the reported reference means used in the advisor audit. A
-live lower bound or a nine-seed subset is labelled explicitly; it is not mixed
-with completed ten-seed evidence.
-
-| Domain | Best current result | 30m / 2h / 6h | Matched Stage-1 policy | Paper | Difference vs Stage 1 / paper | Defensible conclusion |
+| Domain | Best current configuration | 30m / 2h / 6h or policy | Matched S1 policy | Paper | Delta vs S1 / paper | Conclusion |
 |---|---|---:|---:|---:|---:|---|
-| Delivery | S1 validation-selected policy, VH-off | 19.8 / 19.8 / 19.8 | 19.8 | 20 | 0.0 / −0.2 | Stage 2 is preserved but does not beat the best S1 policy |
-| TPP | Stage-1 policy | 20 / 20 / 20 | 20 | 20 | 0 / 0 | Perfect S1; S2 is not uniform because one off seed collapsed |
-| Zenotravel | S1 policy and multiple S2 policy cells | 20 / 20 / 20 | 20 | 17 | 0 / +3 | Solved and preserved; exceeds paper reference |
-| MPrime | Validation-led S2 policy | 15.2 / 15.2 / 15.2 | 15.0 | 19 | +0.2 / −3.8 | Provisional; Phase B must repair checkpoint-selection validity |
-| Block Grouping | S1 validation-selected policy, off | 16.3 / 16.3 / 16.3 | 16.3 | 17 | 0 / −0.7 | Neither S2 nor narrow MCTS improves the best policy |
-| Drone | Terminal-led S2 normal MCTS, on | 12.9 / 13.1 / 13.1 | 7.2 | 9 | +5.9 / +4.1 | Best established search success; Holm-significant |
-| FO Counters | S1 PW70/off, provisional n=9 | 8.56 / 8.56 / 8.56 | 4.11 | 6 | +4.45 / +2.56 | Promising current maximum; completed fixed MCTS remains 7.8 |
-| Rover | S1 fixed normal MCTS/off | 4.8 / 5.0 / 5.0 | 4.0 | 7 | +1.0 / −2.0 | Search improves policy modestly but remains below paper |
-| Counters | Terminal-led S2 narrow MCTS/off, live | ≥34.9 / ≥37.8 / ≥38.4 | 21.5 | 17 | ≥+16.9 / ≥+21.4 | Largest current gain, but still a live lower bound |
+| Delivery | S1 selected policy, off | 19.8 / 19.8 / 19.8 | 19.8 | 20 | 0 / -.2 | S2 preserves but does not improve the best S1 result |
+| TPP | S1 policy | 20 / 20 / 20 | 20 | 20 | 0 / 0 | Perfect; one S2/off seed catastrophically forgets |
+| Zenotravel | S1 and multiple S2 policy cells | 20 / 20 / 20 | 20 | 17 | 0 / +3 | Solved and preserved |
+| MPrime | validation-led S2 policy, provisional | 15.2 / 15.2 / 15.2 | 15.0 | 19 | +.2 / -3.8 | Phase B is 68.5% complete and may change checkpoint selection |
+| Block Grouping | S1 selected policy, off | 16.3 / 16.3 / 16.3 | 16.3 | 17 | 0 / -.7 | Neither S2 nor MCTS improves the best policy |
+| Drone | terminal-led S2 normal MCTS, on | 12.9 / 13.1 / 13.1 | 7.2 | 9 | +5.9 / +4.1 | Best established search result; Holm-significant |
+| FO Counters | S1 PW70/off, n=10 declared-budget* | 8.40 / 8.40 / 8.40 | 4.20 | 6 | +4.20 / +2.40 | Current maximum; includes one 7/20 OOM-partial allocation |
+| Rover | S1 fixed normal MCTS/off | 4.8 / 5.0 / 5.0 | 4.0 | 7 | +1.0 / -2.0 | Modest gain, still below paper |
+| Counters | terminal-led S2 narrow/off* | 34.9 / 37.8 / 38.4 | 21.5 | 17 | +16.9 / +21.4 | Largest result; versus its own S2 policy37.9 the 6h change is only +.5 and nonsignificant |
 
-The machine-readable version, including row-level log provenance, is
-`best_configuration_by_domain_20260907.csv`.
-
-## Held and ready designs
-
-These are design holds only; none occupies Slurm.
-
-| Priority | Experiment | Reason for hold | Activation condition |
-|---:|---|---|---|
-| 1 | MCTS-PW-30M | Fresh execution is optional for coverage; useful for whole-job efficiency validation | Select final promising cells after PW70 tails |
-| 2 | ANCHOR-KL-CONTROL | Requires generic schedule/controller implementation | Use TPP collapse and matched stable seeds as diagnostic screen |
-| 3 | MCTS-PW-PATHBATCH | Nonstandard multiple-expansion semantics | Freeze update semantics and smoke-test |
-| 4 | MCTS-RESOURCE | Resource/lifecycle sensitivity | Use only for unresolved interruption/OOM endpoints |
-| 5 | ACT-HISTORY-ABLATION | Requires entirely new Stage-1 and Stage-2 networks | Launch only as a separate long campaign |
-| 6 | LONG-DRONE selected-checkpoint MCTS | Three side-experiment endpoints remain | Release only if the long-training side question is reprioritized |
-| 7 | STOP-ORIG | Separate stopping-rule replication | Finalize compatibility manifest |
-| 8 | PUCT-EST | Large causal hyperparameter grid | Release only after higher-priority evidence closes |
-| 9 | MCTS-SAFE2 | No observed horizon-statistics contamination and memory risk | Require nonzero audited cutoffs plus cross-horizon reuse |
-
-## Completed RQs and experiments — unchanged static evidence
+## Completed RQs
 
 ### RQ1 — does MCTS-guided Stage-2 training improve VH-off policy?
 
 | Domain | Validation-led change [95% CI]; Holm p | Terminal-led change [95% CI]; Holm p | Conclusion |
 |---|---|---|---|
-| BG | −0.3 [−1.20, 0.60]; 1.000 | 0.0 [−0.95, 0.95]; 1.000 | No improvement |
-| Drone | +0.8 [−1.27, 2.87]; 1.000 | +0.4 [−1.33, 2.13]; 1.000 | No reliable improvement |
-| FO Counters | −1.3 [−2.37, −0.23]; .234 | −0.8 [−1.46, −0.14]; .219 | Negative raw effect; not Holm-significant |
-| Rover | 0.0 [0, 0]; 1.000 | 0.0 [−0.34, 0.34]; 1.000 | No change |
-| Counters | +4.4 [−17.44, 26.24]; 1.000 | +16.4 [3.09, 29.71]; .137 | Large noisy mean; not Holm-significant |
+| BG | -.3 [-1.20,.60]; 1.0 | 0 [-.95,.95]; 1.0 | No improvement |
+| Drone | +.8 [-1.27,2.87]; 1.0 | +.4 [-1.33,2.13]; 1.0 | No reliable improvement |
+| FO | -1.3 [-2.37,-.23]; .234 | -.8 [-1.46,-.14]; .219 | Raw negative; not Holm-significant |
+| Rover | 0 [0,0]; 1.0 | 0 [-.34,.34]; 1.0 | No change |
+| Counters | +4.4 [-17.44,26.24]; 1.0 | +16.4 [3.09,29.71]; .137 | Large noisy mean; not corrected-significant |
 
-Conclusion: no original five-domain RQ1 result survives Holm correction.
+No original five-domain RQ1 result survives Holm correction.
 
 ### RQ3 — does the value head improve refinement?
 
 | Domain | Validation-led DiD [95% CI]; Holm p | Terminal-led DiD [95% CI]; Holm p | Conclusion |
 |---|---|---|---|
-| BG | −2.8 [−4.61, −0.99]; .088 | −3.4 [−5.13, −1.67]; .020 | **Terminal-led VH significantly worsens refinement** |
-| Drone | −0.9 [−2.88, 1.08]; 1.000 | −1.1 [−3.57, 1.37]; .836 | No reliable effect |
-| FO Counters | +0.7 [−0.26, 1.66]; .813 | +1.3 [0.08, 2.52]; .188 | Positive raw tendency only |
-| Rover | +0.1 [−0.31, 0.51]; 1.000 | −0.1 [−0.51, 0.31]; 1.000 | No effect |
-| Counters | −1.2 [−25.87, 23.47]; 1.000 | −16.8 [−29.64, −3.96]; .078 | Large negative tendency; high variance |
+| BG | -2.8 [-4.61,-.99]; .088 | -3.4 [-5.13,-1.67]; .020 | Terminal-led VH significantly worsens refinement |
+| Drone | -.9 [-2.88,1.08]; 1.0 | -1.1 [-3.57,1.37]; .836 | No reliable effect |
+| FO | +.7 [-.26,1.66]; .813 | +1.3 [.08,2.52]; .188 | Positive raw tendency only |
+| Rover | +.1 [-.31,.51]; 1.0 | -.1 [-.51,.31]; 1.0 | No effect |
+| Counters | -1.2 [-25.87,23.47]; 1.0 | -16.8 [-29.64,-3.96]; .078 | Large negative tendency, high variance |
 
-Conclusion: only terminal-led Block Grouping is significant after correction.
+Only terminal-led Block Grouping is significant after correction.
 
-### RQ2/RQ4 — inference-time MCTS
+### RQ2/RQ4 — inference-time MCTS and value-head interaction
 
-The complete current table is above. The advisor-ready conclusion is already
-strong for Drone/VH-on and FO/off, negative for terminal-led Block Grouping,
-and unresolved for live FO/Counters cells.
+The complete branch-aware table is above. Current firm claims are: strong
+Drone/on, FO/off and Counters/on gains; terminal-led BG loss; small Rover
+gains; and one still-live FO/on cell. MPrime enters only after Phase B freezes
+checkpoints.
+
+## Completed preservation experiments
 
 ### PRESERVE-3 validation-led
 
 | Domain/VH | S1 selected | S2 all 10 | Held-out 8 | Tuning 2 | Change [95% CI] | Conclusion |
 |---|---:|---:|---:|---:|---|---|
-| Delivery/off | 19.8 | 19.6 | 19.50 | 20.0 | −0.2 [−1.01, .61] | Essentially preserved |
-| Delivery/on | 19.2 | 19.6 | 19.50 | 20.0 | +0.4 [−.37, 1.17] | Preserved |
-| TPP/off | 20.0 | 18.9* | 18.625* | 20.0 | −1.1 [−3.59, 1.39] | Not uniformly preserved |
-| TPP/on | 20.0 | 19.5 | 19.375 | 20.0 | −0.5 [−1.63, .63] | Essentially preserved |
-| Zenotravel/off | 20.0 | 20.0 | 20.0 | 20.0 | 0 [0, 0] | Preserved |
-| Zenotravel/on | 20.0 | 19.9 | 19.875 | 20.0 | −0.1 [−.33, .13] | Preserved |
+| Delivery/off | 19.8 | 19.6 | 19.50 | 20.0 | -.2 [-1.01,.61] | Essentially preserved |
+| Delivery/on | 19.2 | 19.6 | 19.50 | 20.0 | +.4 [-.37,1.17] | Preserved |
+| TPP/off | 20.0 | 18.9* | 18.625* | 20.0 | -1.1 [-3.59,1.39] | Not uniform |
+| TPP/on | 20.0 | 19.5 | 19.375 | 20.0 | -.5 [-1.63,.63] | Essentially preserved |
+| Zenotravel/off | 20.0 | 20.0 | 20.0 | 20.0 | 0 [0,0] | Preserved |
+| Zenotravel/on | 20.0 | 19.9 | 19.875 | 20.0 | -.1 [-.33,.13] | Preserved |
 
-`*` Nine TPP/off seeds score 20/20; seed 1972442430 collapses to 9/20.
+`*` Nine TPP/off seeds score 20/20; seed 1972442430 scores 9/20.
 
 ### PRESERVE-3 terminal-led
 
 | Domain/VH | S1 final | S2 all 10 | Held-out 8 | Tuning 2 | Change [95% CI] | Conclusion |
 |---|---:|---:|---:|---:|---|---|
-| Delivery/off | 14.1 | 15.4 | 14.50 | 19.0 | +1.3 [−2.52, 5.12] | Preserved relative to final source |
-| Delivery/on | 16.7 | 18.4 | 18.625 | 17.5 | +1.7 [−.91, 4.31] | Preserved/improved mean |
-| TPP/off | 17.1 | 17.5 | 16.875 | 20.0 | +0.4 [−2.13, 2.93] | Preserved on average |
-| TPP/on | 18.9 | 18.3 | 17.875 | 20.0 | −0.6 [−3.77, 2.57] | No reliable change |
-| Zenotravel/off | 20.0 | 19.8 | 19.875 | 19.5 | −0.2 [−.50, .10] | Essentially preserved |
-| Zenotravel/on | 19.8 | 20.0 | 20.0 | 20.0 | +0.2 [−.10, .50] | Preserved |
+| Delivery/off | 14.1 | 15.4 | 14.50 | 19.0 | +1.3 [-2.52,5.12] | Preserved relative to source |
+| Delivery/on | 16.7 | 18.4 | 18.625 | 17.5 | +1.7 [-.91,4.31] | Positive mean |
+| TPP/off | 17.1 | 17.5 | 16.875 | 20.0 | +.4 [-2.13,2.93] | Preserved on average |
+| TPP/on | 18.9 | 18.3 | 17.875 | 20.0 | -.6 [-3.77,2.57] | No reliable change |
+| Zenotravel/off | 20.0 | 19.8 | 19.875 | 19.5 | -.2 [-.50,.10] | Essentially preserved |
+| Zenotravel/on | 19.8 | 20.0 | 20.0 | 20.0 | +.2 [-.10,.50] | Preserved |
 
-### MPrime policy extension — provisional pending adequacy audit
+## Other completed experiments
 
-| Branch/VH | Stage 1 | Stage 2 selected | Change [95% CI] | Raw p | Conclusion |
-|---|---:|---:|---|---:|---|
-| Validation/off | 15.0 | 15.2 | +0.2 [−1.18, 1.58] | .880 | Neutral |
-| Validation/on | 14.6 | 15.2 | +0.6 [−1.46, 2.66] | .580 | Neutral |
-| Terminal/off | 13.5 | 14.0 | +0.5 [−1.29, 2.29] | .672 | Neutral |
-| Terminal/on | 13.2 | 14.5 | +1.3 [−.49, 3.09] | .172 | Positive tendency only |
-
-These results are not promoted into the primary RQ family until Phase B
-establishes defensible checkpoint selection.
-
-### Other completed side experiments
-
-| Experiment | Final conclusion |
+| Experiment | Conclusion |
 |---|---|
-| MCTS-PW Drone | Faster and dramatically fewer retained nodes, but significant coverage loss |
-| MCTS-SAFE-1 | Repaired 2/4 targeted Drone dead-end outcomes; useful guard, incomplete quality fix |
-| MCTS-SAFE-CONTEXT | Negative; contextual node splitting harmed coverage, especially VH-on |
-| MCTS-HORIZON Drone and Counters | Non-results with zero effective cutoffs; no efficacy evidence |
-| Determinism audit | CPU-family numerical checksums differ, but audited selected actions/outcomes did not |
-| MCTS-WIDTH | BG and Counters primary configurations corrected to narrow 5/20; normal Counters is not the confirmatory comparator |
-| LONG-DRONE | Policy and final-checkpoint MCTS complete; three selected-checkpoint MCTS endpoints remain design-held |
+| MCTS-PW Drone | Faster with far fewer retained nodes, but unacceptable coverage loss under the original schedule |
+| PW Kmin=3 Drone extension | 9.5/20 versus policy 7.0 and fixed 10.5; faster tail, still inferior to fixed |
+| MCTS-SAFE-1 | Repaired 2/4 targeted Drone dead ends; useful guard, incomplete quality fix |
+| MCTS-SAFE-CONTEXT | Negative: node splitting harmed coverage, especially VH-on |
+| MCTS-HORIZON Drone/Counters | Non-results with zero effective cutoffs |
+| Determinism audit | CPU families change numerical checksums, but audited actions/outcomes were identical |
+| MCTS-WIDTH | BG and Counters confirmatory fixed search is narrow 5/20 |
+| LONG-DRONE | Policy and final-checkpoint MCTS complete; three selected-checkpoint endpoints remain held |
+| Storage audit/compaction | 17 oversized logs compacted; 27.90 GiB reclaimed in addition to earlier cleanup |
 
-### Complete lifecycle inventory
+## Design-held experiments in priority order
 
-| Lifecycle | Experiments |
-|---|---|
-| Live | MPRIME-VAL-ADEQUACY Phase B; TPP-CATASTROPHIC-MCTS; Counters terminal-led Stage-2 MCTS; FO terminal-led Stage-2 MCTS tail; PW70 narrow-domain correction; PW70 FO/Rover ten-seed expansion; Counters PW70 divergence tail |
-| Completed mainstream policy | MAIN-VAL; MAIN-TERM; PRESERVE-3-VAL; PRESERVE-3-TERM |
-| Completed/provisional MPrime policy | MPRIME-VAL corrected Stage 1; MAIN-EXT6-MPRIME; MAIN-TERM-EXT6-MPRIME; ANCHOR-4 |
-| Completed search | Stage-1 fixed MCTS; completed Stage-2 fixed cells; MCTS-PW Drone; MCTS-PW-SAFE; mixed-budget cross-domain PW screen; five-seed PW70 screen; MCTS-SAFE-1; MCTS-SAFE-CONTEXT; MCTS-HORIZON Drone; MCTS-HORIZON-COUNTERS; MCTS-WIDTH; determinism audit |
-| Completed operational | Storage audit and large-log compaction; policy-curve coverage materialization; Stage-2 MCTS branch-provenance recovery |
-| Design-held | MCTS-PW-30M; ANCHOR-KL-CONTROL; MCTS-PW-PATHBATCH; MCTS-RESOURCE; ACT-HISTORY-ABLATION; LONG-DRONE selected MCTS; STOP-ORIG; PUCT-EST; MCTS-SAFE2 |
+| Priority | Experiment | Activation condition |
+|---:|---|---|
+| 1 | ANCHOR-KL-CONTROL | Implementation and local tests complete; needs explicit GitHub-export approval, cluster compute-node smoke, then two adaptive jobs |
+| 2 | MCTS-PW-30M | Optional fresh whole-job efficiency validation after final PW tails; post-hoc coverage is already defensible |
+| 3 | MCTS-PW-PATHBATCH | Freeze nonstandard multiple-expansion update semantics |
+| 4 | MCTS-RESOURCE | Use only for unresolved OOM/lifecycle endpoints |
+| 5 | ACT-HISTORY-ABLATION | Separate fresh Stage-1/Stage-2 campaign on Drone, Counters, TPP |
+| 6 | LONG-DRONE selected MCTS | Reprioritize side question |
+| 7 | STOP-ORIG | Finalize compatibility manifest |
+| 8 | PUCT-EST | Run only after higher-priority evidence closes |
+| 9 | MCTS-SAFE2 | Require nonzero cutoffs and demonstrated cross-horizon statistic contamination |
 
-MPrime is absent from the inference-time MCTS comparison by design. Phase B
-must first select defensible Stage-1/Stage-2 checkpoints. Only then can the
-40-job MPrime MCTS matrix (two branches × two VH modes × ten seeds) be built;
-those MCTS jobs have not been submitted.
+## Provenance contract
 
-## Provenance and authoritative files
+- Current jobs/resources: `cluster_workload_latest.csv` and
+  `cluster_workload_summary_latest.csv`.
+- Every dynamically inspected job, direct stdout and completion ledger:
+  `dynamic_experiment_jobs_latest.csv`.
+- Stage-1 seed-level cutoff scores and both original logs:
+  `stage1_policy_mcts_seed_cutoffs_latest.csv`.
+- Stage-1 all-cutoff inference: `stage1_policy_mcts_all_cutoff_statistics_latest.csv`.
+- Stage-2 seed-level cutoff scores and direct/companion log provenance:
+  `stage2_policy_mcts_seed_cutoffs_latest.csv`.
+- Stage-2 cutoff-specific paired CIs, exact tests, and interim Holm families:
+  `stage2_policy_mcts_all_cutoff_statistics_latest.csv`.
+- PW70 seed/job/log rows: `mcts_progressive_widening_cross_domain/pw70_ten_seed_results_latest.csv`.
+- PW70 all-cutoff inference: `mcts_progressive_widening_cross_domain/pw70_ten_seed_statistics_latest.csv`.
+- Counters terminal-led Stage-2 ten-seed cutoff rows and direct logs:
+  `counters_terminal_stage2_narrow_seed_results_latest.csv`.
+- Counters terminal-led Stage-2 cutoff CIs/tests:
+  `counters_terminal_stage2_narrow_statistics_latest.csv`.
+- Rover exact recovery scope: `rover_interrupted_mcts_recovery_manifest_20260908.csv`
+  and `rover_interrupted_mcts_recovery_followup_manifest_20260908.csv`.
+- Rover follow-up submission/job/log trace:
+  `rover_interrupted_mcts_recovery_followup_submission_20260908.csv`.
+- Full lifecycle registry: `experiments.csv` and `experiment_registry.csv`.
+- Best demonstrated domain configurations: `best_configuration_by_domain_latest.csv`.
 
-- Every live job: `cluster_workload_20260907.csv` and
-  `cluster_workload_latest.csv`.
-- Every Stage-2 MCTS branch: `stage2_mcts_branch_coverage_20260907.csv` and
-  `stage2_policy_mcts_comparison_by_branch_20260907.csv`.
-- PW70 expansion job-level logs: `mcts_progressive_widening_cross_domain/pw70_ten_seed_jobs_20260907.csv`.
-- PW70 interim statistics: `mcts_progressive_widening_cross_domain/pw70_ten_seed_interim_20260907.csv`.
-- MPrime Phase B jobs and logs: `mprime_validation_phase_b_status_20260907.csv`.
-- TPP outlier diagnostic jobs, checkpoint, training and policy logs:
-  `tpp_catastrophic_mcts/submissions_20260907.csv`.
-- Best per-domain result and paper comparison:
-  `best_configuration_by_domain_20260907.csv`.
-- Full experiment registry: `experiments.csv` and `experiment_registry.csv`.
-
-Every new result row points either directly to the original cluster log or to a
-row-level provenance companion containing the checkpoint and original logs.
+Aggregate CSVs either carry direct log paths or point through their
+`row_level_provenance`/`results_file` companion to job-, checkpoint-, training-
+and evaluation-log rows.

@@ -1,66 +1,60 @@
 snapshot_time_idt,experiment,job_id,job_name,state,cpus,memory_gib,elapsed,time_limit,reason_or_node,priority,array_job_id,scheduler_source
-2026-09-08T16:03:21+03:00,Rover interrupted-instance MCTS recovery,21107687_7,ROVER_INTERRUPTION_RECOVERY,PENDING,4,160.0,0:00,13:00:00,(Priority),12,21107698,squeue://hersco/21107687_7
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_2,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,1:33:27,1-00:00:00,cs-cpu-06,9,21090241,squeue://hersco/21090161_2
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_52,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,1:33:27,1-00:00:00,cs-cpu-06,9,21095047,squeue://hersco/21090161_52
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_56,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:29:44,1-00:00:00,ise-cpu-intl-03,8,21095709,squeue://hersco/21090161_56
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_57,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:29:44,1-00:00:00,cs-cpu-11,8,21095710,squeue://hersco/21090161_57
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_58,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:29:44,1-00:00:00,ise-cpu128-14,8,21095711,squeue://hersco/21090161_58
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_59,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:29:44,1-00:00:00,ise-cpu256-09,8,21090161,squeue://hersco/21090161_59
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_55,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:30:00,1-00:00:00,ise-cpu256-20,8,21095693,squeue://hersco/21090161_55
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_54,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:32:07,1-00:00:00,ise-cpu128-12,8,21095491,squeue://hersco/21090161_54
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_49,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:41:12,1-00:00:00,ise-cpu128-13,8,21094270,squeue://hersco/21090161_49
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_50,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:41:12,1-00:00:00,ise-cpu256-08,8,21094271,squeue://hersco/21090161_50
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_51,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:41:12,1-00:00:00,ise-cpu256-13,8,21094272,squeue://hersco/21090161_51
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_34,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu128-05,8,21094099,squeue://hersco/21090161_34
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_35,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu128-12,8,21094100,squeue://hersco/21090161_35
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_36,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu128-12,8,21094101,squeue://hersco/21090161_36
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_37,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu128-12,8,21094102,squeue://hersco/21090161_37
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_38,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu256-31,8,21094103,squeue://hersco/21090161_38
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_39,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu256-31,8,21094104,squeue://hersco/21090161_39
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_40,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu256-14,8,21094105,squeue://hersco/21090161_40
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_41,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu256-13,8,21094106,squeue://hersco/21090161_41
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_42,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu256-13,8,21094107,squeue://hersco/21090161_42
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_43,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu256-10,8,21094108,squeue://hersco/21090161_43
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_44,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu256-08,8,21094109,squeue://hersco/21090161_44
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_45,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu256-08,8,21094110,squeue://hersco/21090161_45
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_46,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu256-09,8,21094111,squeue://hersco/21090161_46
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_47,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu256-09,8,21094112,squeue://hersco/21090161_47
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_48,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:43:04,1-00:00:00,ise-cpu256-09,8,21094113,squeue://hersco/21090161_48
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_33,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:46:18,1-00:00:00,ise-cpu128-05,8,21093613,squeue://hersco/21090161_33
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_32,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:47:22,1-00:00:00,ise-cpu256-17,8,21093443,squeue://hersco/21090161_32
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_31,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:49:31,1-00:00:00,ise-cpu128-09,7,21093118,squeue://hersco/21090161_31
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_30,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:50:04,1-00:00:00,ise-cpu256-18,7,21093050,squeue://hersco/21090161_30
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_29,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:51:24,1-00:00:00,ise-cpu256-07,7,21092890,squeue://hersco/21090161_29
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_28,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:53:01,1-00:00:00,ise-cpu128-13,7,21092633,squeue://hersco/21090161_28
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_27,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:54:21,1-00:00:00,ise-cpu256-18,7,21092480,squeue://hersco/21090161_27
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_26,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,20:59:29,1-00:00:00,ise-cpu-intl-19,7,21091926,squeue://hersco/21090161_26
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_25,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:03:00,1-00:00:00,ise-cpu128-06,7,21091826,squeue://hersco/21090161_25
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21128409_18,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,11:21,1-00:00:00,ise-cpu-intl-17,6,21128411,squeue://hersco/21128409_18
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21128409_53,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,11:21,1-00:00:00,ise-cpu-intl-06,6,21128409,squeue://hersco/21128409_53
-2026-09-08T16:03:21+03:00,Rover interrupted-instance MCTS recovery,21114871_0,ROVER_INTERRUPTION_RECOVERY_FOLLOWUP,RUNNING,2,160.0,5:49:58,13:00:00,ise-cpu256-13,6,21114871,squeue://hersco/21114871_0
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_24,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:04:55,1-00:00:00,ise-cpu128-12,6,21091809,squeue://hersco/21090161_24
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_23,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:06:33,1-00:00:00,ise-cpu128-10,6,21091795,squeue://hersco/21090161_23
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_22,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:06:49,1-00:00:00,ise-cpu128-12,6,21091790,squeue://hersco/21090161_22
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_20,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:07:22,1-00:00:00,ise-cpu128-10,6,21091784,squeue://hersco/21090161_20
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_21,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:07:22,1-00:00:00,ise-cpu128-09,6,21091785,squeue://hersco/21090161_21
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_19,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:12:31,1-00:00:00,ise-cpu128-08,6,21091230,squeue://hersco/21090161_19
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_14,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:15:32,1-00:00:00,ise-cpu128-11,6,21091194,squeue://hersco/21090161_14
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_15,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:15:32,1-00:00:00,ise-cpu128-01,6,21091195,squeue://hersco/21090161_15
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_16,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:15:32,1-00:00:00,ise-cpu128-08,6,21091196,squeue://hersco/21090161_16
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_13,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:19:55,1-00:00:00,ise-cpu-intl-23,6,21090664,squeue://hersco/21090161_13
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_12,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:29:04,1-00:00:00,ise-cpu256-18,6,21090567,squeue://hersco/21090161_12
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_11,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:45:20,1-00:00:00,ise-cpu128-06,6,21090377,squeue://hersco/21090161_11
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_10,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:45:52,1-00:00:00,ise-cpu256-18,6,21090375,squeue://hersco/21090161_10
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_9,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:46:57,1-00:00:00,ise-cpu128-05,6,21090367,squeue://hersco/21090161_9
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_7,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:48:18,1-00:00:00,ise-cpu128-07,6,21090351,squeue://hersco/21090161_7
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_6,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:57:16,1-00:00:00,ise-cpu128-05,6,21090292,squeue://hersco/21090161_6
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_5,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:58:37,1-00:00:00,cs-cpu-06,6,21090263,squeue://hersco/21090161_5
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_4,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:59:42,1-00:00:00,ise-cpu128-10,6,21090249,squeue://hersco/21090161_4
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_3,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,21:59:58,1-00:00:00,ise-cpu128-06,6,21090244,squeue://hersco/21090161_3
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_1,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,22:00:14,1-00:00:00,ise-cpu128-10,6,21090240,squeue://hersco/21090161_1
-2026-09-08T16:03:21+03:00,MPrime validation adequacy Phase B full rescore,21090161_0,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,22:00:47,1-00:00:00,ise-cpu256-28,6,21090232,squeue://hersco/21090161_0
-2026-09-08T16:03:21+03:00,TPP catastrophic-seed MCTS diagnostic,21084616,tppbad-fixed-normal,RUNNING,6,120.0,23:57:18,3-00:00:00,ise-cpu256-06,6,21084616,squeue://hersco/21084616
-2026-09-08T16:03:21+03:00,TPP catastrophic-seed MCTS diagnostic,21084619,tppbad-pw70,RUNNING,6,120.0,23:57:18,3-00:00:00,ise-cpu256-18,6,21084619,squeue://hersco/21084619
-2026-09-08T16:03:21+03:00,PW70 cross-domain correction,20755796,pw70-kmin3-counters-off-2011206605-s1,RUNNING,6,120.0,2-02:33:25,3-00:00:00,ise-cpu256-13,6,20755796,squeue://hersco/20755796
-2026-09-08T16:03:21+03:00,FO Counters terminal-led Stage-2 MCTS,20559575,Ev_fo_counters_fo_counters_mcts_orig_vh_e.5_c.1_s1073581256_K0_SR10TCM_src20489458_e0077,RUNNING,6,120.0,2-03:29:22,3-00:00:00,ise-cpu256-13,6,20559575,squeue://hersco/20559575
-2026-09-08T16:03:21+03:00,Counters PW divergence recovery,20863185,pw-counters-divergence-off-534933607-sim70,RUNNING,6,120.0,2-10:00:14,3-00:00:00,cs-cpu-11,1,20863185,squeue://hersco/20863185
+2026-09-08T23:39:41+03:00,Rover interrupted-instance MCTS recovery,21107687_7,ROVER_INTERRUPTION_RECOVERY,RUNNING,4,160.0,52:23,13:00:00,ise-cpu256-23,21,21107698,squeue://hersco/21107687_7
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21090161_2,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,9:09:48,1-00:00:00,cs-cpu-06,9,21090241,squeue://hersco/21090161_2
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21090161_52,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,9:09:48,1-00:00:00,cs-cpu-06,9,21095047,squeue://hersco/21090161_52
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_0,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,cs-cpu-05,6,21143255,squeue://hersco/21143254_0
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_3,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu-intl-20,6,21143257,squeue://hersco/21143254_3
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_4,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu-intl-19,6,21143258,squeue://hersco/21143254_4
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_5,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu-intl-19,6,21143259,squeue://hersco/21143254_5
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_9,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu-intl-07,6,21143263,squeue://hersco/21143254_9
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_10,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu-intl-07,6,21143264,squeue://hersco/21143254_10
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_12,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,cs-cpu-11,6,21143266,squeue://hersco/21143254_12
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_13,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-02,6,21143267,squeue://hersco/21143254_13
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_14,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-05,6,21143268,squeue://hersco/21143254_14
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_15,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-06,6,21143269,squeue://hersco/21143254_15
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_16,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-07,6,21143270,squeue://hersco/21143254_16
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_19,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-13,6,21143272,squeue://hersco/21143254_19
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_20,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-13,6,21143273,squeue://hersco/21143254_20
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_21,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-14,6,21143274,squeue://hersco/21143254_21
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_22,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-10,6,21143275,squeue://hersco/21143254_22
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_23,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-10,6,21143276,squeue://hersco/21143254_23
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_24,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-10,6,21143277,squeue://hersco/21143254_24
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_25,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-10,6,21143278,squeue://hersco/21143254_25
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_26,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-10,6,21143279,squeue://hersco/21143254_26
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_27,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-10,6,21143280,squeue://hersco/21143254_27
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_28,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-10,6,21143281,squeue://hersco/21143254_28
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_29,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-10,6,21143282,squeue://hersco/21143254_29
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_30,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-11,6,21143283,squeue://hersco/21143254_30
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_31,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-11,6,21143284,squeue://hersco/21143254_31
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_32,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu128-09,6,21143285,squeue://hersco/21143254_32
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_33,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-12,6,21143286,squeue://hersco/21143254_33
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_34,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-17,6,21143287,squeue://hersco/21143254_34
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_35,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-17,6,21143288,squeue://hersco/21143254_35
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_36,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-04,6,21143289,squeue://hersco/21143254_36
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_37,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-04,6,21143290,squeue://hersco/21143254_37
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_38,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-04,6,21143291,squeue://hersco/21143254_38
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_39,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-04,6,21143292,squeue://hersco/21143254_39
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_40,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-04,6,21143293,squeue://hersco/21143254_40
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_41,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-19,6,21143294,squeue://hersco/21143254_41
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_42,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-09,6,21143295,squeue://hersco/21143254_42
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_43,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-06,6,21143296,squeue://hersco/21143254_43
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_44,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-08,6,21143297,squeue://hersco/21143254_44
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_45,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-08,6,21143298,squeue://hersco/21143254_45
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_46,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-07,6,21143299,squeue://hersco/21143254_46
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_47,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-07,6,21143300,squeue://hersco/21143254_47
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_48,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-30,6,21143301,squeue://hersco/21143254_48
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_49,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-28,6,21143302,squeue://hersco/21143254_49
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_50,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-28,6,21143303,squeue://hersco/21143254_50
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_51,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-29,6,21143304,squeue://hersco/21143254_51
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_54,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-29,6,21143305,squeue://hersco/21143254_54
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_55,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-22,6,21143306,squeue://hersco/21143254_55
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_56,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-21,6,21143307,squeue://hersco/21143254_56
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_57,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-21,6,21143308,squeue://hersco/21143254_57
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_58,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-21,6,21143309,squeue://hersco/21143254_58
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21143254_59,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,31:54,1-00:00:00,ise-cpu256-23,6,21143254,squeue://hersco/21143254_59
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21128409_18,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,7:47:42,1-00:00:00,ise-cpu-intl-17,6,21128411,squeue://hersco/21128409_18
+2026-09-08T23:39:41+03:00,MPrime validation adequacy Phase B full rescore,21128409_53,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,7:47:42,1-00:00:00,ise-cpu-intl-06,6,21128409,squeue://hersco/21128409_53
+2026-09-08T23:39:41+03:00,TPP catastrophic-seed MCTS diagnostic,21084616,tppbad-fixed-normal,RUNNING,6,120.0,1-07:33:39,3-00:00:00,ise-cpu256-06,6,21084616,squeue://hersco/21084616
+2026-09-08T23:39:41+03:00,PW70 cross-domain correction,20755796,pw70-kmin3-counters-off-2011206605-s1,RUNNING,6,120.0,2-10:09:46,3-00:00:00,ise-cpu256-13,6,20755796,squeue://hersco/20755796
+2026-09-08T23:39:41+03:00,FO Counters terminal-led Stage-2 MCTS,20559575,Ev_fo_counters_fo_counters_mcts_orig_vh_e.5_c.1_s1073581256_K0_SR10TCM_src20489458_e0077,RUNNING,6,120.0,2-11:05:43,3-00:00:00,ise-cpu256-13,6,20559575,squeue://hersco/20559575
+2026-09-08T23:39:41+03:00,Counters PW divergence recovery,20863185,pw-counters-divergence-off-534933607-sim70,RUNNING,6,120.0,2-17:36:35,3-00:00:00,cs-cpu-11,1,20863185,squeue://hersco/20863185
