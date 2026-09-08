@@ -1,6 +1,29 @@
 # ANCHOR-KL-CONTROL: literature-grounded nonconstant Stage-2 anchoring
 
-Status: **held-ready design; no Slurm jobs submitted**.
+Status: **adaptive controller implemented and locally smoke-tested; no Slurm
+jobs submitted**.
+
+## Immediate TPP/off causal screen
+
+The minimal screen is two seeds by two modes, but only **two new training
+jobs** are required:
+
+- bad seed `1972442430`: reuse completed constant-anchor job `20684881`; run
+  one new adaptive-target-KL arm;
+- stable control seed `1963100312`: reuse its completed constant-anchor
+  tuning lineage; run one new adaptive-target-KL arm.
+
+The constant arms are historical baselines with complete checkpoints and logs;
+rerunning them would spend compute without adding a new treatment. The
+adaptive arms must start from the exact matching Stage-1 sources. Block
+Grouping and linear-decay arms remain possible follow-ups, not part of this
+first causal screen.
+
+The implementation measures post-optimizer KL on the just-used replay batch,
+updates the coefficient after each of the 60 replay optimizer steps, logs the
+pre/post coefficient and realized KL, and persists the complete controller
+state in every checkpoint. This within-epoch feedback is necessary because the
+observed TPP collapse is already present at the first saved Stage-2 epoch.
 
 This replaces the informal `ANCHOR-SCHEDULE` idea. The experiment is not
 premised on an invented "strong first, then decay to the selected constant"

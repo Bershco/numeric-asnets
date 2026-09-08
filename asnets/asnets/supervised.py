@@ -31,6 +31,7 @@ from asnets.utils.pddl_utils import get_domain_file
 from asnets.utils.py_utils import TimerContext, strip_parens, weak_ref_to, weighted_batch_iter
 from asnets.utils.tf_utils import cross_entropy, mean_squared_error, empty_feed_value
 from asnets.models import PropNetwork, PropNetworkWeights
+from asnets.policy_anchor import PolicyAnchorKLController
 from asnets.validation_state import (
     ValidationState,
     cumulative_epoch_offset,
@@ -468,6 +469,8 @@ class SupervisedTrainer(BaseTrainer):
                  batch_size,
                  train_steps_per_epoch=1,
                  policy_anchor_kl_coeff=0.0,
+                 policy_anchor_kl_mode="constant",
+                 policy_anchor_kl_target=None,
                  main_road_fraction=0.75,
                  tree_policy_weight=0.5,
                  grad_clip_norm=5.0,
@@ -486,9 +489,17 @@ class SupervisedTrainer(BaseTrainer):
         self.mse_coeff = mse_coeff
         self.batch_size = batch_size
         self.train_steps_per_epoch = train_steps_per_epoch
-        self.policy_anchor_kl_coeff = float(policy_anchor_kl_coeff)
-        if self.policy_anchor_kl_coeff < 0:
-            raise ValueError("policy_anchor_kl_coeff must be non-negative")
+        self.policy_anchor_kl_controller = PolicyAnchorKLController(
+            mode=policy_anchor_kl_mode,
+            coefficient=policy_anchor_kl_coeff,
+            target=policy_anchor_kl_target,
+        )
+        persisted_trainer_state = load_trainer_state(resume_from)
+        self.policy_anchor_kl_controller.restore(
+            persisted_trainer_state.get("policy_anchor_kl_controller")
+            if persisted_trainer_state is not None else None)
+        self.policy_anchor_kl_coeff = \
+            self.policy_anchor_kl_controller.coefficient
         self.main_road_fraction = main_road_fraction
         self.tree_policy_weight = tree_policy_weight
         self.grad_clip_norm = grad_clip_norm
@@ -543,7 +554,10 @@ class SupervisedTrainer(BaseTrainer):
                 anchor_source = "created from initial stage-1 weights"
             print(
                 "[POLICY ANCHOR] enabled "
-                f"coeff={self.policy_anchor_kl_coeff}; {anchor_source}; "
+                f"mode={self.policy_anchor_kl_controller.mode}; "
+                f"coeff={self.policy_anchor_kl_coeff}; "
+                f"target={self.policy_anchor_kl_controller.target}; "
+                f"{anchor_source}; "
                 f"path={anchor_path}"
             )
         self._init_tf()
@@ -791,6 +805,22 @@ class SupervisedTrainer(BaseTrainer):
                     "train/policy_anchor_kl_loss",
                     train_stats["policy_anchor_kl_loss"],
                 )
+                tf_and_log(
+                    "train/policy_anchor_kl_post_update",
+                    train_stats["policy_anchor_kl_post_update"],
+                )
+                tf_and_log(
+                    "train/policy_anchor_kl_coeff_before",
+                    train_stats["policy_anchor_kl_coeff_before"],
+                )
+                tf_and_log(
+                    "train/policy_anchor_kl_coeff_after",
+                    train_stats["policy_anchor_kl_coeff_after"],
+                )
+                tf_and_log(
+                    "train/policy_anchor_kl_controller_adjustments",
+                    train_stats["policy_anchor_kl_controller_adjustments"],
+                )
                 tf_and_log("train/reg_loss", train_stats["reg_loss"])
                 tf_and_log("grad/global_norm_unclipped", train_stats["grad_norm"])
                 tf_and_log("grad/global_norm_clipped", train_stats["clipped_grad_norm"])
@@ -931,6 +961,8 @@ class SupervisedTrainer(BaseTrainer):
                     "best_rate": last_rate,
                     "time_since_best": time_since_best,
                     "validation_state": validation_state.to_dict(),
+                    "policy_anchor_kl_controller":
+                        self.policy_anchor_kl_controller.to_dict(),
                 },
             )
             tf.summary.flush()
@@ -1035,6 +1067,26 @@ class SupervisedTrainer(BaseTrainer):
             else anchor_out
         return tf.stop_gradient(anchor_policy)
 
+    def _measure_policy_anchor_kl(self, sampled_batches):
+        """Measure realized post-update KL on the batches just optimized."""
+        anchor_kl_losses = []
+        for problem, (obs, _pi_tgt, _z_tgt, _policy_weights) in sampled_batches:
+            obs_tf = tf.convert_to_tensor(obs, dtype=tf.float32)
+            pred_out = problem.network(obs_tf, training=False)
+            pi_pred = pred_out[0] if isinstance(pred_out, tuple) else pred_out
+            anchor_pi = self._anchor_policy(problem, obs_tf)
+            anchor_kl_per_example = tf.reduce_sum(
+                anchor_pi * (
+                    tf.math.log(tf.clip_by_value(anchor_pi, 1e-8, 1.0))
+                    - tf.math.log(tf.clip_by_value(pi_pred, 1e-8, 1.0))
+                ),
+                axis=1,
+            )
+            anchor_kl_losses.append(tf.reduce_mean(anchor_kl_per_example))
+        # Floating-point roundoff can make an analytical KL microscopically
+        # negative; the controller operates on the mathematically valid range.
+        return max(0.0, float(tf.reduce_mean(anchor_kl_losses).numpy()))
+
     def _train_replay_step(self):
         params = self._weight_manager.all_weights
         sampled_batches = [
@@ -1045,6 +1097,7 @@ class SupervisedTrainer(BaseTrainer):
         if not sampled_batches:
             return None
 
+        anchor_coeff_before = self.policy_anchor_kl_coeff
         with tf.GradientTape() as tape:
             policy_losses, value_losses, anchor_kl_losses = [], [], []
             for problem, (obs, pi_tgt, z_tgt, policy_weights) in sampled_batches:
@@ -1111,6 +1164,17 @@ class SupervisedTrainer(BaseTrainer):
         clipped_grad_norm = tf.linalg.global_norm(grads)
         self.optimizer.apply_gradients(zip(grads, params))
 
+        pre_update_anchor_kl = float(policy_anchor_kl_loss.numpy())
+        if self.policy_anchor_kl_controller.mode == "adaptive_target":
+            post_update_anchor_kl = self._measure_policy_anchor_kl(
+                sampled_batches)
+        else:
+            post_update_anchor_kl = pre_update_anchor_kl
+        controller_record = self.policy_anchor_kl_controller.observe(
+            post_update_anchor_kl)
+        self.policy_anchor_kl_coeff = \
+            self.policy_anchor_kl_controller.coefficient
+
         return {
             "total_loss": float(total_loss.numpy()),
             "policy_loss": float(policy_loss.numpy()),
@@ -1122,6 +1186,11 @@ class SupervisedTrainer(BaseTrainer):
             "clipped_grad_norm": float(clipped_grad_norm.numpy()),
             "was_clipped": float(self.grad_clip_norm is not None and grad_norm.numpy() > self.grad_clip_norm),
             "none_grad_count": float(none_grad_count),
+            "policy_anchor_kl_post_update": post_update_anchor_kl,
+            "policy_anchor_kl_coeff_before": anchor_coeff_before,
+            "policy_anchor_kl_coeff_after": self.policy_anchor_kl_coeff,
+            "policy_anchor_kl_controller_adjustments":
+                controller_record["adjusted"],
         }
 
     def train_from_replay(self):
@@ -1134,11 +1203,26 @@ class SupervisedTrainer(BaseTrainer):
                 "reg_loss": 0.0, "grad_norm": 0.0,
                 "clipped_grad_norm": 0.0, "was_clipped": 0.0,
                 "none_grad_count": 0.0,
+                "policy_anchor_kl_post_update": 0.0,
+                "policy_anchor_kl_coeff_before":
+                    self.policy_anchor_kl_coeff,
+                "policy_anchor_kl_coeff_after":
+                    self.policy_anchor_kl_coeff,
+                "policy_anchor_kl_controller_adjustments": 0.0,
             }
-        return {
+        result = {
             "updates": len(step_stats),
             **{key: float(np.mean([stats[key] for stats in step_stats])) for key in step_stats[0]},
         }
+        result["policy_anchor_kl_coeff_before"] = \
+            step_stats[0]["policy_anchor_kl_coeff_before"]
+        result["policy_anchor_kl_coeff_after"] = \
+            step_stats[-1]["policy_anchor_kl_coeff_after"]
+        result["policy_anchor_kl_controller_adjustments"] = float(sum(
+            stats["policy_anchor_kl_controller_adjustments"]
+            for stats in step_stats
+        ))
+        return result
 
     def calculate_balanced_succ_rate(self, worker_outs):
         if not self.balanced_success_rate:

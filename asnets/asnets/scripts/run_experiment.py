@@ -601,6 +601,18 @@ parser.add_argument(
           'training; 0 disables the frozen stage-1 policy anchor.')
 )
 parser.add_argument(
+    '--policy-anchor-kl-mode',
+    choices=('constant', 'adaptive_target'),
+    default='constant',
+    help='Policy-anchor coefficient controller used during MCTS replay training.'
+)
+parser.add_argument(
+    '--policy-anchor-kl-target',
+    type=float,
+    default=None,
+    help='Positive target KL for the adaptive_target anchor controller.'
+)
+parser.add_argument(
     '--mcts-iterations',
     type=int,
     default=0,
@@ -741,6 +753,8 @@ def main():
                override_epoch_num=args.max_opt_epochs,
                override_sup_lr=args.supervised_lr,
                policy_anchor_kl_coeff=args.policy_anchor_kl_coeff,
+               policy_anchor_kl_mode=args.policy_anchor_kl_mode,
+               policy_anchor_kl_target=args.policy_anchor_kl_target,
                serial_test=args.serial_test,
                no_eval=args.no_eval,
                eval_with_mcts=args.eval_with_mcts,
@@ -809,6 +823,8 @@ def main_inner(*,
                override_epoch_num=None,
                override_sup_lr=None,
                policy_anchor_kl_coeff=0.0,
+               policy_anchor_kl_mode='constant',
+               policy_anchor_kl_target=None,
                serial_test=None,
                no_eval=None,
                eval_with_mcts=False,
@@ -912,6 +928,16 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend([
                 '--policy-anchor-kl-coeff',
                 str(policy_anchor_kl_coeff),
+            ])
+        if policy_anchor_kl_mode != 'constant':
+            train_flags.extend([
+                '--policy-anchor-kl-mode',
+                policy_anchor_kl_mode,
+            ])
+        if policy_anchor_kl_target is not None:
+            train_flags.extend([
+                '--policy-anchor-kl-target',
+                str(policy_anchor_kl_target),
             ])
         if mcts_expansion_size:
             train_flags.extend(['--mcts-expansion-size', str(mcts_expansion_size)])

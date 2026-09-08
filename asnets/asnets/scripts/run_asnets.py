@@ -417,6 +417,20 @@ parser.add_argument(
           'training; 0 disables the frozen stage-1 policy anchor')
 )
 parser.add_argument(
+    '--policy-anchor-kl-mode',
+    choices=('constant', 'adaptive_target'),
+    default='constant',
+    help=('KL-anchor coefficient controller. adaptive_target applies the '
+          'PPO-style multiplicative target-KL rule after every replay update.')
+)
+parser.add_argument(
+    '--policy-anchor-kl-target',
+    type=float,
+    default=None,
+    help=('Positive target KL required by --policy-anchor-kl-mode '
+          'adaptive_target.')
+)
+parser.add_argument(
     '--teacher-planner',
     choices=('ssipp', 'fd', 'domain-specific', 'enhsp', 'metricff'),
     default='ssipp',
@@ -1028,6 +1042,8 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             batch_size=args.supervised_bs,
             train_steps_per_epoch=args.opt_batch_per_epoch,
             policy_anchor_kl_coeff=args.policy_anchor_kl_coeff,
+            policy_anchor_kl_mode=args.policy_anchor_kl_mode,
+            policy_anchor_kl_target=args.policy_anchor_kl_target,
             main_road_fraction=0.75,
             grad_clip_norm=5.0,
             start_time=start_time,
@@ -1432,6 +1448,18 @@ def main():
         parser.error('--mcts-pw-alpha must be in (0, 1]')
     if args.policy_anchor_kl_coeff < 0:
         parser.error('--policy-anchor-kl-coeff must be non-negative')
+    if args.policy_anchor_kl_mode == 'adaptive_target':
+        if args.policy_anchor_kl_coeff <= 0:
+            parser.error(
+                '--policy-anchor-kl-mode adaptive_target requires a positive '
+                '--policy-anchor-kl-coeff')
+        if (
+                args.policy_anchor_kl_target is None
+                or args.policy_anchor_kl_target <= 0
+        ):
+            parser.error(
+                '--policy-anchor-kl-mode adaptive_target requires a positive '
+                '--policy-anchor-kl-target')
     try:
         args.profile_sample_epochs = tuple(
             sorted({
