@@ -1,8 +1,5 @@
-experiment,running,cpus,memory_gib,job_ids,source
-Adaptive KL-control TPP/off screen,2,12,96,21144388;21144389,experiment_tracking/cluster_workload_latest.csv
-Counters PW divergence recovery,1,6,120,20863185,experiment_tracking/cluster_workload_latest.csv
-FO Counters terminal-led Stage-2 MCTS,1,6,120,20559575,experiment_tracking/cluster_workload_latest.csv
-MPrime validation adequacy Phase B full rescore,52,208,1040,21090161_2;21090161_52;21143254_0;21143254_3;21143254_4;21143254_5;21143254_9;21143254_10;21143254_12;21143254_13;21143254_14;21143254_15;21143254_16;21143254_19;21143254_20;21143254_21;21143254_22;21143254_23;21143254_24;21143254_25;21143254_26;21143254_27;21143254_28;21143254_29;21143254_30;21143254_31;21143254_32;21143254_33;21143254_34;21143254_35;21143254_36;21143254_37;21143254_38;21143254_39;21143254_40;21143254_41;21143254_43;21143254_44;21143254_45;21143254_46;21143254_47;21143254_48;21143254_49;21143254_50;21143254_51;21143254_54;21143254_55;21143254_56;21143254_58;21143254_59;21128409_18;21128409_53,experiment_tracking/cluster_workload_latest.csv
-PW70 cross-domain correction,1,6,120,20755796,experiment_tracking/cluster_workload_latest.csv
-Rover interrupted-instance MCTS recovery,1,4,160,21107687_7,experiment_tracking/cluster_workload_latest.csv
-TPP catastrophic-seed MCTS diagnostic,1,6,120,21084616,experiment_tracking/cluster_workload_latest.csv
+experiment,state,jobs,cpus,memory_gib,job_ids,row_level_provenance
+Adaptive KL-control TPP/off screen,RUNNING,2,12,96,21144388;21144389,experiment_tracking/cluster_workload_latest.csv
+FO Counters terminal-led Stage-2 MCTS,RUNNING,1,6,120,20559575,experiment_tracking/cluster_workload_latest.csv
+MPrime validation adequacy Phase B full rescore,RUNNING,33,132,660,21090161_2;21090161_52;21143254_0;21143254_4;21143254_12;21143254_16;21143254_20;21143254_21;21143254_22;21143254_23;21143254_25;21143254_26;21143254_27;21143254_28;21143254_29;21143254_32;21143254_33;21143254_34;21143254_35;21143254_36;21143254_37;21143254_38;21143254_39;21143254_40;21143254_41;21143254_43;21143254_46;21143254_48;21143254_49;21143254_51;21143254_55;21143254_59;21128409_18,experiment_tracking/cluster_workload_latest.csv
+PW70 cross-domain correction,RUNNING,1,6,120,20755796,experiment_tracking/cluster_workload_latest.csv

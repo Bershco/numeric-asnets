@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TRACKING = ROOT / "experiment_tracking"
 INDEX = TRACKING / "result_provenance_index_20260902.csv"
 OUT = TRACKING / "result_provenance_audit_20260902.csv"
+LATEST = TRACKING / "result_provenance_audit_latest.csv"
 
 SCORE_WORDS = ("score", "coverage", "success", "mcts_", "policy_mean", "auc")
 PROVENANCE_WORDS = ("log", "path", "job_id", "slurm_job", "source", "ledger", "evidence")
@@ -66,9 +67,10 @@ for path in sorted(TRACKING.rglob("*.csv")):
         }
     )
 
-with OUT.open("w", newline="", encoding="utf-8") as handle:
-    writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
-    writer.writeheader()
-    writer.writerows(rows)
+for destination in (OUT, LATEST):
+    with destination.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
 
 print(f"wrote {len(rows)} score-bearing CSV rows to {OUT}")
