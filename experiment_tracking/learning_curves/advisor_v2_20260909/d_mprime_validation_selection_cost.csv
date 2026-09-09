@@ -1,0 +1,7 @@
+group,n,selected_test_mean,oracle_observed_test_best_mean,mean_selection_regret,mean_validation_unique_scores,mean_fraction_at_validation_max,source
+Stage 1 / VH-off,10,15.0,18.1,3.1,7.3,0.1239027,experiment_tracking/mprime_validation_ipc_scale_v1/validation_test_checkpoint_audit.csv
+Stage 1 / VH-on,10,14.6,17.1,2.5,7.7,0.10498009999999999,experiment_tracking/mprime_validation_ipc_scale_v1/validation_test_checkpoint_audit.csv
+S2 validation / VH-off,10,15.2,17.1,1.9,1.0,1.0,experiment_tracking/mprime_validation_ipc_scale_v1/validation_adequacy_phase_a_stage2_checkpoints_20260903.csv
+S2 validation / VH-on,10,15.2,17.8,2.6,1.0,1.0,experiment_tracking/mprime_validation_ipc_scale_v1/validation_adequacy_phase_a_stage2_checkpoints_20260903.csv
+S2 terminal / VH-off,10,14.0,17.0,3.0,1.0,1.0,experiment_tracking/mprime_validation_ipc_scale_v1/validation_adequacy_phase_a_stage2_checkpoints_20260903.csv
+S2 terminal / VH-on,10,14.5,17.0,2.5,1.0,1.0,experiment_tracking/mprime_validation_ipc_scale_v1/validation_adequacy_phase_a_stage2_checkpoints_20260903.csv
