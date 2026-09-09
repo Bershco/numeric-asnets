@@ -1,5 +1,7 @@
 snapshot_time_idt,experiment,state,jobs,requested_cpus,requested_memory_gib,scheduler_source
-2026-09-09T10:46:40+03:00,Adaptive KL-control TPP/off screen,RUNNING,2,12,96.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-09T10:46:40+03:00,FO Counters terminal-led Stage-2 MCTS,RUNNING,1,6,120.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-09T10:46:40+03:00,MPrime validation adequacy Phase B full rescore,RUNNING,33,132,660.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-09T10:46:40+03:00,PW70 cross-domain correction,RUNNING,1,6,120.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-09T22:08:19+03:00,MPrime validation adequacy Phase B full rescore,RUNNING,6,24,120,experiment_tracking/cluster_workload_latest.csv
+2026-09-09T22:08:19+03:00,MPrime validation adequacy Phase B idempotent tail,PENDING,11,44,220,experiment_tracking/cluster_workload_latest.csv
+2026-09-09T22:08:19+03:00,Adaptive KL-control TPP/off screen,RUNNING,2,12,96,experiment_tracking/cluster_workload_latest.csv
+2026-09-09T22:08:19+03:00,FO PW70 exact missing-instance recovery,RUNNING,1,2,120,experiment_tracking/cluster_workload_latest.csv
+2026-09-09T22:08:19+03:00,ALL,RUNNING,9,38,336,experiment_tracking/cluster_workload_latest.csv
+2026-09-09T22:08:19+03:00,ALL,PENDING,11,44,220,experiment_tracking/cluster_workload_latest.csv

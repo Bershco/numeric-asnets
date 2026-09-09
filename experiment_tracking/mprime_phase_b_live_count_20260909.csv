@@ -1,0 +1,2 @@
+snapshot_time_idt,total_checkpoint_replicates,done_markers,missing,percent_complete,last_structured_done,last_structured_complete_lineages,lineages_total,active_base_tasks,tail_array_job,source_root
+2026-09-09T22:08:19+03:00,2260,2222,38,98.3186,2219,50,60,6,21157796,/home/hersco/training_new_domains/2026-09-06/mprime_phase_b/rescore
