@@ -201,9 +201,10 @@ still required; validation alone cannot establish repair.
 
 All 20 expansion allocations are terminal: 16 completed and four ended OOM.
 Every declared-budget seed is retained. FO/off seed 2082152039 contributes
-7/20* after ten classified instances; the ten unclassified instances count as
-failures. A complete-allocation sensitivity analysis excluding that one seed
-remains available (n=9, mean 8.56), but it is not the headline mean. Every
+7/20* after 19 classified instances; the single unclassified instance counts as
+a failure. A complete-allocation sensitivity analysis excluding that entire
+OOM-labelled seed remains available (n=9, mean 8.56), but it is not the headline
+mean. Every
 statistic below is paired; Holm is across the four cells at the same cutoff
 and comparator.
 
@@ -214,9 +215,10 @@ and comparator.
 | Rover/off | 10 | 4.00 | 4.70 / 4.70 / 4.70 | +.70 [.02,1.38]; .125/.250 | -.30 [-1.37,.77]; .688/1.0 | Fixed-search parity, not significant |
 | Rover/on | 10 | 3.80 | 4.50 / 4.60 / 4.60 | +.80 [-.08,1.68]; .125/.250 | +.20 [-.80,1.20]; .828/1.0 | Fixed-search parity, not significant |
 
-`*` FO/off seed 2082152039 is the 7/20 OOM-partial declared result; all
-unclassified instances count unsuccessful. Excluding it gives the secondary
-complete-allocation estimate 8.56/20 over nine seeds.
+`*` FO/off seed 2082152039 is the 7/20 OOM-partial declared result: 19/20
+instances were classified and the one unclassified instance counts unsuccessful.
+The 8.56/20 sensitivity estimate excludes that entire seed, not merely its one
+unclassified instance.
 
 FO/off and FO/on are significant versus policy at 30m, 2h and 6h (Holm
 p=.008 at each cutoff). FO/on exceeds fixed search at 30m after Holm correction

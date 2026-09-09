@@ -1,0 +1,11 @@
+branch,domain,n,stage1_vh_on_mean,stage2_vh_on_mean,mean_change,ci95_low,ci95_high,raw_p,holm_p,conclusion,source_results_file
+validation_led,block_grouping,10,15.9,12.8,-3.1,-5.163536973257324,-1.0364630267426755,0.015625,0.15625,negative_raw_not_holm_significant,experiment_tracking/policy_paired_seed_results.csv
+validation_led,drone,10,5.1,5.0,-0.1,-1.336651947800997,1.1366519478009969,1.0,1.0,no_reliable_change,experiment_tracking/policy_paired_seed_results.csv
+validation_led,fo_counters,10,3.7,3.1,-0.6,-1.5048,0.30479999999999996,0.25,1.0,no_reliable_change,experiment_tracking/policy_paired_seed_results.csv
+validation_led,rover,10,3.8,3.9,0.1,-0.30604142645794163,0.5060414264579416,1.0,1.0,no_reliable_change,experiment_tracking/policy_paired_seed_results.csv
+validation_led,counters,10,18.6,21.8,3.2,-6.149599999999999,12.549599999999998,0.5625,1.0,positive_mean_high_variance,experiment_tracking/policy_paired_seed_results.csv
+terminal_led,block_grouping,10,15.0,11.6,-3.4,-5.2530614236986315,-1.5469385763013683,0.0078125,0.078125,negative_raw_not_holm_significant,experiment_tracking/policy_paired_seed_results.csv
+terminal_led,drone,10,7.2,6.5,-0.7,-1.76897949465834,0.36897949465834,0.25,1.0,no_reliable_change,experiment_tracking/policy_paired_seed_results.csv
+terminal_led,fo_counters,10,3.3,3.8,0.5,-0.4079362312409389,1.407936231240939,0.34375,1.0,positive_mean_not_significant,experiment_tracking/policy_paired_seed_results.csv
+terminal_led,rover,10,4.1,4.0,-0.1,-0.3262,0.12619999999999998,1.0,1.0,no_reliable_change,experiment_tracking/policy_paired_seed_results.csv
+terminal_led,counters,10,17.2,16.8,-0.4,-11.436252436402494,10.636252436402494,0.9609375,1.0,no_reliable_change_high_variance,experiment_tracking/policy_paired_seed_results.csv
