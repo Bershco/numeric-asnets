@@ -75,48 +75,51 @@ def save(name: str, parts: list[str]) -> None:
     (OUT / f"{name}.svg").write_text("".join(parts + ["</svg>"]), encoding="utf-8")
 
 
-# 1. Exact, unclipped scorecard. This remains explicitly exploratory because
-# it compares each domain's best observed method rather than one shared method.
-rows = read(BEFORE / "01_domain_scorecard.csv")
+# 1. VH-separated scorecard. The baseline is defined explicitly as the mean
+# test score of each seed's validation-selected Stage-1 checkpoint.
+rows = read(OUT / "01_domain_scorecard_by_vh.csv")
 parts = start(
-    1780, 730, "1 — best observed coverage by domain",
-    "Exploratory best-of-method scorecard. Bars are mean test coverage across the available matched seed set; exact solved/total counts are shown.",
+    1840, 790, "1 — Stage-1 baseline and best observed coverage, separated by value-head mode",
+    "Stage-1 baseline = mean test coverage of each seed's validation-selected Stage-1 checkpoint (n=10 per cell). Best observed may use a different method per cell.",
 )
-x0, x1, y0, row_height = 280, 1120, 118, 60
-for tick in (0, 25, 50, 75, 100):
-    x = x0 + tick / 100 * (x1 - x0)
-    parts += [line(x, y0 - 20, x, y0 + 9 * row_height - 12, GRID), text(x, y0 - 28, f"{tick}%", "small", "middle")]
-for i, row in enumerate(rows):
-    y = y0 + i * row_height
-    total = int(float(row["capacity"]))
-    values = [
-        ("Published Numeric ASNet", float(row["paper_percent"]), "#9aa5b1", float(row["paper_reported"])),
-        ("Stage-1 policy", float(row["stage1_percent"]), ORANGE, float(row["matched_stage1_policy"])),
-        ("Best observed", float(row["best_percent"]), GREEN, float(row["result_6h_or_policy"])),
-    ]
-    parts.append(text(x0 - 15, y + 27, LABEL[row["domain"]], "label", "end"))
-    for j, (_, value, color, exact) in enumerate(values):
-        parts.append(rect(x0, y + j * 12, (x1 - x0) * value / 100, 9, color, radius=2))
-        parts.append(text(x0 + (x1 - x0) * value / 100 + 6, y + j * 12 + 8, f"{exact:.1f}/{total}", "small"))
-    config = row["best_current_configuration"]
-    if len(config) > 62:
-        split = config.rfind(" ", 0, 62)
-        split = 62 if split < 20 else split
-        parts.append(text(1200, y + 17, config[:split], "small"))
-        parts.append(text(1200, y + 32, config[split:].strip(), "small"))
-    else:
-        parts.append(text(1200, y + 25, config, "small"))
+for panel, value_head in enumerate(("off", "on")):
+    px, py, pw, ph = 45 + panel * 900, 105, 850, 595
+    x0, x1, y0, row_height = px + 145, px + 650, py + 55, 58
+    parts += [rect(px, py, pw, ph, "#fbfcfd", GRID, 5), text(px + 18, py + 30, f"VH-{value_head}", "big")]
+    for tick in (0, 25, 50, 75, 100):
+        x = x0 + tick / 100 * (x1 - x0)
+        parts += [line(x, y0 - 22, x, y0 + 9 * row_height - 18, GRID), text(x, y0 - 29, f"{tick}%", "small", "middle")]
+    panel_rows = [row for row in rows if row["value_head"] == value_head]
+    for i, row in enumerate(panel_rows):
+        y = y0 + i * row_height
+        total = int(row["capacity"])
+        baseline = float(row["stage1_validation_selected"])
+        best = float(row["best_observed"])
+        published = float(row["paper_reported"])
+        to_percent = lambda score: score / total * 100
+        paper_x = x0 + to_percent(published) / 100 * (x1 - x0)
+        parts += [
+            text(x0 - 12, y + 17, LABEL[row["domain"]], "small", "end"),
+            rect(x0, y, (x1 - x0) * to_percent(baseline) / 100, 10, ORANGE, radius=2),
+            rect(x0, y + 14, (x1 - x0) * to_percent(best) / 100, 10, GREEN, radius=2),
+            line(paper_x, y - 3, paper_x, y + 27, INK, 1.6, "3 2"),
+            text(x0 + (x1 - x0) * to_percent(baseline) / 100 + 5, y + 9, f"S1 {baseline:g}/{total}", "small"),
+            text(x0 + (x1 - x0) * to_percent(best) / 100 + 5, y + 23, f"best {best:g}/{total}", "small"),
+            text(x0, y + 39, f"best method: {row['best_configuration']}", "small"),
+        ]
 parts += [
-    rect(280, 675, 18, 9, "#9aa5b1"), text(305, 684, "published result", "small"),
-    rect(420, 675, 18, 9, ORANGE), text(445, 684, "best Stage-1 policy", "small"),
-    rect(590, 675, 18, 9, GREEN), text(615, 684, "best observed configuration", "small"),
-    text(980, 684, "Headline: clear coverage gains in Drone, FO Counters and Counters; stable domains remain near ceiling.", "sub"),
+    rect(70, 735, 18, 9, ORANGE), text(96, 744, "validation-selected Stage-1 policy baseline", "small"),
+    rect(365, 735, 18, 9, GREEN), text(391, 744, "best observed configuration", "small"),
+    line(615, 730, 615, 750, INK, 1.6, "3 2"), text(625, 744, "published domain mean (not VH-separated)", "small"),
+    text(980, 744, "Exact solved/total labels are means across matched seeds; Counters uses 59 instances, all other domains use 20.", "sub"),
 ]
 save("01_domain_scorecard", parts)
 
 
 # 2. True Stage-1 and Stage-2 curves with explicit stage-local epoch axes.
 curves = read(BEFORE / "02_two_stage_learning_dynamics.csv")
+paper_rows = read(BEFORE / "01_domain_scorecard.csv")
+paper_by_domain = {row["domain"]: (float(row["paper_reported"]), int(row["capacity"])) for row in paper_rows}
 parts = start(
     1600, 940, "2 — full Stage-1 and validation-led Stage-2 policy learning curves",
     "Six imperfect domains; lines are seed means and translucent envelopes are full seed ranges. Stage 2 starts from each seed's validation-selected Stage-1 checkpoint.",
@@ -135,6 +138,9 @@ for panel, domain in enumerate(["block_grouping", "drone", "fo_counters", "rover
         line(boundary, top, boundary, bottom, INK, 1.4, "4 4"),
         text(boundary, top - 7, "Stage boundary", "small", "middle"),
     ]
+    paper_score, paper_total = paper_by_domain[domain]
+    paper_y = bottom - (paper_score / paper_total * 100) / 100 * (bottom - top)
+    parts += [line(left, paper_y, right, paper_y, INK, 1.4, "7 4"), text(right - 3, paper_y - 4, f"paper {paper_score:g}/{paper_total}", "small", "end")]
     for stage, xa, xb in (("stage1", left, boundary - 10), ("stage2", boundary + 10, right)):
         stage_rows = [r for r in curves if r["domain"] == domain and r["stage"] == stage]
         epochs = [int(r["epoch"]) for r in stage_rows]
@@ -165,7 +171,8 @@ for panel, domain in enumerate(["block_grouping", "drone", "fo_counters", "rover
 parts += [
     line(70, 890, 105, 890, BLUE, 3), text(113, 894, "VH-off mean", "small"),
     line(230, 890, 265, 890, ORANGE, 3), text(273, 894, "VH-on mean", "small"),
-    text(430, 894, "Stage 1: n=10 per cell. Stage 2: available validation-led refinement trajectories; min–max bands show heterogeneity, not a confidence interval.", "sub"),
+    line(430, 890, 465, 890, INK, 1.4, "7 4"), text(473, 894, "paper result", "small"),
+    text(590, 894, "Stage 1: n=10 per cell. Stage 2: available validation-led refinement trajectories; min–max bands show heterogeneity, not a confidence interval.", "sub"),
 ]
 save("02_two_stage_learning_dynamics", parts)
 
@@ -255,8 +262,8 @@ forest_plot("Stage 2", "03b_stage2_mcts_cutoff_forest", "3b — Stage-2 policy v
 # definition of the experiment and of preservation.
 preserve = read(BEFORE / "04_preserve3_validation_seed_robustness.csv")
 parts = start(
-    1400, 710, "4 — PRESERVE-3 validation-led seed robustness",
-    "Delivery, TPP and Zenotravel began near ceiling. Each point is one matched seed's change in solved test instances from Stage 1 to validation-led Stage 2.",
+    1400, 710, "4 — PRESERVE-3 seed robustness",
+    "Delivery, TPP and Zenotravel began near ceiling. Each point is one matched seed's change in solved test instances from Stage 1 to Stage 2.",
 )
 left, right, top = 300, 1140, 135
 scale = lambda value: left + (value + 12) / 20 * (right - left)

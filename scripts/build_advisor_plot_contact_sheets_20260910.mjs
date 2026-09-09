@@ -44,6 +44,6 @@ await build("after_review", [
   ["02_two_stage_learning_dynamics.png", "Full Stage-1 + Stage-2 curves"],
   ["03a_stage1_mcts_cutoff_forest.png", "Stage-1 MCTS effects"],
   ["03b_stage2_mcts_cutoff_forest.png", "Stage-2 MCTS effects"],
-  ["04_preserve3_validation_seed_robustness.png", "Validation-led PRESERVE-3"],
+  ["04_preserve3_validation_seed_robustness.png", "PRESERVE-3 robustness"],
   ["05_mprime_validation_problem.png", "MPrime selection regret"],
 ], "after_review_overview.png");

@@ -173,8 +173,8 @@ ambiguities without changing the underlying result rows.
 
 | Revised view | File | Question answered |
 |---|---|---|
-| Best observed domain scorecard | `after_review/01_domain_scorecard.png` | Where did we beat Stage 1 and the published mean? |
-| Full two-stage learning dynamics | `after_review/02_two_stage_learning_dynamics.png` | How do complete Stage-1 and validation-led Stage-2 policy curves differ? |
+| VH-separated domain scorecard | `after_review/01_domain_scorecard.png` | For each VH mode, where did the best observed method beat the validation-selected Stage-1 baseline and published domain mean? |
+| Full two-stage learning dynamics | `after_review/02_two_stage_learning_dynamics.png` | How do complete Stage-1 and validation-led Stage-2 policy curves differ, relative to the published score? |
 | Stage-1 inference-time MCTS | `after_review/03a_stage1_mcts_cutoff_forest.png` | Which policy cells benefit at 30m, 2h and 6h? |
 | Stage-2 inference-time MCTS | `after_review/03b_stage2_mcts_cutoff_forest.png` | Does search recover or improve refined policies? |
 | PRESERVE-3 validation-led robustness | `after_review/04_preserve3_validation_seed_robustness.png` | Are near-perfect policies preserved seed-by-seed? |
@@ -204,6 +204,14 @@ No new training is involved. The next decision is whether both frozen
 replicates agree on checkpoint and anchor rankings. Only then should MPrime
 checkpoints/coefficients be frozen and the Stage-2 branches released; the
 eventual 40 MCTS comparisons remain deliberately unsubmitted.
+
+The denominator is exact: the corrected Stage-1 campaigns contain 290 saved
+checkpoints across 20 lineages, while validation-led and terminal-led Stage 2
+contain 840 saved checkpoints across 40 lineages (2 branches × 2 VH modes ×
+10 seeds × 21 checkpoints). That gives 1,130 unique checkpoints across 60
+lineages. Each checkpoint is evaluated on both independently frozen Phase-B
+validation replicates, hence 1,130 × 2 = 2,260 checkpoint–validation-set
+evaluations.
 
 #### ANCHOR-KL-CONTROL — adaptive KL screen
 
@@ -245,6 +253,10 @@ before any larger follow-up.
 | Experiment | Current result | What remains | Consequence |
 |---|---|---|---|
 | FO/off PW70 seed 2082152039 | Declared seed remains 7/20 | Correct `instance_15.pddl` recovery job 21157787 is running | Success would move this seed to 8/20 and the ten-seed mean from 8.40 to 8.50; failure leaves all published statistics unchanged |
+
+At 2026-09-09 23:07 IDT the corrected recovery had run for 2h08m and had not
+yet emitted an outcome. The exact instance and configuration were confirmed in
+the live log; this is not a stale or misindexed rerun.
 
 The prior 40-GiB attempt 21154686 did not test the intended instance: evaluator
 slot 15 maps to `instance_16.pddl` because FO's test list begins at instance 2.
@@ -297,6 +309,11 @@ cutoff. Full cutoff CIs/p-values are in `pw70_ten_seed_statistics_latest.csv`.
 
 **Conclusion:** PW70 is a strong FO Counters result and a Rover parity result.
 It is not a universal replacement for fixed search.
+
+The complete experiment sequence, coverage tables, whole-job timing,
+successful-instance runtime quantiles, node counts and failure interpretation
+are consolidated in
+`mcts_progressive_widening_cross_domain/progressive_widening_overall_report_20260909.md`.
 
 ### Completed preservation experiments
 

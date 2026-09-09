@@ -1,0 +1,19 @@
+domain,value_head,capacity,stage1_validation_selected,best_observed,best_configuration,paper_reported,row_level_provenance
+delivery,off,20,19.8,19.8,Stage-1 validation-selected policy,20,experiment_tracking/four_domain_preservation/stable_domain_stage2_summary_20260902.csv
+delivery,on,20,19.2,19.6,Stage-2 policy,20,experiment_tracking/four_domain_preservation/stable_domain_stage2_summary_20260902.csv
+tpp,off,20,20.0,20.0,Stage-1 validation-selected policy,20,experiment_tracking/four_domain_preservation/stable_domain_stage2_summary_20260902.csv
+tpp,on,20,20.0,20.0,Stage-1 validation-selected policy,20,experiment_tracking/four_domain_preservation/stable_domain_stage2_summary_20260902.csv
+zenotravel,off,20,20.0,20.0,Stage-1 validation-selected policy,17,experiment_tracking/four_domain_preservation/stable_domain_stage2_summary_20260902.csv
+zenotravel,on,20,20.0,20.0,Stage-1 validation-selected policy,17,experiment_tracking/four_domain_preservation/stable_domain_stage2_summary_20260902.csv
+mprime,off,20,15.0,15.2,Stage-2 policy (provisional),19,experiment_tracking/mprime_validation_ipc_scale_v1/validation_led_stage2_selected_statistics_20260903.csv
+mprime,on,20,14.6,15.2,Stage-2 policy (provisional),19,experiment_tracking/mprime_validation_ipc_scale_v1/validation_led_stage2_selected_statistics_20260903.csv
+block_grouping,off,20,16.3,16.3,Stage-1 validation-selected policy,17,experiment_tracking/stage1_policy_mcts_all_cutoff_statistics_latest.csv
+block_grouping,on,20,15.9,16.2,Stage-1 narrow fixed MCTS,17,experiment_tracking/stage1_policy_mcts_all_cutoff_statistics_latest.csv
+drone,off,20,5.9,9.9,Terminal-led Stage-2 fixed MCTS,9,experiment_tracking/stage2_policy_mcts_all_cutoff_statistics_latest.csv
+drone,on,20,5.1,13.1,Terminal-led Stage-2 fixed MCTS,9,experiment_tracking/stage2_policy_mcts_all_cutoff_statistics_latest.csv
+fo_counters,off,20,4.2,8.4,Stage-1 PW70,6,experiment_tracking/mcts_progressive_widening_cross_domain/pw70_ten_seed_statistics_latest.csv
+fo_counters,on,20,3.7,7.3,Stage-1 PW70,6,experiment_tracking/mcts_progressive_widening_cross_domain/pw70_ten_seed_statistics_latest.csv
+rover,off,20,4.0,5.0,Stage-1 fixed MCTS,7,experiment_tracking/stage1_policy_mcts_all_cutoff_statistics_latest.csv
+rover,on,20,3.8,4.6,Stage-1 PW70,7,experiment_tracking/mcts_progressive_widening_cross_domain/pw70_ten_seed_statistics_latest.csv
+counters,off,59,32.5,38.4,Terminal-led Stage-2 narrow MCTS,17,experiment_tracking/stage2_policy_mcts_all_cutoff_statistics_latest.csv
+counters,on,59,18.6,27.1,Validation-led Stage-2 narrow MCTS,17,experiment_tracking/stage2_policy_mcts_all_cutoff_statistics_latest.csv
