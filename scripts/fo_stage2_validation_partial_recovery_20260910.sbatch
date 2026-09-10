@@ -14,11 +14,11 @@ set -o pipefail
 : "${VALUE_HEAD:?VALUE_HEAD is required}"
 : "${SEED:?SEED is required}"
 : "${CHECKPOINT_B64:?CHECKPOINT_B64 is required}"
-: "${SOURCE_COMPLETION:?SOURCE_COMPLETION is required}"
-: "${SKIP_NUMBERS:?SKIP_NUMBERS is required}"
+: "${SKIP_NUMBERS_B64:?SKIP_NUMBERS_B64 is required}"
 
 [[ "$VALUE_HEAD" == off || "$VALUE_HEAD" == on ]]
 CHECKPOINT=$(printf '%s' "$CHECKPOINT_B64" | base64 -d)
+SKIP_NUMBERS=$(printf '%s' "$SKIP_NUMBERS_B64" | base64 -d)
 CHECKOUT=/home/hersco/bershco-nu-asnets/numeric-asnets-yarin-external
 PRODUCTION=/home/hersco/bershco-nu-asnets/numeric-asnets
 CONTAINER=/home/hersco/Docker/image.sif
@@ -28,7 +28,6 @@ OUT=/home/hersco/training_new_domains/2026-09-10/fo_stage2_validation_recovery
 mkdir -p "$OUT/completion"
 LOG="$OUT/${SLURM_JOB_ID}_source${SOURCE_JOB_ID}_${VALUE_HEAD}_${SEED}.txt"
 COMPLETION="$OUT/completion/${SLURM_JOB_ID}.jsonl"
-cp "$SOURCE_COMPLETION" "$COMPLETION"
 VH_ARG=''
 [[ "$VALUE_HEAD" == off ]] && VH_ARG='--disable-value-head'
 
