@@ -17,7 +17,7 @@ set -o pipefail
 [[ "$VALUE_HEAD" == off || "$VALUE_HEAD" == on ]]
 
 CHECKPOINT=$(printf '%s' "$CHECKPOINT_B64" | base64 -d)
-CHECKOUT=/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context
+CHECKOUT=/home/hersco/bershco-nu-asnets/numeric-asnets-yarin-external
 PRODUCTION=/home/hersco/bershco-nu-asnets/numeric-asnets
 CONTAINER=/home/hersco/Docker/image.sif
 VALIDATOR=/home/hersco/tools/VAL/build/bin/Validate
