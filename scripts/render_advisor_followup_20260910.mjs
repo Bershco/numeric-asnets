@@ -8,6 +8,9 @@ const names = [
   "rq2_mcts_vh_off",
   "rq3_value_head_training",
   "rq4_value_head_mcts",
+  "rq4_direct",
+  "rq4_cross_cell",
+  "rq4_interaction",
 ];
 
 for (const name of names) {

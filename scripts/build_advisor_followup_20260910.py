@@ -279,8 +279,11 @@ def build_rq_rows() -> list[dict[str, object]]:
     return output
 
 
-def plot_rows(rows: list[dict[str, object]], rq: str, output_name: str, title: str) -> None:
+def plot_rows(rows: list[dict[str, object]], rq: str, output_name: str, title: str,
+              estimand_prefix: str | None = None) -> None:
     selected = [row for row in rows if row["rq"] == rq]
+    if estimand_prefix is not None:
+        selected = [row for row in selected if str(row["estimand"]).startswith(estimand_prefix)]
     estimands = list(dict.fromkeys(str(row["estimand"]) for row in selected))
     # Keep a generous right margin for the exact effect and adjusted-p labels.
     # These labels were previously clipped in the PNG rendering.
@@ -402,6 +405,12 @@ def main() -> None:
     plot_rows(rows, "RQ2", "rq2_mcts_vh_off", "RQ2 — Does inference-time MCTS improve VH-off coverage?")
     plot_rows(rows, "RQ3", "rq3_value_head_training", "RQ3 — Does the value head change Stage-2 refinement?")
     plot_rows(rows, "RQ4", "rq4_value_head_mcts", "RQ4 — Does the value head change the benefit of MCTS inference?")
+    plot_rows(rows, "RQ4", "rq4_direct", "RQ4a — MCTS benefit within VH-on checkpoints",
+              "VH-on direct")
+    plot_rows(rows, "RQ4", "rq4_cross_cell", "RQ4b — VH-on MCTS versus parallel VH-off policy",
+              "Cross-cell level")
+    plot_rows(rows, "RQ4", "rq4_interaction", "RQ4c — Value-head interaction with MCTS benefit",
+              "VH interaction")
 
 
 if __name__ == "__main__":

@@ -338,6 +338,9 @@ terminal-led continuation belongs in any of these totals.
   estimands, all cutoffs, CIs, raw/Holm p-values and provenance.
 - `rq1_stage2_training_vh_off.*`, `rq2_mcts_vh_off.*`,
   `rq3_value_head_training.*`, `rq4_value_head_mcts.*`: RQ-separated plots.
+- `rq4_direct.*`, `rq4_cross_cell.*`, `rq4_interaction.*`: readable RQ4
+  subplots for the three required estimands; the combined RQ4 figure remains
+  available for overview use.
 - `terminal_led_archive_index.csv`: retained terminal-led evidence and the
   explicit no-continuation rule.
 - `generator_comparison.csv`: generator mapping, scores, distance and code links.
