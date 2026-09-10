@@ -140,7 +140,7 @@ contains every parsed test/validation/frozen instance.
 | FO Yarin frozen | 2–20; mean 8.85 | 98.5% initial values nonzero; fixed max 42; ordered chain | 5.4/10 | Closer goal order/range, but still a strong initial-state shift |
 | Rover test | 1–8 rovers; 4–25 waypoints | means 3.75 and 9.50; graph grows through suite | 0/10 | Reference |
 | Rover thesis validation | 1–5; 4–20 | means 2.60 and 9.03; connected/reachable safeguards | 3.2/10 | Good central overlap; under-covers largest test tail |
-| Rover Yarin frozen | 4–8; 2–5 | expected means 6.0 and 3.5; upstream rovergen topology | 7.9/10 | More rovers but far fewer waypoints: a strong distribution shift |
+| Rover Yarin frozen | 1–4 rovers; 4–8 waypoints | means 2.40 and 6.50; visible edges mean 28.8; traverse edges mean 25.2 | 7.9/10 | Fewer objects and much sparser traversability: a strong distribution shift |
 
 Distance combines object-count shift, initial-state/topology shift,
 goal-construction shift and support/tail coverage. It is descriptive, not a
@@ -340,12 +340,12 @@ the optional generator-bias screen is approved later, the minimal first stage is
   froze 20 FO Counters plus 20 Rover instances.  The first policy array
   `21175932` failed before inference because the isolated worktree lacked the
   ignored compiled TensorFlow operator; no scientific result was produced.
-  After linking the production-compatible operator, array `21175984` started:
-  its six FO Counters cells are live.  Its six Rover cells exposed the upstream
+  After linking the production-compatible operator, array `21175984` ran:
+  its six FO Counters cells completed.  Its six Rover cells exposed the upstream
   `at` versus numeric-domain `in` vocabulary mismatch and failed before
   evaluation.  The vocabulary-only repair is commit `44397bc8`; Rover-only
-  preparation job `21176013` is live and replacement array
-  `21176016[6-11]` is dependency-pending.  No MCTS or retraining is involved.
+  preparation job `21176013` and replacement array `21176016[6-11]` then both
+  completed successfully.  No MCTS or retraining was involved.
 - The six FO Counters screen cells subsequently completed in 2m58s–4m50s.
   On the three matched seeds, VH-off changed from 3.33/20 on the thesis test
   set to 5.67/20 externally; VH-on changed from 3.67/20 to 5.00/20.  This is
@@ -353,3 +353,8 @@ the optional generator-bias screen is approved later, the minimal first stage is
   external set differs in initial values and size sampling, and n=3 per mode.
   Per-seed scores and both original/external log paths are frozen in
   `yarin_external_results_latest.csv`.
+- The six Rover screen cells completed in 2m32s–5m19s.  VH-off changed from
+  4.00/20 on the thesis test set to 0.33/20 externally; VH-on changed from
+  4.00/20 to 1.33/20.  This is a large three-seed distribution-shift signal,
+  consistent with the external set's substantially sparser traversal graphs;
+  it is not evidence that the generator is defective or a ten-seed estimate.

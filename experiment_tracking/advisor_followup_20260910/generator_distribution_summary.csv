@@ -25,3 +25,10 @@ rover,thesis_validation,30,camera,1.0,3.7,3.0,8.0
 rover,thesis_validation,30,visible_edges,9.0,26.7,18.5,69.0
 rover,thesis_validation,30,traverse_edges,6.0,62.0,33.0,234.0
 rover,thesis_validation,30,goals,3.0,6.6,4.0,16.0
+rover,yarin_external,20,rover,1.0,2.4,2.0,4.0
+rover,yarin_external,20,waypoint,4.0,6.5,7.0,8.0
+rover,yarin_external,20,objective,2.0,3.65,3.5,5.0
+rover,yarin_external,20,camera,2.0,3.25,3.0,5.0
+rover,yarin_external,20,visible_edges,10.0,28.8,27.0,48.0
+rover,yarin_external,20,traverse_edges,8.0,25.2,18.0,56.0
+rover,yarin_external,20,goals,2.0,6.8,7.0,12.0
