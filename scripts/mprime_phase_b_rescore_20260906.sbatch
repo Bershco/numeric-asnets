@@ -10,4 +10,4 @@ repo=/home/hersco/bershco-nu-asnets/numeric-asnets-yarin-external
 work=/home/hersco/training_new_domains/2026-09-06/mprime_phase_b
 extra=''
 if [[ ${PREFLIGHT:-0} == 1 ]]; then extra='--preflight'; fi
-apptainer exec --bind /home/hersco:/home/hersco --bind /home/hersco/apptainer_fake_passwd:/etc/passwd --pwd "$repo" /home/hersco/Docker/image.sif /bin/bash -lc "source /home/hersco/bershco-nu-asnets/numeric-asnets/venv-asnets/bin/activate; python -u '$work/mprime_phase_b_rescore_20260906.py' --root '$work' --repo '$repo' --task '${SLURM_ARRAY_TASK_ID:-0}' $extra"
+apptainer exec --bind /home/hersco:/home/hersco --bind /home/hersco/apptainer_fake_passwd:/etc/passwd --pwd "$repo" /home/hersco/Docker/image.sif /bin/bash -lc "source /home/hersco/bershco-nu-asnets/numeric-asnets/venv-asnets/bin/activate; export PYTHONPATH='$repo':'$repo/asnets':\${PYTHONPATH:-}; python -u '$work/mprime_phase_b_rescore_20260906.py' --root '$work' --repo '$repo' --task '${SLURM_ARRAY_TASK_ID:-0}' $extra"

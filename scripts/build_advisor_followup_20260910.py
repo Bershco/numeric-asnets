@@ -72,8 +72,9 @@ def signflip(values: list[float]) -> float:
 def add_holm(rows: list[dict[str, object]]) -> None:
     groups: dict[tuple[str, str, str, str], list[int]] = defaultdict(list)
     for index, row in enumerate(rows):
-        groups[(str(row["rq"]), str(row["stage"]), str(row["cutoff"]),
-                str(row["estimand"]))].append(index)
+        if row.get("raw_p") != "":
+            groups[(str(row["rq"]), str(row["stage"]), str(row["cutoff"]),
+                    str(row["estimand"]))].append(index)
     for indices in groups.values():
         ordered = sorted(indices, key=lambda index: float(rows[index]["raw_p"]))
         running = 0.0
@@ -106,7 +107,29 @@ def result_row(*, rq: str, stage: str, estimand: str, domain: str,
         "ci95_high_percentage_points": round(high / capacity * 100, 6),
         "raw_p": round(signflip(values), 9),
         "holm_p": "",
+        "evidence_status": "complete_paired_inference",
         "row_level_provenance": provenance,
+    }
+
+
+def lower_bound_row(*, rq: str, estimand: str, cutoff: str,
+                    baseline_mean: float, comparison_lower_bound: float) -> dict[str, object]:
+    """Represent censored FO Stage-2 evidence without inventing inference."""
+    effect = comparison_lower_bound - baseline_mean
+    return {
+        "rq": rq, "stage": "Stage 2", "estimand": estimand,
+        "domain": "fo_counters", "cutoff": cutoff, "n": 10,
+        "capacity": 20, "baseline_mean": baseline_mean,
+        "comparison_mean": comparison_lower_bound,
+        "effect_solved": round(effect, 6),
+        "ci95_low_solved": "", "ci95_high_solved": "",
+        "effect_percentage_points": round(effect / 20 * 100, 6),
+        "ci95_low_percentage_points": "", "ci95_high_percentage_points": "",
+        "raw_p": "", "holm_p": "", "evidence_status": "partial_lower_bound",
+        "row_level_provenance": (
+            "experiment_tracking/advisor_followup_20260910/"
+            "fo_stage2_validation_partial_recovery_manifest.csv"
+        ),
     }
 
 
@@ -227,7 +250,32 @@ def build_rq_rows() -> list[dict[str, object]]:
                         provenance=str(path.relative_to(ROOT)).replace("\\", "/"),
                     ))
 
+    # The three exact recovery jobs are live. Publish the currently observed
+    # FO Stage-2 totals as lower bounds; do not invent CIs, p-values, or a
+    # value-head interaction by subtracting two censored values.
+    for cutoff, on_bound in (("30m", 5.3), ("2h", 5.4), ("6h", 5.4)):
+        output.append(lower_bound_row(
+            rq="RQ2", estimand="VH-off direct: MCTS - same-checkpoint policy",
+            cutoff=cutoff, baseline_mean=2.9, comparison_lower_bound=6.0,
+        ))
+        output.append(lower_bound_row(
+            rq="RQ4", estimand="VH-on direct: MCTS - same-checkpoint policy",
+            cutoff=cutoff, baseline_mean=3.1, comparison_lower_bound=on_bound,
+        ))
+        output.append(lower_bound_row(
+            rq="RQ4", estimand="Cross-cell level: VH-on MCTS - parallel VH-off policy",
+            cutoff=cutoff, baseline_mean=2.9, comparison_lower_bound=on_bound,
+        ))
+
     add_holm(output)
+    for row in output:
+        if row["stage"] == "Stage 2" and row["rq"] in {"RQ2", "RQ4"}:
+            row["multiplicity_status"] = (
+                "withheld_partial_cell" if row["evidence_status"] == "partial_lower_bound"
+                else "provisional_holm_among_four_complete_domains"
+            )
+        else:
+            row["multiplicity_status"] = "final_declared_family"
     return output
 
 
@@ -257,7 +305,7 @@ def plot_rows(rows: list[dict[str, object]], rq: str, output_name: str, title: s
         '<rect width="100%" height="100%" fill="white"/>',
         '<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#17212b}.title{font-size:23px;font-weight:700}.sub{font-size:12px;fill:#536273}.label{font-size:11px}.head{font-size:13px;font-weight:700}</style>',
         f'<text x="28" y="34" class="title">{esc(title)}</text>',
-        '<text x="28" y="57" class="sub">Validation-led primary analysis only. Effects are paired by seed; lines are 95% t-intervals; pH is Holm-adjusted within each stage/cutoff family.</text>',
+        '<text x="28" y="57" class="sub">Validation-led primary analysis only. Effects are paired by seed; lines are 95% t-intervals; pH is Holm-adjusted within each RQ/stage/cutoff/estimand family.</text>',
     ]
     panel_top = 78
     for estimand in estimands:
@@ -279,9 +327,21 @@ def plot_rows(rows: list[dict[str, object]], rq: str, output_name: str, title: s
         for row in data:
             label = f"{LABELS[str(row['domain'])]} / {row['stage']} / {row['cutoff']}"
             center = float(row["effect_percentage_points"])
+            partial = row.get("evidence_status") == "partial_lower_bound"
+            color = "#238b45" if center >= 0 else "#c43c39"
+            if partial:
+                arrow_end = scale(min(center + 5, axis_high))
+                parts += [
+                    f'<text x="{left - 12}" y="{y + 4}" text-anchor="end" class="label">{esc(label)}</text>',
+                    f'<circle cx="{scale(center):.1f}" cy="{y}" r="5" fill="{color}"/>',
+                    f'<line x1="{scale(center):.1f}" y1="{y}" x2="{arrow_end:.1f}" y2="{y}" stroke="{color}" stroke-width="2"/>',
+                    f'<text x="{arrow_end + 3:.1f}" y="{y + 4}" class="label">&#x25B6;</text>',
+                    f'<text x="{right + 10}" y="{y + 4}" class="sub">&#x2265;{center:+.1f} pp; partial, inference withheld</text>',
+                ]
+                y += 34
+                continue
             low = float(row["ci95_low_percentage_points"])
             high = float(row["ci95_high_percentage_points"])
-            color = "#238b45" if center >= 0 else "#c43c39"
             marker = " *" if float(row["holm_p"]) < .05 else ""
             parts += [
                 f'<text x="{left - 12}" y="{y + 4}" text-anchor="end" class="label">{esc(label)}</text>',
@@ -338,7 +398,7 @@ def main() -> None:
     rows = build_rq_rows()
     write_csv(OUT / "rq_primary_validation_led.csv", rows)
     write_csv(OUT / "terminal_led_archive_index.csv", terminal_archive())
-    plot_rows(rows, "RQ1", "rq1_stage2_training_vh_off", "RQ1 — Does MCTS-guided Stage-2 training improve policy coverage?")
+    plot_rows(rows, "RQ1", "rq1_stage2_training_vh_off", "RQ1 — Does Stage-2 training improve policy coverage without a value head?")
     plot_rows(rows, "RQ2", "rq2_mcts_vh_off", "RQ2 — Does inference-time MCTS improve VH-off coverage?")
     plot_rows(rows, "RQ3", "rq3_value_head_training", "RQ3 — Does the value head change Stage-2 refinement?")
     plot_rows(rows, "RQ4", "rq4_value_head_mcts", "RQ4 — Does the value head change the benefit of MCTS inference?")

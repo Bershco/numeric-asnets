@@ -1,5 +1,5 @@
-experiment,state,jobs,cpus,memory_gib,job_ids,row_level_provenance
-Adaptive KL-control TPP/off screen,RUNNING,2,12,96,21144388;21144389,experiment_tracking/cluster_workload_latest.csv
-FO Counters terminal-led Stage-2 MCTS,RUNNING,1,6,120,20559575,experiment_tracking/cluster_workload_latest.csv
-MPrime validation adequacy Phase B full rescore,RUNNING,33,132,660,21090161_2;21090161_52;21143254_0;21143254_4;21143254_12;21143254_16;21143254_20;21143254_21;21143254_22;21143254_23;21143254_25;21143254_26;21143254_27;21143254_28;21143254_29;21143254_32;21143254_33;21143254_34;21143254_35;21143254_36;21143254_37;21143254_38;21143254_39;21143254_40;21143254_41;21143254_43;21143254_46;21143254_48;21143254_49;21143254_51;21143254_55;21143254_59;21128409_18,experiment_tracking/cluster_workload_latest.csv
-PW70 cross-domain correction,RUNNING,1,6,120,20755796,experiment_tracking/cluster_workload_latest.csv
+snapshot_time_idt,experiment,running,pending,jobs,requested_cpus,requested_memory_gib,job_ids,row_level_provenance
+2026-09-10T21:53:42+03:00,Adaptive KL-control TPP/off screen,1,0,1,6,48.0,21144388,experiment_tracking/cluster_workload_latest.csv
+2026-09-10T21:53:42+03:00,Counters root-visit distribution audit,2,0,2,4,240.0,21178320;21178321,experiment_tracking/cluster_workload_latest.csv
+2026-09-10T21:53:42+03:00,FO Counters validation-led Stage-2 exact recovery,3,0,3,18,360.0,21178377;21178379;21178380,experiment_tracking/cluster_workload_latest.csv
+2026-09-10T21:53:42+03:00,MPrime validation adequacy Phase B full rescore,2,0,2,8,40.0,21178598_15;21178598_42,experiment_tracking/cluster_workload_latest.csv

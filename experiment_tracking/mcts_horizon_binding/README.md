@@ -1,8 +1,10 @@
 # Remaining-horizon experiments
 
-`MCTS-HORIZON` is the completed Drone 750-action aware/unaware non-result.
-`MCTS-HORIZON-COUNTERS` is the live 10,000-action Counters efficacy pilot.
-They are separate experiments.
+**Lifecycle note (10 September 2026): both campaigns are complete negative
+experiments.** References below to “live” or “running” preserve the historical
+execution timeline; they are not current scheduler status. `MCTS-HORIZON` is
+the Drone 750-action aware/unaware non-result and `MCTS-HORIZON-COUNTERS` is the
+10,000-action Counters efficacy pilot. They are separate experiments.
 
 ## Cutoff-counter semantics and verification
 

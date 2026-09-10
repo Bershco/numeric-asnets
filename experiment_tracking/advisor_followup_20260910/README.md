@@ -53,7 +53,16 @@ variable to support a reliable claim.
 The direct estimand is `VH-off MCTS − the same checkpoint under policy-only
 inference`. This deliberately excludes VH-on; that belongs to RQ4.
 
+The 30-minute, two-hour and six-hour columns are cumulative instances solved by
+those **per-instance wall-clock cutoffs within the same declared six-hour
+evaluation**, not separate runs and not whole-job elapsed time. Tables use
+solved-instance counts (20 instances per domain, except Counters with 59); the
+forest plots use percentage points so domains remain visually comparable.
+
 Each cutoff cell is `MCTS mean; change [95% CI]; Holm p`.
+Because the FO Counters Stage-2 cell is still censored, Stage-2 RQ2/RQ4 Holm
+values are provisional adjustments among the four complete domains. The final
+five-domain family will be frozen only after the FO recovery completes.
 
 | Stage/domain | Policy | 30 minutes | 2 hours | 6 hours | Answer |
 |---|---:|---|---|---|---|
@@ -69,9 +78,10 @@ Each cutoff cell is `MCTS mean; change [95% CI]; Holm p`.
 | S2 FO Counters | 2.9 | ≥6.0; ≥+3.1 | ≥6.0; ≥+3.1 | ≥6.0; ≥+3.1 | All ten VH-off identities ran; eight are complete and two are partial lower bounds |
 
 **RQ2 answer:** MCTS is domain-dependent. It is strongly useful for Stage-1
-FO Counters, modestly positive for Drone/Rover, unsafe at short budgets in Block
-Grouping, and can be harmful in Counters. It is not a universal inference
-replacement.
+FO Counters and modestly positive for Drone/Rover. In Block Grouping it is
+harmful at 30 minutes and only approaches parity by six hours. Counters has
+negative descriptive means and documented policy-success losses, but no
+significant average effect. MCTS is not a universal inference replacement.
 
 ### RQ3 — Does the value head improve Stage-2 refinement?
 
@@ -103,30 +113,33 @@ Three views are mandatory:
    not a causal value-head effect, but it verifies that a reported VH-on MCTS
    gain is not merely an artefact of comparing against a degraded VH-on policy.
 
-Each cell is `VH-on direct / VH interaction`, in solved-instance units. Full
-95% CIs and raw/Holm p-values are in `rq_primary_validation_led.csv`.
+Each complete cell is `VH-on direct / VH interaction / cross-cell level`, in
+solved-instance units. Full 95% CIs and raw/Holm p-values are in
+`rq_primary_validation_led.csv`.
 
 | Stage/domain | 30 minutes | 2 hours | 6 hours | Answer |
 |---|---:|---:|---:|---|
-| S1 Block Grouping | −3.9 / +0.8 | −1.9 / −0.4 | +0.3 / +1.2 | VH-on eventually reaches parity; interaction not significant |
-| S1 Drone | +4.9 / +3.9 | +5.3 / +4.3 | +5.3 / +4.3 | Large direct gain; interaction is also Holm-significant at all cutoffs |
-| S1 FO Counters | +1.6 / −1.7 | +2.0 / −1.6 | +2.0 / −1.6 | MCTS helps VH-on, but less than VH-off |
-| S1 Rover | +0.6 / −0.2 | +0.6 / −0.4 | +0.6 / −0.4 | Small direct gain; no VH interaction |
-| S1 Counters | +1.7 / +9.3 | +3.5 / +10.4 | +3.9 / +10.7 | Large noisy contrast because VH-off MCTS regresses |
-| S2 Block Grouping | −2.7 / +1.9 | −2.2 / −1.2 | −0.2 / +0.1 | No full-budget benefit or interaction |
-| S2 Drone | +5.9 / +5.1 | +6.2 / +5.2 | +6.2 / +5.2 | Large significant direct gain and interaction at every cutoff |
-| S2 Rover | +0.5 / 0.0 | +0.6 / +0.1 | +0.6 / +0.1 | Small direct gain; no VH interaction |
-| S2 Counters | +0.8 / +2.8 | +4.6 / +4.8 | +5.3 / +5.5 | Positive but highly variable; not significant |
-| S2 FO Counters | lower bound | lower bound | lower bound | All 20 jobs ran; three incomplete records remain lower bounds rather than five nonexistent jobs |
+| S1 Block Grouping | −3.9 / +0.8 / −4.3 | −1.9 / −0.4 / −2.3 | +0.3 / +1.2 / −0.1 | VH-on eventually reaches policy parity; no reliable interaction |
+| S1 Drone | +4.9 / +3.9 / +4.1 | +5.3 / +4.3 / +4.5 | +5.3 / +4.3 / +4.5 | Large direct gain and interaction; also exceeds VH-off policy |
+| S1 FO Counters | +1.6 / −1.7 / +1.1 | +2.0 / −1.6 / +1.5 | +2.0 / −1.6 / +1.5 | MCTS helps VH-on, but VH-off gains more |
+| S1 Rover | +0.6 / −0.2 / +0.4 | +0.6 / −0.4 / +0.4 | +0.6 / −0.4 / +0.4 | Small direct gain; no reliable interaction |
+| S1 Counters | +1.7 / +9.3 / −12.2 | +3.5 / +10.4 / −10.4 | +3.9 / +10.7 / −10.0 | Positive direct effect but still below the stronger VH-off policy |
+| S2 Block Grouping | −2.7 / +1.9 / −5.9 | −2.2 / −1.2 / −5.4 | −0.2 / +0.1 / −3.4 | No MCTS benefit; remains below VH-off policy |
+| S2 Drone | +5.9 / +5.1 / +4.2 | +6.2 / +5.2 / +4.5 | +6.2 / +5.2 / +4.5 | Large direct gain and interaction; cross-cell gain is positive but not Holm-significant |
+| S2 Rover | +0.5 / 0.0 / +0.4 | +0.6 / +0.1 / +0.5 | +0.6 / +0.1 / +0.5 | Small direct gain; no reliable interaction |
+| S2 Counters | +0.8 / +2.8 / −14.3 | +4.6 / +4.8 / −10.5 | +5.3 / +5.5 / −9.8 | Positive direct effect but still descriptively below VH-off policy |
+| S2 FO Counters | ≥+2.2 / indeterminate / ≥+2.4 | ≥+2.3 / indeterminate / ≥+2.5 | ≥+2.3 / indeterminate / ≥+2.5 | Both direct and cross-cell lower bounds are positive; interaction awaits exact recovery |
 
 At six hours, the Stage-2 Drone interaction is +5.2 plans, 95% CI
 [3.24, 7.16], Holm p=.008. The direct VH-on gain is +6.2 plans,
 95% CI [4.33, 8.07], Holm p=.008. This is the clearest RQ4 result.
 
 **RQ4 answer:** the value head materially increases the benefit of MCTS in
-Drone, but not generally. FO Counters gains from MCTS in both modes, with the
-larger gain actually occurring without the value head. Counters has a large but
-unstable interaction because its VH-off search often degrades a strong policy.
+Drone, but not generally. At Stage 1, FO Counters gains in both modes and the
+VH-off gain is larger. Stage-2 FO lower bounds are positive in both modes, but
+their interaction is not identifiable until the three exact recoveries finish.
+Counters has a large but unstable interaction because its VH-off search often
+degrades a strong policy; its VH-on MCTS level remains below VH-off policy.
 
 ## 3. External generator comparison
 
@@ -141,12 +154,13 @@ contains every parsed test/validation/frozen instance.
 | FO Yarin frozen | 2–20; mean 8.85 | 98.5% initial values nonzero; fixed max 42; ordered chain | 5.4/10 | Closer goal order/range, but still a strong initial-state shift |
 | Rover test | 1–8 rovers; 4–25 waypoints | means 3.75 and 9.50; graph grows through suite | 0/10 | Reference |
 | Rover thesis validation | 1–5; 4–20 | means 2.60 and 9.03; connected/reachable safeguards | 3.2/10 | Good central overlap; under-covers largest test tail |
-| Rover Yarin frozen | 1–4 rovers; 4–8 waypoints | means 2.40 and 6.50; visible edges mean 28.8; traverse edges mean 25.2 | 7.9/10 | Fewer objects and much sparser traversability: a strong distribution shift |
+| Rover Yarin frozen | 1–4 rovers; 4–8 waypoints | means 2.40 and 6.50; visible edges mean 28.8; traverse edges mean 25.2 | qualitative strong shift | Fewer objects and smaller graphs; normalized traversal density is only somewhat below thesis validation |
 
-Distance combines object-count shift, initial-state/topology shift,
-goal-construction shift and support/tail coverage. It is descriptive, not a
-statistical test. Engineering readiness remains a separate score in
-`generator_comparison.csv`.
+The earlier decimal “distance” scores were an undocumented judgment scale and
+are not used as quantitative evidence. The reproducible comparison is the raw
+object-count, state/topology, goal-construction and support/tail data in
+`generator_distribution_instances.csv` and `generator_distribution_summary.csv`.
+Engineering readiness remains a separate score in `generator_comparison.csv`.
 
 Important mapping correction: Yarin's `counters_generator.py` declares
 `fo-counters-rnd`; it maps to **FO Counters**, not the separate `fn-counters`
@@ -291,9 +305,9 @@ comparisons without process/build confounding.
 
 | Job | Slurm jobs | CPUs/job | RAM/job | Wall time/job | Expected use |
 |---|---:|---:|---:|---:|---|
-| Counters visit audit, VH-off failures | 1 | 2 | 120 GiB | 24h | Three instances sequentially; ≤18h evaluation plus overhead |
-| Counters visit audit, matched VH-on control | 1 | 2 | 120 GiB | 24h | Three instances sequentially; ≤18h evaluation plus overhead |
-| **Required total** | **2** | **4 concurrent** | **240 GiB concurrent** | — | About 40 CPU-hours and at most 2,400 GiB-hours if both use 20h |
+| Counters visit audit, VH-off failures | 1 | 2 | 120 GiB | 24h | Live as 21178320; three instances sequentially; ≤18h evaluation plus overhead |
+| Counters visit audit, matched VH-on control | 1 | 2 | 120 GiB | 24h | Live as 21178321; three instances sequentially; ≤18h evaluation plus overhead |
+| **Required total** | **2** | **4 concurrent** | **240 GiB concurrent** | — | About 80 CPU-hours and at most 4,800 GiB-hours if both use 20h |
 
 One worker is intentional: it prevents interleaved per-action traces and worker
 scheduling from confounding the timing distribution. The full 120 GiB is retained
@@ -309,13 +323,14 @@ The VH-on job uses the same instances and seed as a parallel-cell control.
 
 | Scope | Tasks | Submit now? | Reason |
 |---|---:|---|---|
-| Three-seed FO/Rover external-generator screen | 12 policy tasks in one array | Approved | Frozen preparation plus two domains × two VH modes × three seeds |
+| Three-seed FO/Rover external-generator screen | 12 policy tasks across the successful FO and Rover arrays | Complete | Results and original logs are in `yarin_external_results_latest.csv` |
 | Ten-seed FO/Rover external-generator confirmation | 28 additional policy tasks | No | Only if the screen changes conclusions; reuses the first 12 |
-| FO Stage-2 validation-led reconstruction | 0 new MCTS jobs | No | All 20 identities ran. Exact audit: VH-off partial jobs 20943885 and 20945845 contain 5 and 7 durable successes; VH-on job 20945846 contains 6. No hidden completed jobs or extra printed successes exist. |
+| FO Stage-2 validation-led exact recovery | 3 minimal MCTS jobs | Live | Jobs 21178377/79/80 run only the 42 instances missing from partial jobs 20943885/845/846. |
 
-Thus the meeting notes themselves imply **two new MCTS jobs**, not dozens. If
-the optional generator-bias screen is approved later, the minimal first stage is
-12 policy-only tasks. No terminal-led continuation belongs in either total.
+Thus the meeting notes produced **two diagnostic MCTS jobs** and, after the
+historical FO audit proved three identities genuinely partial, **three minimal
+completion jobs**. The external-generator screen is already complete. No
+terminal-led continuation belongs in any of these totals.
 
 ## Files
 
@@ -334,19 +349,22 @@ the optional generator-bias screen is approved later, the minimal first stage is
   provenance.
 - `reproducibility_publication_manifest.csv`: Git publication map.
 
-## 9. Targeted live update — 10 September, 21:20 IDT
+## 9. Targeted live update — 10 September, 21:52 IDT
 
-- Adaptive-KL outlier `21144388` remains live (6 CPU, 48 GiB). The stable
-  control is complete. The controller has not changed the coefficient from 3,
-  so this run currently tests another constant-anchor trajectory rather than a
-  genuinely different KL regime.
+- Adaptive-KL outlier `21144388` remains live (6 CPU, 48 GiB) with 98/100
+  updates logged; the stable control is complete at 100/100. The controller has
+  not changed the coefficient from 3, so this run currently tests another
+  constant-anchor trajectory rather than a genuinely different KL regime.
 - Adaptive-KL stable control `21144389` completed all 100 epochs. The outlier's
   epoch-0 test result remained 10/20, so the controller did not repair the first
   update because it did not intervene.
-- MPrime Phase B has 2,241/2,260 checkpoint-replicate results.
-  Nineteen exact evaluations remain: ten in `stage1-on-1972442430` and nine in
+- MPrime Phase B has 2,243/2,260 checkpoint-replicate results.
+  Seventeen exact evaluations remain across `stage1-on-1972442430` and
   `validation_led-off-1472491096`. Fifty-eight of sixty lineages are complete.
-- Exact tail array `21178405[15,42]` is running. Array `21178356` first stopped
+- Array `21178405[15,42]` durably added two results and then failed because the
+  evaluator imported `post_training` from the wrong checkout. The repaired
+  exact tail `21178598[15,42]` is running with the intended isolated checkout
+  first on `PYTHONPATH`. Array `21178356` first stopped
   because the clean checkout lacked the two generated domain modules; after the
   modules were copied and checksum-verified, `21178385` exposed concatenated
   multiprocess plan/output lines that the validator could not parse. The parser
@@ -376,8 +394,10 @@ the optional generator-bias screen is approved later, the minimal first stage is
 - The six Rover screen cells completed in 2m32s–5m19s.  VH-off changed from
   4.00/20 on the thesis test set to 0.33/20 externally; VH-on changed from
   4.00/20 to 1.33/20.  This is a large three-seed distribution-shift signal,
-  consistent with the external set's substantially sparser traversal graphs;
-  it is not evidence that the generator is defective or a ten-seed estimate.
+  on an external set with fewer objects and smaller graphs. Its normalized
+  traversal density is only somewhat below thesis validation, so this screen
+  does not identify graph sparsity as the cause. It is not evidence that the
+  generator is defective or a ten-seed estimate.
 - Counters visit-audit jobs `21178320` and `21178321` are live. They run only
   instances 51, 55 and 59, with one worker, 2 CPU, 120 GiB and a 24-hour
   allocation each. They log priors, visits, Q/U and selected actions at every

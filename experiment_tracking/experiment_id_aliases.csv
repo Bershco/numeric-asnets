@@ -1,0 +1,4 @@
+historical_id,canonical_id,reason
+EXTERNAL-GENERATOR-SCREEN,YARIN-EXTERNAL-GENERATORS,pre-registry screen name
+MCTS-HORIZON-BINDING,MCTS-HORIZON,binding-horizon manifest name
+MCTS-SAFE-CONTEXT-DIAG,MCTS-SAFE-CONTEXT,diagnostic subcampaign name

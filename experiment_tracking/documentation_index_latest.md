@@ -1,6 +1,6 @@
 # Canonical experiment-documentation index
 
-Updated: 2026-09-10T21:32:39+03:00
+Updated: 2026-09-10T21:59:15+03:00
 
 This index resolves the apparent duplication created by dated audit snapshots.
 Dated files are immutable historical evidence, not current status.  New analysis
@@ -17,6 +17,8 @@ must read the canonical files below; it must not infer liveness from an old date
 | Dynamic job evidence | `experiment_tracking/dynamic_experiment_jobs_latest.csv` |
 | MPrime Phase-B checkpoint evidence | `experiment_tracking/mprime_validation_phase_b_20260906/phase_b_checkpoint_scores_latest.csv` |
 | CSV provenance audit | `experiment_tracking/result_csv_provenance_index_latest.csv` |
+| Registry reference integrity | `experiment_tracking/registry_reference_audit_latest.csv` |
+| Historical experiment-ID aliases | `experiment_tracking/experiment_id_aliases.csv` |
 | Byte-identical duplicate audit | `experiment_tracking/documentation_redundancy_audit_latest.csv` |
 
 ## Retention rule

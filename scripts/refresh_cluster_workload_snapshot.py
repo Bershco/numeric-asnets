@@ -86,7 +86,7 @@ def mem_gib(value: str) -> float:
 raw = subprocess.check_output(
     SSH
     + [
-        "squeue -r -u hersco -h -o '%i|%j|%T|%C|%m|%M|%l|%R|%Q|%A'"
+        "squeue -r -u hersco -h -o '%i|%j|%T|%C|%m|%M|%l|%R|%Q|%F'"
     ],
     text=True,
     timeout=120,

@@ -1,5 +1,10 @@
 # Cross-domain progressive-widening screen
 
+**Lifecycle note (10 September 2026): all screen, correction and ten-seed
+confirmation jobs described here are terminal.** References below to “live,”
+“running,” or “pending” are retained only as a dated execution history. Current
+inference is in `pw70_ten_seed_statistics_latest.csv` and the master registry.
+
 This directory now contains two deliberately distinct experiments.  This
 distinction was added after discovering that the first Block Grouping/Counters
 cross-domain screen had inherited the narrow comparator's 20-simulation budget

@@ -1,5 +1,6 @@
 import sharp from "file:///C:/Users/roeeh/Desktop/School/Meitar/Thesis/Code/numeric-asnets/node_modules/sharp/dist/index.mjs";
 import path from "node:path";
+import fs from "node:fs";
 
 const folder = path.resolve("experiment_tracking/advisor_followup_20260910");
 const names = [
@@ -10,5 +11,9 @@ const names = [
 ];
 
 for (const name of names) {
-  await sharp(path.join(folder, `${name}.svg`)).png().toFile(path.join(folder, `${name}.png`));
+  const target = path.join(folder, `${name}.png`);
+  const temporary = path.join(folder, `${name}.next.png`);
+  await sharp(path.join(folder, `${name}.svg`)).png().toFile(temporary);
+  if (fs.existsSync(target)) fs.unlinkSync(target);
+  fs.renameSync(temporary, target);
 }

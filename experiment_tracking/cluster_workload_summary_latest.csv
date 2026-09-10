@@ -1,5 +1,5 @@
 snapshot_time_idt,experiment,state,jobs,requested_cpus,requested_memory_gib,scheduler_source
-2026-09-10T21:32:22+03:00,Adaptive KL-control TPP/off screen,RUNNING,1,6,48.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-10T21:32:22+03:00,Counters root-visit distribution audit,RUNNING,2,4,240.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-10T21:32:22+03:00,FO Counters validation-led Stage-2 exact recovery,RUNNING,3,18,360.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-10T21:32:22+03:00,MPrime validation adequacy Phase B full rescore,RUNNING,2,8,40.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-10T21:53:42+03:00,Adaptive KL-control TPP/off screen,RUNNING,1,6,48.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-10T21:53:42+03:00,Counters root-visit distribution audit,RUNNING,2,4,240.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-10T21:53:42+03:00,FO Counters validation-led Stage-2 exact recovery,RUNNING,3,18,360.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-10T21:53:42+03:00,MPrime validation adequacy Phase B full rescore,RUNNING,2,8,40.0,experiment_tracking/cluster_workload_latest.csv
