@@ -75,11 +75,15 @@ def test_score(path: str) -> float | None:
 
 
 def validation_score(path: Path) -> int | None:
-    if not path.exists():
+    # VAL summaries contain one row per printed candidate plan, not one row per
+    # evaluation instance.  A 21/30 policy can therefore have only 21 rows even
+    # when the evaluation is complete.  Completion is certified by the adjacent
+    # identity-bound .done.json written only after the 30-instance final summary
+    # and post-hoc validation both succeed.
+    done = path.with_name(path.name.removesuffix(".val.csv") + ".done.json")
+    if not path.exists() or not done.exists():
         return None
     data = rows(path)
-    if len(data) != 30:
-        return None
     return sum(row.get("val_valid") == "1" for row in data)
 
 
