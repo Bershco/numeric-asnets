@@ -18,3 +18,10 @@ Apptainer image. The current publication manifest is:
 Primary results from 10 September 2026 onward use the validation-led branch.
 Completed terminal-led results remain archived and traceable, but are not part of
 the primary RQ analysis or future continuations.
+
+The 10 September advisor follow-up additionally freezes an external-distribution
+screen for FO Counters and Rover from SPL-BGU's PDDL generator commit
+`b64e5d086117ebd5c1d53fbe9a9d93ae609a59fb`. The exact instance/checkpoint/task
+manifest is `experiment_tracking/advisor_followup_20260910/yarin_external_screen_manifest.csv`.
+The active screen uses policy inference only: two domains, two value-head modes,
+and three fixed seeds (12 tasks). It does not add MCTS work.

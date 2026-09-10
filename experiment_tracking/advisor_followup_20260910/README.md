@@ -94,10 +94,13 @@ positive VH-on refinement effect.
 
 ### RQ4 — Does the value head change the benefit of inference-time MCTS?
 
-Two views are mandatory:
+Three views are mandatory:
 
 1. **VH-on direct:** `VH-on MCTS − the same VH-on checkpoint's policy score`.
 2. **Parallel-cell interaction:** `(VH-on MCTS benefit) − (VH-off MCTS benefit)`.
+3. **Cross-cell level check:** `VH-on MCTS − parallel VH-off policy`. This is
+   not a causal value-head effect, but it verifies that a reported VH-on MCTS
+   gain is not merely an artefact of comparing against a degraded VH-on policy.
 
 Each cell is `VH-on direct / VH interaction`, in solved-instance units. Full
 95% CIs and raw/Holm p-values are in `rq_primary_validation_led.csv`.
@@ -113,7 +116,7 @@ Each cell is `VH-on direct / VH interaction`, in solved-instance units. Full
 | S2 Drone | +5.9 / +5.1 | +6.2 / +5.2 | +6.2 / +5.2 | Large significant direct gain and interaction at every cutoff |
 | S2 Rover | +0.5 / 0.0 | +0.6 / +0.1 | +0.6 / +0.1 | Small direct gain; no VH interaction |
 | S2 Counters | +0.8 / +2.8 | +4.6 / +4.8 | +5.3 / +5.5 | Positive but highly variable; not significant |
-| S2 FO Counters | — | — | — | Awaiting five missing validation-led endpoint evaluations |
+| S2 FO Counters | lower bound | lower bound | lower bound | All 20 jobs ran; reconstruct three incomplete records rather than submit five duplicates |
 
 At six hours, the Stage-2 Drone interaction is +5.2 plans, 95% CI
 [3.24, 7.16], Holm p=.008. The direct VH-on gain is +6.2 plans,
@@ -126,29 +129,32 @@ unstable interaction because its VH-off search often degrades a strong policy.
 
 ## 3. External generator comparison
 
-The referenced repository overlaps with only three of the nine thesis domains:
+The active comparison is limited to FO Counters and Rover and measures the
+actual PDDL distributions, not filenames. `generator_distribution_instances.csv`
+contains every parsed test/validation/frozen instance.
 
-| Thesis domain | Yarin file | Mapping | Ours / Yarin score | Distribution distance | Verdict |
-|---|---|---|---:|---:|---|
-| FO Counters | `counters_generator.py` | Direct | 8.0 / 5.5 | 3/10 | Closest match; suitable after adding seeds and our audit |
-| Rover | `rovers_generator.py` | Direct | 8.5 / 6.0 | 8/10 | Strong external distribution shift; useful after freezing rovergen version/command |
-| Zenotravel | `zenotravel_generator.py` | Direct | 8.5 / 3.5 | 7/10 | Raw output is not evaluation-ready because of indexing/reproducibility defects |
-| FO Counters variant | `complex_counters_generator.py` | Related, not same distribution | 8.0 / 4.5 | 9/10 | Future OOD stress test; do not pool with FO Counters |
-| Other six domains | none | No overlap | — | — | No comparison available from this repository |
+| Domain/distribution | Main size | Other structural evidence | Distance from test | Interpretation |
+|---|---:|---|---:|---|
+| FO test | 2–21 counters; mean 11.50 | all initial values zero; `max_int=2n`; ordered chain | 0/10 | Reference |
+| FO thesis validation | 2–16; mean 7.53 | 95.9% initial values nonzero; tiered max; shuffled chain | 6.8/10 | Smaller and structurally different from test |
+| FO Yarin frozen | 2–20; mean 8.85 | 98.5% initial values nonzero; fixed max 42; ordered chain | 5.4/10 | Closer goal order/range, but still a strong initial-state shift |
+| Rover test | 1–8 rovers; 4–25 waypoints | means 3.75 and 9.50; graph grows through suite | 0/10 | Reference |
+| Rover thesis validation | 1–5; 4–20 | means 2.60 and 9.03; connected/reachable safeguards | 3.2/10 | Good central overlap; under-covers largest test tail |
+| Rover Yarin nominal | 4–8; 2–5 | expected means 6.0 and 3.5; upstream rovergen topology | 7.9/10 | More rovers but far fewer waypoints: a strong distribution shift |
 
-Scores are engineering/readiness scores, not claims about scientific truth:
-validity/solvability safeguards (2), reproducibility (2), difficulty control
-(2), schema/diversity (2), and audit/provenance (2). Distance is 0 for the same
-sampling process and 10 for only sharing a domain name/schema.
+Distance combines object-count shift, initial-state/topology shift,
+goal-construction shift and support/tail coverage. It is descriptive, not a
+statistical test. Engineering readiness remains a separate score in
+`generator_comparison.csv`.
 
 Important mapping correction: Yarin's `counters_generator.py` declares
 `fo-counters-rnd`; it maps to **FO Counters**, not the separate `fn-counters`
 domain called Counters in the thesis.
 
-The strongest low-cost empirical follow-up is not retraining. First freeze one
-external test set per overlapping domain, run our static and ENHSP audit, then
-evaluate existing Stage-1 validation-selected checkpoints. A three-seed screen
-requires 18 policy-evaluation tasks. Expand to all ten seeds only if the external
+The strongest low-cost empirical follow-up is not retraining. Freeze one
+external set for FO Counters and Rover, run the static audit, then evaluate
+existing Stage-1 validation-selected checkpoints. A three-seed, two-VH screen
+requires 12 policy-evaluation tasks. Expand to all ten seeds only if the external
 distribution materially changes a conclusion.
 
 Detailed code-level findings and source links are in `generator_comparison.csv`.
@@ -173,7 +179,8 @@ paths.
 
 ## 5. Can historical logs tell us how many external actions occurred by 30 minutes?
 
-Not exactly for ordinary historical runs. They record final elapsed time and
+Not exactly for ordinary historical runs. This limitation applies to runs made
+before the new instrumentation. They record final elapsed time and
 final step count, but not the elapsed wall time at each external action. Dividing
 final steps by final runtime would assume constant throughput, which is false as
 the retained search tree and successor-generation cost change.
@@ -188,19 +195,25 @@ root decision:
 - visit entropy and top-one/top-two visit margin.
 
 `summarize_mcts_visit_distribution.py` converts one six-hour trace into exact
-cumulative 30-minute, two-hour and six-hour summaries. Therefore no separate
-30-minute rerun is required.
+cumulative 30-minute, two-hour and six-hour summaries. Therefore future opted-in
+six-hour runs need no separate 30-minute rerun. Historical ordinary logs cannot
+be retroactively upgraded to exact step-at-30m traces; they support final step
+counts and success-by-cutoff only.
 
 ## 6. Why Counters MCTS can be worse than policy
 
 The current evidence is stronger than a generic speculation:
 
-- In the reconciled Stage-2 VH-off subset, there are 12 instances solved by the
+- In the reconciled six-seed Stage-2 VH-off subset, there are 12 instances solved by the
   policy but not by fixed narrow MCTS.
 - Eleven diverge from the policy at the **first external action** and then reach
   exactly 10,000 actions unsolved.
 - Zero of those eleven is explained by the six-hour instance timeout.
 - All printed plans elsewhere in the audit are VAL-valid.
+
+The number 12 is subset-scoped, not a global count across all Counters seeds,
+branches and stages. A complete ten-seed join must be rebuilt before claiming a
+global total.
 
 The likely mechanism is an early search-induced policy displacement:
 
@@ -218,6 +231,12 @@ This makes the advisors' “insufficient visit evidence” hypothesis plausible,
 but it is not yet proven by the old logs. The proposed diagnostic measures the
 visit margin, entropy, Q/U balance, policy rank of the selected action, and the
 first point where MCTS departs from the policy.
+
+Specifically, the two proposed jobs distinguish three explanations: (a) the
+network policy strongly prefers the successful action but 20 coarse visits
+select another action; (b) the network itself is already ambiguous or wrong at
+the root; or (c) Q/value evidence deliberately overturns the policy. The matched
+VH-on arm tests whether the pattern is specific to the failing VH-off cell.
 
 ## 7. What “30-minute versus six-hour distribution” should mean
 
@@ -264,13 +283,13 @@ The VH-on job uses the same instances and seed as a parallel-cell control.
 
 | Scope | Tasks | Submit now? | Reason |
 |---|---:|---|---|
-| Three-seed external-generator screen | 18 policy tasks in 6 arrays | No | First repair/audit external Zenotravel and freeze manifests |
-| Ten-seed external-generator confirmation | 60 policy tasks in 6 arrays | No | Only if the screen changes conclusions |
-| Existing validation-led FO Stage-2 MCTS gap | 5 MCTS jobs | No | Needed eventually for complete Stage-2 RQ2/RQ4, but not created by these meeting notes |
+| Three-seed FO/Rover external-generator screen | 12 policy tasks in one array | Approved | Frozen preparation plus two domains × two VH modes × three seeds |
+| Ten-seed FO/Rover external-generator confirmation | 28 additional policy tasks | No | Only if the screen changes conclusions; reuses the first 12 |
+| FO Stage-2 validation-led reconstruction | 0 new MCTS jobs | No | All 20 identities ran; recover three partial records from existing logs |
 
 Thus the meeting notes themselves imply **two new MCTS jobs**, not dozens. If
 the optional generator-bias screen is approved later, the minimal first stage is
-18 policy-only tasks. No terminal-led continuation belongs in either total.
+12 policy-only tasks. No terminal-led continuation belongs in either total.
 
 ## Files
 

@@ -187,6 +187,26 @@ def build_rq_rows() -> list[dict[str, object]]:
                 on_seeds = {row["seed"] for row in on}
                 seeds = sorted(off_seeds & on_seeds)
                 if seeds:
+                    # Mandatory absolute comparator requested after the
+                    # advisor meeting: show whether VH-on MCTS also exceeds the
+                    # parallel VH-off policy, not only its weaker/stronger VH-on
+                    # policy checkpoint.  This is a cross-cell comparison, not an
+                    # interaction estimate, and is therefore labelled separately.
+                    output.append(result_row(
+                        rq="RQ4", stage=stage,
+                        estimand="Cross-cell level: VH-on MCTS - parallel VH-off policy",
+                        domain=domain, cutoff=cutoff,
+                        values=[float(mapping[(domain, "on", seed)][f"mcts_{cutoff}"])
+                                - float(mapping[(domain, "off", seed)]["policy_score"])
+                                for seed in seeds],
+                        baseline_mean=statistics.mean(
+                            float(mapping[(domain, "off", seed)]["policy_score"])
+                            for seed in seeds),
+                        comparison_mean=statistics.mean(
+                            float(mapping[(domain, "on", seed)][f"mcts_{cutoff}"])
+                            for seed in seeds),
+                        provenance=str(path.relative_to(ROOT)).replace("\\", "/"),
+                    ))
                     off_benefit = {
                         seed: float(mapping[(domain, "off", seed)][f"mcts_{cutoff}"])
                               - float(mapping[(domain, "off", seed)]["policy_score"])
