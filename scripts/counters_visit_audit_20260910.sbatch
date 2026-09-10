@@ -4,6 +4,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=120G
 #SBATCH --job-name=COUNTERS_VISIT_AUDIT
+#SBATCH --exclude=ise-cpu128-03,ise-cpu128-04,ise-cpu-intl-08,ise-cpu-intl-09,ise-cpu-intl-10,ise-cpu-intl-13,ise-cpu-intl-14,ise-cpu-intl-26,ise-cpu-intl-27,ise-cpu-intl-28
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-10/counters_visit_audit/%j.sbatch.out
 
 set -euo pipefail
