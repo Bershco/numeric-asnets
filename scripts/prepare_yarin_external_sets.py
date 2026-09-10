@@ -27,6 +27,11 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def align_rover_location_predicate(problem: str) -> str:
+    """Rename only upstream Rover's location token ``at`` to numeric Rover's ``in``."""
+    return re.sub(r"(?i)(\()at(\s)", r"\1in\2", problem)
+
+
 def copy_base(root: Path, domain: str, destination: Path) -> None:
     source = root / "problems" / "numeric" / domain
     destination.mkdir(parents=True, exist_ok=True)
@@ -93,11 +98,15 @@ def freeze_rover(root: Path, destination: Path, rovergen: Path, rng: random.Rand
         output = subprocess.check_output(command, cwd=rovergen.parent).decode("utf-8")
         # Preserve upstream's export behavior: only the define line keeps case.
         rendered = "\n".join(line if "define" in line else line.lower() for line in output.splitlines()) + "\n"
+        # The two domains use identical rover/waypoint location semantics but
+        # different predicate names.  Leave at_lander/at_*_sample untouched.
+        rendered = align_rover_location_predicate(rendered)
         path = external / f"pfile{index}.pddl"
         path.write_text(rendered, encoding="utf-8")
         rows.append({"domain": "rover", "index": index, "generator_seed": FREEZE_SEED,
                      "upstream_commit": UPSTREAM_COMMIT,
-                     "parameters": ";".join(f"{key}={value}" for key, value in parameters.items()),
+                     "parameters": ";".join(f"{key}={value}" for key, value in parameters.items())
+                     + ";compatibility_rename=at_to_in",
                      "path": str(path), "sha256": sha256(path)})
 
 
