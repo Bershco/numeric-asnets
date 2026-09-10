@@ -102,15 +102,16 @@ for panel, value_head in enumerate(("off", "on")):
             text(x0 - 12, y + 17, LABEL[row["domain"]], "small", "end"),
             rect(x0, y, (x1 - x0) * to_percent(baseline) / 100, 10, ORANGE, radius=2),
             rect(x0, y + 14, (x1 - x0) * to_percent(best) / 100, 10, GREEN, radius=2),
-            line(paper_x, y - 3, paper_x, y + 27, INK, 1.6, "3 2"),
+            line(paper_x, y - 3, paper_x, y + 27, "#9ca3af", 3.0),
             text(x0 + (x1 - x0) * to_percent(baseline) / 100 + 5, y + 9, f"S1 {baseline:g}/{total}", "small"),
             text(x0 + (x1 - x0) * to_percent(best) / 100 + 5, y + 23, f"best {best:g}/{total}", "small"),
             text(x0, y + 39, f"best method: {row['best_configuration']}", "small"),
+            text(x1 + 12, y + 18, f"paper {published:g}/{total}", "small"),
         ]
 parts += [
     rect(70, 735, 18, 9, ORANGE), text(96, 744, "validation-selected Stage-1 policy baseline", "small"),
     rect(365, 735, 18, 9, GREEN), text(391, 744, "best observed configuration", "small"),
-    line(615, 730, 615, 750, INK, 1.6, "3 2"), text(625, 744, "published domain mean (not VH-separated)", "small"),
+    line(615, 730, 615, 750, "#9ca3af", 3.0), text(625, 744, "published domain mean (gray; exact score shown per row)", "small"),
     text(980, 744, "Exact solved/total labels are means across matched seeds; Counters uses 59 instances, all other domains use 20.", "sub"),
 ]
 save("01_domain_scorecard", parts)
