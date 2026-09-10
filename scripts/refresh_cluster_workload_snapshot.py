@@ -22,6 +22,10 @@ SSH = [
 
 def classify(name: str) -> str:
     name_upper = name.upper()
+    if name_upper == "COUNTERS_VISIT_AUDIT":
+        return "Counters root-visit distribution audit"
+    if name_upper == "FO_VAL_S2_RECOVERY":
+        return "FO Counters validation-led Stage-2 exact recovery"
     if name_upper.startswith("ANCHOR-KL-TPP-OFF-"):
         return "Adaptive KL-control TPP/off screen"
     if "ROVER_INTERRUPTION_RECOVERY" in name_upper:

@@ -164,6 +164,30 @@ def normalize_action(action: str) -> str:
     return action
 
 
+def parse_plan_literal(plan_repr: str):
+    """Parse a plan even when concurrent worker output follows on the line.
+
+    Multiprocess stdout can concatenate the next ``[EVAL_POLICY...]`` record
+    immediately after the closing bracket of a valid plan.  Trying successive
+    closing-list prefixes is safer than a greedy regular expression and keeps
+    the historical plan representation backward compatible.
+    """
+    try:
+        return ast.literal_eval(plan_repr)
+    except (SyntaxError, ValueError):
+        for index, character in enumerate(plan_repr):
+            if character != "]":
+                continue
+            candidate = plan_repr[: index + 1]
+            try:
+                parsed = ast.literal_eval(candidate)
+            except (SyntaxError, ValueError):
+                continue
+            if isinstance(parsed, list):
+                return parsed
+        raise
+
+
 def parse_plan_lines(log_path: Path) -> List[dict]:
     plans = []
 
@@ -179,7 +203,7 @@ def parse_plan_lines(log_path: Path) -> List[dict]:
             plan_repr = m.group("plan").strip()
 
             try:
-                parsed = ast.literal_eval(plan_repr)
+                parsed = parse_plan_literal(plan_repr)
             except Exception as e:
                 fail(f"Could not parse plan at line {lineno}, instance={instance_name}: {e}")
 

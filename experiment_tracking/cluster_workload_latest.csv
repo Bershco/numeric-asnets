@@ -1,2 +1,7 @@
 snapshot_time_idt,experiment,job_id,job_name,state,cpus,memory_gib,elapsed,time_limit,reason_or_node,priority,array_job_id,scheduler_source
-2026-09-10T17:20:17+03:00,Adaptive KL-control TPP/off screen,21144388,anchor-kl-tpp-off-1972442430-adaptive-retry1,RUNNING,6,48,1-02:27:28,3-00:00:00,ise-cpu256-19,,,squeue://hersco/21144388
+2026-09-10T21:27:14+03:00,Adaptive KL-control TPP/off screen,21144388,anchor-kl-tpp-off-1972442430-adaptive-retry1,RUNNING,6,48.0,1-06:34:24,3-00:00:00,ise-cpu256-19,6,21144388,squeue://hersco/21144388
+2026-09-10T21:27:14+03:00,FO Counters validation-led Stage-2 exact recovery,21178377,FO_VAL_S2_RECOVERY,RUNNING,6,120.0,5:45,1-12:00:00,ise-cpu256-12,1,21178377,squeue://hersco/21178377
+2026-09-10T21:27:14+03:00,FO Counters validation-led Stage-2 exact recovery,21178379,FO_VAL_S2_RECOVERY,RUNNING,6,120.0,5:45,1-12:00:00,ise-cpu256-13,1,21178379,squeue://hersco/21178379
+2026-09-10T21:27:14+03:00,FO Counters validation-led Stage-2 exact recovery,21178380,FO_VAL_S2_RECOVERY,RUNNING,6,120.0,5:45,1-12:00:00,ise-cpu256-13,1,21178380,squeue://hersco/21178380
+2026-09-10T21:27:14+03:00,Counters root-visit distribution audit,21178320,COUNTERS_VISIT_AUDIT,RUNNING,2,120.0,13:26,1-00:00:00,ise-cpu256-04,1,21178320,squeue://hersco/21178320
+2026-09-10T21:27:14+03:00,Counters root-visit distribution audit,21178321,COUNTERS_VISIT_AUDIT,RUNNING,2,120.0,13:26,1-00:00:00,ise-cpu256-23,1,21178321,squeue://hersco/21178321

@@ -1,8 +1,9 @@
 # Advisor follow-up notes — 10 September 2026
 
 This package records the decisions and follow-up questions from the 10 September
-advisor meeting. It was built from local authoritative result and provenance
-ledgers; no cluster refresh was needed. No MCTS job was submitted.
+advisor meeting. It uses local authoritative result/provenance ledgers plus a
+targeted live-cluster refresh. The current two-job Counters diagnostic, three
+minimal FO Counters recoveries and two-lineage MPrime tail are recorded below.
 
 ## 1. Primary analysis is validation-led
 
@@ -166,6 +167,19 @@ distribution materially changes a conclusion.
 
 Detailed code-level findings and source links are in `generator_comparison.csv`.
 
+The completed three-seed policy screen is:
+
+| Domain | VH | Thesis test | External frozen set | Paired change [95% CI] | Exact p | Reading |
+|---|---|---:|---:|---:|---:|---|
+| FO Counters | off | 3.33/20 | 5.67/20 | +2.33 [−1.46, 6.13] | .250 | Encouraging shift, underpowered |
+| FO Counters | on | 3.67/20 | 5.00/20 | +1.33 [−6.25, 8.91] | .750 | Uncertain |
+| Rover | off | 4.00/20 | 0.33/20 | −3.67 [−5.10, −2.23] | .250 | Large descriptive loss |
+| Rover | on | 4.00/20 | 1.33/20 | −2.67 [−4.10, −1.23] | .250 | Large descriptive loss |
+
+With only three paired seeds, a two-sided exact sign-flip test cannot be below
+.25. The confidence intervals describe seed variability, but no confirmatory
+significance claim is made.
+
 ## 4. Git/reproducibility publication
 
 Advisor-facing artifacts should be published to the dedicated repository:
@@ -320,18 +334,22 @@ the optional generator-bias screen is approved later, the minimal first stage is
   provenance.
 - `reproducibility_publication_manifest.csv`: Git publication map.
 
-## 9. Targeted live update — 10 September, 17:20 IDT
+## 9. Targeted live update — 10 September, 21:20 IDT
 
-- Cluster workload: one job, adaptive-KL outlier `21144388` (6 CPU, 48 GiB).
-  It has reached Stage-2 epoch 86. The realized KL remains below the controller
-  target, so the coefficient is still 3 and the controller has made zero
-  adjustments. At the current pace, roughly six hours remain.
+- Adaptive-KL outlier `21144388` remains live (6 CPU, 48 GiB). The stable
+  control is complete. The controller has not changed the coefficient from 3,
+  so this run currently tests another constant-anchor trajectory rather than a
+  genuinely different KL regime.
 - Adaptive-KL stable control `21144389` completed all 100 epochs. The outlier's
   epoch-0 test result remained 10/20, so the controller did not repair the first
   update because it did not intervene.
-- MPrime Phase B has 2,241/2,260 checkpoint-replicate results and no live jobs.
+- MPrime Phase B has 2,241/2,260 checkpoint-replicate results.
   Nineteen exact evaluations remain: ten in `stage1-on-1972442430` and nine in
   `validation_led-off-1472491096`. Fifty-eight of sixty lineages are complete.
+- Exact tail array `21178385[15,42]` is submitted. Earlier array `21178356`
+  targeted these lineages correctly but stopped at validation because the clean
+  checkout lacked the two generated domain modules. The modules were copied
+  from the original frozen experiment and checksum-verified before resubmission.
 - FO/off PW70 recovery job `21157787` correctly evaluated `instance_15.pddl`
   with one worker and the full 120 GiB, but timed out unsolved at 21,603.5 s.
   The affected seed therefore remains 7/20 and the ten-seed mean remains
@@ -358,3 +376,38 @@ the optional generator-bias screen is approved later, the minimal first stage is
   4.00/20 to 1.33/20.  This is a large three-seed distribution-shift signal,
   consistent with the external set's substantially sparser traversal graphs;
   it is not evidence that the generator is defective or a ten-seed estimate.
+- Counters visit-audit jobs `21178320` and `21178321` are live. They run only
+  instances 51, 55 and 59, with one worker, 2 CPU, 120 GiB and a 24-hour
+  allocation each. They log priors, visits, Q/U and selected actions at every
+  root for exact 30m/2h/6h distribution summaries.
+- The three FO validation-led Stage-2 records were rechecked and are genuinely
+  partial: jobs `20943885`, `20945845` and `20945846` leave 15, 13 and 14
+  instances unclassified. Corrected minimal jobs `21178377`, `21178379` and
+  `21178380` run only those 42 instances. The first submission attempts stopped
+  after roughly 90 seconds because old completion ledgers encoded a different
+  test-order signature; those attempts produced no result and the corrected
+  jobs use explicit skip lists instead.
+
+## 10. MPrime Phase-B interim scientific result
+
+The two independent harder validation replicates remove the old Stage-2
+30/30 saturation, but their checkpoint-ranking quality is still limited.
+Values below use only fully evaluated lineages; the final two can change the
+Stage-1/on and Stage-2/off rows slightly.
+
+| Branch | VH | Complete | Replicate rank agreement | Validation–test rank agreement | Mean selection regret |
+|---|---|---:|---:|---:|---:|
+| Stage 1 | off | 10/10 | .547 | .308 | 1.90 plans |
+| Stage 1 | on | 9/10 | .710 | .509 | 1.67 plans |
+| Validation-led Stage 2 | off | 9/10 | .275 | .131 | 1.67 plans |
+| Validation-led Stage 2 | on | 10/10 | .241 | .018 | 2.30 plans |
+
+Here, replicate agreement is the mean within-lineage Spearman correlation
+between the two frozen sets across saved checkpoints. Validation–test agreement
+is the same rank correlation against retrospective test-policy scores.
+Selection regret is the number of test instances lost by the validation-chosen
+checkpoint relative to the retrospectively best saved checkpoint; it measures
+selector weakness, not a deployable oracle. The interim conclusion is that the
+new sets solve saturation but Stage-2 ranking, especially VH-on, remains weak.
+Row-level checkpoint, job and log provenance is in
+`mprime_validation_phase_b_20260906/phase_b_checkpoint_scores_latest.csv`.
