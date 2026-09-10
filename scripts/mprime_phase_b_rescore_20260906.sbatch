@@ -6,7 +6,7 @@
 #SBATCH --exclude=ise-cpu128-[03-04],ise-cpu-intl-[08-15,24-28]
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-06/mprime_phase_b/rescore_%A_%a.log
 set -euo pipefail
-repo=/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context
+repo=/home/hersco/bershco-nu-asnets/numeric-asnets-yarin-external
 work=/home/hersco/training_new_domains/2026-09-06/mprime_phase_b
 extra=''
 if [[ ${PREFLIGHT:-0} == 1 ]]; then extra='--preflight'; fi
