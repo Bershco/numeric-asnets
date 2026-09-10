@@ -346,3 +346,10 @@ the optional generator-bias screen is approved later, the minimal first stage is
   evaluation.  The vocabulary-only repair is commit `44397bc8`; Rover-only
   preparation job `21176013` is live and replacement array
   `21176016[6-11]` is dependency-pending.  No MCTS or retraining is involved.
+- The six FO Counters screen cells subsequently completed in 2m58s–4m50s.
+  On the three matched seeds, VH-off changed from 3.33/20 on the thesis test
+  set to 5.67/20 externally; VH-on changed from 3.67/20 to 5.00/20.  This is
+  useful distribution-sensitivity screening, not a confirmatory claim: the
+  external set differs in initial values and size sampling, and n=3 per mode.
+  Per-seed scores and both original/external log paths are frozen in
+  `yarin_external_results_latest.csv`.
