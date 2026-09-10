@@ -140,7 +140,7 @@ contains every parsed test/validation/frozen instance.
 | FO Yarin frozen | 2–20; mean 8.85 | 98.5% initial values nonzero; fixed max 42; ordered chain | 5.4/10 | Closer goal order/range, but still a strong initial-state shift |
 | Rover test | 1–8 rovers; 4–25 waypoints | means 3.75 and 9.50; graph grows through suite | 0/10 | Reference |
 | Rover thesis validation | 1–5; 4–20 | means 2.60 and 9.03; connected/reachable safeguards | 3.2/10 | Good central overlap; under-covers largest test tail |
-| Rover Yarin nominal | 4–8; 2–5 | expected means 6.0 and 3.5; upstream rovergen topology | 7.9/10 | More rovers but far fewer waypoints: a strong distribution shift |
+| Rover Yarin frozen | 4–8; 2–5 | expected means 6.0 and 3.5; upstream rovergen topology | 7.9/10 | More rovers but far fewer waypoints: a strong distribution shift |
 
 Distance combines object-count shift, initial-state/topology shift,
 goal-construction shift and support/tail coverage. It is descriptive, not a
@@ -150,6 +150,13 @@ statistical test. Engineering readiness remains a separate score in
 Important mapping correction: Yarin's `counters_generator.py` declares
 `fo-counters-rnd`; it maps to **FO Counters**, not the separate `fn-counters`
 domain called Counters in the thesis.
+
+Yarin's Rover generator uses the standard IPC location predicate `at`, while
+this numeric Rover domain calls the same rover/waypoint predicate `in`.  The
+frozen external set applies only this token-boundary rename.  Objects,
+topology, numeric energy, initial facts and goals remain generator output, so
+the translation removes a vocabulary incompatibility without narrowing the
+intended distribution shift.
 
 The strongest low-cost empirical follow-up is not retraining. Freeze one
 external set for FO Counters and Rover, run the static audit, then evaluate
@@ -329,5 +336,13 @@ the optional generator-bias screen is approved later, the minimal first stage is
   with one worker and the full 120 GiB, but timed out unsolved at 21,603.5 s.
   The affected seed therefore remains 7/20 and the ten-seed mean remains
   8.40/20.
-- The external-generator screen is prepared but not yet submitted. It requires
-  publishing commit `6b32b845` to the isolated cluster checkout first.
+- External-generator preparation job `21175928` completed in 70 seconds and
+  froze 20 FO Counters plus 20 Rover instances.  The first policy array
+  `21175932` failed before inference because the isolated worktree lacked the
+  ignored compiled TensorFlow operator; no scientific result was produced.
+  After linking the production-compatible operator, array `21175984` started:
+  its six FO Counters cells are live.  Its six Rover cells exposed the upstream
+  `at` versus numeric-domain `in` vocabulary mismatch and failed before
+  evaluation.  The vocabulary-only repair is commit `44397bc8`; Rover-only
+  preparation job `21176013` is live and replacement array
+  `21176016[6-11]` is dependency-pending.  No MCTS or retraining is involved.
