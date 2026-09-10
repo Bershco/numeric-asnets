@@ -1,11 +1,2 @@
 snapshot_time_idt,experiment,job_id,job_name,state,cpus,memory_gib,elapsed,time_limit,reason_or_node,priority,array_job_id,scheduler_source
-2026-09-09T22:08:19+03:00,MPrime validation adequacy Phase B full rescore,21143254_27,MPRIME_PHASEB_RESCORE,RUNNING,4,20,23:00:33,1-00:00:00,ise-cpu128-10,,21143254,squeue://hersco/21143254_27
-2026-09-09T22:08:19+03:00,MPrime validation adequacy Phase B full rescore,21143254_34,MPRIME_PHASEB_RESCORE,RUNNING,4,20,23:00:33,1-00:00:00,ise-cpu256-17,,21143254,squeue://hersco/21143254_34
-2026-09-09T22:08:19+03:00,MPrime validation adequacy Phase B full rescore,21143254_36,MPRIME_PHASEB_RESCORE,RUNNING,4,20,23:00:33,1-00:00:00,ise-cpu256-04,,21143254,squeue://hersco/21143254_36
-2026-09-09T22:08:19+03:00,MPrime validation adequacy Phase B full rescore,21143254_49,MPRIME_PHASEB_RESCORE,RUNNING,4,20,23:00:33,1-00:00:00,ise-cpu256-28,,21143254,squeue://hersco/21143254_49
-2026-09-09T22:08:19+03:00,MPrime validation adequacy Phase B full rescore,21143254_55,MPRIME_PHASEB_RESCORE,RUNNING,4,20,23:00:33,1-00:00:00,ise-cpu256-22,,21143254,squeue://hersco/21143254_55
-2026-09-09T22:08:19+03:00,MPrime validation adequacy Phase B full rescore,21143254_59,MPRIME_PHASEB_RESCORE,RUNNING,4,20,23:00:33,1-00:00:00,ise-cpu256-23,,21143254,squeue://hersco/21143254_59
-2026-09-09T22:08:19+03:00,MPrime validation adequacy Phase B idempotent tail,"21157796_[0,2,15,27,34,36,42,49,52,55,59]",MPRIME_PHASEB_RESCORE,PENDING,44,220,0:00,1-00:00:00,Dependency,,21157796,squeue://hersco/21157796
-2026-09-09T22:08:19+03:00,Adaptive KL-control TPP/off screen,21144388,anchor-kl-tpp-off-1972442430-adaptive-retry1,RUNNING,6,48,7:15:30,3-00:00:00,ise-cpu256-19,,,squeue://hersco/21144388
-2026-09-09T22:08:19+03:00,Adaptive KL-control TPP/off screen,21144389,anchor-kl-tpp-off-1963100312-adaptive-retry1,RUNNING,6,48,21:36:45,3-00:00:00,ise-cpu-intl-07,,,squeue://hersco/21144389
-2026-09-09T22:08:19+03:00,FO PW70 exact missing-instance recovery,21157787,FO_PW70_ONE_INSTANCE,RUNNING,2,120,1:08:54,8:00:00,ise-cpu256-09,,,squeue://hersco/21157787
+2026-09-10T17:20:17+03:00,Adaptive KL-control TPP/off screen,21144388,anchor-kl-tpp-off-1972442430-adaptive-retry1,RUNNING,6,48,1-02:27:28,3-00:00:00,ise-cpu256-19,,,squeue://hersco/21144388

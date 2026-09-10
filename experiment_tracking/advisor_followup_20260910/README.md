@@ -65,7 +65,7 @@ Each cutoff cell is `MCTS mean; change [95% CI]; Holm p`.
 | S2 Drone | 6.7 | 7.5; +0.8 [−0.58,2.18]; .719 | 7.7; +1.0 [−0.43,2.43]; .391 | 7.7; +1.0 [−0.43,2.43]; .586 | Positive but not significant |
 | S2 Rover | 4.0 | 4.5; +0.5 [−0.01,1.01]; .375 | 4.5; +0.5 [−0.01,1.01]; .375 | 4.5; +0.5 [−0.01,1.01]; .500 | Small neutral-positive effect |
 | S2 Counters | 36.9 | 34.9; −2.0 [−6.93,2.93]; .719 | 36.7; −0.2 [−2.87,2.47]; 1.000 | 36.7; −0.2 [−2.87,2.47]; 1.000 | Aggregate parity hides important policy-only losses |
-| S2 FO Counters | — | — | — | — | Validation-led cell is incomplete: five historical endpoint jobs remain missing |
+| S2 FO Counters | 2.9 | ≥6.0; ≥+3.1 | ≥6.0; ≥+3.1 | ≥6.0; ≥+3.1 | All ten VH-off identities ran; eight are complete and two are partial lower bounds |
 
 **RQ2 answer:** MCTS is domain-dependent. It is strongly useful for Stage-1
 FO Counters, modestly positive for Drone/Rover, unsafe at short budgets in Block
@@ -116,7 +116,7 @@ Each cell is `VH-on direct / VH interaction`, in solved-instance units. Full
 | S2 Drone | +5.9 / +5.1 | +6.2 / +5.2 | +6.2 / +5.2 | Large significant direct gain and interaction at every cutoff |
 | S2 Rover | +0.5 / 0.0 | +0.6 / +0.1 | +0.6 / +0.1 | Small direct gain; no VH interaction |
 | S2 Counters | +0.8 / +2.8 | +4.6 / +4.8 | +5.3 / +5.5 | Positive but highly variable; not significant |
-| S2 FO Counters | lower bound | lower bound | lower bound | All 20 jobs ran; reconstruct three incomplete records rather than submit five duplicates |
+| S2 FO Counters | lower bound | lower bound | lower bound | All 20 jobs ran; three incomplete records remain lower bounds rather than five nonexistent jobs |
 
 At six hours, the Stage-2 Drone interaction is +5.2 plans, 95% CI
 [3.24, 7.16], Holm p=.008. The direct VH-on gain is +6.2 plans,
@@ -204,16 +204,21 @@ counts and success-by-cutoff only.
 
 The current evidence is stronger than a generic speculation:
 
-- In the reconciled six-seed Stage-2 VH-off subset, there are 12 instances solved by the
-  policy but not by fixed narrow MCTS.
-- Eleven diverge from the policy at the **first external action** and then reach
-  exactly 10,000 actions unsolved.
-- Zero of those eleven is explained by the six-hour instance timeout.
-- All printed plans elsewhere in the audit are VAL-valid.
+- Across all ten validation-led Stage-2 VH-off seeds, there are 12 instances
+  solved by policy but not by fixed narrow MCTS: eleven ordinary unsolved
+  trajectories and one unclassified instance from an interrupted allocation.
+- The detailed trajectory reconstruction covers those twelve: the eleven
+  classified failures diverge from policy on the **first external action** and
+  then reach exactly 10,000 actions unsolved.
+- Across the parallel ten VH-on seeds, there are another 13 policy-success/MCTS-
+  failure instances, all ordinary unsolved. MCTS nevertheless improves the
+  VH-on aggregate because it also adds more new successes elsewhere.
+- No policy-success loss in either mode is explained by a six-hour per-instance
+  timeout. All printed plans elsewhere in the audit are VAL-valid.
 
-The number 12 is subset-scoped, not a global count across all Counters seeds,
-branches and stages. A complete ten-seed join must be rebuilt before claiming a
-global total.
+The global seed-level join and every original policy/MCTS job path are frozen in
+`counters_policy_mcts_failure_global.csv`; the trajectory-level actions for the
+VH-off failure cells remain in the earlier audit.
 
 The likely mechanism is an early search-induced policy displacement:
 
@@ -285,7 +290,7 @@ The VH-on job uses the same instances and seed as a parallel-cell control.
 |---|---:|---|---|
 | Three-seed FO/Rover external-generator screen | 12 policy tasks in one array | Approved | Frozen preparation plus two domains × two VH modes × three seeds |
 | Ten-seed FO/Rover external-generator confirmation | 28 additional policy tasks | No | Only if the screen changes conclusions; reuses the first 12 |
-| FO Stage-2 validation-led reconstruction | 0 new MCTS jobs | No | All 20 identities ran; recover three partial records from existing logs |
+| FO Stage-2 validation-led reconstruction | 0 new MCTS jobs | No | All 20 identities ran. Exact audit: VH-off partial jobs 20943885 and 20945845 contain 5 and 7 durable successes; VH-on job 20945846 contains 6. No hidden completed jobs or extra printed successes exist. |
 
 Thus the meeting notes themselves imply **two new MCTS jobs**, not dozens. If
 the optional generator-bias screen is approved later, the minimal first stage is
@@ -303,4 +308,26 @@ the optional generator-bias screen is approved later, the minimal first stage is
 - `proposed_job_plan.csv`: exact job counts/resources/time gates.
 - `counters_visit_audit_manifest.csv`: exact two-arm Counters diagnostic
   configuration, checkpoint sources, instances and historical log provenance.
+- `counters_policy_mcts_failure_global.csv`: all twenty validation-led Stage-2
+  Counters seed pairs, global policy-success/MCTS-failure counts and direct log
+  provenance.
 - `reproducibility_publication_manifest.csv`: Git publication map.
+
+## 9. Targeted live update — 10 September, 17:20 IDT
+
+- Cluster workload: one job, adaptive-KL outlier `21144388` (6 CPU, 48 GiB).
+  It has reached Stage-2 epoch 86. The realized KL remains below the controller
+  target, so the coefficient is still 3 and the controller has made zero
+  adjustments. At the current pace, roughly six hours remain.
+- Adaptive-KL stable control `21144389` completed all 100 epochs. The outlier's
+  epoch-0 test result remained 10/20, so the controller did not repair the first
+  update because it did not intervene.
+- MPrime Phase B has 2,241/2,260 checkpoint-replicate results and no live jobs.
+  Nineteen exact evaluations remain: ten in `stage1-on-1972442430` and nine in
+  `validation_led-off-1472491096`. Fifty-eight of sixty lineages are complete.
+- FO/off PW70 recovery job `21157787` correctly evaluated `instance_15.pddl`
+  with one worker and the full 120 GiB, but timed out unsolved at 21,603.5 s.
+  The affected seed therefore remains 7/20 and the ten-seed mean remains
+  8.40/20.
+- The external-generator screen is prepared but not yet submitted. It requires
+  publishing commit `6b32b845` to the isolated cluster checkout first.
