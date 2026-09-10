@@ -55,7 +55,7 @@ upsert(
     scope="All 1,130 saved MPrime checkpoints x two independently frozen harder validation sets",
     results_file="experiment_tracking/mprime_validation_phase_b_20260906/phase_b_cell_summary_latest.csv",
     manifest_path="experiment_tracking/mprime_validation_phase_b_20260906/checkpoints.csv;experiment_tracking/mprime_validation_phase_b_20260906/frozen_validation_manifest.csv",
-    next_action="Exact two-lineage tail array 21178385 is submitted; rebuild summaries at 2260/2260, inspect replicate agreement, then freeze validation-led checkpoints only.",
+    next_action="Exact two-lineage tail array 21178405 is running; rebuild summaries at 2260/2260, inspect replicate agreement, then freeze validation-led checkpoints only.",
 )
 upsert(
     "ANCHOR-KL-CONTROL",

@@ -346,10 +346,12 @@ the optional generator-bias screen is approved later, the minimal first stage is
 - MPrime Phase B has 2,241/2,260 checkpoint-replicate results.
   Nineteen exact evaluations remain: ten in `stage1-on-1972442430` and nine in
   `validation_led-off-1472491096`. Fifty-eight of sixty lineages are complete.
-- Exact tail array `21178385[15,42]` is submitted. Earlier array `21178356`
-  targeted these lineages correctly but stopped at validation because the clean
-  checkout lacked the two generated domain modules. The modules were copied
-  from the original frozen experiment and checksum-verified before resubmission.
+- Exact tail array `21178405[15,42]` is running. Array `21178356` first stopped
+  because the clean checkout lacked the two generated domain modules; after the
+  modules were copied and checksum-verified, `21178385` exposed concatenated
+  multiprocess plan/output lines that the validator could not parse. The parser
+  was repaired and smoke-tested before the current resubmission. Neither failed
+  attempt repeated checkpoint inference that was already complete.
 - FO/off PW70 recovery job `21157787` correctly evaluated `instance_15.pddl`
   with one worker and the full 120 GiB, but timed out unsolved at 21,603.5 s.
   The affected seed therefore remains 7/20 and the ten-seed mean remains
