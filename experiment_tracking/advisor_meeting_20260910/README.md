@@ -1,5 +1,10 @@
 # Advisor meeting package — 10 September 2026
 
+> Superseded for the next meeting by
+> `../advisor_followup_20260910/README.md`. The follow-up package reorganizes
+> results strictly by RQ, uses validation-led evidence as the sole primary
+> branch, and retains terminal-led rows only in an archival provenance index.
+
 Start with `../advisor_report_20260909_current.md`. It contains the compact
 story, all RQ result tables, complete experiment catalog, best result by domain,
 live status, and the provenance contract.

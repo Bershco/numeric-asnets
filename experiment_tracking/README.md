@@ -1,5 +1,14 @@
 # Thesis experiment registry
 
+## Advisor follow-up policy from 2026-09-10
+
+Primary RQ reporting is validation-led and separated into RQ1, RQ2, RQ3 and
+RQ4. RQ3 and RQ4 each report both the direct VH-on result and the matched
+interaction against VH-off. Completed terminal-led evidence is retained for
+provenance but receives no new continuation, training, policy-evaluation or
+MCTS-evaluation work. See `advisor_followup_20260910/README.md` and its
+`rq_primary_validation_led.csv` source.
+
 Latest full verified snapshot: `status_20260909_latest.md`. Its exact scheduler
 timestamp is stored in `cluster_workload_latest.csv`. Machine-readable companions are
 `cluster_workload_latest.csv`, `cluster_workload_summary_latest.csv`,

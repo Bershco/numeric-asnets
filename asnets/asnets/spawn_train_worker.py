@@ -1272,7 +1272,8 @@ def print_puct_debug(mcts, masked_pi) -> None:
     )
 
 
-def print_mcts_determinism_record(mcts, *, step, instance_name, selected_action):
+def print_mcts_determinism_record(
+        mcts, *, step, instance_name, selected_action, elapsed_seconds=None):
     """Print one stable, compact root record for repeatability audits.
 
     This is called only by the opt-in ``--action-debug`` path.  It reruns the
@@ -1314,7 +1315,9 @@ def print_mcts_determinism_record(mcts, *, step, instance_name, selected_action)
 
     children = root.children
     child_rows = []
+    total_edge_visits = 0
     if children is not None:
+        total_edge_visits = int(np.sum(children.visits))
         sqrt_n = math.sqrt(max(1.0, root.visit_count))
         for idx, (action, child) in enumerate(children.items()):
             prior = float(children.priors[idx])
@@ -1325,13 +1328,34 @@ def print_mcts_determinism_record(mcts, *, step, instance_name, selected_action)
             child_rows.append({
                 "action": int(action), "N": visits, "Q": q_value,
                 "U": u_value, "prior": prior,
+                "raw_network_probability": float(raw_pi[int(action)]),
+                "visit_share": (
+                    float(visits / total_edge_visits)
+                    if total_edge_visits > 0 else 0.0
+                ),
                 "terminal": bool(child.terminal_state),
                 "goal": bool(child.goal_state),
             })
 
+    visit_shares = np.asarray(
+        [row["visit_share"] for row in child_rows], dtype=np.float64)
+    positive_visit_shares = visit_shares[visit_shares > 0.0]
+    visit_entropy = float(
+        -np.sum(positive_visit_shares * np.log(positive_visit_shares))
+    ) if positive_visit_shares.size else 0.0
+    ranked_visits = sorted(
+        (int(row["N"]) for row in child_rows), reverse=True)
+    top_visit_margin = (
+        ranked_visits[0] - ranked_visits[1]
+        if len(ranked_visits) >= 2 else (ranked_visits[0] if ranked_visits else 0)
+    )
+
     act_history = action_history_digest(root.state)
     payload = {
         "step": int(step), "instance": instance_name,
+        "elapsed_seconds": (
+            None if elapsed_seconds is None else float(elapsed_seconds)
+        ),
         "physical_state_digest": digest_bytes(
             root.state_key, person=b"asnet-state-key"),
         "action_history_digest": None if act_history is None else act_history.hex(),
@@ -1343,7 +1367,13 @@ def print_mcts_determinism_record(mcts, *, step, instance_name, selected_action)
         "network_value": raw_value,
         "estimator_value": estimator_value,
         "selected_action": int(selected_action),
+        "network_argmax_action": int(np.argmax(raw_pi)),
+        "network_argmax_probability": float(np.max(raw_pi)),
+        "selected_action_network_probability": float(raw_pi[int(selected_action)]),
         "root_visits": int(root.visit_count),
+        "total_edge_visits": total_edge_visits,
+        "visit_entropy": visit_entropy,
+        "top1_top2_visit_margin": int(top_visit_margin),
         "children": child_rows,
     }
     payload["child_statistics_digest"] = digest_bytes(
@@ -1493,6 +1523,7 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
                     step=step,
                     instance_name=instance_name,
                     selected_action=action_id,
+                    elapsed_seconds=time.time() - start_time,
                 )
             cstate = mcts.step_forward(action_id)
             bound_act, _ = cstate.acts_enabled[action_id]
