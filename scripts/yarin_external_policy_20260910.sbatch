@@ -7,7 +7,7 @@
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-10/yarin_external/policy_%A_%a.log
 
 set -euo pipefail
-FEATURE_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context
+FEATURE_REPO=${FEATURE_REPO:-/home/hersco/bershco-nu-asnets/numeric-asnets-yarin-external}
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
 ROOT=/home/hersco/training_new_domains/2026-09-10/yarin_external
 CONTAINER=/home/hersco/Docker/image.sif
@@ -23,4 +23,3 @@ apptainer exec --bind /home/hersco:/home/hersco \
       --manifest '$FEATURE_REPO/experiment_tracking/advisor_followup_20260910/yarin_external_screen_manifest.csv' \
       --index '$SLURM_ARRAY_TASK_ID' --completion-root '$ROOT/completion'
   "
-

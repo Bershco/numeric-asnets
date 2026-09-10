@@ -7,7 +7,7 @@
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-10/yarin_external/prep_%j.log
 
 set -euo pipefail
-FEATURE_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context
+FEATURE_REPO=${FEATURE_REPO:-/home/hersco/bershco-nu-asnets/numeric-asnets-yarin-external}
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
 ROOT=/home/hersco/training_new_domains/2026-09-10/yarin_external
 CONTAINER=/home/hersco/Docker/image.sif
@@ -26,4 +26,3 @@ apptainer exec --bind /home/hersco:/home/hersco \
     test \"\$(find '$ROOT/frozen/fo-counters/external' -name '*.pddl' | wc -l)\" -eq 20
     test \"\$(find '$ROOT/frozen/rover/external' -name '*.pddl' | wc -l)\" -eq 20
   "
-
