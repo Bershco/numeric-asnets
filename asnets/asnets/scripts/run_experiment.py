@@ -733,6 +733,13 @@ parser.add_argument(
     default=False,
     help='Have the test set also be the validation set'
 )
+parser.add_argument(
+    '--eval-mcts-root-visit-tie-break',
+    choices=('action_id', 'q', 'policy'),
+    default='action_id',
+    help=(
+        'Resolve equal maximum MCTS root visits by the historical stable '
+        'action id, sign-correct Q, or root network-policy prior.'))
 
 def main():
     args = parser.parse_args()
@@ -762,6 +769,8 @@ def main():
                    args.eval_mcts_enforce_remaining_horizon),
                eval_mcts_terminal_safe_action_selection=(
                    args.eval_mcts_terminal_safe_action_selection),
+               eval_mcts_root_visit_tie_break=(
+                   args.eval_mcts_root_visit_tie_break),
                eval_mcts_context_diagnostics=(
                    args.eval_mcts_context_diagnostics),
                eval_mcts_contextual_nodes=args.eval_mcts_contextual_nodes,
@@ -830,6 +839,7 @@ def main_inner(*,
                eval_with_mcts=False,
                eval_mcts_enforce_remaining_horizon=False,
                eval_mcts_terminal_safe_action_selection=False,
+               eval_mcts_root_visit_tie_break='action_id',
                eval_mcts_context_diagnostics=False,
                eval_mcts_contextual_nodes=False,
                eval_mcts_context_witness_limit=128,
@@ -1033,6 +1043,14 @@ evaluation = {"off" if no_eval else "on"}
                 '--eval-with-mcts')
         main_test_flags.append(
             '--eval-mcts-terminal-safe-action-selection')
+    if eval_mcts_root_visit_tie_break != 'action_id':
+        if not eval_with_mcts:
+            raise ValueError(
+                '--eval-mcts-root-visit-tie-break requires --eval-with-mcts')
+        main_test_flags.extend([
+            '--eval-mcts-root-visit-tie-break',
+            eval_mcts_root_visit_tie_break,
+        ])
     if eval_mcts_context_diagnostics:
         if not eval_with_mcts:
             raise ValueError(

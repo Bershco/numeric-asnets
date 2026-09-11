@@ -368,6 +368,73 @@ class HorizonTests(unittest.TestCase):
         )
 
 
+class RootVisitTieBreakTests(unittest.TestCase):
+    @staticmethod
+    def _root():
+        root = make_node(FakeState("root"))
+        children = [
+            make_node(FakeState("a")),
+            make_node(FakeState("b")),
+            make_node(FakeState("c")),
+        ]
+        children[0].Q_value = 0.1
+        children[1].Q_value = 0.7
+        children[2].Q_value = 0.4
+        root.children = search.FixedChildMap(
+            [0, 1, 2], children, [0.2, 0.3, 0.5])
+        root.act_dist = np.asarray([0.2, 0.6, 0.2])
+        return root
+
+    @staticmethod
+    def _mcts(root, minimization=False):
+        return types.SimpleNamespace(
+            curr_tree_root=root,
+            minimization=minimization,
+            sign=-1 if minimization else 1,
+        )
+
+    def test_historical_mode_uses_lowest_action_id(self):
+        root = self._root()
+        policy = policies.build_action_policy(
+            "argmax", root_visit_tie_break="action_id")
+        self.assertEqual(
+            policy.select_action(self._mcts(root), np.asarray([0.5, 0.5, 0.])),
+            0,
+        )
+
+    def test_q_mode_uses_sign_correct_q(self):
+        root = self._root()
+        policy = policies.build_action_policy(
+            "argmax", root_visit_tie_break="q")
+        pi = np.asarray([0.5, 0.5, 0.])
+        self.assertEqual(policy.select_action(self._mcts(root), pi), 1)
+        self.assertEqual(
+            policy.select_action(self._mcts(root, minimization=True), pi),
+            0,
+        )
+
+    def test_policy_mode_uses_root_network_prior(self):
+        root = self._root()
+        policy = policies.build_action_policy(
+            "argmax", root_visit_tie_break="policy")
+        self.assertEqual(
+            policy.select_action(self._mcts(root), np.asarray([0.5, 0.5, 0.])),
+            1,
+        )
+
+    def test_goal_chase_retains_precedence(self):
+        root = self._root()
+        root.known_distance_to_goal = 1
+        root.best_goal_child = root.children[2]
+        policy = policies.build_action_policy(
+            "argmax", distance_threshold=np.inf,
+            root_visit_tie_break="policy")
+        self.assertEqual(
+            policy.select_action(self._mcts(root), np.asarray([0.5, 0.5, 0.])),
+            2,
+        )
+
+
 class TerminalSafeActionSelectionTests(unittest.TestCase):
     @staticmethod
     def _mcts(root):

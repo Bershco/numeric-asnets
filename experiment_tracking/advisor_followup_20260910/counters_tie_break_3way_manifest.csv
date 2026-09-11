@@ -1,0 +1,7 @@
+array_index,value_head,tie_break,seed,instances,stage2_branch,checkpoint_source,search,simulations,max_children,workers,cpus,ram_gib,walltime,nice,submission_state,job_id,output_log
+0,off,action_id,1963100312,"fz_instance_51.pddl;fz_instance_55.pddl;fz_instance_59.pddl",validation_led,20430416_e0033,narrow,20,5,1,2,120,24h,10000,ready_dependency_submission,,
+1,on,action_id,1963100312,"fz_instance_51.pddl;fz_instance_55.pddl;fz_instance_59.pddl",validation_led,20430427_e0000,narrow,20,5,1,2,120,24h,10000,ready_dependency_submission,,
+2,off,q,1963100312,"fz_instance_51.pddl;fz_instance_55.pddl;fz_instance_59.pddl",validation_led,20430416_e0033,narrow,20,5,1,2,120,24h,10000,ready_dependency_submission,,
+3,on,q,1963100312,"fz_instance_51.pddl;fz_instance_55.pddl;fz_instance_59.pddl",validation_led,20430427_e0000,narrow,20,5,1,2,120,24h,10000,ready_dependency_submission,,
+4,off,policy,1963100312,"fz_instance_51.pddl;fz_instance_55.pddl;fz_instance_59.pddl",validation_led,20430416_e0033,narrow,20,5,1,2,120,24h,10000,ready_dependency_submission,,
+5,on,policy,1963100312,"fz_instance_51.pddl;fz_instance_55.pddl;fz_instance_59.pddl",validation_led,20430427_e0000,narrow,20,5,1,2,120,24h,10000,ready_dependency_submission,,

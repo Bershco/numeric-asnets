@@ -19,6 +19,7 @@ class ActionSelectionPolicy:
                 "temperature",
                 "decay_rate",
                 "duplicate_penalty",
+                "root_visit_tie_break",
             ]:
                 if hasattr(self, attr):
                     print(f"{self.worker_tag} {attr} = {getattr(self, attr)}")
@@ -34,8 +35,48 @@ class ActionSelectionPolicy:
 
 class ArgmaxPolicy(ActionSelectionPolicy):
 
+    _Q_TIE_ATOL = 1e-8
+
+    def __init__(self, root_visit_tie_break="action_id", **kwargs):
+        if root_visit_tie_break not in {"action_id", "q", "policy"}:
+            raise ValueError(
+                "root_visit_tie_break must be action_id, q, or policy")
+        self.root_visit_tie_break = root_visit_tie_break
+        super().__init__(**kwargs)
+
     def select_action(self, mcts, pi, *, remaining_horizon=None):
-        return int(np.argmax(pi))
+        current = int(np.argmax(pi))
+        if self.root_visit_tie_break == "action_id":
+            return current
+
+        max_visit_share = pi[current]
+        tied_actions = np.flatnonzero(pi == max_visit_share)
+        if len(tied_actions) <= 1 or max_visit_share <= 0:
+            return current
+
+        root = mcts.curr_tree_root
+        if self.root_visit_tie_break == "policy":
+            priors = np.asarray(root.act_dist)[tied_actions]
+            return int(tied_actions[int(np.argmax(priors))])
+
+        q_by_action = {
+            int(action): float(child.Q_value)
+            for action, child in root.children.items()
+            if child is not None
+        }
+        if any(int(action) not in q_by_action for action in tied_actions):
+            return current
+        sign = getattr(mcts, "sign", None)
+        if sign is None:
+            sign = -1 if getattr(mcts, "minimization", False) else 1
+        signed_q = np.asarray([
+            float(sign) * q_by_action[int(action)]
+            for action in tied_actions
+        ])
+        best = float(np.max(signed_q))
+        effectively_best = tied_actions[np.isclose(
+            signed_q, best, rtol=0.0, atol=self._Q_TIE_ATOL)]
+        return int(effectively_best[0])
 
 
 class SamplePolicy(ActionSelectionPolicy):
@@ -338,6 +379,7 @@ def build_action_policy(
         epoch=None,
         duplicate_penalty=None,
         terminal_safe=False,
+        root_visit_tie_break="action_id",
 ):
     base = BASE_POLICIES[base_policy]
 
@@ -380,4 +422,5 @@ def build_action_policy(
         decay_rate=decay_rate,
         epoch=epoch,
         duplicate_penalty=duplicate_penalty,
+        root_visit_tie_break=root_visit_tie_break,
     )

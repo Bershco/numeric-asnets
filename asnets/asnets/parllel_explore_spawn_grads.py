@@ -759,6 +759,7 @@ class SpawnExploreSpec:
     evaluation_index: Optional[int] = None
     mcts_enforce_remaining_horizon: bool = False
     mcts_terminal_safe_action_selection: bool = False
+    mcts_root_visit_tie_break: str = "action_id"
     mcts_context_diagnostics: bool = False
     mcts_contextual_nodes: bool = False
     mcts_context_witness_limit: int = 128
@@ -774,7 +775,8 @@ class SpawnExploreSpec:
                            "use_numeric_landmarks", "use_contributions"],
             "MCTS & EXPLORATION": ["mcts_iterations", "mcts_expansion_k", "mcts_exploration_weight",
                                    "mcts_progressive_widening", "mcts_pw_min_width", "mcts_pw_c",
-                                   "mcts_pw_alpha", "mcts_her_strategy", "sample_k_additional_states"],
+                                   "mcts_pw_alpha", "mcts_root_visit_tie_break",
+                                   "mcts_her_strategy", "sample_k_additional_states"],
             "ESTIMATOR & DECAY": ["estimator_h_to_v_coeff", "use_estimator", "estimator_decay_coeff_start",
                                   "estimator_decay_coeff_end", "estimator_decay_epochs"],
             "ACTION POLICY": ["action_policy", "action_policy_epsilon", "action_policy_temperature",
@@ -886,6 +888,9 @@ list[SpawnExploreSpec]:
             mcts_terminal_safe_action_selection=(
                 evaluation_mode
                 and args.eval_mcts_terminal_safe_action_selection),
+            mcts_root_visit_tie_break=(
+                args.eval_mcts_root_visit_tie_break
+                if evaluation_mode else "action_id"),
             mcts_context_diagnostics=(
                 evaluation_mode and args.eval_mcts_context_diagnostics),
             mcts_contextual_nodes=(

@@ -471,6 +471,15 @@ parser.add_argument(
         'children whenever a safe child exists. Safe duplicate actions are '
         'restored before any terminal fallback.'))
 parser.add_argument(
+    '--eval-mcts-root-visit-tie-break',
+    choices=('action_id', 'q', 'policy'),
+    default='action_id',
+    help=(
+        'During final MCTS evaluation, resolve equal maximum root visit '
+        'counts by stable action id (historical behavior), sign-correct Q, '
+        'or the root network-policy prior. Goal chasing and safety filtering '
+        'retain precedence.'))
+parser.add_argument(
     '--eval-mcts-context-diagnostics', action='store_true', default=False,
     help='Measure action-history aliasing during MCTS evaluation.')
 parser.add_argument(
@@ -911,6 +920,7 @@ def evaluation_signature(args):
             args.eval_mcts_enforce_remaining_horizon),
         'mcts_terminal_safe_action_selection': (
             args.eval_mcts_terminal_safe_action_selection),
+        'mcts_root_visit_tie_break': args.eval_mcts_root_visit_tie_break,
         'mcts_context_diagnostics': args.eval_mcts_context_diagnostics,
         'mcts_contextual_nodes': args.eval_mcts_contextual_nodes,
         'mcts_context_witness_limit': args.eval_mcts_context_witness_limit,
@@ -1432,6 +1442,10 @@ def main():
         parser.error(
             '--eval-mcts-terminal-safe-action-selection requires '
             '--eval-with-mcts')
+    if (args.eval_mcts_root_visit_tie_break != 'action_id'
+            and not args.eval_with_mcts):
+        parser.error(
+            '--eval-mcts-root-visit-tie-break requires --eval-with-mcts')
     if ((args.eval_mcts_context_diagnostics
          or args.eval_mcts_contextual_nodes) and not args.eval_with_mcts):
         parser.error('MCTS context options require --eval-with-mcts')
