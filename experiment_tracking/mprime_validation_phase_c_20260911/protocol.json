@@ -1,0 +1,16 @@
+{
+  "version": "20260911-phase-c",
+  "candidate_pool": 120,
+  "selected_instances": 30,
+  "per_tier": 10,
+  "selection_order": "ascending predeclared seed; first ten ENHSP/VAL-certified per tier",
+  "planner": "hmrp-ha-gbfs",
+  "planner_timeout_seconds": 120,
+  "minimum_certified_plan_lengths": [
+    4,
+    6,
+    8
+  ],
+  "network_or_test_scores_used_to_generate_or_select_instances": false,
+  "structural_basis": "fixed IPC test-suite support only; no copied problem files"
+}

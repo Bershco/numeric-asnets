@@ -9,7 +9,7 @@ import math
 import re
 import statistics
 from collections import defaultdict
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 
 FINAL_RE = re.compile(r"\[EVAL FINAL\].*?success=(\d+(?:\.\d+)?)/(?:20(?:\.0)?)")
@@ -91,7 +91,29 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument(
+        "--reported-root",
+        help=(
+            "Optional durable path written into provenance columns. The local "
+            "--root is still used to parse files, but this prevents a temporary "
+            "download directory from leaking into canonical result CSVs."
+        ),
+    )
+    parser.add_argument(
+        "--existing-checkpoint-scores",
+        type=Path,
+        help=(
+            "Optional prior checkpoint_scores CSV used only to recover cached "
+            "test scores when policy logs are not available on this machine."
+        ),
+    )
     args = parser.parse_args()
+
+    cached_test_scores: dict[tuple[str, int], float] = {}
+    if args.existing_checkpoint_scores:
+        for item in rows(args.existing_checkpoint_scores):
+            if item.get("test_score", "") != "":
+                cached_test_scores[(item["lineage"], int(item["epoch"]))] = float(item["test_score"])
 
     inventory = rows(args.root / "checkpoints.csv")
     details: list[dict[str, object]] = []
@@ -109,14 +131,21 @@ def main() -> int:
             "training_log": row["training_log"],
             "policy_job": row["policy_job"],
             "policy_log": row["policy_log"],
-            "test_score": test_score(row["policy_log"]),
+            "test_score": (
+                test_score(row["policy_log"])
+                if Path(row["policy_log"]).exists()
+                else cached_test_scores.get((lineage, epoch))
+            ),
         }
         scores = []
         for rep in range(2):
             summary = args.root / "rescore" / lineage / f"epoch_{epoch}_rep{rep}.val.csv"
             score = validation_score(summary)
             item[f"rep{rep}_score"] = "" if score is None else score
-            item[f"rep{rep}_summary"] = str(summary)
+            item[f"rep{rep}_summary"] = (
+                str(PurePosixPath(args.reported_root) / "rescore" / lineage / summary.name)
+                if args.reported_root else str(summary)
+            )
             if score is not None:
                 scores.append(score)
         item["mean_validation_score"] = statistics.mean(scores) if scores else ""
@@ -127,8 +156,13 @@ def main() -> int:
         "lineage", "branch", "value_head", "seed", "epoch", "rep0_score",
         "rep1_score", "mean_validation_score", "replicates_complete", "test_score",
         "checkpoint", "training_job", "training_log", "policy_job", "policy_log",
-        "rep0_summary", "rep1_summary",
+        "rep0_summary", "rep1_summary", "phase_b_stdout_glob",
     ]
+    for item in details:
+        item["phase_b_stdout_glob"] = (
+            str(PurePosixPath(args.reported_root) / "rescore_%A_%a.log")
+            if args.reported_root else str(args.root / "rescore_%A_%a.log")
+        )
     write(args.output_dir / "checkpoint_scores.csv", details, detail_fields)
 
     grouped: dict[str, list[dict[str, object]]] = defaultdict(list)
@@ -171,6 +205,70 @@ def main() -> int:
         })
     lineage_fields = list(lineage_rows[0])
     write(args.output_dir / "lineage_summary.csv", lineage_rows, lineage_fields)
+
+    selector_rows: list[dict[str, object]] = []
+    for lineage, group in sorted(grouped.items()):
+        complete = [
+            item for item in group
+            if item["replicates_complete"] == 2
+            and item["test_score"] not in {"", None}
+        ]
+        if not complete:
+            continue
+        test_best = max(float(item["test_score"]) for item in complete)
+        for selector, score_field in (
+            ("replicate_a", "rep0_score"),
+            ("replicate_b", "rep1_score"),
+            ("consensus_mean", "mean_validation_score"),
+        ):
+            selected = min(
+                complete,
+                key=lambda item: (-float(item[score_field]), int(item["epoch"])),
+            )
+            selected_test = float(selected["test_score"])
+            selector_rows.append({
+                "lineage": lineage,
+                "branch": branch(lineage),
+                "value_head": group[0]["value_head"],
+                "seed": group[0]["seed"],
+                "selector": selector,
+                "selected_epoch": selected["epoch"],
+                "selected_validation_score": selected[score_field],
+                "selected_test_score": selected_test,
+                "retrospective_test_best": test_best,
+                "selection_regret": test_best - selected_test,
+                "training_log": group[0]["training_log"],
+            })
+    write(
+        args.output_dir / "lineage_selector_comparison.csv",
+        selector_rows,
+        list(selector_rows[0]),
+    )
+
+    selector_cell_rows: list[dict[str, object]] = []
+    selector_cells: dict[tuple[str, str, str], list[dict[str, object]]] = defaultdict(list)
+    for item in selector_rows:
+        selector_cells[(str(item["branch"]), str(item["value_head"]), str(item["selector"]))].append(item)
+    for (cell_branch, value_head, selector), group in sorted(selector_cells.items()):
+        regrets = [float(item["selection_regret"]) for item in group]
+        scores = [float(item["selected_test_score"]) for item in group]
+        selector_cell_rows.append({
+            "branch": cell_branch,
+            "value_head": value_head,
+            "selector": selector,
+            "lineages": len(group),
+            "mean_selected_test_score": statistics.mean(scores),
+            "mean_selection_regret": statistics.mean(regrets),
+            "median_selection_regret": statistics.median(regrets),
+            "zero_regret_lineages": sum(value == 0 for value in regrets),
+            "seed_level_source": "phase_b_lineage_selector_comparison_latest.csv",
+            "job_log_columns": "training_log",
+        })
+    write(
+        args.output_dir / "cell_selector_comparison.csv",
+        selector_cell_rows,
+        list(selector_cell_rows[0]),
+    )
 
     cell_rows: list[dict[str, object]] = []
     cells: dict[tuple[str, str], list[dict[str, object]]] = defaultdict(list)

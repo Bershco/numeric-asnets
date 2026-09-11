@@ -19,6 +19,13 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("logs", nargs="+", type=Path)
     parser.add_argument("--output-prefix", type=Path, required=True)
+    parser.add_argument(
+        "--source-label",
+        action="append",
+        default=[],
+        metavar="LOCAL=PROVENANCE",
+        help="Replace a local input path with its durable original log path in outputs.",
+    )
     return parser.parse_args()
 
 
@@ -120,6 +127,9 @@ def write(path: Path, rows: list[dict[str, object]]) -> None:
 def main() -> None:
     args = parse_args()
     steps = [flatten(record) for record in read_records(args.logs)]
+    labels = dict(item.split("=", 1) for item in args.source_label)
+    for row in steps:
+        row["source_log"] = labels.get(str(row["source_log"]), row["source_log"])
     write(args.output_prefix.with_name(args.output_prefix.name + "_steps.csv"), steps)
     write(args.output_prefix.with_name(args.output_prefix.name + "_milestones.csv"), summary_rows(steps))
 

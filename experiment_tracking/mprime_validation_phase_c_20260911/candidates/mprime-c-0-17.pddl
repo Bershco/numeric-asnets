@@ -1,0 +1,4 @@
+(define (problem mprime-c-0-17) (:domain mystery-prime-typed)
+(:objects f0 f1 f2 f3 f4 f5 f6 f7 f8 - food v0 v1 v2 v3 - pleasure p0 p1 p2 p3 - pain)
+(:init (= (locale f0) 5) (= (locale f1) 2) (= (locale f2) 5) (= (locale f3) 2) (= (locale f4) 4) (= (locale f5) 8) (= (locale f6) 3) (= (locale f7) 8) (= (locale f8) 3) (= (harmony v0) 2) (= (harmony v1) 2) (= (harmony v2) 3) (= (harmony v3) 1) (eats f0 f4) (eats f1 f2) (eats f1 f3) (eats f1 f5) (eats f1 f6) (eats f2 f5) (eats f2 f6) (eats f3 f4) (eats f3 f8) (eats f4 f6) (eats f4 f7) (eats f5 f0) (eats f5 f1) (eats f6 f0) (eats f6 f3) (eats f6 f7) (eats f6 f8) (eats f7 f0) (eats f7 f1) (eats f7 f3) (eats f7 f5) (eats f8 f1) (eats f8 f2) (eats f8 f5) (eats f8 f6) (craves p0 f8) (craves p1 f3) (craves p1 f7) (craves p2 f3) (craves p3 f7) (craves v0 f1) (craves v1 f0) (craves v1 f7) (craves v2 f4) (craves v2 f7) (craves v3 f0))
+(:goal (and (craves p2 f1))))

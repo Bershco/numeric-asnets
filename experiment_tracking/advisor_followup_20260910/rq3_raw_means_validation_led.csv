@@ -1,0 +1,6 @@
+rq,domain,capacity,vh_off_stage1_mean,vh_off_stage2_mean,vh_on_stage1_mean,vh_on_stage2_mean,interaction_effect_solved,interaction_ci95_low_solved,interaction_ci95_high_solved,interaction_holm_p,seed_level_source,job_log_columns
+RQ3,block_grouping,20,16.3,16.0,15.9,12.8,-2.8,-4.609726,-0.990274,0.087890625,experiment_tracking/policy_paired_seed_results.csv,before_training_job;before_evaluation_job;before_log;after_training_job;after_evaluation_job;after_log
+RQ3,drone,20,5.9,6.7,5.1,5.0,-0.9,-2.879298,1.079298,1.0,experiment_tracking/policy_paired_seed_results.csv,before_training_job;before_evaluation_job;before_log;after_training_job;after_evaluation_job;after_log
+RQ3,fo_counters,20,4.2,2.9,3.7,3.1,0.7,-0.256785,1.656785,0.8125,experiment_tracking/policy_paired_seed_results.csv,before_training_job;before_evaluation_job;before_log;after_training_job;after_evaluation_job;after_log
+RQ3,rover,20,4.0,4.0,3.8,3.9,0.1,-0.30607,0.50607,1.0,experiment_tracking/policy_paired_seed_results.csv,before_training_job;before_evaluation_job;before_log;after_training_job;after_evaluation_job;after_log
+RQ3,counters,59,32.5,36.9,18.6,21.8,-1.2,-25.87215,23.47215,1.0,experiment_tracking/policy_paired_seed_results.csv,before_training_job;before_evaluation_job;before_log;after_training_job;after_evaluation_job;after_log

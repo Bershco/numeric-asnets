@@ -104,9 +104,10 @@ allocations nevertheless ranged from roughly 7.5h to 28h because unsuccessful
 instances can consume long timeouts. This separates **time to find successful
 plans** from **time to certify failures**.
 
-FO/off currently includes the declared 7/20 OOM-partial seed with one
-unclassified instance counted unsuccessful. Exact recovery of that instance is
-running separately; a success would raise the ten-seed mean from 8.4 to 8.5.
+FO/off includes the declared 7/20 OOM-terminal endpoint with its one
+unclassified instance counted unsuccessful. The dedicated recovery also timed
+out, so this is a frozen final ten-seed result of 8.40/20, not a provisional or
+partial score.
 
 ## Focused negative diagnostics
 

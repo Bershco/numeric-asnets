@@ -27,6 +27,13 @@ LABELS = {
     "rover": "Rover",
     "counters": "Counters",
 }
+
+FO_STAGE2_PARTIAL_PROVENANCE = (
+    "experiment_tracking/stage2_policy_mcts_comparison_by_branch_latest.csv;"
+    "experiment_tracking/stage2_mcts_historical_log_audit_20260902.csv;"
+    "experiment_tracking/advisor_followup_20260910/"
+    "fo_stage2_validation_partial_recovery_manifest.csv"
+)
 CAPACITY = {domain: 20 for domain in DOMAINS}
 CAPACITY["counters"] = 59
 T95 = {10: 2.262157, 9: 2.306004, 8: 2.364624, 7: 2.446912,
@@ -126,10 +133,7 @@ def lower_bound_row(*, rq: str, estimand: str, cutoff: str,
         "effect_percentage_points": round(effect / 20 * 100, 6),
         "ci95_low_percentage_points": "", "ci95_high_percentage_points": "",
         "raw_p": "", "holm_p": "", "evidence_status": "partial_lower_bound",
-        "row_level_provenance": (
-            "experiment_tracking/advisor_followup_20260910/"
-            "fo_stage2_validation_partial_recovery_manifest.csv"
-        ),
+        "row_level_provenance": FO_STAGE2_PARTIAL_PROVENANCE,
     }
 
 
@@ -303,12 +307,16 @@ def plot_rows(rows: list[dict[str, object]], rq: str, output_name: str, title: s
         bounded = max(axis_low, min(axis_high, value))
         return left + (bounded - axis_low) / (axis_high - axis_low) * (right - left)
 
+    family_note = (
+        " Stage-2 Holm values exclude partial FO Counters and remain provisional."
+        if rq in {"RQ2", "RQ4"} else ""
+    )
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
         '<rect width="100%" height="100%" fill="white"/>',
         '<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#17212b}.title{font-size:23px;font-weight:700}.sub{font-size:12px;fill:#536273}.label{font-size:11px}.head{font-size:13px;font-weight:700}</style>',
         f'<text x="28" y="34" class="title">{esc(title)}</text>',
-        '<text x="28" y="57" class="sub">Validation-led primary analysis only. Effects are paired by seed; lines are 95% t-intervals; pH is Holm-adjusted within each RQ/stage/cutoff/estimand family.</text>',
+        f'<text x="28" y="57" class="sub">Validation-led primary analysis only. Effects are paired by seed; lines are 95% t-intervals; pH is Holm-adjusted within each RQ/stage/cutoff/estimand family.{family_note}</text>',
     ]
     panel_top = 78
     for estimand in estimands:
@@ -363,6 +371,234 @@ def plot_rows(rows: list[dict[str, object]], rq: str, output_name: str, title: s
     (OUT / f"{output_name}.svg").write_text("".join(parts), encoding="utf-8")
 
 
+def build_raw_mean_rows(rq_rows: list[dict[str, object]]) -> tuple[list[dict[str, object]], list[dict[str, object]], list[dict[str, object]]]:
+    rq2: list[dict[str, object]] = []
+    rq4: list[dict[str, object]] = []
+    for stage, path, branch in (
+        ("Stage 1", TRACK / "stage1_policy_mcts_seed_cutoffs_latest.csv", None),
+        ("Stage 2", TRACK / "stage2_policy_mcts_seed_cutoffs_latest.csv", "validation_led"),
+    ):
+        source = read_csv(path)
+        if branch:
+            source = [row for row in source if row.get("stage2_branch") == branch]
+        for domain in DOMAINS:
+            for vh in ("off", "on"):
+                group = [row for row in source if row["domain"] == domain and row["value_head"] == vh]
+                if not group:
+                    continue
+                complete = all(row.get("evidence_status", "complete") != "partial_lower_bound" for row in group)
+                raw_row = {
+                    "rq": "RQ4",
+                    "stage": stage,
+                    "domain": domain,
+                    "value_head": vh,
+                    "n": len(group),
+                    "capacity": CAPACITY[domain],
+                    "policy_mean": statistics.mean(float(row["policy_score"]) for row in group),
+                    "mcts_30m_mean": statistics.mean(float(row["mcts_30m"]) for row in group),
+                    "mcts_2h_mean": statistics.mean(float(row["mcts_2h"]) for row in group),
+                    "mcts_6h_mean": statistics.mean(float(row["mcts_6h"]) for row in group),
+                    "evidence_status": "complete" if complete else "partial_lower_bound",
+                    "seed_level_source": str(path.relative_to(ROOT)).replace("\\", "/"),
+                    "job_log_columns": "mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger",
+                }
+                rq4.append(raw_row)
+                if vh == "off":
+                    rq2.append({**raw_row, "rq": "RQ2"})
+
+    # Replace the censored FO Stage-2 aggregate with the declared lower bounds.
+    rq2 = [row for row in rq2 if not (row["stage"] == "Stage 2" and row["domain"] == "fo_counters")]
+    rq4 = [row for row in rq4 if not (row["stage"] == "Stage 2" and row["domain"] == "fo_counters")]
+    rq2.append({
+        "rq": "RQ2", "stage": "Stage 2", "domain": "fo_counters", "value_head": "off",
+        "n": 10, "capacity": 20, "policy_mean": 2.9, "mcts_30m_mean": 6.0,
+        "mcts_2h_mean": 6.0, "mcts_6h_mean": 6.0, "evidence_status": "partial_lower_bound",
+        "seed_level_source": FO_STAGE2_PARTIAL_PROVENANCE,
+        "job_log_columns": "source_job_id;source_completion;submitted_job_id;submitted_output_log",
+    })
+    rq4.append({
+        "rq": "RQ4", "stage": "Stage 2", "domain": "fo_counters", "value_head": "off",
+        "n": 10, "capacity": 20, "policy_mean": 2.9, "mcts_30m_mean": 6.0,
+        "mcts_2h_mean": 6.0, "mcts_6h_mean": 6.0, "evidence_status": "partial_lower_bound",
+        "seed_level_source": FO_STAGE2_PARTIAL_PROVENANCE,
+        "job_log_columns": "source_job_id;source_completion;submitted_job_id;submitted_output_log",
+    })
+    rq4.append({
+        "rq": "RQ4", "stage": "Stage 2", "domain": "fo_counters", "value_head": "on",
+        "n": 10, "capacity": 20, "policy_mean": 3.1, "mcts_30m_mean": 5.3,
+        "mcts_2h_mean": 5.4, "mcts_6h_mean": 5.4, "evidence_status": "partial_lower_bound",
+        "seed_level_source": FO_STAGE2_PARTIAL_PROVENANCE,
+        "job_log_columns": "source_job_id;source_completion;submitted_job_id;submitted_output_log",
+    })
+
+    policy = [row for row in read_csv(TRACK / "policy_paired_seed_results.csv") if row["experiment_id"] == "MAIN-VAL"]
+    rq3: list[dict[str, object]] = []
+    effects = {(str(row["domain"]), str(row["estimand"])): row for row in rq_rows if row["rq"] == "RQ3"}
+    for domain in DOMAINS:
+        item: dict[str, object] = {"rq": "RQ3", "domain": domain, "capacity": CAPACITY[domain]}
+        for vh in ("off", "on"):
+            group = [row for row in policy if row["domain"] == domain and row["value_head"] == vh]
+            item[f"vh_{vh}_stage1_mean"] = statistics.mean(float(row["before_score"]) for row in group)
+            item[f"vh_{vh}_stage2_mean"] = statistics.mean(float(row["after_score"]) for row in group)
+        interaction = effects[(domain, "VH interaction: VH-on refinement - VH-off refinement")]
+        item.update({
+            "interaction_effect_solved": interaction["effect_solved"],
+            "interaction_ci95_low_solved": interaction["ci95_low_solved"],
+            "interaction_ci95_high_solved": interaction["ci95_high_solved"],
+            "interaction_holm_p": interaction["holm_p"],
+            "seed_level_source": "experiment_tracking/policy_paired_seed_results.csv",
+            "job_log_columns": "before_training_job;before_evaluation_job;before_log;after_training_job;after_evaluation_job;after_log",
+        })
+        rq3.append(item)
+    return rq2, rq3, rq4
+
+
+def _raw_plot_header(title: str, subtitle: str, width: int, height: int) -> list[str]:
+    return [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
+        '<rect width="100%" height="100%" fill="white"/>',
+        '<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#17212b}.title{font-size:23px;font-weight:700}.sub{font-size:12px;fill:#536273}.label{font-size:11px}.head{font-size:13px;font-weight:700}.value{font-size:10px;font-weight:600}</style>',
+        f'<text x="28" y="34" class="title">{html.escape(title)}</text>',
+        f'<text x="28" y="56" class="sub">{html.escape(subtitle)}</text>',
+    ]
+
+
+def plot_rq2_raw(rows: list[dict[str, object]]) -> None:
+    width, height = 1750, 760
+    parts = _raw_plot_header(
+        "RQ2 raw coverage — VH-off policy versus MCTS at both stages",
+        "Validation-led Stage 2 only. Bar labels are mean solved instances; bar height is percentage of the domain suite.",
+        width, height,
+    )
+    colors = {"Policy": "#e68632", "30m": "#9ecae1", "2h": "#4292c6", "6h": "#08519c"}
+    left, top, panel_w, panel_h = 85, 105, 790, 530
+    for panel_index, stage in enumerate(("Stage 1", "Stage 2")):
+        x0 = left + panel_index * 840
+        parts += [f'<text x="{x0}" y="88" class="head">{stage}</text>']
+        for tick in range(0, 101, 20):
+            y = top + panel_h - tick / 100 * panel_h
+            parts += [f'<line x1="{x0}" y1="{y:.1f}" x2="{x0 + panel_w}" y2="{y:.1f}" stroke="#e4e9ee"/>']
+            if panel_index == 0:
+                parts += [f'<text x="{x0 - 8}" y="{y + 4:.1f}" text-anchor="end" class="sub">{tick}%</text>']
+        data = sorted([row for row in rows if row["stage"] == stage], key=lambda row: DOMAINS.index(str(row["domain"])))
+        group_w = panel_w / len(DOMAINS)
+        bar_w = 25
+        for di, row in enumerate(data):
+            center = x0 + (di + .5) * group_w
+            values = [("Policy", float(row["policy_mean"])), ("30m", float(row["mcts_30m_mean"])), ("2h", float(row["mcts_2h_mean"])), ("6h", float(row["mcts_6h_mean"]))]
+            for vi, (label, value) in enumerate(values):
+                x = center + (vi - 1.5) * (bar_w + 4) - bar_w / 2
+                pct = value / float(row["capacity"]) * 100
+                y = top + panel_h - pct / 100 * panel_h
+                partial = row["evidence_status"] == "partial_lower_bound" and label != "Policy"
+                parts += [
+                    f'<rect x="{x:.1f}" y="{y:.1f}" width="{bar_w}" height="{top + panel_h - y:.1f}" fill="{colors[label]}" opacity="{0.65 if partial else 0.95}" stroke="{"#17212b" if partial else colors[label]}" stroke-dasharray="{"4 2" if partial else "none"}"/>',
+                    f'<text x="{x + bar_w/2:.1f}" y="{max(top + 10, y - 5):.1f}" text-anchor="middle" class="value">{"≥" if partial else ""}{value:.1f}</text>',
+                ]
+            parts += [f'<text x="{center:.1f}" y="{top + panel_h + 22}" text-anchor="middle" class="label">{html.escape(LABELS[str(row["domain"])])}</text>']
+    lx = 610
+    for label in ("Policy", "30m", "2h", "6h"):
+        parts += [f'<rect x="{lx}" y="692" width="14" height="14" fill="{colors[label]}"/><text x="{lx + 20}" y="704" class="sub">{label}</text>']
+        lx += 110
+    parts += ['<text x="28" y="738" class="sub">Dashed bars are live lower bounds. CIs and Holm-adjusted tests are reported in the companion effect plot/table.</text>', '</svg>']
+    (OUT / "rq2_raw_means_by_stage.svg").write_text("".join(parts), encoding="utf-8")
+
+
+def plot_rq3_raw(rows: list[dict[str, object]]) -> None:
+    width, height = 1750, 650
+    parts = _raw_plot_header(
+        "RQ3 raw policy coverage and value-head interaction",
+        "Each line is Stage 1 → validation-led Stage 2. Labels show solved instances; interaction is the difference between the VH-on and VH-off changes.",
+        width, height,
+    )
+    left, top, chart_w, chart_h = 85, 100, 1580, 430
+    for tick in range(0, 101, 20):
+        y = top + chart_h - tick / 100 * chart_h
+        parts += [f'<line x1="{left}" y1="{y:.1f}" x2="{left + chart_w}" y2="{y:.1f}" stroke="#e4e9ee"/><text x="{left - 8}" y="{y + 4:.1f}" text-anchor="end" class="sub">{tick}%</text>']
+    group_w = chart_w / len(rows)
+    for di, row in enumerate(rows):
+        center = left + (di + .5) * group_w
+        capacity = float(row["capacity"])
+        for vh, color, offset in (("off", "#4c78a8", -42), ("on", "#d95f02", 42)):
+            start = float(row[f"vh_{vh}_stage1_mean"])
+            end = float(row[f"vh_{vh}_stage2_mean"])
+            y1 = top + chart_h - (start / capacity * 100) / 100 * chart_h
+            y2 = top + chart_h - (end / capacity * 100) / 100 * chart_h
+            x1, x2 = center + offset - 20, center + offset + 20
+            parts += [
+                f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" stroke-width="3"/>',
+                f'<circle cx="{x1:.1f}" cy="{y1:.1f}" r="5" fill="white" stroke="{color}" stroke-width="3"/>',
+                f'<circle cx="{x2:.1f}" cy="{y2:.1f}" r="5" fill="{color}"/>',
+                f'<text x="{x1:.1f}" y="{y1 - 9:.1f}" text-anchor="middle" class="value">{start:.1f}</text>',
+                f'<text x="{x2:.1f}" y="{y2 - 9:.1f}" text-anchor="middle" class="value">{end:.1f}</text>',
+            ]
+        effect = float(row["interaction_effect_solved"])
+        low, high = float(row["interaction_ci95_low_solved"]), float(row["interaction_ci95_high_solved"])
+        ph = float(row["interaction_holm_p"])
+        parts += [
+            f'<text x="{center:.1f}" y="{top + chart_h + 24}" text-anchor="middle" class="label">{html.escape(LABELS[str(row["domain"])])}</text>',
+            f'<text x="{center:.1f}" y="{top + chart_h + 43}" text-anchor="middle" class="sub">DiD {effect:+.1f} [{low:+.1f},{high:+.1f}], pH={ph:.3g}</text>',
+        ]
+    parts += [
+        '<line x1="650" y1="595" x2="690" y2="595" stroke="#4c78a8" stroke-width="3"/><text x="700" y="599" class="sub">VH-off</text>',
+        '<line x1="820" y1="595" x2="860" y2="595" stroke="#d95f02" stroke-width="3"/><text x="870" y="599" class="sub">VH-on</text>',
+        '<text x="28" y="628" class="sub">Open marker: Stage 1. Filled marker: Stage 2. The displayed DiD includes its 95% CI and Holm-adjusted p-value.</text>',
+        '</svg>',
+    ]
+    (OUT / "rq3_raw_means_and_interaction.svg").write_text("".join(parts), encoding="utf-8")
+
+
+def plot_rq4_raw(rq2_rows: list[dict[str, object]], rq4_rows: list[dict[str, object]], effects: list[dict[str, object]]) -> None:
+    width, height = 1750, 760
+    parts = _raw_plot_header(
+        "RQ4 raw policy and six-hour MCTS coverage by value-head mode",
+        "Validation-led Stage 2 only. Lines show policy → MCTS; labels are mean solved instances. DiD compares the two MCTS benefits.",
+        width, height,
+    )
+    effect_map = {(str(row["stage"]), str(row["domain"])): row for row in effects if row["rq"] == "RQ4" and row["cutoff"] == "6h" and str(row["estimand"]).startswith("VH interaction")}
+    left, top, panel_w, panel_h = 85, 105, 790, 530
+    for panel_index, stage in enumerate(("Stage 1", "Stage 2")):
+        x0 = left + panel_index * 840
+        parts += [f'<text x="{x0}" y="88" class="head">{stage}</text>']
+        for tick in range(0, 101, 20):
+            y = top + panel_h - tick / 100 * panel_h
+            parts += [f'<line x1="{x0}" y1="{y:.1f}" x2="{x0 + panel_w}" y2="{y:.1f}" stroke="#e4e9ee"/>']
+            if panel_index == 0:
+                parts += [f'<text x="{x0 - 8}" y="{y + 4:.1f}" text-anchor="end" class="sub">{tick}%</text>']
+        group_w = panel_w / len(DOMAINS)
+        for di, domain in enumerate(DOMAINS):
+            center = x0 + (di + .5) * group_w
+            off = next(row for row in rq4_rows if row["stage"] == stage and row["domain"] == domain and row["value_head"] == "off")
+            on = next(row for row in rq4_rows if row["stage"] == stage and row["domain"] == domain and row["value_head"] == "on")
+            for row, color, offset in ((off, "#4c78a8", -38), (on, "#d95f02", 38)):
+                cap = float(row["capacity"])
+                start, end = float(row["policy_mean"]), float(row["mcts_6h_mean"])
+                y1 = top + panel_h - start / cap * panel_h
+                y2 = top + panel_h - end / cap * panel_h
+                x1, x2 = center + offset - 18, center + offset + 18
+                partial = row["evidence_status"] == "partial_lower_bound"
+                parts += [
+                    f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" stroke-width="3" stroke-dasharray="{"4 2" if partial else "none"}"/>',
+                    f'<circle cx="{x1:.1f}" cy="{y1:.1f}" r="5" fill="white" stroke="{color}" stroke-width="3"/>',
+                    f'<circle cx="{x2:.1f}" cy="{y2:.1f}" r="5" fill="{color}" opacity="{0.65 if partial else 1}"/>',
+                    f'<text x="{x1:.1f}" y="{y1 - 9:.1f}" text-anchor="middle" class="value">{start:.1f}</text>',
+                    f'<text x="{x2:.1f}" y="{y2 - 9:.1f}" text-anchor="middle" class="value">{"≥" if partial else ""}{end:.1f}</text>',
+                ]
+            effect = effect_map.get((stage, domain))
+            annotation = "DiD pending" if effect is None else f'DiD {float(effect["effect_solved"]):+.1f}, pH={float(effect["holm_p"]):.3g}'
+            parts += [
+                f'<text x="{center:.1f}" y="{top + panel_h + 22}" text-anchor="middle" class="label">{html.escape(LABELS[domain])}</text>',
+                f'<text x="{center:.1f}" y="{top + panel_h + 39}" text-anchor="middle" class="sub">{html.escape(annotation)}</text>',
+            ]
+    parts += [
+        '<line x1="630" y1="699" x2="670" y2="699" stroke="#4c78a8" stroke-width="3"/><text x="680" y="703" class="sub">VH-off</text>',
+        '<line x1="800" y1="699" x2="840" y2="699" stroke="#d95f02" stroke-width="3"/><text x="850" y="703" class="sub">VH-on</text>',
+        '<text x="28" y="738" class="sub">Open marker: policy. Filled marker: six-hour MCTS. Dashed line/≥ marker: live lower bound. Stage-2 Holm p-values exclude partial FO and are provisional.</text>',
+        '</svg>',
+    ]
+    (OUT / "rq4_raw_means_6h_by_stage.svg").write_text("".join(parts), encoding="utf-8")
+
+
 def terminal_archive() -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     policy = [row for row in read_csv(TRACK / "policy_paired_seed_results.csv")
@@ -400,6 +636,10 @@ def _group(rows: list[dict[str, str]], *fields: str) -> dict[tuple[str, ...], li
 def main() -> None:
     rows = build_rq_rows()
     write_csv(OUT / "rq_primary_validation_led.csv", rows)
+    rq2_raw, rq3_raw, rq4_raw = build_raw_mean_rows(rows)
+    write_csv(OUT / "rq2_raw_means_validation_led.csv", rq2_raw)
+    write_csv(OUT / "rq3_raw_means_validation_led.csv", rq3_raw)
+    write_csv(OUT / "rq4_raw_means_validation_led.csv", rq4_raw)
     write_csv(OUT / "terminal_led_archive_index.csv", terminal_archive())
     plot_rows(rows, "RQ1", "rq1_stage2_training_vh_off", "RQ1 — Does Stage-2 training improve policy coverage without a value head?")
     plot_rows(rows, "RQ2", "rq2_mcts_vh_off", "RQ2 — Does inference-time MCTS improve VH-off coverage?")
@@ -411,6 +651,9 @@ def main() -> None:
               "Cross-cell level")
     plot_rows(rows, "RQ4", "rq4_interaction", "RQ4c — Value-head interaction with MCTS benefit",
               "VH interaction")
+    plot_rq2_raw(rq2_raw)
+    plot_rq3_raw(rq3_raw)
+    plot_rq4_raw(rq2_raw, rq4_raw, rows)
 
 
 if __name__ == "__main__":

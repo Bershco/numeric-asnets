@@ -1,0 +1,21 @@
+rq,stage,domain,value_head,n,capacity,policy_mean,mcts_30m_mean,mcts_2h_mean,mcts_6h_mean,evidence_status,seed_level_source,job_log_columns
+RQ4,Stage 1,block_grouping,off,10,20,16.3,11.6,14.8,15.4,complete,experiment_tracking/stage1_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 1,block_grouping,on,10,20,15.9,12.0,14.0,16.2,complete,experiment_tracking/stage1_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 1,drone,off,10,20,5.9,6.9,6.9,6.9,complete,experiment_tracking/stage1_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 1,drone,on,10,20,5.1,10.0,10.4,10.4,complete,experiment_tracking/stage1_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 1,fo_counters,off,10,20,4.2,7.5,7.8,7.8,complete,experiment_tracking/stage1_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 1,fo_counters,on,10,20,3.7,5.3,5.7,5.7,complete,experiment_tracking/stage1_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 1,rover,off,10,20,4.0,4.8,5.0,5.0,complete,experiment_tracking/stage1_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 1,rover,on,10,20,3.8,4.4,4.4,4.4,complete,experiment_tracking/stage1_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 1,counters,off,10,59,32.5,24.9,25.6,25.7,complete,experiment_tracking/stage1_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 1,counters,on,10,59,18.6,20.3,22.1,22.5,complete,experiment_tracking/stage1_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 2,block_grouping,off,10,20,16.0,11.4,15.0,15.7,complete,experiment_tracking/stage2_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 2,block_grouping,on,10,20,12.8,10.1,10.6,12.6,complete,experiment_tracking/stage2_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 2,drone,off,10,20,6.7,7.5,7.7,7.7,complete,experiment_tracking/stage2_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 2,drone,on,10,20,5.0,10.9,11.2,11.2,complete,experiment_tracking/stage2_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 2,rover,off,10,20,4.0,4.5,4.5,4.5,complete,experiment_tracking/stage2_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 2,rover,on,10,20,3.9,4.4,4.5,4.5,complete,experiment_tracking/stage2_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 2,counters,off,10,59,36.9,34.9,36.7,36.7,complete,experiment_tracking/stage2_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 2,counters,on,10,59,21.8,22.6,26.4,27.1,complete,experiment_tracking/stage2_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ4,Stage 2,fo_counters,off,10,20,2.9,6.0,6.0,6.0,partial_lower_bound,experiment_tracking/stage2_policy_mcts_comparison_by_branch_latest.csv;experiment_tracking/stage2_mcts_historical_log_audit_20260902.csv;experiment_tracking/advisor_followup_20260910/fo_stage2_validation_partial_recovery_manifest.csv,source_job_id;source_completion;submitted_job_id;submitted_output_log
+RQ4,Stage 2,fo_counters,on,10,20,3.1,5.3,5.4,5.4,partial_lower_bound,experiment_tracking/stage2_policy_mcts_comparison_by_branch_latest.csv;experiment_tracking/stage2_mcts_historical_log_audit_20260902.csv;experiment_tracking/advisor_followup_20260910/fo_stage2_validation_partial_recovery_manifest.csv,source_job_id;source_completion;submitted_job_id;submitted_output_log
