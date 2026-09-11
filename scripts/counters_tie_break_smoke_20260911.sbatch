@@ -24,10 +24,8 @@ apptainer exec --bind /home/hersco:/home/hersco \
     cd '$CHECKOUT'
     source '$PRODUCTION/venv-asnets/bin/activate'
     export PYTHONPATH='$CHECKOUT':'$CHECKOUT/asnets':\${PYTHONPATH:-}
-    python -m unittest \
-      asnets.tests.test_progressive_widening.RootVisitTieBreakTests \
-      asnets.tests.test_progressive_widening.HorizonTests \
-      asnets.tests.test_progressive_widening.TerminalSafeActionSelectionTests
+    python -m unittest discover \
+      -s '$CHECKOUT/asnets/tests' -p 'test_progressive_widening.py'
     cd '$CHECKOUT/asnets'
     ./run_experiment --help | grep -q -- '--eval-mcts-root-visit-tie-break'
   "
