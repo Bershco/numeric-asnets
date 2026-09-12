@@ -1,12 +1,12 @@
 # Current experiment status
 
-Updated: 2026-09-12 18:30 IDT
+Updated: 2026-09-12 18:36 IDT
 
 ## Live workload
 
 | Experiment | Running | Ordinary pending | Dependency pending | CPU / RAM requested | Timing |
 |---|---:|---:|---:|---:|---|
-| FO Counters Stage-2 exact instance recovery | 1 | 0 | 0 | 2 CPU / 120 GiB | 49 min elapsed; 6h instance cap; 8h allocation |
+| FO Counters Stage-2 exact instance recovery | 1 | 0 | 0 | 2 CPU / 120 GiB | 55 min elapsed; 6h instance cap; 8h allocation |
 | MPrime Phase-B-A anchor smoke | 0 | 1 | 0 | 3 CPU / 20 GiB | 2h hard bound; pending resources |
 | MPrime Phase-B-A full rescore | 0 | 0 | 28 | 84 CPU / 560 GiB maximum | 24h/task hard bound; releases only after smoke succeeds |
 | MPrime coefficient finalizer | 0 | 0 | 1 | 1 CPU / 2 GiB | 15m hard bound; releases only after all 28 tasks succeed |
