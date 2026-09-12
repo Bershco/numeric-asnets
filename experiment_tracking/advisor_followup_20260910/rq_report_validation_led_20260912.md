@@ -2,6 +2,8 @@
 
 This is the primary thesis view. Terminal-led campaigns are excluded. Fixed-search 30-minute and two-hour figures are deterministic cutoffs of the same six-hour runs, not separate reruns. Block Grouping and Counters use narrow fixed search (5 retained children, 20 simulations); Drone, FO Counters and Rover use normal fixed search (20 children, 70 simulations). Counts are solved test instances; Counters has 59 instances and the other domains have 20.
 
+Holm correction is applied separately within each RQ × stage × cutoff × estimand family. RQ2 Stage-2 VH-off and the RQ4 Stage-2 interaction are provisional four-domain families while FO/VH-off is partial. RQ4 Stage-2 direct and cross-cell comparisons are final five-domain families because FO/VH-on is exact. PW uses separate two-domain families and is never pooled with fixed search.
+
 MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator, but the existing Stage-2 networks were trained from the superseded Stage-1 selections. A clean MPrime result requires anchor rescoring and 20 new validation-led Stage-2 lineages.
 
 ## RQ1 — Does Stage-2 training improve policy coverage without a value head?
@@ -164,4 +166,4 @@ These three estimands are deliberately separate.
 2. **MPrime:** the first smoke (`21221744`) exposed a missing deployed validator directory before scientific work; its dependent jobs were automatically cancelled. The corrected chain is smoke `21222348`, array `21222349[0-27]`, finalizer `21222350`. After manual coefficient review, train 20 validation-led Stage-2 lineages from the new Stage-1 selections, evaluate policy curves/endpoints, then run matched fixed MCTS if MPrime is to enter RQ2/RQ4.
 3. **Counters tie-break:** the targeted three-instance causal screen is complete; a multi-seed confirmation is still needed before changing the default evaluator.
 
-All row-level evidence and job/log paths are retained in the canonical CSVs named above and in `result_csv_provenance_index_latest.csv`.
+Canonical evidence files: [`rq_primary_validation_led.csv`](rq_primary_validation_led.csv), [`rq2_raw_means_validation_led.csv`](rq2_raw_means_validation_led.csv), [`rq3_raw_means_validation_led.csv`](rq3_raw_means_validation_led.csv), [`rq4_raw_means_validation_led.csv`](rq4_raw_means_validation_led.csv), [`rq2_pw70_branch_latest.csv`](rq2_pw70_branch_latest.csv), and [`rq4_pw70_branch_latest.csv`](rq4_pw70_branch_latest.csv). Their row-level job/log routes are indexed in [`../../result_csv_provenance_index_latest.csv`](../../result_csv_provenance_index_latest.csv).
