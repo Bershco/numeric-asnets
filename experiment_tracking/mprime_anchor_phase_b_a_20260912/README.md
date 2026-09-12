@@ -70,12 +70,18 @@ files. Array `21221745` and finalizer `21221746` were cancelled automatically
 by the failed dependency. The missing files were deployed from the pushed,
 checksum-controlled branch and counted before replacement submission.
 
-Corrected dependency chain:
+The first corrected chain also failed safely before evaluation: smoke
+`21222348` found that the file-selective deployment lacked the frozen validator
+Python module. Array `21222349` and finalizer `21222350` were automatically
+cancelled. The module was then deployed and its SHA-256 verified against the
+local branch.
 
-- compute smoke `21222348`;
-- full array `21222349[0-27]`, released only after smoke success;
-- analysis-only finalizer `21222350`, released only after all 28 tasks succeed.
+Current dependency chain:
 
-At the 12 September 18:53 IDT snapshot, the smoke was pending resources and the
+- compute smoke `21223398`;
+- full array `21223399[0-27]`, released only after smoke success;
+- analysis-only finalizer `21223400`, released only after all 28 tasks succeed.
+
+At the 12 September 19:21 IDT snapshot, the smoke was pending resources and the
 other jobs were dependency-pending. No Stage-2 training is launched by this
 chain.

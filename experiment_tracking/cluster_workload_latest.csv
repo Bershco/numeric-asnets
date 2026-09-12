@@ -1,5 +1,5 @@
 snapshot_time_idt,experiment,job_id,job_name,state,cpus,memory_gib,elapsed,time_limit,reason_or_node,priority,array_job_id,scheduler_source
-2026-09-12T18:53:00+03:00,FO Counters validation-led Stage-2 exact single-instance recovery,21219947,FO_VAL_S2_EXACT9,RUNNING,2,120.0,01:12:09,08:00:00,ise-cpu256-14,1,21219947,squeue://hersco/21219947
-2026-09-12T18:53:00+03:00,MPrime Phase-B-A anchor rescore smoke,21222348_0,MPRIME_ANCHOR_PBA,PENDING,3,20.0,00:00:00,02:00:00,Resources,1,21222348,squeue://hersco/21222348
-2026-09-12T18:53:00+03:00,MPrime Phase-B-A anchor rescore array,21222349_[0-27],MPRIME_ANCHOR_PBA,PENDING,84,560.0,00:00:00,1-00:00:00,Dependency,1,21222349,squeue://hersco/21222349
-2026-09-12T18:53:00+03:00,MPrime Phase-B-A anchor rescore finalizer,21222350,MPRIME_ANCHOR_PBA_FINAL,PENDING,1,2.0,00:00:00,00:15:00,Dependency,1,21222350,squeue://hersco/21222350
+2026-09-12T19:21:00+03:00,FO Counters validation-led Stage-2 exact single-instance recovery,21219947,FO_VAL_S2_EXACT9,RUNNING,2,120.0,01:40:57,08:00:00,ise-cpu256-14,1,21219947,squeue://hersco/21219947
+2026-09-12T19:21:00+03:00,MPrime Phase-B-A anchor rescore smoke,21223398_0,MPRIME_ANCHOR_PBA,PENDING,3,20.0,00:00:00,02:00:00,Resources,1,21223398,squeue://hersco/21223398
+2026-09-12T19:21:00+03:00,MPrime Phase-B-A anchor rescore array,21223399_[0-27],MPRIME_ANCHOR_PBA,PENDING,84,560.0,00:00:00,1-00:00:00,Dependency,1,21223399,squeue://hersco/21223399
+2026-09-12T19:21:00+03:00,MPrime Phase-B-A anchor rescore finalizer,21223400,MPRIME_ANCHOR_PBA_FINAL,PENDING,1,2.0,00:00:00,00:15:00,Dependency,1,21223400,squeue://hersco/21223400

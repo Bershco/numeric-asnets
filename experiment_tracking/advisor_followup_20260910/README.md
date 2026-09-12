@@ -35,12 +35,13 @@ following fixed reporting contract:
   evaluator instance remained non-durable after a worker exit and is being run
   alone as job `21219947`. The current VH-off mean is therefore `≥6.1/20` and
   can rise only to `6.2/20`.
-- **MPrime anchor reranking is submitted:** the first smoke `21221744` exposed
-  an incomplete file-selective deployment (the frozen validator PDDLs were
-  absent), and its dependent jobs were cancelled automatically. After the 240
-  tracked PDDLs were deployed and counted, corrected smoke job `21222348`
-  gates array `21222349[0-27]`; analysis-only finalizer `21222350` proposes
-  the per-VH coefficient and cannot submit training.
+- **MPrime anchor reranking is submitted:** smoke `21221744` exposed missing
+  frozen-validator PDDLs; replacement smoke `21222348` then exposed the
+  missing frozen validator Python module. Both failed before scientific
+  inference and their dependent jobs were cancelled automatically. The 240
+  PDDLs and checksum-verified module are now deployed. Current smoke
+  `21223398` gates array `21223399[0-27]`; analysis-only finalizer `21223400`
+  proposes the per-VH coefficient and cannot submit training.
 
 ## Canonical tables and plots
 
