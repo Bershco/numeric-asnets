@@ -1,0 +1,2 @@
+source_job_id,value_head,seed,evaluator_instance_number,pddl_instance,source_score_before_recovery,recovery_job_id,configuration,workers,cpus,memory_gib,instance_timeout,allocation_limit,state,remote_log,reason
+20943885,off,2082152039,9,instance_10.pddl,5,21219947,normal_20_children_70_simulations,1,2,120,6h,8h,running,/home/hersco/training_new_domains/2026-09-12/fo_stage2_validation_exact9/21219947_source20943885_off_2082152039_instance9.txt,"Only remaining non-durable instance; prior worker was killed with exit -9."

@@ -57,10 +57,19 @@ It cannot submit training. `submit_mprime_anchor_phase_b_a_20260912.py` records
 the smoke, full-array and finalizer job IDs in an idempotent JSON ledger and
 gates each step with `afterok`.
 
-## Current readiness
+## Current execution
 
-Prepared locally; not submitted and not pushed by this task. Local manifest and
-checkpoint-selection regression tests must pass, followed by the compute-node
-smoke after deployment. The only cluster-dependent prerequisite is that all 28
-original training logs and snapshot directories remain readable; they were
-already used by the prior complete rescore and have not been modified.
+Implementation commit `14d095d1` is pushed to `codex/mcts-safe-context` and
+deployed file-selectively into the dirty isolated cluster checkout so unrelated
+operational artifacts were not overwritten. Local and cluster-side regression
+tests passed 3/3; all 28 source logs and all 588 checkpoint directories exist.
+
+Submitted dependency chain:
+
+- compute smoke `21221744`;
+- full array `21221745[0-27]`, released only after smoke success;
+- analysis-only finalizer `21221746`, released only after all 28 tasks succeed.
+
+At the 12 September 18:30 IDT snapshot, the smoke was pending resources and the
+other jobs were dependency-pending. No Stage-2 training is launched by this
+chain.

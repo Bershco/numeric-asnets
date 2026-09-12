@@ -1,0 +1,5 @@
+branch,value_head,lineages,mean_selected_test_score,mean_candidate_test_best,mean_candidate_set_regret,mean_full_lineage_regret,median_full_lineage_regret,zero_full_lineage_regret_lineages,mean_validation_test_spearman,median_validation_test_spearman,mean_saturated_fraction,row_level_provenance
+stage1,off,10,16.3,18.0,1.7,1.8,1.0,3,0.4259451054789329,0.5745153547364377,0.07833333333333334,experiment_tracking/mprime_validation_phase_c_20260911/phase_c_lineage_summary_latest.csv
+stage1,on,10,15.6,17.0,1.4,1.5,1.0,1,0.46695836964552584,0.4991132412519993,0.06714285714285714,experiment_tracking/mprime_validation_phase_c_20260911/phase_c_lineage_summary_latest.csv
+validation_led_stage2,off,10,15.2,16.8,1.6,1.9,1.5,1,0.1620651959008093,0.2797852393385057,0.115,experiment_tracking/mprime_validation_phase_c_20260911/phase_c_lineage_summary_latest.csv
+validation_led_stage2,on,10,16.4,17.7,1.3,1.4,1.5,4,0.2551239665039728,0.19749123984267167,0.2475757575757576,experiment_tracking/mprime_validation_phase_c_20260911/phase_c_lineage_summary_latest.csv

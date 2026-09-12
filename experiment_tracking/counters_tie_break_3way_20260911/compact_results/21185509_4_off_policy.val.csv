@@ -1,0 +1,4 @@
+instance,candidate_plans,selected_steps,val_valid,reason
+fz_instance_51.pddl,1,2103,1,
+fz_instance_55.pddl,1,2385,1,
+fz_instance_59.pddl,1,2685,1,

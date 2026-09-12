@@ -1,34 +1,32 @@
 # Current experiment status
 
-Updated: 2026-09-10T21:53:42+03:00
-
-This is the only canonical changing Markdown status page. Dated status files are
-historical snapshots. Full RQ tables, methods and conclusions are in
-`experiment_tracking/advisor_followup_20260910/README.md`.
+Updated: 2026-09-12 18:30 IDT
 
 ## Live workload
 
-| Experiment | State | Jobs | CPU | RAM |
-|---|---|---:|---:|---:|
-| Adaptive KL-control TPP/off screen | running | 1 | 6 | 48.0 GiB |
-| Counters root-visit distribution audit | running | 2 | 4 | 240.0 GiB |
-| FO Counters validation-led Stage-2 exact recovery | running | 3 | 18 | 360.0 GiB |
-| MPrime validation adequacy Phase B full rescore | running | 2 | 8 | 40.0 GiB |
+| Experiment | Running | Ordinary pending | Dependency pending | CPU / RAM requested | Timing |
+|---|---:|---:|---:|---:|---|
+| FO Counters Stage-2 exact instance recovery | 1 | 0 | 0 | 2 CPU / 120 GiB | 49 min elapsed; 6h instance cap; 8h allocation |
+| MPrime Phase-B-A anchor smoke | 0 | 1 | 0 | 3 CPU / 20 GiB | 2h hard bound; pending resources |
+| MPrime Phase-B-A full rescore | 0 | 0 | 28 | 84 CPU / 560 GiB maximum | 24h/task hard bound; releases only after smoke succeeds |
+| MPrime coefficient finalizer | 0 | 0 | 1 | 1 CPU / 2 GiB | 15m hard bound; releases only after all 28 tasks succeed |
 
-## Current scientific endpoints
+MPrime jobs are `21221744` (smoke), `21221745[0-27]` (full rescore), and
+`21221746` (analysis-only finalizer). The finalizer cannot submit Stage-2
+training. FO job `21219947` runs only evaluator number 9
+(`instance_10.pddl`) from source `20943885`; its current cell mean is
+`≥6.1/20` and can rise only to `6.2/20`.
 
-- MPrime Phase B: 2,243/2,260 checkpoint-replicates and 58/60 complete
-  lineages; repaired exact two-lineage tail `21178598[15,42]` is running.
-- Adaptive KL: stable control complete; outlier has 98/100 logged updates and
-  has not changed its coefficient from 3.
-- Counters visit audit: two jobs are running on the exact three-instance failure
-  set and matched VH-on control.
-- FO Counters validation-led Stage-2 MCTS: three minimal jobs are running only
-  the 42 instances left unclassified by three historical partial allocations.
+## Newly completed experiments
 
-## Canonical sources
+- **MPrime Phase C:** 347/347 candidate-checkpoint evaluations, 40/40 primary
+  lineages. Phase-B replicate A is frozen as the final validator because its
+  common-reference mean regret is marginally lower (1.625 versus 1.650 plans)
+  and it was designed independently of test-suite structure.
+- **Counters three-way tie-breaking:** policy-prior tie-breaking recovered all
+  three preselected VH-off failures by two hours; action-index and Q
+  tie-breaking recovered none. No rule recovered the VH-on controls.
 
-- Scheduler rows: `experiment_tracking/cluster_workload_latest.csv`
-- Experiment registry: `experiment_tracking/experiment_registry.csv`
-- RQ statistics: `experiment_tracking/advisor_followup_20260910/rq_primary_validation_led.csv`
-- Provenance audit: `experiment_tracking/result_csv_provenance_index_latest.csv`
+Canonical RQ report:
+`experiment_tracking/advisor_followup_20260910/rq_report_validation_led_20260912.md`.
+Scheduler evidence: `experiment_tracking/cluster_workload_latest.csv`.

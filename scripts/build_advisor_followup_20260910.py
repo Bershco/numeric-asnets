@@ -260,7 +260,7 @@ def build_rq_rows() -> list[dict[str, object]]:
     for cutoff, on_bound in (("30m", 5.3), ("2h", 5.4), ("6h", 5.4)):
         output.append(lower_bound_row(
             rq="RQ2", estimand="VH-off direct: MCTS - same-checkpoint policy",
-            cutoff=cutoff, baseline_mean=2.9, comparison_lower_bound=6.0,
+            cutoff=cutoff, baseline_mean=2.9, comparison_lower_bound=6.1,
         ))
         output.append(lower_bound_row(
             rq="RQ4", estimand="VH-on direct: MCTS - same-checkpoint policy",
@@ -411,15 +411,15 @@ def build_raw_mean_rows(rq_rows: list[dict[str, object]]) -> tuple[list[dict[str
     rq4 = [row for row in rq4 if not (row["stage"] == "Stage 2" and row["domain"] == "fo_counters")]
     rq2.append({
         "rq": "RQ2", "stage": "Stage 2", "domain": "fo_counters", "value_head": "off",
-        "n": 10, "capacity": 20, "policy_mean": 2.9, "mcts_30m_mean": 6.0,
-        "mcts_2h_mean": 6.0, "mcts_6h_mean": 6.0, "evidence_status": "partial_lower_bound",
+        "n": 10, "capacity": 20, "policy_mean": 2.9, "mcts_30m_mean": 6.1,
+        "mcts_2h_mean": 6.1, "mcts_6h_mean": 6.1, "evidence_status": "partial_lower_bound",
         "seed_level_source": FO_STAGE2_PARTIAL_PROVENANCE,
         "job_log_columns": "source_job_id;source_completion;submitted_job_id;submitted_output_log",
     })
     rq4.append({
         "rq": "RQ4", "stage": "Stage 2", "domain": "fo_counters", "value_head": "off",
-        "n": 10, "capacity": 20, "policy_mean": 2.9, "mcts_30m_mean": 6.0,
-        "mcts_2h_mean": 6.0, "mcts_6h_mean": 6.0, "evidence_status": "partial_lower_bound",
+        "n": 10, "capacity": 20, "policy_mean": 2.9, "mcts_30m_mean": 6.1,
+        "mcts_2h_mean": 6.1, "mcts_6h_mean": 6.1, "evidence_status": "partial_lower_bound",
         "seed_level_source": FO_STAGE2_PARTIAL_PROVENANCE,
         "job_log_columns": "source_job_id;source_completion;submitted_job_id;submitted_output_log",
     })
@@ -467,21 +467,24 @@ def plot_rq2_raw(rows: list[dict[str, object]]) -> None:
     width, height = 1750, 760
     parts = _raw_plot_header(
         "RQ2 raw coverage — VH-off policy versus MCTS at both stages",
-        "Validation-led Stage 2 only. Bar labels are mean solved instances; bar height is percentage of the domain suite.",
+        "Validation-led Stage 2 only. BG/Counters use narrow 5/20; Drone/FO/Rover use normal 20/70. MPrime MCTS is not yet run.",
         width, height,
     )
     colors = {"Policy": "#e68632", "30m": "#9ecae1", "2h": "#4292c6", "6h": "#08519c"}
     left, top, panel_w, panel_h = 85, 105, 790, 530
     for panel_index, stage in enumerate(("Stage 1", "Stage 2")):
         x0 = left + panel_index * 840
-        parts += [f'<text x="{x0}" y="88" class="head">{stage}</text>']
+        parts += [
+            f'<rect x="{x0 - 12}" y="68" width="{panel_w + 24}" height="24" rx="6" fill="#eef2f6"/>',
+            f'<text x="{x0 + panel_w / 2}" y="85" text-anchor="middle" class="head">{stage}</text>',
+        ]
         for tick in range(0, 101, 20):
             y = top + panel_h - tick / 100 * panel_h
             parts += [f'<line x1="{x0}" y1="{y:.1f}" x2="{x0 + panel_w}" y2="{y:.1f}" stroke="#e4e9ee"/>']
             if panel_index == 0:
                 parts += [f'<text x="{x0 - 8}" y="{y + 4:.1f}" text-anchor="end" class="sub">{tick}%</text>']
         data = sorted([row for row in rows if row["stage"] == stage], key=lambda row: DOMAINS.index(str(row["domain"])))
-        group_w = panel_w / len(DOMAINS)
+        group_w = panel_w / len(data)
         bar_w = 25
         for di, row in enumerate(data):
             center = x0 + (di + .5) * group_w
@@ -552,21 +555,28 @@ def plot_rq4_raw(rq2_rows: list[dict[str, object]], rq4_rows: list[dict[str, obj
     width, height = 1750, 760
     parts = _raw_plot_header(
         "RQ4 raw policy and six-hour MCTS coverage by value-head mode",
-        "Validation-led Stage 2 only. Lines show policy → MCTS; labels are mean solved instances. DiD compares the two MCTS benefits.",
+        "Validation-led Stage 2 only. BG/Counters use narrow 5/20; Drone/FO/Rover use normal 20/70. MPrime MCTS is not yet run.",
         width, height,
     )
     effect_map = {(str(row["stage"]), str(row["domain"])): row for row in effects if row["rq"] == "RQ4" and row["cutoff"] == "6h" and str(row["estimand"]).startswith("VH interaction")}
     left, top, panel_w, panel_h = 85, 105, 790, 530
     for panel_index, stage in enumerate(("Stage 1", "Stage 2")):
         x0 = left + panel_index * 840
-        parts += [f'<text x="{x0}" y="88" class="head">{stage}</text>']
+        parts += [
+            f'<rect x="{x0 - 12}" y="68" width="{panel_w + 24}" height="24" rx="6" fill="#eef2f6"/>',
+            f'<text x="{x0 + panel_w / 2}" y="85" text-anchor="middle" class="head">{stage}</text>',
+        ]
         for tick in range(0, 101, 20):
             y = top + panel_h - tick / 100 * panel_h
             parts += [f'<line x1="{x0}" y1="{y:.1f}" x2="{x0 + panel_w}" y2="{y:.1f}" stroke="#e4e9ee"/>']
             if panel_index == 0:
                 parts += [f'<text x="{x0 - 8}" y="{y + 4:.1f}" text-anchor="end" class="sub">{tick}%</text>']
-        group_w = panel_w / len(DOMAINS)
-        for di, domain in enumerate(DOMAINS):
+        data_domains = [
+            domain for domain in DOMAINS
+            if any(row["stage"] == stage and row["domain"] == domain for row in rq4_rows)
+        ]
+        group_w = panel_w / len(data_domains)
+        for di, domain in enumerate(data_domains):
             center = x0 + (di + .5) * group_w
             off = next(row for row in rq4_rows if row["stage"] == stage and row["domain"] == domain and row["value_head"] == "off")
             on = next(row for row in rq4_rows if row["stage"] == stage and row["domain"] == domain and row["value_head"] == "on")
@@ -590,6 +600,7 @@ def plot_rq4_raw(rq2_rows: list[dict[str, object]], rq4_rows: list[dict[str, obj
                 f'<text x="{center:.1f}" y="{top + panel_h + 22}" text-anchor="middle" class="label">{html.escape(LABELS[domain])}</text>',
                 f'<text x="{center:.1f}" y="{top + panel_h + 39}" text-anchor="middle" class="sub">{html.escape(annotation)}</text>',
             ]
+    parts += ['<line x1="900" y1="68" x2="900" y2="667" stroke="#9aa7b4" stroke-width="2"/>']
     parts += [
         '<line x1="630" y1="699" x2="670" y2="699" stroke="#4c78a8" stroke-width="3"/><text x="680" y="703" class="sub">VH-off</text>',
         '<line x1="800" y1="699" x2="840" y2="699" stroke="#d95f02" stroke-width="3"/><text x="850" y="703" class="sub">VH-on</text>',

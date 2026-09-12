@@ -1,9 +1,5 @@
 snapshot_time_idt,experiment,job_id,job_name,state,cpus,memory_gib,elapsed,time_limit,reason_or_node,priority,array_job_id,scheduler_source
-2026-09-10T21:53:42+03:00,MPrime validation adequacy Phase B full rescore,21178598_15,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,5:35,1-00:00:00,ise-cpu-intl-18,6,21178598,squeue://hersco/21178598_15
-2026-09-10T21:53:42+03:00,MPrime validation adequacy Phase B full rescore,21178598_42,MPRIME_PHASEB_RESCORE,RUNNING,4,20.0,5:35,1-00:00:00,ise-cpu-intl-18,6,21178598,squeue://hersco/21178598_42
-2026-09-10T21:53:42+03:00,Adaptive KL-control TPP/off screen,21144388,anchor-kl-tpp-off-1972442430-adaptive-retry1,RUNNING,6,48.0,1-07:00:52,3-00:00:00,ise-cpu256-19,6,21144388,squeue://hersco/21144388
-2026-09-10T21:53:42+03:00,FO Counters validation-led Stage-2 exact recovery,21178377,FO_VAL_S2_RECOVERY,RUNNING,6,120.0,32:13,1-12:00:00,ise-cpu256-12,1,21178377,squeue://hersco/21178377
-2026-09-10T21:53:42+03:00,FO Counters validation-led Stage-2 exact recovery,21178379,FO_VAL_S2_RECOVERY,RUNNING,6,120.0,32:13,1-12:00:00,ise-cpu256-13,1,21178379,squeue://hersco/21178379
-2026-09-10T21:53:42+03:00,FO Counters validation-led Stage-2 exact recovery,21178380,FO_VAL_S2_RECOVERY,RUNNING,6,120.0,32:13,1-12:00:00,ise-cpu256-13,1,21178380,squeue://hersco/21178380
-2026-09-10T21:53:42+03:00,Counters root-visit distribution audit,21178320,COUNTERS_VISIT_AUDIT,RUNNING,2,120.0,39:54,1-00:00:00,ise-cpu256-04,1,21178320,squeue://hersco/21178320
-2026-09-10T21:53:42+03:00,Counters root-visit distribution audit,21178321,COUNTERS_VISIT_AUDIT,RUNNING,2,120.0,39:54,1-00:00:00,ise-cpu256-23,1,21178321,squeue://hersco/21178321
+2026-09-12T18:30:28+03:00,FO Counters validation-led Stage-2 exact single-instance recovery,21219947,FO_VAL_S2_EXACT9,RUNNING,2,120.0,00:49:26,08:00:00,ise-cpu256-14,1,21219947,squeue://hersco/21219947
+2026-09-12T18:30:28+03:00,MPrime Phase-B-A anchor rescore smoke,21221744_0,MPRIME_ANCHOR_PBA,PENDING,3,20.0,00:00:00,02:00:00,Resources,1,21221744,squeue://hersco/21221744
+2026-09-12T18:30:28+03:00,MPrime Phase-B-A anchor rescore array,21221745_[0-27],MPRIME_ANCHOR_PBA,PENDING,84,560.0,00:00:00,1-00:00:00,Dependency,1,21221745,squeue://hersco/21221745
+2026-09-12T18:30:28+03:00,MPrime Phase-B-A anchor rescore finalizer,21221746,MPRIME_ANCHOR_PBA_FINAL,PENDING,1,2.0,00:00:00,00:15:00,Dependency,1,21221746,squeue://hersco/21221746
