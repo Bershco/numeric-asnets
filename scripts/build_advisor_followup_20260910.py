@@ -34,6 +34,13 @@ FO_STAGE2_PARTIAL_PROVENANCE = (
     "experiment_tracking/advisor_followup_20260910/"
     "fo_stage2_validation_partial_recovery_manifest.csv"
 )
+FO_STAGE2_VH_ON_EXACT = (
+    OUT / "fo_stage2_validation_vh_on_exact_seed_results_20260912.csv"
+)
+FO_STAGE2_VH_ON_EXACT_PROVENANCE = (
+    "experiment_tracking/advisor_followup_20260910/"
+    "fo_stage2_validation_vh_on_exact_seed_results_20260912.csv"
+)
 CAPACITY = {domain: 20 for domain in DOMAINS}
 CAPACITY["counters"] = 59
 T95 = {10: 2.262157, 9: 2.306004, 8: 2.364624, 7: 2.446912,
@@ -254,28 +261,51 @@ def build_rq_rows() -> list[dict[str, object]]:
                         provenance=str(path.relative_to(ROOT)).replace("\\", "/"),
                     ))
 
-    # The three exact recovery jobs are live. Publish the currently observed
-    # FO Stage-2 totals as lower bounds; do not invent CIs, p-values, or a
-    # value-head interaction by subtracting two censored values.
-    for cutoff, on_bound in (("30m", 5.3), ("2h", 5.4), ("6h", 5.4)):
+    # FO/VH-off still has one genuinely unclassified instance.  VH-on is now
+    # exact after its minimal instance recovery, so publish its paired direct
+    # and cross-cell estimates while withholding only the VH interaction.
+    fo_on = read_csv(FO_STAGE2_VH_ON_EXACT)
+    for cutoff in ("30m", "2h", "6h"):
         output.append(lower_bound_row(
             rq="RQ2", estimand="VH-off direct: MCTS - same-checkpoint policy",
             cutoff=cutoff, baseline_mean=2.9, comparison_lower_bound=6.1,
         ))
-        output.append(lower_bound_row(
-            rq="RQ4", estimand="VH-on direct: MCTS - same-checkpoint policy",
-            cutoff=cutoff, baseline_mean=3.1, comparison_lower_bound=on_bound,
+        comparison = [float(row[f"mcts_{cutoff}"]) for row in fo_on]
+        policy_on = [float(row["policy_vh_on"]) for row in fo_on]
+        policy_off = [float(row["policy_vh_off"]) for row in fo_on]
+        output.append(result_row(
+            rq="RQ4", stage="Stage 2",
+            estimand="VH-on direct: MCTS - same-checkpoint policy",
+            domain="fo_counters", cutoff=cutoff,
+            values=[mcts - policy for mcts, policy in zip(comparison, policy_on)],
+            baseline_mean=statistics.mean(policy_on),
+            comparison_mean=statistics.mean(comparison),
+            provenance=FO_STAGE2_VH_ON_EXACT_PROVENANCE,
         ))
-        output.append(lower_bound_row(
-            rq="RQ4", estimand="Cross-cell level: VH-on MCTS - parallel VH-off policy",
-            cutoff=cutoff, baseline_mean=2.9, comparison_lower_bound=on_bound,
+        output.append(result_row(
+            rq="RQ4", stage="Stage 2",
+            estimand="Cross-cell level: VH-on MCTS - parallel VH-off policy",
+            domain="fo_counters", cutoff=cutoff,
+            values=[mcts - policy for mcts, policy in zip(comparison, policy_off)],
+            baseline_mean=statistics.mean(policy_off),
+            comparison_mean=statistics.mean(comparison),
+            provenance=FO_STAGE2_VH_ON_EXACT_PROVENANCE,
         ))
 
     add_holm(output)
     for row in output:
         if row["stage"] == "Stage 2" and row["rq"] in {"RQ2", "RQ4"}:
+            final_five_domain_family = (
+                row["rq"] == "RQ4"
+                and row["estimand"] in {
+                    "VH-on direct: MCTS - same-checkpoint policy",
+                    "Cross-cell level: VH-on MCTS - parallel VH-off policy",
+                }
+                and row["evidence_status"] == "complete_paired_inference"
+            )
             row["multiplicity_status"] = (
                 "withheld_partial_cell" if row["evidence_status"] == "partial_lower_bound"
+                else "final_declared_family" if final_five_domain_family
                 else "provisional_holm_among_four_complete_domains"
             )
         else:
@@ -308,7 +338,8 @@ def plot_rows(rows: list[dict[str, object]], rq: str, output_name: str, title: s
         return left + (bounded - axis_low) / (axis_high - axis_low) * (right - left)
 
     family_note = (
-        " Stage-2 Holm values exclude partial FO Counters and remain provisional."
+        " Stage-2 RQ2 and RQ4-interaction families exclude partial FO VH-off; "
+        "RQ4 direct/cross-cell families include exact FO VH-on."
         if rq in {"RQ2", "RQ4"} else ""
     )
     parts = [
@@ -425,10 +456,10 @@ def build_raw_mean_rows(rq_rows: list[dict[str, object]]) -> tuple[list[dict[str
     })
     rq4.append({
         "rq": "RQ4", "stage": "Stage 2", "domain": "fo_counters", "value_head": "on",
-        "n": 10, "capacity": 20, "policy_mean": 3.1, "mcts_30m_mean": 5.3,
-        "mcts_2h_mean": 5.4, "mcts_6h_mean": 5.4, "evidence_status": "partial_lower_bound",
-        "seed_level_source": FO_STAGE2_PARTIAL_PROVENANCE,
-        "job_log_columns": "source_job_id;source_completion;submitted_job_id;submitted_output_log",
+        "n": 10, "capacity": 20, "policy_mean": 3.1, "mcts_30m_mean": 5.2,
+        "mcts_2h_mean": 5.4, "mcts_6h_mean": 5.4, "evidence_status": "complete",
+        "seed_level_source": FO_STAGE2_VH_ON_EXACT_PROVENANCE,
+        "job_log_columns": "source_job_id;recovery_job_id;source_evaluation_log;source_completion_ledger",
     })
 
     policy = [row for row in read_csv(TRACK / "policy_paired_seed_results.csv") if row["experiment_id"] == "MAIN-VAL"]
@@ -604,7 +635,7 @@ def plot_rq4_raw(rq2_rows: list[dict[str, object]], rq4_rows: list[dict[str, obj
     parts += [
         '<line x1="630" y1="699" x2="670" y2="699" stroke="#4c78a8" stroke-width="3"/><text x="680" y="703" class="sub">VH-off</text>',
         '<line x1="800" y1="699" x2="840" y2="699" stroke="#d95f02" stroke-width="3"/><text x="850" y="703" class="sub">VH-on</text>',
-        '<text x="28" y="738" class="sub">Open marker: policy. Filled marker: six-hour MCTS. Dashed line/≥ marker: live lower bound. Stage-2 Holm p-values exclude partial FO and are provisional.</text>',
+        '<text x="28" y="738" class="sub">Open marker: policy. Filled marker: six-hour MCTS. Dashed line/≥ marker: live VH-off lower bound. FO VH-on is exact; only the FO interaction remains pending.</text>',
         '</svg>',
     ]
     (OUT / "rq4_raw_means_6h_by_stage.svg").write_text("".join(parts), encoding="utf-8")

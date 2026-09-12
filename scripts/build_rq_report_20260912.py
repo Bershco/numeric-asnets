@@ -173,7 +173,7 @@ MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as t
 
 {md_table(['Stage', 'Domain', 'Search', 'Policy', '30m: MCTS; Δ [95% CI]; raw/Holm p', '2h', '6h'], rq2_rows)}
 
-**Conclusion:** FO Counters is the clear fixed-search success; Drone and Rover improve modestly. Block Grouping needs the longer budget to approach parity, while Counters can be harmed. The live FO Stage-2 exact-instance recovery leaves only one outcome unresolved; until it terminates, that row remains a lower bound and has no CI or p-value.
+**Conclusion:** FO Counters is the clear fixed-search success; Drone and Rover improve modestly. Block Grouping needs the longer budget to approach parity, while Counters can be harmed. The live FO Stage-2 VH-off exact-instance recovery leaves only one outcome unresolved; until it terminates, that RQ2 row remains a lower bound and has no CI or p-value.
 
 ![RQ2 raw policy and fixed-search means](rq2_raw_means_by_stage.png)
 
@@ -215,7 +215,7 @@ These three estimands are deliberately separate.
 
 {rq4_table('VH interaction')}
 
-**Conclusion:** Drone is the robust RQ4 success: VH-on materially increases MCTS usefulness. FO Counters benefits from MCTS in both modes, so the value head is not the source of the search gain. Other domains do not show a reliable value-head interaction. FO Stage-2 remains provisional until the live one-instance recovery ends.
+**Conclusion:** Drone is the robust RQ4 success: VH-on materially increases MCTS usefulness. FO Counters VH-on is now exact and benefits from MCTS, but the VH interaction remains indeterminate until the live VH-off instance recovery ends. Other domains do not show a reliable value-head interaction.
 
 ![RQ4 raw six-hour levels](rq4_raw_means_6h_by_stage.png)
 
@@ -234,7 +234,7 @@ These three estimands are deliberately separate.
 ## Results still required
 
 1. **FO Counters Stage-2 fixed MCTS:** one exact instance is live. It changes only one seed from 5/20 to at most 6/20 and the VH-off mean from 6.1 to at most 6.2.
-2. **MPrime:** the 28 saved anchor-tuning lineages are now being rescored on frozen Phase-B replicate A (smoke `21221744`, array `21221745`, finalizer `21221746`). After manual coefficient review, train 20 validation-led Stage-2 lineages from the new Stage-1 selections, evaluate policy curves/endpoints, then run matched fixed MCTS if MPrime is to enter RQ2/RQ4.
+2. **MPrime:** the first smoke (`21221744`) exposed a missing deployed validator directory before scientific work; its dependent jobs were automatically cancelled. The corrected chain is smoke `21222348`, array `21222349[0-27]`, finalizer `21222350`. After manual coefficient review, train 20 validation-led Stage-2 lineages from the new Stage-1 selections, evaluate policy curves/endpoints, then run matched fixed MCTS if MPrime is to enter RQ2/RQ4.
 3. **Counters tie-break:** the targeted three-instance causal screen is complete; a multi-seed confirmation is still needed before changing the default evaluator.
 
 All row-level evidence and job/log paths are retained in the canonical CSVs named above and in `result_csv_provenance_index_latest.csv`.

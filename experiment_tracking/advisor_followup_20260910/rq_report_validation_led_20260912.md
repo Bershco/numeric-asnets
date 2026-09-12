@@ -35,7 +35,7 @@ MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as t
 | Stage 2 | Rover | Normal 20/70 | 4 | 4.5; +0.5 [-0.01, 1.01]; p=0.125/0.375 | 4.5; +0.5 [-0.01, 1.01]; p=0.125/0.375 | 4.5; +0.5 [-0.01, 1.01]; p=0.125/0.5 |
 | Stage 2 | Counters | Narrow 5/20 | 36.9 | 34.9; -2 [-6.93, 2.93]; p=0.5/0.7188 | 36.7; -0.2 [-2.87, 2.47]; p=0.9688/0.9688 | 36.7; -0.2 [-2.87, 2.47]; p=0.9688/1 |
 
-**Conclusion:** FO Counters is the clear fixed-search success; Drone and Rover improve modestly. Block Grouping needs the longer budget to approach parity, while Counters can be harmed. The live FO Stage-2 exact-instance recovery leaves only one outcome unresolved; until it terminates, that row remains a lower bound and has no CI or p-value.
+**Conclusion:** FO Counters is the clear fixed-search success; Drone and Rover improve modestly. Block Grouping needs the longer budget to approach parity, while Counters can be harmed. The live FO Stage-2 VH-off exact-instance recovery leaves only one outcome unresolved; until it terminates, that RQ2 row remains a lower bound and has no CI or p-value.
 
 ![RQ2 raw policy and fixed-search means](rq2_raw_means_by_stage.png)
 
@@ -87,9 +87,9 @@ These three estimands are deliberately separate.
 | Stage 1 | FO Counters | 3.7 | 5.3; +1.6 [0.83, 2.37]; p=0.0039/0.0117 | 5.7; +2 [1.05, 2.95]; p=0.0039/0.0156 | 5.7; +2 [1.05, 2.95]; p=0.0039/0.0156 |
 | Stage 1 | Rover | 3.8 | 4.4; +0.6 [0, 1.2]; p=0.125/0.25 | 4.4; +0.6 [0, 1.2]; p=0.125/0.25 | 4.4; +0.6 [0, 1.2]; p=0.125/0.375 |
 | Stage 1 | Counters | 18.6 | 20.3; +1.7 [-8.94, 12.34]; p=0.7871/0.7871 | 22.1; +3.5 [-5.56, 12.56]; p=0.4531/0.4531 | 22.5; +3.9 [-4.33, 12.13]; p=0.3281/0.6562 |
-| Stage 2 | Block Grouping | 12.8 | 10.1; -2.7 [-3.38, -2.02]; p=0.002/0.0078 | 10.6; -2.2 [-3.26, -1.14]; p=0.0078/0.0234 | 12.6; -0.2 [-1.08, 0.68]; p=0.8125/0.8125 |
-| Stage 2 | Drone | 5 | 10.9; +5.9 [4.23, 7.57]; p=0.002/0.0078 | 11.2; +6.2 [4.33, 8.07]; p=0.002/0.0078 | 11.2; +6.2 [4.33, 8.07]; p=0.002/0.0078 |
-| Stage 2 | FO Counters | 3.1 | ≥5.3; ≥+2.2; CI/p pending | ≥5.4; ≥+2.3; CI/p pending | ≥5.4; ≥+2.3; CI/p pending |
+| Stage 2 | Block Grouping | 12.8 | 10.1; -2.7 [-3.38, -2.02]; p=0.002/0.0098 | 10.6; -2.2 [-3.26, -1.14]; p=0.0078/0.0234 | 12.6; -0.2 [-1.08, 0.68]; p=0.8125/0.8125 |
+| Stage 2 | Drone | 5 | 10.9; +5.9 [4.23, 7.57]; p=0.002/0.0098 | 11.2; +6.2 [4.33, 8.07]; p=0.002/0.0098 | 11.2; +6.2 [4.33, 8.07]; p=0.002/0.0098 |
+| Stage 2 | FO Counters | 3.1 | 5.2; +2.1 [1.12, 3.08]; p=0.0039/0.0117 | 5.4; +2.3 [1.23, 3.37]; p=0.0039/0.0156 | 5.4; +2.3 [1.23, 3.37]; p=0.0039/0.0156 |
 | Stage 2 | Rover | 3.9 | 4.4; +0.5 [-0.2, 1.2]; p=0.25/0.5 | 4.5; +0.6 [-0.09, 1.29]; p=0.1562/0.3047 | 4.5; +0.6 [-0.09, 1.29]; p=0.1562/0.3125 |
 | Stage 2 | Counters | 21.8 | 22.6; +0.8 [-8.29, 9.89]; p=0.8691/0.8691 | 26.4; +4.6 [-1.83, 11.03]; p=0.1523/0.3047 | 27.1; +5.3 [-0.7, 11.3]; p=0.082/0.2461 |
 
@@ -102,9 +102,9 @@ These three estimands are deliberately separate.
 | Stage 1 | FO Counters | 4.2 | 5.3; +1.1 [-0.09, 2.29]; p=0.0938/0.1875 | 5.7; +1.5 [-0.05, 3.05]; p=0.0781/0.2109 | 5.7; +1.5 [-0.05, 3.05]; p=0.0781/0.2812 |
 | Stage 1 | Rover | 4 | 4.4; +0.4 [-0.1, 0.9]; p=0.25/0.25 | 4.4; +0.4 [-0.1, 0.9]; p=0.25/0.25 | 4.4; +0.4 [-0.1, 0.9]; p=0.25/0.5 |
 | Stage 1 | Counters | 32.5 | 20.3; -12.2 [-23.77, -0.63]; p=0.0332/0.1328 | 22.1; -10.4 [-21.77, 0.97]; p=0.0703/0.2109 | 22.5; -10 [-21.01, 1.01]; p=0.0703/0.2812 |
-| Stage 2 | Block Grouping | 16 | 10.1; -5.9 [-6.94, -4.86]; p=0.002/0.0078 | 10.6; -5.4 [-6.8, -4]; p=0.002/0.0078 | 12.6; -3.4 [-4.8, -2]; p=0.0039/0.0156 |
+| Stage 2 | Block Grouping | 16 | 10.1; -5.9 [-6.94, -4.86]; p=0.002/0.0098 | 10.6; -5.4 [-6.8, -4]; p=0.002/0.0098 | 12.6; -3.4 [-4.8, -2]; p=0.0039/0.0195 |
 | Stage 2 | Drone | 6.7 | 10.9; +4.2 [0.8, 7.6]; p=0.0312/0.0938 | 11.2; +4.5 [1.01, 7.99]; p=0.0293/0.0879 | 11.2; +4.5 [1.01, 7.99]; p=0.0293/0.0879 |
-| Stage 2 | FO Counters | 2.9 | ≥5.3; ≥+2.4; CI/p pending | ≥5.4; ≥+2.5; CI/p pending | ≥5.4; ≥+2.5; CI/p pending |
+| Stage 2 | FO Counters | 2.9 | 5.2; +2.3 [0.58, 4.02]; p=0.0234/0.0938 | 5.4; +2.5 [0.77, 4.23]; p=0.0156/0.0625 | 5.4; +2.5 [0.77, 4.23]; p=0.0156/0.0625 |
 | Stage 2 | Rover | 4 | 4.4; +0.4 [-0.2, 1]; p=0.3125/0.3125 | 4.5; +0.5 [-0.11, 1.11]; p=0.1875/0.375 | 4.5; +0.5 [-0.11, 1.11]; p=0.1875/0.375 |
 | Stage 2 | Counters | 36.9 | 22.6; -14.3 [-30.21, 1.61]; p=0.0781/0.1562 | 26.4; -10.5 [-29.15, 8.15]; p=0.2383/0.375 | 27.1; -9.8 [-28.82, 9.22]; p=0.2891/0.375 |
 
@@ -123,7 +123,7 @@ These three estimands are deliberately separate.
 | Stage 2 | Rover | 0.5 | 0.5; 0 [-0.58, 0.58]; p=1/1 | 0.6; +0.1 [-0.43, 0.63]; p=1/1 | 0.6; +0.1 [-0.43, 0.63]; p=1/1 |
 | Stage 2 | Counters | -2 | 0.8; +2.8 [-9.12, 14.72]; p=0.5977/1 | 4.6; +4.8 [-2.97, 12.57]; p=0.2148/0.4688 | 5.3; +5.5 [-1.97, 12.97]; p=0.1367/0.4102 |
 
-**Conclusion:** Drone is the robust RQ4 success: VH-on materially increases MCTS usefulness. FO Counters benefits from MCTS in both modes, so the value head is not the source of the search gain. Other domains do not show a reliable value-head interaction. FO Stage-2 remains provisional until the live one-instance recovery ends.
+**Conclusion:** Drone is the robust RQ4 success: VH-on materially increases MCTS usefulness. FO Counters VH-on is now exact and benefits from MCTS, but the VH interaction remains indeterminate until the live VH-off instance recovery ends. Other domains do not show a reliable value-head interaction.
 
 ![RQ4 raw six-hour levels](rq4_raw_means_6h_by_stage.png)
 
@@ -161,7 +161,7 @@ These three estimands are deliberately separate.
 ## Results still required
 
 1. **FO Counters Stage-2 fixed MCTS:** one exact instance is live. It changes only one seed from 5/20 to at most 6/20 and the VH-off mean from 6.1 to at most 6.2.
-2. **MPrime:** the 28 saved anchor-tuning lineages are now being rescored on frozen Phase-B replicate A (smoke `21221744`, array `21221745`, finalizer `21221746`). After manual coefficient review, train 20 validation-led Stage-2 lineages from the new Stage-1 selections, evaluate policy curves/endpoints, then run matched fixed MCTS if MPrime is to enter RQ2/RQ4.
+2. **MPrime:** the first smoke (`21221744`) exposed a missing deployed validator directory before scientific work; its dependent jobs were automatically cancelled. The corrected chain is smoke `21222348`, array `21222349[0-27]`, finalizer `21222350`. After manual coefficient review, train 20 validation-led Stage-2 lineages from the new Stage-1 selections, evaluate policy curves/endpoints, then run matched fixed MCTS if MPrime is to enter RQ2/RQ4.
 3. **Counters tie-break:** the targeted three-instance causal screen is complete; a multi-seed confirmation is still needed before changing the default evaluator.
 
 All row-level evidence and job/log paths are retained in the canonical CSVs named above and in `result_csv_provenance_index_latest.csv`.

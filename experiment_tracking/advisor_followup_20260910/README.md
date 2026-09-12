@@ -14,7 +14,8 @@ following fixed reporting contract:
 - MCTS results report 30-minute, two-hour and six-hour per-instance cutoffs;
 - fixed search and progressive widening remain separate statistical families;
 - partial cells use `≥` and do not receive final confidence intervals or
-  p-values.
+  p-values. FO Counters Stage-2 VH-on is now exact; only VH-off and the
+  resulting VH interaction remain partial.
 
 ## Current experimental decisions
 
@@ -34,9 +35,12 @@ following fixed reporting contract:
   evaluator instance remained non-durable after a worker exit and is being run
   alone as job `21219947`. The current VH-off mean is therefore `≥6.1/20` and
   can rise only to `6.2/20`.
-- **MPrime anchor reranking is submitted:** smoke job `21221744` gates the
-  28-task saved-checkpoint array `21221745[0-27]`; analysis-only finalizer
-  `21221746` proposes the per-VH coefficient and cannot submit training.
+- **MPrime anchor reranking is submitted:** the first smoke `21221744` exposed
+  an incomplete file-selective deployment (the frozen validator PDDLs were
+  absent), and its dependent jobs were cancelled automatically. After the 240
+  tracked PDDLs were deployed and counted, corrected smoke job `21222348`
+  gates array `21222349[0-27]`; analysis-only finalizer `21222350` proposes
+  the per-VH coefficient and cannot submit training.
 
 ## Canonical tables and plots
 
@@ -66,7 +70,8 @@ following fixed reporting contract:
   evidence and job manifests.
 - `fo_stage2_validation_partial_recovery_manifest.csv` and
   `fo_stage2_validation_exact_recovery_20260912.csv` — exact FO recovery
-  provenance.
+  provenance. `fo_stage2_validation_vh_on_exact_seed_results_20260912.csv`
+  freezes the completed VH-on seed-level result and its original logs.
 
 The previous long-form version of this README contained time-sensitive queue
 snapshots and is intentionally replaced by this index; Git history preserves

@@ -64,12 +64,18 @@ deployed file-selectively into the dirty isolated cluster checkout so unrelated
 operational artifacts were not overwritten. Local and cluster-side regression
 tests passed 3/3; all 28 source logs and all 588 checkpoint directories exist.
 
-Submitted dependency chain:
+The first dependency chain failed safely before evaluation: smoke `21221744`
+found that the isolated checkout lacked the 240 tracked frozen-validator PDDL
+files. Array `21221745` and finalizer `21221746` were cancelled automatically
+by the failed dependency. The missing files were deployed from the pushed,
+checksum-controlled branch and counted before replacement submission.
 
-- compute smoke `21221744`;
-- full array `21221745[0-27]`, released only after smoke success;
-- analysis-only finalizer `21221746`, released only after all 28 tasks succeed.
+Corrected dependency chain:
 
-At the 12 September 18:30 IDT snapshot, the smoke was pending resources and the
+- compute smoke `21222348`;
+- full array `21222349[0-27]`, released only after smoke success;
+- analysis-only finalizer `21222350`, released only after all 28 tasks succeed.
+
+At the 12 September 18:53 IDT snapshot, the smoke was pending resources and the
 other jobs were dependency-pending. No Stage-2 training is launched by this
 chain.
