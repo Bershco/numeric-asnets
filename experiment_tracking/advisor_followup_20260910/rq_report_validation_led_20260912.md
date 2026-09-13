@@ -4,7 +4,7 @@ This is the primary thesis view. Terminal-led campaigns are excluded. Fixed-sear
 
 Effects are seed-paired mean differences; confidence intervals are paired t-intervals; raw p-values are two-sided exact sign-flip tests; Holm correction is applied separately within each RQ × stage × cutoff × estimand family. All five-domain fixed-search families are now complete. PW uses separate two-domain families and is never pooled with fixed search. **Bold entries are Holm-significant at .05; raw-only significance is not bolded.**
 
-MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator, but at least 16 existing Stage-2 networks were trained from superseded Stage-1 selections. A clean result requires anchor rescoring and up to 20 validation-led Stage-2 lineages. An existing lineage is reusable only if its Stage-1 checkpoint hash, selected coefficient, code, and configuration all match exactly.
+MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator, but exactly 16 existing Stage-2 networks were trained from superseded Stage-1 selections. Four more are only reuse candidates until the frozen coefficient, checkpoint hash, code and complete configuration are matched. A clean result therefore requires 16-20 new validation-led Stage-2 lineages. This is separate from the Stage-1 fixed-MCTS audit, which found 0/20 reusable search evaluations.
 
 ## RQ1 — Does Stage-2 training improve policy coverage without a value head?
 
@@ -54,13 +54,19 @@ All fixed-search rows below use the historical final action-index tie-break. The
 
 **Conclusion:** PW70 gives large, corrected-significant FO Counters gains already at 30 minutes. Rover is approximately fixed-search parity, without a significant policy gain. These were the only cells promoted to ten seeds: the eight-seed Drone Kmin=3 extension and two-seed corrected Block Grouping screens lost fixed-search coverage, while the five-seed Counters confirmation did not establish a reliable advantage. The earlier accidental PW20 Block Grouping/Counters screen remains documented separately and is never pooled with PW70.
 
-| Screen not promoted | n | Policy | Fixed 30m / 2h / 6h | PW 30m / 2h / 6h | Decision |
-|---|---:|---:|---:|---:|---|
-| Drone, Kmin=3 | 8 | 7.0/20 | 10.25 / 10.5 / 10.5 | 9.5 / 9.5 / 9.5 | Better runtime tail, but lost eight matched fixed successes |
-| Block Grouping/off, PW70 | 2 | 16.5/20 | 11.5 / 15.0 / 15.0 narrow | 10.5 / 11.5 / 13.0 | Unpromising |
-| Block Grouping/on, PW70 | 2 | 17.0/20 | 12.5 / 17.0 / 18.0 narrow | 9.0 / 11.5 / 13.5 | Unpromising |
-| Counters/off, PW70 | 5 | 37.8/59 | 34.6 / 36.4 / 36.4 narrow | 29.4 / 33.6 / 36.4 | Fixed parity only at 6h; below policy |
-| Counters/on, PW70 | 5 | 32.4/59 | 27.4 / 34.2 / 35.6 narrow | 22.0 / 28.4 / 31.4 | Below policy and fixed |
+| Screen not promoted | Method | n | Policy | Fixed 30m / 2h / 6h | PW 30m / 2h / 6h | Decision |
+|---|---|---:|---:|---:|---:|---|
+| Drone, Kmin=3 | PW70 | 8 | 7.0/20 | 10.25 / 10.5 / 10.5 | 9.5 / 9.5 / 9.5 | Better runtime tail, but lost eight matched fixed successes |
+| Block Grouping/off | PW20 | 2 | 16.5/20 | 11.0 / 13.5 / 15.0 narrow | 11.5 / 15.0 / 15.0 | Fixed parity only at 6h |
+| Block Grouping/on | PW20 | 2 | 17.0/20 | 11.5 / 13.5 / 17.0 narrow | 12.5 / 17.0 / 18.0 | No runtime gain; tiny final mean gain |
+| Block Grouping/off | PW70 | 2 | 16.5/20 | 11.0 / 13.5 / 15.0 narrow | 10.5 / 11.5 / 13.0 | Lost fixed coverage |
+| Block Grouping/on | PW70 | 2 | 17.0/20 | 11.5 / 13.5 / 17.0 narrow | 9.0 / 11.5 / 13.5 | Lost fixed coverage |
+| Counters S1/off | PW20 | 2 | 18.0/59 | 21.5 / 21.5 / 21.5 narrow | 20.5 / 20.5 / 20.5 | Slightly below fixed |
+| Counters S1/on | PW20 | 2 | 5.0/59 | 13.5 / 13.5 / 13.5 narrow | 12.5 / 12.5 / 12.5 | Slightly below fixed |
+| Counters S2/off | PW20 | 2 | 49.0/59 | ≥37.0 / ≥41.5 / 44.5 narrow | 46.0 / 49.5 / 49.5 | Restored policy mean in this screen |
+| Counters S2/on | PW20 | 2 | 5.0/59 | 16.5 / 17.5 / 17.5 narrow | 15.0 / 15.0 / 15.0 | Below fixed |
+| Counters S2/off | PW70 | 5 | 37.8/59 | 34.6 / 36.4 / 36.4 narrow | 29.4 / 33.6 / 36.4 | Fixed parity only at 6h; below policy |
+| Counters S2/on | PW70 | 5 | 32.4/59 | 27.4 / 34.2 / 35.6 narrow | 22.0 / 28.4 / 31.4 | Below policy and fixed |
 
 ![RQ2/RQ4 PW70 confirmation](rq2_rq4_pw70_final.png)
 
@@ -158,8 +164,9 @@ As in RQ2, these fixed-search values retain the historical action-index tie-brea
 
 ## Results still required
 
-1. **MPrime:** the live anchor rescore has 422/588 checkpoint validations complete. Fourteen original tasks and six exact failed/held-index replacements are running. Recheck `21233927` is dependency-pending and will submit only still-missing lineage indices, repeat that audit up to four times, then run a new analysis-only finalizer. Stage-2 training remains gated on complete curves and manual coefficient review. It will train up to 20 lineages, reusing an existing identity only after exact Stage-1 checkpoint-hash, coefficient, code and configuration matching. The exact audit found that all 20 canonical Stage-1 fixed-MCTS evaluations were missing; compute smoke `21237283` passed and all 20 are now running as arrays `21237328`/`21237329`.
-2. **Counters tie-break:** compute smoke `21233924` passed. The strict same-build Stage-1 VH-off comparison now has two terminal tasks and 18 running: ten action-ID baselines versus ten policy-prior candidates, all 59 instances, 6 CPU/120 GiB/72h each. The first completed pair is a 59/59 tie. The targeted pilot motivating it found action-ID 0/3, Q 0/3 and policy-prior 3/3 by two hours, all VAL-valid. Its VH-on 0/3 arm is not a positive control because the VH-on policy solved none of those instances.
-3. **MPrime Stage-1 search:** Phase-B-A Stage-1 checkpoints are already canonical. The exact-identity audit found 0/20 reusable fixed-MCTS evaluations. Compute smoke `21237283` passed and arrays `21237328`/`21237329` are now running all 20 checkpoints with normal fixed 20/70 search and terminal-safe action selection disabled, matching the canonical comparator. A two-seed Stage-1 PW70 screen can then follow; waiting for Stage-2 would be workload prioritization, not a scientific dependency. Stage-2 MCTS/PW still requires the corrected Stage-2 endpoints.
+1. **MPrime anchor:** 466/588 checkpoint validations are durable. Six recovery tasks are running; the original attempts have left the queue. Recheck `21233927` is dependency-pending and submits only still-missing identities before an analysis-only finalizer. Stage-2 training remains gated on complete curves and manual coefficient review. Sixteen old lineages definitely require retraining; four remain exact-identity reuse candidates.
+2. **Counters tie-break:** four strict-confirmation tasks are terminal and 16 are running. The two completed matched seed pairs are exact ties: seed `1073581256` scores 59/59 under both rules, and seed `2011206605` scores 20/59 under both rules. This is neutral interim evidence, not a ten-seed conclusion. The targeted pilot remains action-ID 0/3, Q 0/3 and policy-prior 3/3 by two hours, all VAL-valid. Its VH-on 0/3 arm is not a positive control because the exact VH-on policy solved none of those targets.
+3. **Block Grouping tie-break transfer:** both same-build four-target arms are running. Each has classified the first three targets as ordinary unsolved outcomes (0/3); the fourth remains active. The targets are genuine policy-success/MCTS failures--four of the 16 such VH-off losses across ten seeds--but no transfer rescue has yet appeared.
+4. **MPrime Stage-1 search:** all 20 canonical fixed-MCTS evaluations are running as arrays `21237328`/`21237329`. Current durable successes are lower bounds of at least 6.8/20 VH-off and 7.2/20 VH-on; no seed is terminal, so no CI, cutoff comparison or RQ conclusion is yet valid. A two-seed Stage-1 PW70 screen can follow after the fixed comparator becomes interpretable; Stage-2 MCTS/PW still requires corrected Stage-2 endpoints.
 
 Canonical evidence files: [`rq_primary_validation_led.csv`](rq_primary_validation_led.csv), [`rq2_raw_means_validation_led.csv`](rq2_raw_means_validation_led.csv), [`rq3_raw_means_validation_led.csv`](rq3_raw_means_validation_led.csv), [`rq4_raw_means_validation_led.csv`](rq4_raw_means_validation_led.csv), [`rq2_pw70_branch_latest.csv`](rq2_pw70_branch_latest.csv), and [`rq4_pw70_branch_latest.csv`](rq4_pw70_branch_latest.csv). Their row-level job/log routes are indexed in [`../../result_csv_provenance_index_latest.csv`](../../result_csv_provenance_index_latest.csv).

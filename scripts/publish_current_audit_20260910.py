@@ -156,31 +156,31 @@ upsert(
 )
 upsert(
     "MCTS-COUNTERS-TIEBREAK-STRICT",
-    status="live-18-running-2-complete",
+    status="live-16-running-4-complete",
     results_file="experiment_tracking/advisor_followup_20260910/live_submission_update_20260913.md",
     manifest_path="experiment_tracking/counters_tie_break_strict_stage1_20260913/manifest.csv",
-    next_action="First completed pair is59/59 under both rules; wait for all ten pairs before changing any RQ score.",
+    next_action="Two completed matched pairs are neutral:59/59 and20/59 under both rules; wait for all ten pairs before changing any RQ score.",
 )
 upsert(
     "MCTS-BG-TIEBREAK-SCREEN",
-    status="live-two-running",
+    status="live-two-running-three-of-four-classified",
     results_file="experiment_tracking/block_grouping_tie_break_screen_20260913/README.md",
     manifest_path="experiment_tracking/block_grouping_tie_break_screen_20260913/manifest.csv",
-    next_action="Compute smoke passed; two same-build tasks are running as array21237401 on the four exact policy-success/MCTS-failure instances. Expand only if selected failures are rescued through observed visit ties.",
+    next_action="Both same-build rules are0/3 ordinary-unsolved on the first three targets with the fourth active; expand only if a selected failure is rescued through an observed visit tie.",
 )
 upsert(
     "MPRIME-ANCHOR-PBA",
-    status="live-422-of588",
+    status="live-466-of588",
     results_file="experiment_tracking/mprime_anchor_phase_b_a_20260912/README.md",
     manifest_path="experiment_tracking/mprime_anchor_phase_b_a_20260912/manifest.csv",
-    next_action="Fourteen original and six recovery tasks running; controller21233927 skips completed points and finalizes only after manual curve review.",
+    next_action="Six recovery tasks running and original attempts out of queue; controller21233927 skips completed points and finalizes only after manual curve review.",
 )
 upsert(
     "MPRIME-PBA-S1-MCTS",
-    status="live-20-running",
+    status="live-20-running-no-terminal-seeds",
     results_file="experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/README.md",
     manifest_path="experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/manifest_off.csv;experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/manifest_on.csv",
-    next_action="Exact checkpoint/configuration audit found zero defensibly reusable historical results; compute smoke21237283 passed and arrays21237328/21237329 are running all20 canonical checkpoints.",
+    next_action="All20 canonical checkpoints are running; current success lower bounds are at least6.8/20 off and7.2/20 on with no CI or inference until seeds terminate.",
 )
 upsert(
     "MPRIME-PBA-S1-PW-SCREEN",

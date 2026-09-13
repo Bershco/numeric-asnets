@@ -22,7 +22,11 @@ All six tasks completed. Historical action-index tie-breaking and Q
 tie-breaking solved 0/3 in both value-head modes. Policy-prior tie-breaking
 solved all three targeted VH-off failures by two hours (0/3 at 30 minutes,
 3/3 at two and six hours); all three plans are VAL-valid. The VH-on behavior arm
-policy-tie arm remained 0/3.
+remained 0/3 under every rule, but the exact VH-on policy also solved **0/3** of
+these targets (and only 3/59 over the full test set). It is therefore not a
+failed positive control and is not evidence against policy-prior tie-breaking;
+it only checks whether the rule creates solutions where the source policy
+itself supplies no successful preference to preserve.
 
 This is causal evidence for the selected failure mechanism: when narrow MCTS
 produces equal maximum visit counts and effectively equal Q values, arbitrary

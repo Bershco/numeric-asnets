@@ -159,3 +159,35 @@ evaluation can quantify the new trajectories, but it cannot establish the
 causal benefit of adaptation because no coefficient change occurred. A further
 training rerun would require a recalibrated, predeclared target or a true
 trust-region rule; it should not be launched merely to rescue this screen.
+
+## Defensible causal follow-up
+
+The failed activation exposed a metric mismatch. The target `0.1143` was
+calibrated from an epoch-aggregate raw anchor-KL statistic, while the live
+controller monitored post-update KL on each just-used replay batch. Those are
+not interchangeable scales: the catastrophic adaptive run's maximum monitored
+value was only `0.079579`, and the stable control's was `0.022100`. A lower
+threshold must therefore first be calibrated on the *same per-step post-update
+statistic* used by the controller.
+
+Three concrete, testable causes remain plausible:
+
+1. The catastrophic seed's first replay/target batch produced an unusually
+   large or misdirected parameter update. Freeze and compare epoch-0 replay
+   identities, target distributions, gradient norms and parameter displacement
+   against the stable seed.
+2. Its six worker-timeout warnings, versus two in every peer, may have changed
+   which MCTS targets entered the replay batch. Join worker outcome/duration to
+   replay membership and rerun only the first update from a complete, frozen
+   target batch.
+3. Mean batch KL hid large localized changes on a small set of test-critical
+   states. Measure per-state KL quantiles and maxima on the Stage-1-success
+   trajectories rather than relying only on a replay-batch mean.
+
+A recalibrated lower-target controller could strengthen later optimizer steps
+within epoch 0 and test whether subsequent anchoring or recovery improves. It
+cannot undo the first offending optimizer step. A hard trust-region or
+rollback-and-retry rule is the treatment that directly tests *prevention*: reject
+an update whose same-metric KL exceeds a frozen threshold, increase protection,
+and recompute it. The smallest next screen remains the catastrophic seed plus
+one stable control, with test-policy evaluation after a validation-only choice.

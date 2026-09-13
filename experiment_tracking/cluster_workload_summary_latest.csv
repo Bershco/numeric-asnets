@@ -1,7 +1,6 @@
 snapshot_time_idt,experiment,state,jobs,requested_cpus,requested_memory_gib,scheduler_source
-2026-09-13T19:01:37+03:00,Block Grouping selected-failure tie-break screen,RUNNING,2,4,240.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-13T19:01:37+03:00,Counters Stage1 strict tie-break confirmation,RUNNING,18,108,2160.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-13T19:01:37+03:00,MPrime Phase-B-A Stage1 fixed MCTS,RUNNING,20,120,2400.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-13T19:01:37+03:00,MPrime Phase-B-A anchor rescore original tasks,RUNNING,14,56,280.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-13T19:01:37+03:00,MPrime Phase-B-A anchor rescore recovery tasks,RUNNING,6,24,120.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-13T19:01:37+03:00,MPrime Phase-B-A rescore controller,PENDING,1,1,2.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-13T23:45:29+03:00,Block Grouping selected-failure tie-break screen,RUNNING,2,4,240.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-13T23:45:29+03:00,Counters Stage1 strict tie-break confirmation,RUNNING,16,96,1920.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-13T23:45:29+03:00,MPrime Phase-B-A Stage1 fixed MCTS,RUNNING,20,120,2400.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-13T23:45:29+03:00,MPrime Phase-B-A anchor rescore recovery tasks,RUNNING,6,24,120.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-13T23:45:29+03:00,MPrime Phase-B-A rescore controller,PENDING,1,1,2.0,experiment_tracking/cluster_workload_latest.csv

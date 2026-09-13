@@ -83,7 +83,19 @@ held, so an exact paired-marker audit created six resumable recovery tasks as
 it remains dependency-pending and will submit only still-incomplete lineage
 indices before launching an analysis-only finalizer.
 
-At the 13 September 19:01 IDT snapshot, 422/588 checkpoint evaluations were
-complete. Fourteen original tasks and six recovery tasks were running,
-requesting 80 CPUs and 400 GiB. No Stage-2 training can be launched by this
-chain: its proposed coefficient winners require manual curve review first.
+At the 13 September 23:45 IDT snapshot, 466/588 checkpoint evaluations were
+complete. All original task attempts had left the queue. Six resumable recovery
+tasks were running, requesting 24 CPUs and 120 GiB, with about 13 hours to their
+24-hour hard bounds. Recheck controller `21233927` remained dependency-pending
+and will audit and resubmit only identities still missing after those six tasks.
+No Stage-2 training can be launched by this chain: its proposed coefficient
+winners require manual curve review first.
+
+The Stage-2 reuse question is separate from the Stage-1 MCTS reuse audit. An
+exact epoch join shows that 16/20 old validation-led Stage-2 lineages definitely
+start from a different Stage-1 checkpoint than the final Phase-B-A selection.
+Four are only candidates for reuse: off/1239739722, off/1472491096,
+on/1963100312 and on/2082152039. They remain reusable only if checkpoint hash,
+the eventual frozen coefficient, code and full training configuration also
+match. Consequently the defensible fresh-training count is currently 16--20,
+not a proven 20.
