@@ -145,7 +145,7 @@ As in RQ2, these fixed-search values retain the historical action-index tie-brea
 
 ### PW70 contribution to RQ4 (Stage 1 confirmation)
 
-| Domain | Estimand | 6h raw means | Effect [95% CI] at 30m / 2h / 6h | Raw/Holm p at 30m / 2h / 6h |
+| Domain | Estimand | Raw means (policy; PW 30m / 2h / 6h) | Effect [95% CI] at 30m / 2h / 6h | Raw/Holm p at 30m / 2h / 6h |
 |---|---|---|---|---|
 | FO Counters | (on PW70-policy benefit) - (VH-off PW70-policy benefit) | off policy 4.2; on policy 3.7; off PW 8.4 / 8.4 / 8.4; on PW 7.3 / 7.3 / 7.3 | -0.6 [-1.87, 0.67] / -0.6 [-1.87, 0.67] / -0.6 [-1.87, 0.67] | 0.4141/0.8281 / 0.4141/0.8281 / 0.4141/0.8281 |
 | FO Counters | on PW70 - on policy | off policy 4.2; on policy 3.7; off PW 8.4 / 8.4 / 8.4; on PW 7.3 / 7.3 / 7.3 | **3.6 [2.7, 4.5]** / **3.6 [2.7, 4.5]** / **3.6 [2.7, 4.5]** | **0.002/0.0039** / **0.002/0.0039** / **0.002/0.0039** |

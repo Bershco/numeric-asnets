@@ -8,7 +8,7 @@
 
 set -euo pipefail
 : "${CODE_COMMIT:?CODE_COMMIT is required}"
-repo=/home/hersco/bershco-nu-asnets/numeric-asnets-tie-break
+repo=${CHECKOUT:-/home/hersco/bershco-nu-asnets/numeric-asnets-tie-break}
 production=/home/hersco/bershco-nu-asnets/numeric-asnets
 manifest="$repo/experiment_tracking/block_grouping_tie_break_screen_20260913/manifest.csv"
 [[ "$(git -C "$repo" rev-parse HEAD)" == "$CODE_COMMIT" ]]

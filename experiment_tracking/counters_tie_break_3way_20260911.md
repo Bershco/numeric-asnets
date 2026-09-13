@@ -9,7 +9,7 @@ counts are resolved after an otherwise identical narrow MCTS search.
 | `q` | Best sign-correct child Q | Lowest global action index when Q differs by at most `1e-8` |
 | `policy` | Largest root network prior | Lowest global action index |
 
-Each mode ran both the VH-off failure checkpoint and matched VH-on checkpoint
+Each mode ran the VH-off failure checkpoint and a VH-on behavior-check checkpoint
 on Counters instances 51, 55 and 59. Every other declared choice is frozen:
 seed 1963100312, validation-led Stage-2 checkpoints, five retained children,
 20 simulations, PUCT 0.1, estimator mixture 0.5, one worker, 10,000 external
@@ -21,7 +21,7 @@ retain precedence over all three root tie-break rules.
 All six tasks completed. Historical action-index tie-breaking and Q
 tie-breaking solved 0/3 in both value-head modes. Policy-prior tie-breaking
 solved all three targeted VH-off failures by two hours (0/3 at 30 minutes,
-3/3 at two and six hours); all three plans are VAL-valid. The matched VH-on
+3/3 at two and six hours); all three plans are VAL-valid. The VH-on behavior arm
 policy-tie arm remained 0/3.
 
 This is causal evidence for the selected failure mechanism: when narrow MCTS

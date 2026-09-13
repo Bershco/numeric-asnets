@@ -59,6 +59,13 @@ upsert(
     next_action="Phase B removed saturation but Stage2 validation-test rank agreement remains weak; do not repeat the same full design. If MPrime continues, prepare a structurally redesigned candidate-limited Phase C.",
 )
 upsert(
+    "MPRIME-VAL-ADEQUACY-C",
+    status="completed-347-of347",
+    results_file="experiment_tracking/mprime_validation_phase_c_20260911/validator_decision_latest.csv",
+    manifest_path="experiment_tracking/mprime_validation_phase_c_20260911/checkpoint_candidates.csv",
+    next_action="Phase-B replicate A had the best available rank/stability trade-off and is frozen as final MPrime validator; Phase C remains methodological evidence.",
+)
+upsert(
     "MAIN-EXT6-MPRIME",
     status="completed-policy-with-validation-audit",
     primary_question="Do MAIN-VAL policy conclusions extend from the original five imperfect domains to MPrime as a sixth?",
@@ -116,31 +123,67 @@ upsert(
     "COUNTERS-VISIT-AUDIT",
     display_name="Counters root visit-distribution audit",
     role="search-diagnostic",
-    status="live-control-vh-off-complete",
-    scope="Three exact validation-led Stage-2 Counters instances under VH-off failure and matched VH-on control",
+    status="completed-both-vh-arms",
+    scope="Three exact validation-led Stage-2 Counters instances under VH-off failure plus a VH-on behavior arm",
     primary_question="Does 20-visit root selection override a good policy because visit evidence is too coarse?",
     configuration_summary="Narrow 5 children/20 simulations; one worker; 6h per instance; action, prior, visit, Q and U traces",
     results_file="experiment_tracking/advisor_followup_20260910/counters_visit_audit_latest_milestones.csv",
     manifest_path="experiment_tracking/advisor_followup_20260910/counters_visit_audit_manifest.csv",
-    next_action="VH-off complete and shows first divergences at steps 881/993/1105 under tied 9-visit maxima and equal Q; VH-on control remains live.",
+    next_action="Both arms complete; VH-off first divergences at steps 881/993/1105 have tied9-visit maxima and equal Q; the VH-on arm is not a positive control because its policy solved none of the targets.",
+)
+upsert(
+    "MCTS-COUNTERS-TIEBREAK-3WAY",
+    status="completed-targeted-causal-screen",
+    scope="Validation-led Stage2 Counters VH-off selected failures plus a VH-on behavior arm x three tie-break rules",
+    results_file="experiment_tracking/counters_tie_break_3way_20260911/results_latest.csv",
+    manifest_path="experiment_tracking/advisor_followup_20260910/counters_tie_break_3way_manifest.csv",
+    next_action="VH-off actionID0/3 Q0/3 policy3/3 by2h with all plans VAL-valid; VH-on0/3 is not a positive control because its policy solved none of the targets.",
+)
+upsert(
+    "MCTS-COUNTERS-TIEBREAK-STRICT",
+    status="live-18-running-2-complete",
+    results_file="experiment_tracking/advisor_followup_20260910/live_submission_update_20260913.md",
+    manifest_path="experiment_tracking/counters_tie_break_strict_stage1_20260913/manifest.csv",
+    next_action="First completed pair is59/59 under both rules; wait for all ten pairs before changing any RQ score.",
+)
+upsert(
+    "MCTS-BG-TIEBREAK-SCREEN",
+    status="prepared-smoke-gated",
+    results_file="experiment_tracking/block_grouping_tie_break_screen_20260913/README.md",
+    manifest_path="experiment_tracking/block_grouping_tie_break_screen_20260913/manifest.csv",
+    next_action="Submit compute smoke then two low-priority tasks; expand only if selected failures are rescued through observed visit ties.",
+)
+upsert(
+    "MPRIME-ANCHOR-PBA",
+    status="live-406-of588",
+    results_file="experiment_tracking/mprime_anchor_phase_b_a_20260912/README.md",
+    manifest_path="experiment_tracking/mprime_anchor_phase_b_a_20260912/manifest.csv",
+    next_action="Fourteen original and six recovery tasks running; controller21233927 skips completed points and finalizes only after manual curve review.",
+)
+upsert(
+    "MPRIME-PBA-S1-MCTS",
+    status="prepared-smoke-gated",
+    results_file="experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/README.md",
+    manifest_path="experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/manifest_off.csv;experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/manifest_on.csv",
+    next_action="Exact checkpoint/configuration audit found zero defensibly reusable historical results; submit one compute smoke then ten VH-off and ten VH-on jobs.",
 )
 upsert(
     "FO-S2-VAL-RECOVERY",
     display_name="FO Counters validation-led Stage-2 exact completion",
     role="operational-completion",
-    status="live-three-minimal-recovery-jobs",
-    scope="Only 42 unclassified instances from three genuinely partial evaluation identities",
+    status="completed-exact",
+    scope="Only the unclassified instances from three censored evaluation identities",
     primary_question="Complete the primary validation-led FO Counters Stage-2 MCTS cells without duplicating classified instances.",
-    configuration_summary="Normal 20 children/70 simulations; 3 workers; 120 GiB; 6h per instance; 36h allocation",
-    results_file="experiment_tracking/advisor_followup_20260910/fo_stage2_validation_partial_recovery_manifest.csv",
+    configuration_summary="Normal 20 children/70 simulations; 3 workers; 120 GiB; 6h per instance; minimal exact-instance recovery",
+    results_file="experiment_tracking/advisor_followup_20260910/fo_stage2_validation_vh_off_exact_seed_results_20260913.csv",
     manifest_path="experiment_tracking/advisor_followup_20260910/fo_stage2_validation_partial_recovery_manifest.csv",
-    next_action="Jobs 21178377, 21178379 and 21178380 are live after three 90-second signature-check failures were corrected.",
+    next_action="Final VH-off mean is6.1/20 at30m2h6h versus policy2.9; delta+3.2 CI[1.74 4.66] rawp.00195 Holmp.00977.",
 )
 upsert(
     "MAIN-VAL-S2-MCTS",
-    status="live-fo-exact-recovery",
-    scope="Validation-led Stage-2 policy versus MCTS across the five primary domains; FO Counters has three censored identities under exact recovery",
-    next_action="Use jobs 21178377/21178379/21178380 to complete only the 42 unclassified FO instances, then rebuild final five-domain RQ2/RQ4 inference.",
+    status="completed-five-domain",
+    scope="Validation-led Stage-2 policy versus MCTS across the five primary domains",
+    next_action="All five-domain rows are exact and final; MPrime enters only after corrected Stage2 endpoints.",
 )
 
 registry.sort(key=lambda row: row["experiment_id"])
@@ -394,9 +437,10 @@ historical snapshots. Full RQ tables, methods and conclusions are in
   test remains weak.
 - Adaptive KL: both arms completed 100 updates. Neither changed coefficient 3,
   so the adaptive treatment never activated.
-- Counters visit audit: VH-off is complete; the matched VH-on control remains
-  live. The first VH-off divergences occur after 881–1,105 actions under tied
-  visit maxima and equal Q values, not at the first action.
+- Counters visit audit: both arms are complete. The first VH-off divergences
+  occur after 881–1,105 actions under tied visit maxima and equal Q values, not
+  at the first action. The VH-on behavior arm is not a positive control because
+  its policy solved none of the three targets.
 - FO Counters validation-led Stage-2 MCTS: three minimal jobs are running only
   the 42 instances left unclassified by three historical partial allocations.
 

@@ -28,7 +28,8 @@ following fixed reporting contract:
   `../mprime_validation_phase_c_20260911/README.md`.
 - **Counters tie-breaking screen is complete:** policy-prior tie-breaking
   recovered all three preselected VH-off failures by two hours; action-index
-  and Q tie-breaking recovered none. The VH-on controls recovered none. This is
+  and Q tie-breaking recovered none. The VH-on behavior arms recovered none,
+  but their policy solved none of the three targets, so they are not positive controls. This is
   strong targeted causal evidence, not yet a domain-wide estimate. See
   `../counters_tie_break_3way_20260911.md`.
 - **FO Counters Stage-2 fixed MCTS:** the broad recovery finished. One exact
