@@ -19,7 +19,10 @@ apptainer exec --bind /home/hersco:/home/hersco \
     set -euo pipefail
     source '$production/venv-asnets/bin/activate'
     export PYTHONPATH='$repo':'$repo/asnets':\${PYTHONPATH:-}
-    python -m pytest -q '$repo/tests/test_mcts_root_tie_break.py'
+    cd '$repo'
+    python -m unittest discover -s '$repo/asnets/tests' -p 'test_progressive_widening.py'
+    cd '$repo/asnets'
+    ./run_experiment --help | grep -q -- '--eval-mcts-root-visit-tie-break'
     python -u '$repo/scripts/run_block_grouping_tie_break_screen_20260913.py' \
       --repo '$repo' --manifest '$manifest' --task 0 --preflight
   "
