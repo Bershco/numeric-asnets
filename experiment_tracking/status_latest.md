@@ -10,11 +10,11 @@ historical snapshots. Full RQ tables, methods and conclusions are in
 
 | Experiment | State | Jobs | CPU | RAM |
 |---|---|---:|---:|---:|
-| Block Grouping selected-failure tie-break screen | running | 1 | 4 | 240.0 GiB |
-| Counters Stage1 strict tie-break confirmation | running | 1 | 108 | 2160.0 GiB |
-| MPrime Phase-B-A Stage1 fixed MCTS | running | 1 | 120 | 2400.0 GiB |
-| MPrime Phase-B-A anchor rescore original tasks | running | 1 | 56 | 280.0 GiB |
-| MPrime Phase-B-A anchor rescore recovery tasks | running | 1 | 24 | 120.0 GiB |
+| Block Grouping selected-failure tie-break screen | running | 2 | 4 | 240.0 GiB |
+| Counters Stage1 strict tie-break confirmation | running | 18 | 108 | 2160.0 GiB |
+| MPrime Phase-B-A Stage1 fixed MCTS | running | 20 | 120 | 2400.0 GiB |
+| MPrime Phase-B-A anchor rescore original tasks | running | 14 | 56 | 280.0 GiB |
+| MPrime Phase-B-A anchor rescore recovery tasks | running | 6 | 24 | 120.0 GiB |
 | MPrime Phase-B-A rescore controller | pending | 1 | 1 | 2.0 GiB |
 
 ## Current scientific endpoints
@@ -28,8 +28,9 @@ historical snapshots. Full RQ tables, methods and conclusions are in
   occur after 881–1,105 actions under tied visit maxima and equal Q values, not
   at the first action. The VH-on behavior arm is not a positive control because
   its policy solved none of the three targets.
-- FO Counters validation-led Stage-2 MCTS: three minimal jobs are running only
-  the 42 instances left unclassified by three historical partial allocations.
+- FO Counters validation-led Stage-2 MCTS is complete. The exact VH-off mean is
+  6.1/20 at every cutoff versus policy 2.9/20; the final recovery instance used
+  its full six-hour allowance and did not add a success.
 
 ## Canonical sources
 

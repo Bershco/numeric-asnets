@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import re
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -31,6 +32,20 @@ def write(path: Path, rows: list[dict[str, object]], fields: list[str] | None = 
         writer = csv.DictWriter(stream, fieldnames=fields, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def task_count(job_id: str) -> int:
+    """Count concrete Slurm tasks represented by a compact job-id cell."""
+    total = 0
+    for token in job_id.split(";"):
+        match = re.search(r"_\[([^]]+)\]$", token.strip())
+        if not match:
+            total += 1
+            continue
+        for part in match.group(1).split(","):
+            bounds = part.split("-")
+            total += int(bounds[-1]) - int(bounds[0]) + 1
+    return total
 
 
 registry_path = TRACK / "experiment_registry.csv"
@@ -93,7 +108,7 @@ upsert(
 )
 upsert(
     "MCTS-PW70-TEN-SEED",
-    status="completed-declared-budget-with-one-starred-partial",
+    status="completed-declared-budget",
     next_action="Freeze all ten declared-budget seeds. FO/off is final at 8.4/20; one 7/20 seed is an OOM-terminal declared-budget endpoint whose unclassified instance counts unsuccessful.",
 )
 upsert(
@@ -260,7 +275,7 @@ for row in registry:
         "configuration_summary": row["configuration_summary"],
         "results_file": row["results_file"],
         "manifest_path": row["manifest_path"],
-        "live_jobs": len(matches),
+        "live_jobs": sum(task_count(job["job_id"]) for job in matches),
         "live_cpus": sum(int(job["cpus"]) for job in matches),
         "live_memory_gib": sum(float(job["memory_gib"]) for job in matches),
         "next_action": row["next_action"],
@@ -270,18 +285,75 @@ write(TRACK / "experiment_catalog_latest.csv", catalog)
 live_rows = []
 for experiment in sorted({row["experiment"] for row in workload}):
     jobs = [row for row in workload if row["experiment"] == experiment]
+    running_tasks = sum(task_count(row["job_id"]) for row in jobs if row["state"] == "RUNNING")
+    pending_tasks = sum(task_count(row["job_id"]) for row in jobs if row["state"] == "PENDING")
     live_rows.append({
         "snapshot_time_idt": jobs[0]["snapshot_time_idt"],
         "experiment": experiment,
-        "running": sum(row["state"] == "RUNNING" for row in jobs),
-        "pending": sum(row["state"] == "PENDING" for row in jobs),
-        "jobs": len(jobs),
+        "running": running_tasks,
+        "pending": pending_tasks,
+        "jobs": running_tasks + pending_tasks,
         "requested_cpus": sum(int(row["cpus"]) for row in jobs),
         "requested_memory_gib": sum(float(row["memory_gib"]) for row in jobs),
         "job_ids": ";".join(row["job_id"] for row in jobs),
         "row_level_provenance": "experiment_tracking/cluster_workload_latest.csv",
     })
 write(TRACK / "live_experiment_status_latest.csv", live_rows)
+write(TRACK / "cluster_workload_summary_latest.csv", [
+    {
+        "snapshot_time_idt": row["snapshot_time_idt"],
+        "experiment": row["experiment"],
+        "state": "RUNNING" if row["running"] and not row["pending"] else (
+            "PENDING" if row["pending"] and not row["running"] else "RUNNING_PLUS_PENDING"
+        ),
+        "jobs": row["jobs"],
+        "requested_cpus": row["requested_cpus"],
+        "requested_memory_gib": row["requested_memory_gib"],
+        "scheduler_source": "experiment_tracking/cluster_workload_latest.csv",
+    }
+    for row in live_rows
+])
+
+# These two legacy *_latest ledgers are retained for row-level provenance, but
+# must not masquerade as the current queue/branch status.
+dynamic_jobs = read(TRACK / "dynamic_experiment_jobs_latest.csv")
+for row in dynamic_jobs:
+    row["record_scope"] = "historical observation; state is not current"
+    row["current_live_state_source"] = "experiment_tracking/cluster_workload_latest.csv"
+write(TRACK / "dynamic_experiment_jobs_latest.csv", dynamic_jobs)
+
+branch_coverage = read(TRACK / "stage2_mcts_branch_coverage_latest.csv")
+for row in branch_coverage:
+    row["snapshot_time_idt"] = STAMP
+    row["validation_scheduler_terminal"] = "10"
+    row["validation_live"] = "0"
+    row["validation_unsubmitted"] = "0"
+    row["terminal_scheduler_terminal"] = ""
+    row["terminal_live"] = ""
+    row["terminal_unsubmitted"] = ""
+    row["scientific_status"] = "validation-led primary complete; terminal-led columns archived and not maintained"
+    row["row_level_provenance"] = "experiment_tracking/advisor_followup_20260910/rq_primary_validation_led.csv;experiment_tracking/result_csv_provenance_index_latest.csv"
+write(TRACK / "stage2_mcts_branch_coverage_latest.csv", branch_coverage)
+
+rq_results = read(TRACK / "rq_results_latest.csv")
+for row in rq_results:
+    if row["research_question"] == "RQ2":
+        row["status"] = "complete_original_five_domain_family"
+        row["headline"] = "FO Counters gains significantly at both stages; Drone/Rover improve modestly; Block Grouping is budget-sensitive and Counters can be harmed."
+    elif row["research_question"] == "RQ4":
+        row["status"] = "complete_original_five_domain_family"
+        row["headline"] = "Drone has the clear positive value-head interaction; FO benefits from search in both modes without a significant interaction."
+write(TRACK / "rq_results_latest.csv", rq_results)
+
+for legacy_latest in (
+    TRACK / "best_configuration_by_domain_latest.csv",
+    TRACK / "stage2_policy_mcts_all_cutoff_statistics_latest.csv",
+):
+    rows = read(legacy_latest)
+    for row in rows:
+        row["record_scope"] = "historical mixed-branch snapshot; superseded for primary inference"
+        row["canonical_replacement"] = "experiment_tracking/advisor_followup_20260910/rq_report_validation_led_20260912.md"
+    write(legacy_latest, rows)
 
 # Add explicit drill-down pointers to the two canonical aggregate tables whose
 # rows are intentionally not job-level.  Their referenced detail files contain
@@ -405,7 +477,7 @@ must read the canonical files below; it must not infer liveness from an old date
 | RQ3 raw levels and interaction | `experiment_tracking/advisor_followup_20260910/rq3_raw_means_validation_led.csv` |
 | RQ4 raw levels | `experiment_tracking/advisor_followup_20260910/rq4_raw_means_validation_led.csv` |
 | Advisor narrative and tables | `experiment_tracking/advisor_followup_20260910/README.md` |
-| Dynamic job evidence | `experiment_tracking/dynamic_experiment_jobs_latest.csv` |
+| Historical job-level evidence (not live state) | `experiment_tracking/dynamic_experiment_jobs_latest.csv` |
 | MPrime Phase-B checkpoint evidence | `experiment_tracking/mprime_validation_phase_b_20260906/phase_b_checkpoint_scores_latest.csv` |
 | MPrime Phase-B selector comparison | `experiment_tracking/mprime_validation_phase_b_20260906/phase_b_cell_selector_comparison_latest.csv` |
 | Counters visit milestones | `experiment_tracking/advisor_followup_20260910/counters_visit_audit_latest_milestones.csv` |
@@ -457,8 +529,9 @@ historical snapshots. Full RQ tables, methods and conclusions are in
   occur after 881–1,105 actions under tied visit maxima and equal Q values, not
   at the first action. The VH-on behavior arm is not a positive control because
   its policy solved none of the three targets.
-- FO Counters validation-led Stage-2 MCTS: three minimal jobs are running only
-  the 42 instances left unclassified by three historical partial allocations.
+- FO Counters validation-led Stage-2 MCTS is complete. The exact VH-off mean is
+  6.1/20 at every cutoff versus policy 2.9/20; the final recovery instance used
+  its full six-hour allowance and did not add a success.
 
 ## Canonical sources
 

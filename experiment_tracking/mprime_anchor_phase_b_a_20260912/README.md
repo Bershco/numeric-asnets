@@ -76,12 +76,14 @@ Python module. Array `21222349` and finalizer `21222350` were automatically
 cancelled. The module was then deployed and its SHA-256 verified against the
 local branch.
 
-Current dependency chain:
+The corrected compute smoke `21223398` passed and released full array
+`21223399[0-27]`. Some task attempts then completed while others failed or were
+held, so an exact paired-marker audit created six resumable recovery tasks as
+`21233926[0-3,15,24]`. The bounded idempotent recheck controller is `21233927`;
+it remains dependency-pending and will submit only still-incomplete lineage
+indices before launching an analysis-only finalizer.
 
-- compute smoke `21223398`;
-- full array `21223399[0-27]`, released only after smoke success;
-- analysis-only finalizer `21223400`, released only after all 28 tasks succeed.
-
-At the 12 September 19:21 IDT snapshot, the smoke was pending resources and the
-other jobs were dependency-pending. No Stage-2 training is launched by this
-chain.
+At the 13 September 19:01 IDT snapshot, 422/588 checkpoint evaluations were
+complete. Fourteen original tasks and six recovery tasks were running,
+requesting 80 CPUs and 400 GiB. No Stage-2 training can be launched by this
+chain: its proposed coefficient winners require manual curve review first.

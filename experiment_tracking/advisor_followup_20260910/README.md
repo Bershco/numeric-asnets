@@ -14,8 +14,7 @@ following fixed reporting contract:
 - MCTS results report 30-minute, two-hour and six-hour per-instance cutoffs;
 - fixed search and progressive widening remain separate statistical families;
 - partial cells use `≥` and do not receive final confidence intervals or
-  p-values. FO Counters Stage-2 VH-on is now exact; only VH-off and the
-  resulting VH interaction remain partial.
+  p-values. All five-domain validation-led fixed-search cells are now exact.
 
 ## Current experimental decisions
 
@@ -32,17 +31,16 @@ following fixed reporting contract:
   but their policy solved none of the three targets, so they are not positive controls. This is
   strong targeted causal evidence, not yet a domain-wide estimate. See
   `../counters_tie_break_3way_20260911.md`.
-- **FO Counters Stage-2 fixed MCTS:** the broad recovery finished. One exact
-  evaluator instance remained non-durable after a worker exit and is being run
-  alone as job `21219947`. The current VH-off mean is therefore `≥6.1/20` and
-  can rise only to `6.2/20`.
-- **MPrime anchor reranking is submitted:** smoke `21221744` exposed missing
-  frozen-validator PDDLs; replacement smoke `21222348` then exposed the
-  missing frozen validator Python module. Both failed before scientific
-  inference and their dependent jobs were cancelled automatically. The 240
-  PDDLs and checksum-verified module are now deployed. Current smoke
-  `21223398` gates array `21223399[0-27]`; analysis-only finalizer `21223400`
-  proposes the per-VH coefficient and cannot submit training.
+- **FO Counters Stage-2 fixed MCTS is complete:** the exact recovery
+  `21219947` used its full six-hour instance budget and added no plan. VH-off is
+  final at 6.1/20 for 30m, 2h and 6h versus policy 2.9/20; paired change +3.2,
+  95% CI [1.74, 4.66], raw p=.00195, Holm p=.00977.
+- **MPrime anchor reranking is live:** 422/588 validations are complete;
+  fourteen original tasks and six recovery tasks are running. Controller
+  `21233927` is dependency-pending and rechecks only missing identities before
+  the analysis-only finalizer. No Stage-2 training starts before manual curve
+  review. Separately, compute smoke `21237283` passed and the twenty canonical
+  Stage-1 fixed-MCTS jobs are running as arrays `21237328`/`21237329`.
 
 ## Canonical tables and plots
 
