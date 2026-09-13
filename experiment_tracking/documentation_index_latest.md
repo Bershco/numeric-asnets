@@ -1,6 +1,6 @@
 # Canonical experiment-documentation index
 
-Updated: 2026-09-13T18:27:31+03:00
+Updated: 2026-09-13T19:07:42+03:00
 
 This index resolves the apparent duplication created by dated audit snapshots.
 Dated files are immutable historical evidence, not current status.  New analysis

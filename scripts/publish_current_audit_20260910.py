@@ -148,24 +148,36 @@ upsert(
 )
 upsert(
     "MCTS-BG-TIEBREAK-SCREEN",
-    status="prepared-smoke-gated",
+    status="live-two-running",
     results_file="experiment_tracking/block_grouping_tie_break_screen_20260913/README.md",
     manifest_path="experiment_tracking/block_grouping_tie_break_screen_20260913/manifest.csv",
-    next_action="Submit compute smoke then two low-priority tasks; expand only if selected failures are rescued through observed visit ties.",
+    next_action="Compute smoke passed; two same-build tasks are running as array21237401 on the four exact policy-success/MCTS-failure instances. Expand only if selected failures are rescued through observed visit ties.",
 )
 upsert(
     "MPRIME-ANCHOR-PBA",
-    status="live-406-of588",
+    status="live-422-of588",
     results_file="experiment_tracking/mprime_anchor_phase_b_a_20260912/README.md",
     manifest_path="experiment_tracking/mprime_anchor_phase_b_a_20260912/manifest.csv",
     next_action="Fourteen original and six recovery tasks running; controller21233927 skips completed points and finalizes only after manual curve review.",
 )
 upsert(
     "MPRIME-PBA-S1-MCTS",
-    status="prepared-smoke-gated",
+    status="live-20-running",
     results_file="experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/README.md",
     manifest_path="experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/manifest_off.csv;experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/manifest_on.csv",
-    next_action="Exact checkpoint/configuration audit found zero defensibly reusable historical results; submit one compute smoke then ten VH-off and ten VH-on jobs.",
+    next_action="Exact checkpoint/configuration audit found zero defensibly reusable historical results; compute smoke21237283 passed and arrays21237328/21237329 are running all20 canonical checkpoints.",
+)
+upsert(
+    "MPRIME-PBA-S1-PW-SCREEN",
+    display_name="MPrime final-validator Stage1 PW70 screen",
+    role="search-screen",
+    status="immediate-next-not-submitted",
+    scope="Two predeclared Phase-B-A Stage1 seeds x two VH modes",
+    primary_question="Does PW70 retain the MPrime fixed-search benefit with lower search cost?",
+    configuration_summary="PW70 Kmin3; two matched seeds per VH; normal fixed comparator; 6h per instance; planned4 tasks",
+    results_file="experiment_tracking/advisor_followup_20260910/live_submission_update_20260913.md",
+    manifest_path="",
+    next_action="Prepare and smoke-test four-task matched screen after the running fixed comparator yields interpretable reference scores; not a Stage2 dependency.",
 )
 upsert(
     "FO-S2-VAL-RECOVERY",
@@ -227,14 +239,18 @@ write(pw_live, pw_rows)
 # Build a current catalog by joining the master registry to the scheduler snapshot.
 workload = read(TRACK / "cluster_workload_latest.csv")
 live_experiment_map = {
-    "COUNTERS-VISIT-AUDIT": "Counters root-visit distribution audit",
-    "FO-S2-VAL-RECOVERY": "FO Counters validation-led Stage-2 exact recovery",
-    "MAIN-VAL-S2-MCTS": "FO Counters validation-led Stage-2 exact recovery",
+    "COUNTERS-VISIT-AUDIT": ["Counters root-visit distribution audit"],
+    "FO-S2-VAL-RECOVERY": ["FO Counters validation-led Stage-2 exact recovery"],
+    "MAIN-VAL-S2-MCTS": ["FO Counters validation-led Stage-2 exact recovery"],
+    "MCTS-COUNTERS-TIEBREAK-STRICT": ["Counters Stage1 strict tie-break confirmation"],
+    "MCTS-BG-TIEBREAK-SCREEN": ["Block Grouping selected-failure tie-break screen"],
+    "MPRIME-ANCHOR-PBA": ["MPrime Phase-B-A anchor rescore original tasks", "MPrime Phase-B-A anchor rescore recovery tasks", "MPrime Phase-B-A rescore controller"],
+    "MPRIME-PBA-S1-MCTS": ["MPrime Phase-B-A Stage1 fixed MCTS"],
 }
 catalog = []
 for row in registry:
-    live_name = live_experiment_map.get(row["experiment_id"])
-    matches = [job for job in workload if live_name and job["experiment"] == live_name]
+    live_names = live_experiment_map.get(row["experiment_id"], [])
+    matches = [job for job in workload if job["experiment"] in live_names]
     catalog.append({
         "experiment_id": row["experiment_id"],
         "display_name": row["display_name"],

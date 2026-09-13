@@ -21,3 +21,10 @@ with an equal maximum-visit tie. Each task requests 2 CPUs, 120 GiB and 30 hours
 The four targets and their policy/MCTS provenance are frozen in `manifest.csv`.
 A full Block Grouping confirmation is allowed only if this selected-failure
 screen shows a credible rescue mechanism; PW70 is not implicated by this test.
+
+## Status
+
+The strengthened compute smoke passed all 23 tie-break tests and exercised the
+real evaluator. Array `21237401` is now running both same-build arms. The exact
+node `ise-cpu-intl-13` is excluded after a native evaluator exit `-4`; the live
+tasks are on `ise-cpu-intl-23` and `cs-cpu-11`.

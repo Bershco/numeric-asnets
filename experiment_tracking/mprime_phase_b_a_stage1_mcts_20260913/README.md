@@ -20,6 +20,7 @@ campaign therefore contains exactly twenty jobs: ten VH-off and ten VH-on.
 | Simulations per external action | 70 |
 | PUCT coefficient | 0.1 |
 | Leaf-estimator mixture | 0.5 |
+| Terminal-safe action selection | Off; canonical historical-style fixed comparator |
 | Workers per job | 3 |
 | CPUs / RAM per job | 6 / 120 GiB |
 | Per-instance timeout | 6 hours |
@@ -68,4 +69,5 @@ smoke or full runner with `--export=ALL,CODE_COMMIT=<hash>,VALUE_HEAD=off|on`.
 
 ## Status
 
-Prepared locally and tested; **not submitted**.
+Compute smoke `21237283` passed on the isolated checkout. The full arrays are
+running as `21237328` (VH-off, ten tasks) and `21237329` (VH-on, ten tasks).

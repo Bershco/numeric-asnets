@@ -1,4 +1,4 @@
-# Live submission update — 13 September 2026, 17:58 IDT
+# Live submission update — 13 September 2026, 18:52 IDT
 
 Only validation-led work is treated as thesis-primary. Terminal-led campaigns remain archived context and are not continued, plotted, or included in RQ families.
 
@@ -23,17 +23,17 @@ The action-ID half is intentionally rerun. It makes the domain-wide comparison s
 
 ## MPrime
 
-At this snapshot, 406/588 checkpoint validations are complete. Fourteen long-running original tasks and six resumable replacement tasks are live, requesting 80 CPUs and 400 GiB in total. The original tasks have about 3h10m to their 24-hour hard bounds; the replacement tasks have about 18h50m. Recheck controller `21233927` remains dependency-pending and will skip every completed point.
+At this snapshot, 422/588 checkpoint validations are complete. Fourteen long-running original tasks and six resumable replacement tasks are live, requesting 80 CPUs and 400 GiB in total. The original tasks have about 2h15m to their 24-hour hard bounds; the replacement tasks have about 17h55m. Recheck controller `21233927` remains dependency-pending and will skip every completed point.
 
 Controller `21233927` audits paired done/summary markers, submits only incomplete lineage indices, and can repeat this bounded recovery up to four times before submitting the analysis-only coefficient finalizer. It cannot launch Stage-2 training itself: the frozen coefficient still requires manual curve review. Once frozen, the approved path is up to twenty validation-led Stage-2 lineages, policy curves/endpoints, then matched Stage-2 fixed MCTS. An existing lineage is reused only if its Stage-1 source checkpoint hash, newly selected coefficient, code and complete configuration match exactly; the final fresh-training count will be decided by that identity audit rather than assumed.
 
-The Phase-B-A Stage-1 checkpoints are already final. An exact identity audit found 0/20 reusable Stage-1 fixed-MCTS evaluations, so all 20 are genuinely missing and may run independently of Stage-2. Their manifest and compute scripts are being prepared from the frozen selection ledger; a Stage-1 PW screen is gated on having that fixed comparator only, not on Stage-2 training.
+The Phase-B-A Stage-1 checkpoints are already final. An exact identity audit found 0/20 reusable Stage-1 fixed-MCTS evaluations because historical MCTS checkpoints did not match the final Phase-B-A selector. Compute smoke `21237283` solved its real MPrime instance and passed VAL. The two ten-task arrays `21237328` (VH-off) and `21237329` (VH-on) are now running, requesting 120 CPUs and 2,400 GiB total. Every task uses normal fixed 20/70 search, terminal-safe action selection disabled, 6 CPUs, 120 GiB, a six-hour per-instance limit and a 72-hour hard allocation. A Stage-1 PW screen is gated on having that fixed comparator only, not on Stage-2 training.
 
 MPrime PW has not been run. Stage-1 PW can begin with a two-seed screen after the Stage-1 fixed comparator; Stage-2 PW remains gated on canonical Stage-2 endpoints and its fixed comparator.
 
 ## Block Grouping tie-break diagnostic
 
-A two-job same-build screen is prepared for the four exact Stage-1 VH-off seed `1963100312` instances that policy solved and historical narrow MCTS drove to 10,000 actions. It compares action-ID against policy-prior final tie-breaking with one worker, 2 CPUs, 120 GiB and 30 hours per task. It also records action-level evidence. This selected-failure diagnostic is eligible because Block Grouping has 16 VH-off policy-success/MCTS-failure cases across eight seeds, but it is deliberately not a premature 20-job domain confirmation and does not test PW70.
+A two-job same-build screen is running as array `21237401` on the four exact Stage-1 VH-off seed `1963100312` instances that policy solved and historical narrow MCTS drove to 10,000 actions. It compares action-ID against policy-prior final tie-breaking with one worker, 2 CPUs, 120 GiB and 30 hours per task. It also records action-level evidence. The real compute smoke passed 23 tie-break tests and completed a ten-minute target-instance run on `ise-cpu-intl-20`; an earlier attempt exposed native exit `-4` on `ise-cpu-intl-13`, so only that exact node is excluded. This selected-failure diagnostic is eligible because Block Grouping has 16 VH-off policy-success/MCTS-failure cases across eight seeds, but it is deliberately not a premature 20-job domain confirmation and does not test PW70. Historical elapsed times put the action-ID arm near 8.2 hours for these four targets; the hard bound is 30 hours per task.
 
 Phase C itself is complete. It removed the original validation saturation, but Phase-B replicate A had the best available rank/stability trade-off and is frozen as the final MPrime validator. The current rescore is the required bridge from that validator decision to defensible Stage-2 training.
 
