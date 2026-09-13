@@ -51,7 +51,17 @@ def effect_cell(row: dict[str, str], partial: bool = False) -> str:
     ci = f"[{number(row['ci95_low_solved'])}, {number(row['ci95_high_solved'])}]"
     raw = number(row.get("raw_p", ""), 4)
     holm = number(row.get("holm_p", ""), 4)
-    return f"{mean}; {effect} {ci}; p={raw}/{holm}"
+    value = f"{mean}; {effect} {ci}; p={raw}/{holm}"
+    return f"**{value}**" if float(row.get("holm_p", "nan")) < 0.05 else value
+
+
+def effect_with_p(row: dict[str, str]) -> str:
+    value = (
+        f"{number(row['effect_solved'])} "
+        f"[{number(row['ci95_low_solved'])}, {number(row['ci95_high_solved'])}]; "
+        f"p={number(row['raw_p'],4)}/{number(row['holm_p'],4)}"
+    )
+    return f"**{value}**" if float(row["holm_p"]) < 0.05 else value
 
 
 def md_table(headers: list[str], rows: list[list[str]]) -> str:
@@ -78,7 +88,9 @@ for domain in DOMAIN_ORDER:
     rq1_rows.append([
         DOMAIN_LABEL[domain], number(r["baseline_mean"]), number(r["comparison_mean"]),
         f"{number(r['effect_solved'])} [{number(r['ci95_low_solved'])}, {number(r['ci95_high_solved'])}]",
-        f"{number(r['raw_p'], 4)} / {number(r['holm_p'], 4)}",
+        (f"**{number(r['raw_p'], 4)} / {number(r['holm_p'], 4)}**"
+         if float(r["holm_p"]) < 0.05 else
+         f"{number(r['raw_p'], 4)} / {number(r['holm_p'], 4)}"),
     ])
 
 rq2 = [r for r in primary if r["rq"] == "RQ2"]
@@ -104,9 +116,9 @@ for domain in DOMAIN_ORDER:
     d, i = rq3d_map[domain], rq3i_map[domain]
     rq3_rows.append([
         DOMAIN_LABEL[domain], f"{number(d['baseline_mean'])} → {number(d['comparison_mean'])}",
-        f"{number(d['effect_solved'])} [{number(d['ci95_low_solved'])}, {number(d['ci95_high_solved'])}]; p={number(d['raw_p'],4)}/{number(d['holm_p'],4)}",
+        effect_with_p(d),
         number(i["baseline_mean"]),
-        f"{number(i['effect_solved'])} [{number(i['ci95_low_solved'])}, {number(i['ci95_high_solved'])}]; p={number(i['raw_p'],4)}/{number(i['holm_p'],4)}",
+        effect_with_p(i),
     ])
 
 rq4 = [r for r in primary if r["rq"] == "RQ4"]
@@ -141,7 +153,9 @@ for r in sorted(pw2, key=lambda x: (DOMAIN_ORDER.index(x["domain"]), CUTOFF_ORDE
         DOMAIN_LABEL[r["domain"]], r["cutoff"], r["n"], number(r["vh_off_policy_mean"]),
         number(r["vh_off_fixed_mcts_mean"]), number(r["vh_off_pw70_mean"]),
         f"{number(r['pw70_minus_policy'])} [{number(r['ci95_low'])}, {number(r['ci95_high'])}]",
-        f"{number(r['raw_p'], 4)} / {number(r['holm_p'], 4)}",
+        (f"**{number(r['raw_p'], 4)} / {number(r['holm_p'], 4)}**"
+         if float(r["holm_p"]) < 0.05 else
+         f"{number(r['raw_p'], 4)} / {number(r['holm_p'], 4)}"),
     ])
 
 pw4_rows = []
@@ -149,15 +163,19 @@ for r in sorted(pw4, key=lambda x: (DOMAIN_ORDER.index(x["domain"]), CUTOFF_ORDE
     pw4_rows.append([
         DOMAIN_LABEL[r["domain"]], r["cutoff"], r["estimand"].replace("VH-on ", "on ").replace("parallel VH-off", "off"),
         f"off policy {number(r['vh_off_policy_mean'])}; on policy {number(r['vh_on_policy_mean'])}; off PW {number(r['vh_off_pw70_mean'])}; on PW {number(r['vh_on_pw70_mean'])}",
-        f"{number(r['effect'])} [{number(r['ci95_low'])}, {number(r['ci95_high'])}]",
-        f"{number(r['raw_p'], 4)} / {number(r['holm_p'], 4)}",
+        (f"**{number(r['effect'])} [{number(r['ci95_low'])}, {number(r['ci95_high'])}]**"
+         if float(r["holm_p"]) < 0.05 else
+         f"{number(r['effect'])} [{number(r['ci95_low'])}, {number(r['ci95_high'])}]"),
+        (f"**{number(r['raw_p'], 4)} / {number(r['holm_p'], 4)}**"
+         if float(r["holm_p"]) < 0.05 else
+         f"{number(r['raw_p'], 4)} / {number(r['holm_p'], 4)}"),
     ])
 
-text = f"""# Validation-led RQ report — 12 September 2026
+text = f"""# Validation-led RQ report — 13 September 2026
 
 This is the primary thesis view. Terminal-led campaigns are excluded. Fixed-search 30-minute and two-hour figures are deterministic cutoffs of the same six-hour runs, not separate reruns. Block Grouping and Counters use narrow fixed search (5 retained children, 20 simulations); Drone, FO Counters and Rover use normal fixed search (20 children, 70 simulations). Counts are solved test instances; Counters has 59 instances and the other domains have 20.
 
-Holm correction is applied separately within each RQ × stage × cutoff × estimand family. RQ2 Stage-2 VH-off and the RQ4 Stage-2 interaction are provisional four-domain families while FO/VH-off is partial. RQ4 Stage-2 direct and cross-cell comparisons are final five-domain families because FO/VH-on is exact. PW uses separate two-domain families and is never pooled with fixed search.
+Holm correction is applied separately within each RQ × stage × cutoff × estimand family. All five-domain fixed-search families are now complete. PW uses separate two-domain families and is never pooled with fixed search. **Bold entries are Holm-significant at .05; raw-only significance is not bolded.**
 
 MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator, but the existing Stage-2 networks were trained from the superseded Stage-1 selections. A clean MPrime result requires anchor rescoring and 20 new validation-led Stage-2 lineages.
 
@@ -175,7 +193,7 @@ MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as t
 
 {md_table(['Stage', 'Domain', 'Search', 'Policy', '30m: MCTS; Δ [95% CI]; raw/Holm p', '2h', '6h'], rq2_rows)}
 
-**Conclusion:** FO Counters is the clear fixed-search success; Drone and Rover improve modestly. Block Grouping needs the longer budget to approach parity, while Counters can be harmed. The live FO Stage-2 VH-off exact-instance recovery leaves only one outcome unresolved; until it terminates, that RQ2 row remains a lower bound and has no CI or p-value.
+**Conclusion:** FO Counters is the clear fixed-search success at both stages and all three cutoffs; Drone and Rover improve modestly. Block Grouping needs the longer budget to approach parity, while Counters can be harmed. The final FO Stage-2 recovery timed out on its exact six-hour instance budget, so the exact mean remains 6.1/20 and the previously partial row is now final.
 
 ![RQ2 raw policy and fixed-search means](rq2_raw_means_by_stage.png)
 
@@ -185,7 +203,15 @@ MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as t
 
 {md_table(['Domain', 'Cutoff', 'n', 'Policy', 'Fixed MCTS', 'PW70', 'PW−policy [95% CI]', 'Raw / Holm p'], pw2_rows)}
 
-**Conclusion:** PW70 gives large, corrected-significant FO Counters gains already at 30 minutes. Rover is approximately fixed-search parity, without a significant policy gain. PW is meaningful RQ2 evidence, but this ten-seed confirmation exists only after Stage 1 and only for FO Counters/Rover.
+**Conclusion:** PW70 gives large, corrected-significant FO Counters gains already at 30 minutes. Rover is approximately fixed-search parity, without a significant policy gain. These were the only cells promoted to ten seeds: two-seed Drone and corrected Block Grouping screens lost fixed-search coverage, and five-seed Counters confirmation did not establish a reliable advantage. The earlier accidental PW20 Block Grouping/Counters screen remains documented separately and is never pooled with PW70.
+
+| Screen not promoted | n | Policy | Fixed 6h | PW 6h | Decision |
+|---|---:|---:|---:|---:|---|
+| Drone, Kmin=3 | 8 | 7.0/20 | 10.5/20 | 9.5/20 | Better runtime tail, but lost eight matched fixed successes |
+| Block Grouping/off, PW70 | 2 | 16.5/20 | 15.0/20 narrow | 13.0/20 | Unpromising |
+| Block Grouping/on, PW70 | 2 | 17.0/20 | 18.0/20 narrow | 13.5/20 | Unpromising |
+| Counters/off, PW70 | 5 | 37.8/59 | 36.4/59 narrow | 36.4/59 | Fixed parity only at 6h; below policy |
+| Counters/on, PW70 | 5 | 32.4/59 | 35.6/59 narrow | 31.4/59 | Below policy and fixed |
 
 ![RQ2/RQ4 PW70 confirmation](rq2_rq4_pw70_final.png)
 
@@ -217,7 +243,7 @@ These three estimands are deliberately separate.
 
 {rq4_table('VH interaction')}
 
-**Conclusion:** Drone is the robust RQ4 success: VH-on materially increases MCTS usefulness. FO Counters VH-on is now exact and benefits from MCTS, but the VH interaction remains indeterminate until the live VH-off instance recovery ends. Other domains do not show a reliable value-head interaction.
+**Conclusion:** Drone is the robust RQ4 success: VH-on materially increases MCTS usefulness. FO Counters benefits strongly from search in both VH modes, but its exact interaction is not significant—VH-on does not add a reliable extra gain there. Other domains do not show a reliable value-head interaction.
 
 ![RQ4 raw six-hour levels](rq4_raw_means_6h_by_stage.png)
 
@@ -235,9 +261,9 @@ These three estimands are deliberately separate.
 
 ## Results still required
 
-1. **FO Counters Stage-2 fixed MCTS:** exact-instance recovery `21219947` is running with 2 CPU / 120 GiB. At the 19:21 IDT snapshot it had run 1h41m; its six-hour instance classification is due by about 23:42 and its eight-hour allocation ends by about 01:41. It changes only one seed from 5/20 to at most 6/20 and the VH-off mean from 6.1 to at most 6.2.
-2. **MPrime:** smoke `21221744` exposed missing validator PDDLs and replacement smoke `21222348` exposed the missing validator Python module; both failed before scientific work and their dependent jobs were automatically cancelled. The complete deployed chain is smoke `21223398` (pending resources; 3 CPU / 20 GiB), array `21223399[0-27]` (dependency-pending; up to 84 CPU / 560 GiB), and finalizer `21223400` (dependency-pending; 1 CPU / 2 GiB). Therefore, zero MPrime scientific rescore tasks are running at the 19:21 snapshot. After manual coefficient review, train 20 validation-led Stage-2 lineages from the new Stage-1 selections, evaluate policy curves/endpoints, then run matched fixed MCTS if MPrime is to enter RQ2/RQ4.
-3. **Counters tie-break:** the targeted three-instance causal screen is complete; a multi-seed confirmation is still needed before changing the default evaluator.
+1. **MPrime:** the live anchor rescore has 317/588 checkpoint validations complete. Eighteen original tasks and all six exact failed/held-index replacements are running. The old impossible `afterok` finalizer was cancelled. Recheck `21233927` is dependency-pending and will submit only still-missing lineage indices, repeat that audit up to four times, then run a new analysis-only finalizer. Stage-2 training remains gated on complete curves and manual coefficient review; no old mismatched Stage-2 lineage will be reused.
+2. **Counters tie-break:** compute smoke `21233924` passed. In strict same-build Stage-1 VH-off array `21233925[0-19]`, task 0 is running and 19 tasks are resource-pending at low priority: ten action-ID baselines versus ten policy-prior candidates, all 59 instances, 6 CPU/120 GiB/72h each. This tests the primary RQ2 downgrade domain-wide; it does not silently reinterpret the earlier Stage-2 three-instance causal screen.
+3. **MPrime PW:** not run. The defensible gate is to finish the canonical MPrime Stage-2 endpoints and fixed-MCTS baseline, then run a two-seed PW70 screen before any ten-seed confirmation.
 
 Canonical evidence files: [`rq_primary_validation_led.csv`](rq_primary_validation_led.csv), [`rq2_raw_means_validation_led.csv`](rq2_raw_means_validation_led.csv), [`rq3_raw_means_validation_led.csv`](rq3_raw_means_validation_led.csv), [`rq4_raw_means_validation_led.csv`](rq4_raw_means_validation_led.csv), [`rq2_pw70_branch_latest.csv`](rq2_pw70_branch_latest.csv), and [`rq4_pw70_branch_latest.csv`](rq4_pw70_branch_latest.csv). Their row-level job/log routes are indexed in [`../../result_csv_provenance_index_latest.csv`](../../result_csv_provenance_index_latest.csv).
 """

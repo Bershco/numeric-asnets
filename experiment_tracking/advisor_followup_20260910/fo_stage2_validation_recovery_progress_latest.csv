@@ -1,0 +1,4 @@
+snapshot_time_idt,recovery_job_id,source_job_id,value_head,seed,recovery_scope,success_instances,timeout_instances,operationally_failed_instances,terminally_classified_in_recovery,remaining_not_terminally_classified,source_log
+2026-09-11T10:46:54+03:00,21178377,20943885,off,2082152039,6-20,,"6,7,8,10,11",9,5,10,/home/hersco/training_new_domains/2026-09-10/fo_stage2_validation_recovery/21178377_source20943885_off_2082152039.txt
+2026-09-11T10:46:54+03:00,21178379,20945845,off,923500475,"6,9-20",10,"6,9,11,12,13,14",,7,6,/home/hersco/training_new_domains/2026-09-10/fo_stage2_validation_recovery/21178379_source20945845_off_923500475.txt
+2026-09-11T10:46:54+03:00,21178380,20945846,on,2011206605,7-20,,"7,8,9,10,11,12",,6,8,/home/hersco/training_new_domains/2026-09-10/fo_stage2_validation_recovery/21178380_source20945846_on_2011206605.txt

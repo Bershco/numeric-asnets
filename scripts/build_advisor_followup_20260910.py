@@ -37,9 +37,16 @@ FO_STAGE2_PARTIAL_PROVENANCE = (
 FO_STAGE2_VH_ON_EXACT = (
     OUT / "fo_stage2_validation_vh_on_exact_seed_results_20260912.csv"
 )
+FO_STAGE2_VH_OFF_EXACT = (
+    OUT / "fo_stage2_validation_vh_off_exact_seed_results_20260913.csv"
+)
 FO_STAGE2_VH_ON_EXACT_PROVENANCE = (
     "experiment_tracking/advisor_followup_20260910/"
     "fo_stage2_validation_vh_on_exact_seed_results_20260912.csv"
+)
+FO_STAGE2_VH_OFF_EXACT_PROVENANCE = (
+    "experiment_tracking/advisor_followup_20260910/"
+    "fo_stage2_validation_vh_off_exact_seed_results_20260913.csv"
 )
 CAPACITY = {domain: 20 for domain in DOMAINS}
 CAPACITY["counters"] = 59
@@ -261,14 +268,22 @@ def build_rq_rows() -> list[dict[str, object]]:
                         provenance=str(path.relative_to(ROOT)).replace("\\", "/"),
                     ))
 
-    # FO/VH-off still has one genuinely unclassified instance.  VH-on is now
-    # exact after its minimal instance recovery, so publish its paired direct
-    # and cross-cell estimates while withholding only the VH interaction.
+    # Both FO modes are now exact after minimal instance recoveries.  The last
+    # VH-off opportunity (job 21219947) consumed its full six-hour instance
+    # budget without a plan, leaving the mean at 6.1 but closing the cell.
+    fo_off = read_csv(FO_STAGE2_VH_OFF_EXACT)
     fo_on = read_csv(FO_STAGE2_VH_ON_EXACT)
     for cutoff in ("30m", "2h", "6h"):
-        output.append(lower_bound_row(
-            rq="RQ2", estimand="VH-off direct: MCTS - same-checkpoint policy",
-            cutoff=cutoff, baseline_mean=2.9, comparison_lower_bound=6.1,
+        off_comparison = [float(row[f"mcts_{cutoff}"]) for row in fo_off]
+        off_policy = [float(row["policy_score"]) for row in fo_off]
+        output.append(result_row(
+            rq="RQ2", stage="Stage 2",
+            estimand="VH-off direct: MCTS - same-checkpoint policy",
+            domain="fo_counters", cutoff=cutoff,
+            values=[mcts - policy for mcts, policy in zip(off_comparison, off_policy)],
+            baseline_mean=statistics.mean(off_policy),
+            comparison_mean=statistics.mean(off_comparison),
+            provenance=FO_STAGE2_VH_OFF_EXACT_PROVENANCE,
         ))
         comparison = [float(row[f"mcts_{cutoff}"]) for row in fo_on]
         policy_on = [float(row["policy_vh_on"]) for row in fo_on]
@@ -281,6 +296,28 @@ def build_rq_rows() -> list[dict[str, object]]:
             baseline_mean=statistics.mean(policy_on),
             comparison_mean=statistics.mean(comparison),
             provenance=FO_STAGE2_VH_ON_EXACT_PROVENANCE,
+        ))
+        off_by_seed = {row["seed"]: row for row in fo_off}
+        on_by_seed = {row["seed"]: row for row in fo_on}
+        seeds = sorted(off_by_seed.keys() & on_by_seed.keys(), key=int)
+        output.append(result_row(
+            rq="RQ4", stage="Stage 2",
+            estimand="VH interaction: VH-on MCTS benefit - VH-off MCTS benefit",
+            domain="fo_counters", cutoff=cutoff,
+            values=[
+                (float(on_by_seed[seed][f"mcts_{cutoff}"]) - float(on_by_seed[seed]["policy_vh_on"]))
+                - (float(off_by_seed[seed][f"mcts_{cutoff}"]) - float(off_by_seed[seed]["policy_score"]))
+                for seed in seeds
+            ],
+            baseline_mean=statistics.mean(
+                float(off_by_seed[seed][f"mcts_{cutoff}"]) - float(off_by_seed[seed]["policy_score"])
+                for seed in seeds
+            ),
+            comparison_mean=statistics.mean(
+                float(on_by_seed[seed][f"mcts_{cutoff}"]) - float(on_by_seed[seed]["policy_vh_on"])
+                for seed in seeds
+            ),
+            provenance=f"{FO_STAGE2_VH_OFF_EXACT_PROVENANCE};{FO_STAGE2_VH_ON_EXACT_PROVENANCE}",
         ))
         output.append(result_row(
             rq="RQ4", stage="Stage 2",
@@ -295,18 +332,11 @@ def build_rq_rows() -> list[dict[str, object]]:
     add_holm(output)
     for row in output:
         if row["stage"] == "Stage 2" and row["rq"] in {"RQ2", "RQ4"}:
-            final_five_domain_family = (
-                row["rq"] == "RQ4"
-                and row["estimand"] in {
-                    "VH-on direct: MCTS - same-checkpoint policy",
-                    "Cross-cell level: VH-on MCTS - parallel VH-off policy",
-                }
-                and row["evidence_status"] == "complete_paired_inference"
-            )
+            final_five_domain_family = row["evidence_status"] == "complete_paired_inference"
             row["multiplicity_status"] = (
                 "withheld_partial_cell" if row["evidence_status"] == "partial_lower_bound"
                 else "final_declared_family" if final_five_domain_family
-                else "provisional_holm_among_four_complete_domains"
+                else "incomplete_family"
             )
         else:
             row["multiplicity_status"] = "final_declared_family"
@@ -338,8 +368,7 @@ def plot_rows(rows: list[dict[str, object]], rq: str, output_name: str, title: s
         return left + (bounded - axis_low) / (axis_high - axis_low) * (right - left)
 
     family_note = (
-        " Stage-2 RQ2 and RQ4-interaction families exclude partial FO VH-off; "
-        "RQ4 direct/cross-cell families include exact FO VH-on."
+        " All five fixed-search domains are exact at both stages."
         if rq in {"RQ2", "RQ4"} else ""
     )
     parts = [
@@ -437,23 +466,22 @@ def build_raw_mean_rows(rq_rows: list[dict[str, object]]) -> tuple[list[dict[str
                 if vh == "off":
                     rq2.append({**raw_row, "rq": "RQ2"})
 
-    # Replace the censored FO Stage-2 aggregate with the declared lower bounds.
+    # Replace older FO Stage-2 rows with the exact post-recovery aggregates.
     rq2 = [row for row in rq2 if not (row["stage"] == "Stage 2" and row["domain"] == "fo_counters")]
     rq4 = [row for row in rq4 if not (row["stage"] == "Stage 2" and row["domain"] == "fo_counters")]
+    fo_off = read_csv(FO_STAGE2_VH_OFF_EXACT)
     rq2.append({
         "rq": "RQ2", "stage": "Stage 2", "domain": "fo_counters", "value_head": "off",
-        "n": 10, "capacity": 20, "policy_mean": 2.9, "mcts_30m_mean": 6.1,
-        "mcts_2h_mean": 6.1, "mcts_6h_mean": 6.1, "evidence_status": "partial_lower_bound",
-        "seed_level_source": FO_STAGE2_PARTIAL_PROVENANCE,
-        "job_log_columns": "source_job_id;source_completion;submitted_job_id;submitted_output_log",
+        "n": 10, "capacity": 20,
+        "policy_mean": statistics.mean(float(row["policy_score"]) for row in fo_off),
+        "mcts_30m_mean": statistics.mean(float(row["mcts_30m"]) for row in fo_off),
+        "mcts_2h_mean": statistics.mean(float(row["mcts_2h"]) for row in fo_off),
+        "mcts_6h_mean": statistics.mean(float(row["mcts_6h"]) for row in fo_off),
+        "evidence_status": "complete",
+        "seed_level_source": FO_STAGE2_VH_OFF_EXACT_PROVENANCE,
+        "job_log_columns": "source_training_job_id;source_policy_job_id;source_policy_log;source_mcts_logs;source_completion_ledgers",
     })
-    rq4.append({
-        "rq": "RQ4", "stage": "Stage 2", "domain": "fo_counters", "value_head": "off",
-        "n": 10, "capacity": 20, "policy_mean": 2.9, "mcts_30m_mean": 6.1,
-        "mcts_2h_mean": 6.1, "mcts_6h_mean": 6.1, "evidence_status": "partial_lower_bound",
-        "seed_level_source": FO_STAGE2_PARTIAL_PROVENANCE,
-        "job_log_columns": "source_job_id;source_completion;submitted_job_id;submitted_output_log",
-    })
+    rq4.append({**rq2[-1], "rq": "RQ4"})
     rq4.append({
         "rq": "RQ4", "stage": "Stage 2", "domain": "fo_counters", "value_head": "on",
         "n": 10, "capacity": 20, "policy_mean": 3.1, "mcts_30m_mean": 5.2,
@@ -534,7 +562,7 @@ def plot_rq2_raw(rows: list[dict[str, object]]) -> None:
     for label in ("Policy", "30m", "2h", "6h"):
         parts += [f'<rect x="{lx}" y="692" width="14" height="14" fill="{colors[label]}"/><text x="{lx + 20}" y="704" class="sub">{label}</text>']
         lx += 110
-    parts += ['<text x="28" y="738" class="sub">Dashed bars are live lower bounds. CIs and Holm-adjusted tests are reported in the companion effect plot/table.</text>', '</svg>']
+    parts += ['<text x="28" y="738" class="sub">All bars are exact declared-budget means. CIs and Holm-adjusted tests are reported in the companion effect plot/table.</text>', '</svg>']
     (OUT / "rq2_raw_means_by_stage.svg").write_text("".join(parts), encoding="utf-8")
 
 
@@ -635,7 +663,7 @@ def plot_rq4_raw(rq2_rows: list[dict[str, object]], rq4_rows: list[dict[str, obj
     parts += [
         '<line x1="630" y1="699" x2="670" y2="699" stroke="#4c78a8" stroke-width="3"/><text x="680" y="703" class="sub">VH-off</text>',
         '<line x1="800" y1="699" x2="840" y2="699" stroke="#d95f02" stroke-width="3"/><text x="850" y="703" class="sub">VH-on</text>',
-        '<text x="28" y="738" class="sub">Open marker: policy. Filled marker: six-hour MCTS. Dashed line/≥ marker: live VH-off lower bound. FO VH-on is exact; only the FO interaction remains pending.</text>',
+        '<text x="28" y="738" class="sub">Open marker: policy. Filled marker: exact six-hour MCTS mean. All five-domain validation-led families are complete.</text>',
         '</svg>',
     ]
     (OUT / "rq4_raw_means_6h_by_stage.svg").write_text("".join(parts), encoding="utf-8")
