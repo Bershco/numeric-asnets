@@ -190,7 +190,7 @@ for domain in ("fo_counters", "rover"):
             " / ".join(effects), " / ".join(pvalues),
         ])
 
-text = f"""# Validation-led RQ report — 13 September 2026
+text = f"""# Validation-led RQ report — 14 September 2026
 
 This is the primary thesis view. Terminal-led campaigns are excluded. Fixed-search 30-minute and two-hour figures are deterministic cutoffs of the same six-hour runs, not separate reruns. Block Grouping and Counters use narrow fixed search (5 retained children, 20 simulations); Drone, FO Counters and Rover use normal fixed search (20 children, 70 simulations). Counts are solved test instances; Counters has 59 instances and the other domains have 20.
 
@@ -239,6 +239,8 @@ All fixed-search rows below use the historical final action-index tie-break. The
 | Counters S2/on | PW20 | 2 | 5.0/59 | 16.5 / 17.5 / 17.5 narrow | 15.0 / 15.0 / 15.0 | Below fixed |
 | Counters S2/off | PW70 | 5 | 37.8/59 | 34.6 / 36.4 / 36.4 narrow | 29.4 / 33.6 / 36.4 | Fixed parity only at 6h; below policy |
 | Counters S2/on | PW70 | 5 | 32.4/59 | 27.4 / 34.2 / 35.6 narrow | 22.0 / 28.4 / 31.4 | Below policy and fixed |
+
+Screen provenance: `../mcts_progressive_widening_cross_domain/comparative_summary_20260901_1022.csv`, `../mcts_progressive_widening_cross_domain/comparative_summary_20260901_2304.csv`, `../mcts_progressive_widening_cross_domain/pw70_confirmation_summary_20260906.csv`, and `../mcts_progressive_widening_sensitivity/kmin3_runtime_summary.csv`.
 
 ![RQ2/RQ4 PW70 confirmation](rq2_rq4_pw70_final.png)
 
@@ -290,12 +292,13 @@ As in RQ2, these fixed-search values retain the historical action-index tie-brea
 
 ## Results still required
 
-1. **MPrime anchor:** 466/588 checkpoint validations are durable. Six recovery tasks are running; the original attempts have left the queue. Recheck `21233927` is dependency-pending and submits only still-missing identities before an analysis-only finalizer. Stage-2 training remains gated on complete curves and manual coefficient review. Sixteen old lineages definitely require retraining; four remain exact-identity reuse candidates.
+1. **MPrime anchor:** 469/588 checkpoint validations are durable. Six recovery tasks are running; the original attempts have left the queue. Recheck `21233927` is dependency-pending and submits only still-missing identities before an analysis-only finalizer. Stage-2 training remains gated on complete curves and manual coefficient review. Sixteen old lineages definitely require retraining; four remain exact-identity reuse candidates.
 2. **Counters tie-break:** four strict-confirmation tasks are terminal and 16 are running. The two completed matched seed pairs are exact ties: seed `1073581256` scores 59/59 under both rules, and seed `2011206605` scores 20/59 under both rules. This is neutral interim evidence, not a ten-seed conclusion. The targeted pilot remains action-ID 0/3, Q 0/3 and policy-prior 3/3 by two hours, all VAL-valid. Its VH-on 0/3 arm is not a positive control because the exact VH-on policy solved none of those targets.
-3. **Block Grouping tie-break transfer:** both same-build four-target arms are running. Each has classified the first three targets as ordinary unsolved outcomes (0/3); the fourth remains active. The targets are genuine policy-success/MCTS failures--four of the 16 such VH-off losses across ten seeds--but no transfer rescue has yet appeared.
-4. **MPrime Stage-1 search:** all 20 canonical fixed-MCTS evaluations are running as arrays `21237328`/`21237329`. Current durable successes are lower bounds of at least 6.8/20 VH-off and 7.2/20 VH-on; no seed is terminal, so no CI, cutoff comparison or RQ conclusion is yet valid. A two-seed Stage-1 PW70 screen can follow after the fixed comparator becomes interpretable; Stage-2 MCTS/PW still requires corrected Stage-2 endpoints.
+3. **Block Grouping tie-break transfer:** both same-build four-target arms completed 0/4. Every outcome was an ordinary 10,000-action failure, not a timeout. Policy-prior tie-breaking therefore did not transfer to this selected seed, and the fixed-search branch will not be expanded from this negative screen.
+4. **MPrime Stage-1 fixed search:** all 20 canonical evaluations are running as arrays `21237328`/`21237329`. Current durable successes are lower bounds of at least 7.2/20 VH-off and 7.7/20 VH-on; no seed is terminal, so no CI, cutoff comparison or RQ conclusion is yet valid.
+5. **MPrime Stage-1 PW:** the matched four-task PW70 screen `21240256[0-3]` is running over two seeds and both VH modes. It uses the exact fixed-arm checkpoints and configuration, changing only to PW70 (`Kmin=3`, `c=.6`, `alpha=.5`). No scientific score was available at the latest snapshot. Stage-2 fixed/PW evaluation still requires corrected Stage-2 endpoints.
 
-Canonical evidence files: [`rq_primary_validation_led.csv`](rq_primary_validation_led.csv), [`rq2_raw_means_validation_led.csv`](rq2_raw_means_validation_led.csv), [`rq3_raw_means_validation_led.csv`](rq3_raw_means_validation_led.csv), [`rq4_raw_means_validation_led.csv`](rq4_raw_means_validation_led.csv), [`rq2_pw70_branch_latest.csv`](rq2_pw70_branch_latest.csv), and [`rq4_pw70_branch_latest.csv`](rq4_pw70_branch_latest.csv). Their row-level job/log routes are indexed in [`../../result_csv_provenance_index_latest.csv`](../../result_csv_provenance_index_latest.csv).
+Canonical evidence files: [`rq_primary_validation_led.csv`](rq_primary_validation_led.csv), [`rq2_raw_means_validation_led.csv`](rq2_raw_means_validation_led.csv), [`rq3_raw_means_validation_led.csv`](rq3_raw_means_validation_led.csv), [`rq4_raw_means_validation_led.csv`](rq4_raw_means_validation_led.csv), [`rq2_pw70_branch_latest.csv`](rq2_pw70_branch_latest.csv), and [`rq4_pw70_branch_latest.csv`](rq4_pw70_branch_latest.csv). Their row-level job/log routes are indexed in [`../result_csv_provenance_index_latest.csv`](../result_csv_provenance_index_latest.csv).
 """
 
 REPORT.write_text(text, encoding="utf-8")

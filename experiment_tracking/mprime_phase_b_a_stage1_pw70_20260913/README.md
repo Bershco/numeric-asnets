@@ -42,6 +42,29 @@ safety intervention.
 The full manifest is `manifest.csv`. Submission provenance is recorded in
 `submissions.tsv`; the compute smoke is recorded in `smoke.tsv`.
 
-## Status
+## Deployment and status
 
-Prepared locally; compute smoke and submission pending.
+The reviewed implementation was pushed as commit
+`9fe4f9e695ed290cc370dd5c5b877c276578525c` and deployed to a new detached
+cluster worktree at
+`/home/hersco/bershco-nu-asnets/numeric-asnets-mprime-pw-9fe4f9e6`. This did
+not modify the dirty isolated checkout used by existing work. The production
+native TensorFlow operator is linked into the detached checkout.
+
+All four local and compute-node controller tests pass. Compute-smoke history is
+kept rather than hidden:
+
+- `21240242` ran on the already known incompatible node
+  `ise-cpu-intl-13` and exited `-4` before inference. It produced no scientific
+  result.
+- `21240249` carried a malformed commit export, failed in three seconds before
+  inference and is discarded as an orchestration error.
+- corrected smoke `21240250` excluded only `ise-cpu-intl-13`, solved the real
+  MPrime instance in 28.44 seconds, produced a durable completion record and
+  passed VAL (`1/1` valid, zero invalid).
+
+The scientific array is `21240256[0-3]`, submitted at 00:15 IDT on 14 September
+2026. All four tasks entered `RUNNING` immediately. Each requests 6 CPUs,
+120 GiB and 72 hours; the maximum concurrent request is 24 CPUs and 480 GiB.
+Only `ise-cpu-intl-13` is excluded. Exact row/job/log mappings are in
+`submissions.tsv`, and smoke provenance is in `smoke.tsv`.

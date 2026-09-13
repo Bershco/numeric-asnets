@@ -163,14 +163,14 @@ upsert(
 )
 upsert(
     "MCTS-BG-TIEBREAK-SCREEN",
-    status="live-two-running-three-of-four-classified",
+    status="completed-negative-selected-seed-screen",
     results_file="experiment_tracking/block_grouping_tie_break_screen_20260913/README.md",
     manifest_path="experiment_tracking/block_grouping_tie_break_screen_20260913/manifest.csv",
-    next_action="Both same-build rules are0/3 ordinary-unsolved on the first three targets with the fourth active; expand only if a selected failure is rescued through an observed visit tie.",
+    next_action="Both same-build rules finished0/4; all targets were ordinary10000-action failures, so do not expand the fixed-search Block Grouping branch from this screen.",
 )
 upsert(
     "MPRIME-ANCHOR-PBA",
-    status="live-466-of588",
+    status="live-469-of588",
     results_file="experiment_tracking/mprime_anchor_phase_b_a_20260912/README.md",
     manifest_path="experiment_tracking/mprime_anchor_phase_b_a_20260912/manifest.csv",
     next_action="Six recovery tasks running and original attempts out of queue; controller21233927 skips completed points and finalizes only after manual curve review.",
@@ -180,19 +180,19 @@ upsert(
     status="live-20-running-no-terminal-seeds",
     results_file="experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/README.md",
     manifest_path="experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/manifest_off.csv;experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/manifest_on.csv",
-    next_action="All20 canonical checkpoints are running; current success lower bounds are at least6.8/20 off and7.2/20 on with no CI or inference until seeds terminate.",
+    next_action="All20 canonical checkpoints are running; current success lower bounds are at least7.2/20 off and7.7/20 on with no CI or inference until seeds terminate.",
 )
 upsert(
     "MPRIME-PBA-S1-PW-SCREEN",
     display_name="MPrime final-validator Stage1 PW70 screen",
     role="search-screen",
-    status="immediate-next-not-submitted",
+    status="running-four-task-screen",
     scope="Two predeclared Phase-B-A Stage1 seeds x two VH modes",
     primary_question="Does PW70 retain the MPrime fixed-search benefit with lower search cost?",
-    configuration_summary="PW70 Kmin3; two matched seeds per VH; normal fixed comparator; 6h per instance; planned4 tasks",
-    results_file="experiment_tracking/advisor_followup_20260910/live_submission_update_20260913.md",
-    manifest_path="",
-    next_action="Prepare and smoke-test four-task matched screen after the running fixed comparator yields interpretable reference scores; not a Stage2 dependency.",
+    configuration_summary="PW70 Kmin3 c0.6 alpha0.5; two matched seeds per VH; normal fixed comparator; terminal-safe off; 6h per instance; four tasks",
+    results_file="experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/submissions.tsv",
+    manifest_path="experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/manifest.csv",
+    next_action="Array21240256[0-3] is running after compute smoke21240250 passed; compare against the exact matched fixed rows when both arms terminate.",
 )
 upsert(
     "FO-S2-VAL-RECOVERY",

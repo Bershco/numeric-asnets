@@ -71,3 +71,11 @@ smoke or full runner with `--export=ALL,CODE_COMMIT=<hash>,VALUE_HEAD=off|on`.
 
 Compute smoke `21237283` passed on the isolated checkout. The full arrays are
 running as `21237328` (VH-off, ten tasks) and `21237329` (VH-on, ten tasks).
+At the 14 September 2026 00:21 IDT snapshot, all twenty tasks were live at
+about 5h31m elapsed. No seed was terminal. Durable success lower bounds were
+at least 7.2/20 VH-off and 7.7/20 VH-on; these are progress indicators, not
+final means, and do not support a CI, p-value or RQ conclusion. With three
+workers and twenty six-hour-capped instances, seven waves give an
+evaluator-derived total bound of roughly 42 hours plus overhead; the
+scheduler hard remainder was about 66h29m. Current result/log routes are indexed in
+`../advisor_followup_20260910/live_result_progress_20260914_0021.csv`.

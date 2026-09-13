@@ -83,9 +83,9 @@ held, so an exact paired-marker audit created six resumable recovery tasks as
 it remains dependency-pending and will submit only still-incomplete lineage
 indices before launching an analysis-only finalizer.
 
-At the 13 September 23:45 IDT snapshot, 466/588 checkpoint evaluations were
+At the 14 September 00:21 IDT snapshot, 469/588 checkpoint evaluations were
 complete. All original task attempts had left the queue. Six resumable recovery
-tasks were running, requesting 24 CPUs and 120 GiB, with about 13 hours to their
+tasks were running, requesting 24 CPUs and 120 GiB, with about 12h26m to their
 24-hour hard bounds. Recheck controller `21233927` remained dependency-pending
 and will audit and resubmit only identities still missing after those six tasks.
 No Stage-2 training can be launched by this chain: its proposed coefficient

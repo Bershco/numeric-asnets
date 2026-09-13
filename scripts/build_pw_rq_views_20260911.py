@@ -173,7 +173,7 @@ def plot(rq2: list[dict[str, object]], rq4: list[dict[str, object]]) -> None:
                   f'<text x="{x0+220}" y="478" class="label" text-anchor="middle">{name}</text>',
                   f'<text x="{x0+220}" y="508" class="sub" text-anchor="middle">RQ2 off PW−policy: {float(off["pw70_minus_policy"]):+.1f} [{float(off["ci95_low"]):+.1f}, {float(off["ci95_high"]):+.1f}], Holm p={float(off["holm_p"]):.3g}</text>',
                   f'<text x="{x0+220}" y="537" class="sub" text-anchor="middle">RQ4 on PW−policy: {float(row["effect"]):+.1f} [{float(row["ci95_low"]):+.1f}, {float(row["ci95_high"]):+.1f}], Holm p={float(row["holm_p"]):.3g}</text>',
-                  f'<text x="{x0+220}" y="566" class="sub" text-anchor="middle">Cross-cell: {float(cross["effect"]):+.1f}; interaction: {float(interaction["effect"]):+.1f} [{float(interaction["ci95_low"]):+.1f}, {float(interaction["ci95_high"]):+.1f}</text>']
+                  f'<text x="{x0+220}" y="566" class="sub" text-anchor="middle">Cross-cell: {float(cross["effect"]):+.1f}; interaction: {float(interaction["effect"]):+.1f} [{float(interaction["ci95_low"]):+.1f}, {float(interaction["ci95_high"]):+.1f}]</text>']
     parts += ['<text x="680" y="620" class="sub" text-anchor="middle">Holm correction is within each cutoff/estimand across the two evaluated domains.</text>']
     parts += ['</svg>']
     (OUT / "rq2_rq4_pw70_final.svg").write_text("".join(parts), encoding="utf-8")

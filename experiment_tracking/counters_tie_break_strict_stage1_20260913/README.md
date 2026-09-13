@@ -24,3 +24,15 @@ candidate strictly comparable under the same build and scheduler-era setup.
 `manifest.csv` carries the exact source checkpoint, Stage-1 training job,
 policy-evaluation job, policy score and eventual remote output directory for
 every task.
+
+## Live status
+
+At the 14 September 2026 00:21 IDT snapshot, four tasks were terminal and 16
+were running. The two complete matched seed pairs were neutral: seed
+`1073581256` scored 59/59 under both rules and seed `2011206605` scored 20/59
+under both rules. Across all durable live ledgers, action-ID had classified
+414/590 seed-instances with at least 254 successes; policy-prior had classified
+409/590 with at least 249 successes. These whole-arm figures are conservative
+live lower bounds, not a paired effect estimate. RQ2 remains frozen until all
+ten pairs terminate. Exact current sources are in
+`../advisor_followup_20260910/live_result_progress_20260914_0021.csv`.

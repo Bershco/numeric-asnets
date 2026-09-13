@@ -39,12 +39,17 @@ correct first transfer test.
 ## Status
 
 The strengthened compute smoke passed all 23 tie-break tests and exercised the
-real evaluator. At the 13 September 2026 23:45 IDT snapshot, array `21237401`
-was running both same-build arms. Each rule had durably classified the same
-first three targets as ordinary unsolved outcomes (0/3); the fourth target was
-still active. This is an interim matched result, not yet the final 0/4 outcome.
-The exact node `ise-cpu-intl-13` is excluded after a native evaluator exit `-4`;
-the live tasks are on `ise-cpu-intl-23` and `cs-cpu-11`.
+real evaluator. Array `21237401` completed both same-build arms successfully:
+action-ID scored 0/4 and policy-prior scored 0/4. All eight arm-instance
+outcomes were ordinary 10,000-action unsolved trajectories; none was censored
+by an evaluation timeout. The two jobs completed after 4m55s and 5m11s.
+
+This is a completed negative selected-seed transfer result. It does not show
+that policy-prior tie-breaking is harmful, but it supplies no reason to expand
+the fixed-search Block Grouping branch. The Counters result remains
+domain/mechanism-specific unless another domain produces directly traced tied
+root visits. The exact node `ise-cpu-intl-13` was excluded after a native
+evaluator exit `-4`.
 
 PW70 remains a separate question. In the two-seed PW70 Block Grouping screen,
 17/27 six-hour PW failures are policy-success/PW-failure cases, so its coverage
