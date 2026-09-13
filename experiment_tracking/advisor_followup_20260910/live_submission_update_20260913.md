@@ -1,4 +1,4 @@
-# Live submission update — 13 September 2026, 18:52 IDT
+# Live submission update — 13 September 2026, 19:01 IDT
 
 Only validation-led work is treated as thesis-primary. Terminal-led campaigns remain archived context and are not continued, plotted, or included in RQ families.
 
