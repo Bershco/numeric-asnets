@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 
 
-SKIP_NON_TARGETS = "3,4,5,7,8,9,10,11,12,13,14,15,16,17,18,20"
+SKIP_NON_TARGETS = "2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18"
 
 
 def load_row(manifest: Path, task: int) -> dict[str, str]:
@@ -21,7 +21,7 @@ def load_row(manifest: Path, task: int) -> dict[str, str]:
     row = rows[task]
     if row["tie_break"] not in {"action_id", "policy"}:
         raise RuntimeError(f"unexpected tie-break: {row['tie_break']}")
-    if row["target_slots_one_based"] != "1,2,6,19":
+    if row["target_slots_one_based"] != "1,6,19,20":
         raise RuntimeError("target-slot identity changed")
     return row
 

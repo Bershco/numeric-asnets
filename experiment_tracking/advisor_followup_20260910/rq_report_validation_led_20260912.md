@@ -154,7 +154,7 @@ As in RQ2, these fixed-search values retain the historical action-index tie-brea
 | Rover | on PW70 - on policy | off policy 4; on policy 3.8; off PW 4.7 / 4.7 / 4.7; on PW 4.5 / 4.6 / 4.6 | 0.7 [-0.2, 1.6] / 0.8 [-0.08, 1.68] / 0.8 [-0.08, 1.68] | 0.25/0.25 / 0.125/0.125 / 0.125/0.125 |
 | Rover | on PW70 - off policy | off policy 4; on policy 3.8; off PW 4.7 / 4.7 / 4.7; on PW 4.5 / 4.6 / 4.6 | 0.5 [-0.2, 1.2] / 0.6 [-0.09, 1.29] / 0.6 [-0.09, 1.29] | 0.25/0.25 / 0.125/0.125 / 0.125/0.125 |
 
-**Conclusion:** PW preserves the distinction seen with fixed search: FO Counters has strong search gains, but VH-off benefits at least as much; Rover shows parity-scale, non-significant effects. PW therefore strengthens RQ2 more than RQ4.
+**Conclusion:** PW preserves the distinction seen with fixed search: FO Counters has strong search gains. Its observed VH-off benefit is no smaller than its VH-on benefit, but that interaction is not significant. Rover shows parity-scale, non-significant effects. PW therefore strengthens RQ2 more than RQ4.
 
 ## Results still required
 

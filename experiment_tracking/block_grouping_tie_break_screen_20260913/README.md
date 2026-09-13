@@ -6,10 +6,10 @@ finding. It is not a new RQ score and is not a domain-wide confirmation.
 The exact Stage-1 validation-selected VH-off checkpoint for seed `1963100312`
 solved four instances that the historical narrow fixed-MCTS run did not:
 
-- test positions 1 and 2: `instance_100_20_5_1.pddl` and
+- test positions 19 and 20: `instance_100_20_5_1.pddl` and
   `instance_100_25_6_2.pddl`;
 - test position 6: `instance_11_40_10_1.pddl`;
-- test position 19: `instance_5_25_6_1.pddl`.
+- test position 1: `instance_5_25_6_1.pddl`.
 
 Both new jobs use the same current build and differ only in final root-visit
 tie resolution: historical stable action ID versus the candidate policy prior.

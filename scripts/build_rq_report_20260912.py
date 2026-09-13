@@ -280,7 +280,7 @@ As in RQ2, these fixed-search values retain the historical action-index tie-brea
 
 {md_table(['Domain', 'Estimand', 'Raw means (policy; PW 30m / 2h / 6h)', 'Effect [95% CI] at 30m / 2h / 6h', 'Raw/Holm p at 30m / 2h / 6h'], pw4_rows)}
 
-**Conclusion:** PW preserves the distinction seen with fixed search: FO Counters has strong search gains, but VH-off benefits at least as much; Rover shows parity-scale, non-significant effects. PW therefore strengthens RQ2 more than RQ4.
+**Conclusion:** PW preserves the distinction seen with fixed search: FO Counters has strong search gains. Its observed VH-off benefit is no smaller than its VH-on benefit, but that interaction is not significant. Rover shows parity-scale, non-significant effects. PW therefore strengthens RQ2 more than RQ4.
 
 ## Results still required
 
