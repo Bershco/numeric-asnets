@@ -4,7 +4,7 @@ This is the primary thesis view. Terminal-led campaigns are excluded. Fixed-sear
 
 Holm correction is applied separately within each RQ × stage × cutoff × estimand family. All five-domain fixed-search families are now complete. PW uses separate two-domain families and is never pooled with fixed search. **Bold entries are Holm-significant at .05; raw-only significance is not bolded.**
 
-MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator, but the existing Stage-2 networks were trained from the superseded Stage-1 selections. A clean MPrime result requires anchor rescoring and 20 new validation-led Stage-2 lineages.
+MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator, but at least 16 existing Stage-2 networks were trained from superseded Stage-1 selections. A clean result requires anchor rescoring and up to 20 validation-led Stage-2 lineages. An existing lineage is reusable only if its Stage-1 checkpoint hash, selected coefficient, code, and configuration all match exactly.
 
 ## RQ1 — Does Stage-2 training improve policy coverage without a value head?
 
@@ -47,9 +47,9 @@ MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as t
 
 | Domain | Cutoff | n | Policy | Fixed MCTS | PW70 | PW−policy [95% CI] | Raw / Holm p |
 |---|---|---|---|---|---|---|---|
-| FO Counters | 30m | 10 | 4.2 | 7.5 | 8.4 | 4.2 [3.26, 5.14] | **0.002 / 0.0039** |
-| FO Counters | 2h | 10 | 4.2 | 7.8 | 8.4 | 4.2 [3.26, 5.14] | **0.002 / 0.0039** |
-| FO Counters | 6h | 10 | 4.2 | 7.8 | 8.4 | 4.2 [3.26, 5.14] | **0.002 / 0.0039** |
+| FO Counters | 30m | 10 | 4.2 | 7.5 | 8.4 | **4.2 [3.26, 5.14]** | **0.002 / 0.0039** |
+| FO Counters | 2h | 10 | 4.2 | 7.8 | 8.4 | **4.2 [3.26, 5.14]** | **0.002 / 0.0039** |
+| FO Counters | 6h | 10 | 4.2 | 7.8 | 8.4 | **4.2 [3.26, 5.14]** | **0.002 / 0.0039** |
 | Rover | 30m | 10 | 4 | 4.8 | 4.7 | 0.7 [0.02, 1.38] | 0.125 / 0.125 |
 | Rover | 2h | 10 | 4 | 5 | 4.7 | 0.7 [0.02, 1.38] | 0.125 / 0.125 |
 | Rover | 6h | 10 | 4 | 5 | 4.7 | 0.7 [0.02, 1.38] | 0.125 / 0.125 |
@@ -170,7 +170,7 @@ These three estimands are deliberately separate.
 
 ## Results still required
 
-1. **MPrime:** the live anchor rescore has 317/588 checkpoint validations complete. Eighteen original tasks and all six exact failed/held-index replacements are running. The old impossible `afterok` finalizer was cancelled. Recheck `21233927` is dependency-pending and will submit only still-missing lineage indices, repeat that audit up to four times, then run a new analysis-only finalizer. Stage-2 training remains gated on complete curves and manual coefficient review; no old mismatched Stage-2 lineage will be reused.
+1. **MPrime:** the live anchor rescore has 317/588 checkpoint validations complete. Eighteen original tasks and all six exact failed/held-index replacements are running. The old impossible `afterok` finalizer was cancelled. Recheck `21233927` is dependency-pending and will submit only still-missing lineage indices, repeat that audit up to four times, then run a new analysis-only finalizer. Stage-2 training remains gated on complete curves and manual coefficient review. It will train up to 20 lineages, reusing an existing identity only after exact Stage-1 checkpoint-hash, coefficient, code and configuration matching. The eventual fixed-MCTS scope is Stage 1 and Stage 2 × two VH modes × ten seeds = up to 40 evaluations, reduced only by exact reusable identities.
 2. **Counters tie-break:** compute smoke `21233924` passed. In strict same-build Stage-1 VH-off array `21233925[0-19]`, task 0 is running and 19 tasks are resource-pending at low priority: ten action-ID baselines versus ten policy-prior candidates, all 59 instances, 6 CPU/120 GiB/72h each. This tests the primary RQ2 downgrade domain-wide; it does not silently reinterpret the earlier Stage-2 three-instance causal screen.
 3. **MPrime PW:** not run. The defensible gate is to finish the canonical MPrime Stage-2 endpoints and fixed-MCTS baseline, then run a two-seed PW70 screen before any ten-seed confirmation.
 
