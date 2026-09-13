@@ -148,30 +148,47 @@ def rq4_table(match: str) -> str:
 
 
 pw2_rows = []
-for r in sorted(pw2, key=lambda x: (DOMAIN_ORDER.index(x["domain"]), CUTOFF_ORDER[x["cutoff"]])):
+for domain in ("fo_counters", "rover"):
+    group = {r["cutoff"]: r for r in pw2 if r["domain"] == domain}
+    r6 = group["6h"]
+    effects, pvalues = [], []
+    for cutoff in ("30m", "2h", "6h"):
+        r = group[cutoff]
+        effect = f"{number(r['pw70_minus_policy'])} [{number(r['ci95_low'])}, {number(r['ci95_high'])}]"
+        pvalue = f"{number(r['raw_p'], 4)}/{number(r['holm_p'], 4)}"
+        if float(r["holm_p"]) < 0.05:
+            effect, pvalue = f"**{effect}**", f"**{pvalue}**"
+        effects.append(effect)
+        pvalues.append(pvalue)
     pw2_rows.append([
-        DOMAIN_LABEL[r["domain"]], r["cutoff"], r["n"], number(r["vh_off_policy_mean"]),
-        number(r["vh_off_fixed_mcts_mean"]), number(r["vh_off_pw70_mean"]),
-        (f"**{number(r['pw70_minus_policy'])} [{number(r['ci95_low'])}, {number(r['ci95_high'])}]**"
-         if float(r["holm_p"]) < 0.05 else
-         f"{number(r['pw70_minus_policy'])} [{number(r['ci95_low'])}, {number(r['ci95_high'])}]"),
-        (f"**{number(r['raw_p'], 4)} / {number(r['holm_p'], 4)}**"
-         if float(r["holm_p"]) < 0.05 else
-         f"{number(r['raw_p'], 4)} / {number(r['holm_p'], 4)}"),
+        DOMAIN_LABEL[domain], r6["n"], number(r6["vh_off_policy_mean"]),
+        " / ".join(number(group[c]["vh_off_fixed_mcts_mean"]) for c in ("30m", "2h", "6h")),
+        " / ".join(number(group[c]["vh_off_pw70_mean"]) for c in ("30m", "2h", "6h")),
+        " / ".join(effects), " / ".join(pvalues),
     ])
 
 pw4_rows = []
-for r in sorted(pw4, key=lambda x: (DOMAIN_ORDER.index(x["domain"]), CUTOFF_ORDER[x["cutoff"]], x["estimand"])):
-    pw4_rows.append([
-        DOMAIN_LABEL[r["domain"]], r["cutoff"], r["estimand"].replace("VH-on ", "on ").replace("parallel VH-off", "off"),
-        f"off policy {number(r['vh_off_policy_mean'])}; on policy {number(r['vh_on_policy_mean'])}; off PW {number(r['vh_off_pw70_mean'])}; on PW {number(r['vh_on_pw70_mean'])}",
-        (f"**{number(r['effect'])} [{number(r['ci95_low'])}, {number(r['ci95_high'])}]**"
-         if float(r["holm_p"]) < 0.05 else
-         f"{number(r['effect'])} [{number(r['ci95_low'])}, {number(r['ci95_high'])}]"),
-        (f"**{number(r['raw_p'], 4)} / {number(r['holm_p'], 4)}**"
-         if float(r["holm_p"]) < 0.05 else
-         f"{number(r['raw_p'], 4)} / {number(r['holm_p'], 4)}"),
-    ])
+for domain in ("fo_counters", "rover"):
+    estimands = sorted({r["estimand"] for r in pw4 if r["domain"] == domain})
+    for estimand in estimands:
+        group = {r["cutoff"]: r for r in pw4 if r["domain"] == domain and r["estimand"] == estimand}
+        r6 = group["6h"]
+        effects, pvalues = [], []
+        for cutoff in ("30m", "2h", "6h"):
+            r = group[cutoff]
+            effect = f"{number(r['effect'])} [{number(r['ci95_low'])}, {number(r['ci95_high'])}]"
+            pvalue = f"{number(r['raw_p'], 4)}/{number(r['holm_p'], 4)}"
+            if float(r["holm_p"]) < 0.05:
+                effect, pvalue = f"**{effect}**", f"**{pvalue}**"
+            effects.append(effect)
+            pvalues.append(pvalue)
+        pw4_rows.append([
+            DOMAIN_LABEL[domain], estimand.replace("VH-on ", "on ").replace("parallel VH-off", "off"),
+            (f"off policy {number(r6['vh_off_policy_mean'])}; on policy {number(r6['vh_on_policy_mean'])}; "
+             f"off PW {' / '.join(number(group[c]['vh_off_pw70_mean']) for c in ('30m', '2h', '6h'))}; "
+             f"on PW {' / '.join(number(group[c]['vh_on_pw70_mean']) for c in ('30m', '2h', '6h'))}"),
+            " / ".join(effects), " / ".join(pvalues),
+        ])
 
 text = f"""# Validation-led RQ report — 13 September 2026
 
@@ -193,6 +210,8 @@ MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as t
 
 ### Fixed search
 
+All fixed-search rows below use the historical final action-index tie-break. The live policy-prior candidate is a separate causal experiment and has not changed any RQ value in this table.
+
 {md_table(['Stage', 'Domain', 'Search', 'Policy', '30m: MCTS; Δ [95% CI]; raw/Holm p', '2h', '6h'], rq2_rows)}
 
 **Conclusion:** FO Counters is the clear fixed-search success at both stages and all three cutoffs; Drone and Rover improve modestly. Block Grouping needs the longer budget to approach parity, while Counters can be harmed. The final FO Stage-2 recovery timed out on its exact six-hour instance budget, so the exact mean remains 6.1/20 and the previously partial row is now final.
@@ -203,17 +222,17 @@ MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as t
 
 ### Progressive widening (PW70; Stage 1 confirmation)
 
-{md_table(['Domain', 'Cutoff', 'n', 'Policy', 'Fixed MCTS', 'PW70', 'PW−policy [95% CI]', 'Raw / Holm p'], pw2_rows)}
+{md_table(['Domain', 'n', 'Policy', 'Fixed MCTS 30m / 2h / 6h', 'PW70 30m / 2h / 6h', 'PW−policy [95% CI] at 30m / 2h / 6h', 'Raw/Holm p at 30m / 2h / 6h'], pw2_rows)}
 
-**Conclusion:** PW70 gives large, corrected-significant FO Counters gains already at 30 minutes. Rover is approximately fixed-search parity, without a significant policy gain. These were the only cells promoted to ten seeds: two-seed Drone and corrected Block Grouping screens lost fixed-search coverage, and five-seed Counters confirmation did not establish a reliable advantage. The earlier accidental PW20 Block Grouping/Counters screen remains documented separately and is never pooled with PW70.
+**Conclusion:** PW70 gives large, corrected-significant FO Counters gains already at 30 minutes. Rover is approximately fixed-search parity, without a significant policy gain. These were the only cells promoted to ten seeds: the eight-seed Drone Kmin=3 extension and two-seed corrected Block Grouping screens lost fixed-search coverage, while the five-seed Counters confirmation did not establish a reliable advantage. The earlier accidental PW20 Block Grouping/Counters screen remains documented separately and is never pooled with PW70.
 
-| Screen not promoted | n | Policy | Fixed 6h | PW 6h | Decision |
+| Screen not promoted | n | Policy | Fixed 30m / 2h / 6h | PW 30m / 2h / 6h | Decision |
 |---|---:|---:|---:|---:|---|
-| Drone, Kmin=3 | 8 | 7.0/20 | 10.5/20 | 9.5/20 | Better runtime tail, but lost eight matched fixed successes |
-| Block Grouping/off, PW70 | 2 | 16.5/20 | 15.0/20 narrow | 13.0/20 | Unpromising |
-| Block Grouping/on, PW70 | 2 | 17.0/20 | 18.0/20 narrow | 13.5/20 | Unpromising |
-| Counters/off, PW70 | 5 | 37.8/59 | 36.4/59 narrow | 36.4/59 | Fixed parity only at 6h; below policy |
-| Counters/on, PW70 | 5 | 32.4/59 | 35.6/59 narrow | 31.4/59 | Below policy and fixed |
+| Drone, Kmin=3 | 8 | 7.0/20 | 10.25 / 10.5 / 10.5 | 9.5 / 9.5 / 9.5 | Better runtime tail, but lost eight matched fixed successes |
+| Block Grouping/off, PW70 | 2 | 16.5/20 | 11.5 / 15.0 / 15.0 narrow | 10.5 / 11.5 / 13.0 | Unpromising |
+| Block Grouping/on, PW70 | 2 | 17.0/20 | 12.5 / 17.0 / 18.0 narrow | 9.0 / 11.5 / 13.5 | Unpromising |
+| Counters/off, PW70 | 5 | 37.8/59 | 34.6 / 36.4 / 36.4 narrow | 29.4 / 33.6 / 36.4 | Fixed parity only at 6h; below policy |
+| Counters/on, PW70 | 5 | 32.4/59 | 27.4 / 34.2 / 35.6 narrow | 22.0 / 28.4 / 31.4 | Below policy and fixed |
 
 ![RQ2/RQ4 PW70 confirmation](rq2_rq4_pw70_final.png)
 
@@ -232,6 +251,8 @@ The direct column answers whether VH-on Stage 2 improves its own VH-on Stage-1 p
 ## RQ4 — Does the value head change the benefit of MCTS inference?
 
 These three estimands are deliberately separate.
+
+As in RQ2, these fixed-search values retain the historical action-index tie-break; the live policy-prior experiment is reported separately until its same-build confirmation completes.
 
 ### A. VH-on MCTS versus its own VH-on policy
 
@@ -257,15 +278,15 @@ These three estimands are deliberately separate.
 
 ### PW70 contribution to RQ4 (Stage 1 confirmation)
 
-{md_table(['Domain', 'Cutoff', 'Estimand', 'Raw means', 'Effect [95% CI]', 'Raw / Holm p'], pw4_rows)}
+{md_table(['Domain', 'Estimand', '6h raw means', 'Effect [95% CI] at 30m / 2h / 6h', 'Raw/Holm p at 30m / 2h / 6h'], pw4_rows)}
 
 **Conclusion:** PW preserves the distinction seen with fixed search: FO Counters has strong search gains, but VH-off benefits at least as much; Rover shows parity-scale, non-significant effects. PW therefore strengthens RQ2 more than RQ4.
 
 ## Results still required
 
-1. **MPrime:** the live anchor rescore has 317/588 checkpoint validations complete. Eighteen original tasks and all six exact failed/held-index replacements are running. The old impossible `afterok` finalizer was cancelled. Recheck `21233927` is dependency-pending and will submit only still-missing lineage indices, repeat that audit up to four times, then run a new analysis-only finalizer. Stage-2 training remains gated on complete curves and manual coefficient review. It will train up to 20 lineages, reusing an existing identity only after exact Stage-1 checkpoint-hash, coefficient, code and configuration matching. The eventual fixed-MCTS scope is Stage 1 and Stage 2 × two VH modes × ten seeds = up to 40 evaluations, reduced only by exact reusable identities.
-2. **Counters tie-break:** compute smoke `21233924` passed. In strict same-build Stage-1 VH-off array `21233925[0-19]`, task 0 is running and 19 tasks are resource-pending at low priority: ten action-ID baselines versus ten policy-prior candidates, all 59 instances, 6 CPU/120 GiB/72h each. This tests the primary RQ2 downgrade domain-wide; it does not silently reinterpret the earlier Stage-2 three-instance causal screen.
-3. **MPrime PW:** not run. The defensible gate is to finish the canonical MPrime Stage-2 endpoints and fixed-MCTS baseline, then run a two-seed PW70 screen before any ten-seed confirmation.
+1. **MPrime:** the live anchor rescore has 406/588 checkpoint validations complete. Fourteen original tasks and six exact failed/held-index replacements are running. Recheck `21233927` is dependency-pending and will submit only still-missing lineage indices, repeat that audit up to four times, then run a new analysis-only finalizer. Stage-2 training remains gated on complete curves and manual coefficient review. It will train up to 20 lineages, reusing an existing identity only after exact Stage-1 checkpoint-hash, coefficient, code and configuration matching. The exact audit found that all 20 canonical Stage-1 fixed-MCTS evaluations are missing; unlike Stage-2 search, these can run now.
+2. **Counters tie-break:** compute smoke `21233924` passed. The strict same-build Stage-1 VH-off comparison now has two terminal tasks and 18 running: ten action-ID baselines versus ten policy-prior candidates, all 59 instances, 6 CPU/120 GiB/72h each. The first completed pair is a 59/59 tie. The targeted pilot motivating it found action-ID 0/3, Q 0/3 and policy-prior 3/3 by two hours, all VAL-valid. Its VH-on 0/3 arm is not a positive control because the VH-on policy solved none of those instances.
+3. **MPrime Stage-1 search:** Phase-B-A Stage-1 checkpoints are already canonical. The exact-identity audit found 0/20 reusable fixed-MCTS evaluations, so those 20 evaluations can run before Stage-2. A two-seed Stage-1 PW70 screen can then follow; waiting for Stage-2 would be workload prioritization, not a scientific dependency. Stage-2 MCTS/PW still requires the corrected Stage-2 endpoints.
 
 Canonical evidence files: [`rq_primary_validation_led.csv`](rq_primary_validation_led.csv), [`rq2_raw_means_validation_led.csv`](rq2_raw_means_validation_led.csv), [`rq3_raw_means_validation_led.csv`](rq3_raw_means_validation_led.csv), [`rq4_raw_means_validation_led.csv`](rq4_raw_means_validation_led.csv), [`rq2_pw70_branch_latest.csv`](rq2_pw70_branch_latest.csv), and [`rq4_pw70_branch_latest.csv`](rq4_pw70_branch_latest.csv). Their row-level job/log routes are indexed in [`../../result_csv_provenance_index_latest.csv`](../../result_csv_provenance_index_latest.csv).
 """

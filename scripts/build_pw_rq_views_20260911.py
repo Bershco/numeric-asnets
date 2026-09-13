@@ -158,6 +158,11 @@ def plot(rq2: list[dict[str, object]], rq4: list[dict[str, object]]) -> None:
             h = value * scale
             parts += [f'<rect x="{x}" y="{base_y-h:.1f}" width="58" height="{h:.1f}" fill="{colors[key]}" rx="3"/>',
                       f'<text x="{x+29}" y="{base_y-h-7:.1f}" class="value" text-anchor="middle">{value:.1f}</text>']
+        divider_x = x0 + 224
+        parts += [
+            f'<line x1="{divider_x}" y1="122" x2="{divider_x}" y2="{base_y}" stroke="#657080" stroke-width="2" stroke-dasharray="7 7"/>',
+            f'<text x="{divider_x}" y="118" class="value" text-anchor="middle" fill="#657080">VH mode divider</text>',
+        ]
         name = "FO Counters" if row["domain"] == "fo_counters" else "Rover"
         off = next(item for item in rq2 if item["domain"] == row["domain"] and item["cutoff"] == "6h")
         cross = next(item for item in rq4 if item["domain"] == row["domain"] and item["cutoff"] == "6h" and

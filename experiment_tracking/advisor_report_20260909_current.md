@@ -291,12 +291,12 @@ and comparator.
 
 | Cell | n | Policy | PW70 30m / 2h / 6h | PW-policy at 6h [95% CI]; raw/Holm p | PW-fixed 20/70 at 6h [95% CI]; raw/Holm p | Conclusion |
 |---|---:|---:|---:|---|---|---|
-| FO/off | 10* | 4.20 | 8.40 / 8.40 / 8.40 | +4.20 [3.26,5.14]; .002/.008 | +.60 [-.71,1.91]; .422/1.0 | Significant policy gain; fixed parity; one OOM-partial seed |
+| FO/off | 10 | 4.20 | 8.40 / 8.40 / 8.40 | +4.20 [3.26,5.14]; .002/.008 | +.60 [-.71,1.91]; .422/1.0 | Significant policy gain; fixed parity; final declared-budget evidence |
 | FO/on | 10 | 3.70 | 7.30 / 7.30 / 7.30 | +3.60 [2.70,4.50]; .002/.008 | +1.60 [.52,2.68]; .023/.094 | Significant over policy; raw gain over fixed |
 | Rover/off | 10 | 4.00 | 4.70 / 4.70 / 4.70 | +.70 [.02,1.38]; .125/.250 | -.30 [-1.37,.77]; .688/1.0 | Fixed-search parity, not significant |
 | Rover/on | 10 | 3.80 | 4.50 / 4.60 / 4.60 | +.80 [-.08,1.68]; .125/.250 | +.20 [-.80,1.20]; .828/1.0 | Fixed-search parity, not significant |
 
-`*` FO/off seed 2082152039 is the 7/20 OOM-partial declared result: 19/20
+FO/off seed 2082152039 is a final 7/20 OOM-terminal declared-budget endpoint: 19/20
 instances were classified and the one unclassified instance counts unsuccessful.
 The 8.56/20 sensitivity estimate excludes that entire seed, not merely its one
 unclassified instance.
@@ -412,7 +412,7 @@ The row-level catalog is `experiment_catalog_latest.csv`. The table below keeps 
 | MCTS-PW-COUNTERS-DIVERGENCE | completed or inactive | Can PW recover policy successes lost when fixed narrow MCTS diverges or times out? | All PW20/PW70 exact-snapshot arms terminal. Neither widening mode fully recovers the policy; PW20 seed923500475 gives the strongest partial recovery at48/59. |
 | ANCHOR-KL-CONTROL | live | Can literature-grounded nonconstant KL control prevent first-update collapse without blocking later improvement? | Jobs21144388/21144389 reached Stage2 epochs34/84. First-update test scores remain10/20 and20/20; coefficient remains3 and adjustments remain zero, so the adaptive mechanism has not activated. |
 | MPRIME-VAL-ADEQUACY | live | Does validation rank checkpoints and anchors reliably without saturating? | 2222/2260 checkpoint-replicates complete (98.3%); the last structured rebuild at2219 results had50/60 lineages complete; six tasks active and an idempotent11-lineage tail is dependency-pending. Compare replicate rankings, then freeze checkpoints/anchors. |
-| MCTS-PW70-TEN-SEED | completed or inactive | Do five-seed PW70 findings survive all ten original seeds? | All four cells contain ten declared-budget seeds; FO/off includes one explicitly starred 7/20 OOM-partial seed and has mean8.4. |
+| MCTS-PW70-TEN-SEED | completed or inactive | Do five-seed PW70 findings survive all ten original seeds? | All four cells contain ten final declared-budget seeds; FO/off includes one 7/20 OOM-terminal endpoint and has mean8.4. |
 | TPP-CATASTROPHIC-MCTS | completed or inactive | Can search recover the eleven policy failures caused by seed-specific Stage2 catastrophic forgetting? | Policy9/20; fixed narrow4; PW20 5/10/10; fixed normal4; PW70 4/5/7 at30m/2h/6h. Only PW20 recovers one net policy success. |
 | ROVER-MCTS-INTERRUP-REC | completed or inactive | Classify only instances omitted by scheduler or OOM interruption | All29 formerly unclassified instances reached the declared six-hour timeout; Rover aggregates are unchanged. |
 
@@ -426,7 +426,7 @@ The row-level catalog is `experiment_catalog_latest.csv`. The table below keeps 
 | MPrime | validation-led S2 policy, provisional | 15.2 / 15.2 / 15.2 | 15.0 | 19 | +.2 / -3.8 | Phase B is 98.3% complete and may change checkpoint selection |
 | Block Grouping | S1 selected policy, off | 16.3 / 16.3 / 16.3 | 16.3 | 17 | 0 / -.7 | Neither S2 nor MCTS improves the best policy |
 | Drone | terminal-led S2 normal MCTS, on | 12.9 / 13.1 / 13.1 | 7.2 | 9 | +5.9 / +4.1 | Best established search result; Holm-significant |
-| FO Counters | S1 PW70/off, n=10 declared-budget* | 8.40 / 8.40 / 8.40 | 4.20 | 6 | +4.20 / +2.40 | Current maximum; includes one 7/20 OOM-partial allocation |
+| FO Counters | S1 PW70/off, n=10 declared-budget | 8.40 / 8.40 / 8.40 | 4.20 | 6 | +4.20 / +2.40 | Current maximum; includes one final 7/20 OOM-terminal endpoint |
 | Rover | S1 fixed normal MCTS/off | 4.8 / 5.0 / 5.0 | 4.0 | 7 | +1.0 / -2.0 | Modest gain, still below paper |
 | Counters | terminal-led S2 narrow/off* | 34.9 / 37.8 / 38.4 | 21.5 | 17 | +16.9 / +21.4 | Largest result; versus its own S2 policy37.9 the 6h change is only +.5 and nonsignificant |
 

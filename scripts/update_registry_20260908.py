@@ -9,7 +9,7 @@ UPDATES = {
     "MPRIME-VAL-ADEQUACY": ("live-60-lineage-full-rescore-68.5-percent",
         "1547/2260 checkpoint-replicates complete at 2026-09-08 23:39 IDT; six lineages complete. Exact idempotent continuation 21143254 plus predecessor/replacement tasks leave 54 MPrime tasks running."),
     "MCTS-PW70-TEN-SEED": ("terminal-four-ten-seed-cells-one-oom-partial",
-        "All four cells contain ten declared-budget seeds; FO/off includes one explicitly starred 7/20 OOM-partial seed and has mean8.4."),
+        "All four cells contain ten declared-budget seeds; FO/off includes one 7/20 OOM-terminal declared-budget endpoint and is final at mean8.4."),
     "TPP-CATASTROPHIC-MCTS": ("three-terminal-one-running",
         "Fixed narrow ended 4/20 OOM; PW20 ended 10/20 OOM; PW70 ended OOM at 7/20 after 12 classified; fixed normal is 4/20 after 19 classified with one instance active; policy is 9/20."),
     "MCTS-STAGE2-BRANCH-COMPLETION": ("counters-terminal-fo-tail-live",

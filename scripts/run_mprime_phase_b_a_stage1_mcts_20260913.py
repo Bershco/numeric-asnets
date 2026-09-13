@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+"""Run one exact MPrime Stage-1 Phase-B-A fixed-MCTS manifest row."""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import datetime as dt
+import json
+import os
+import shlex
+import subprocess
+import sys
+from pathlib import Path
+
+
+EXPECTED = {
+    "experiment_id": "MPRIME-VAL",
+    "branch": "stage1",
+    "stage": "stage1",
+    "checkpoint_selection": "phase_b_replicate_a",
+    "domain_module": "experiments_numeric.domain.mprime",
+    "architecture_module": "experiments_numeric.architecture_2.mprime_mcts",
+    "teacher": "hmrp-ha-gbfs",
+    "width": "20",
+    "iterations": "70",
+    "puct": "0.1",
+    "estimator": "0.5",
+    "workers": "3",
+    "cpus": "6",
+    "memory": "120G",
+    "walltime": "3-00:00:00",
+    "instance_timeout_seconds": "21600",
+    "max_external_actions": "10000",
+    "evaluation_scheduling": "rolling",
+    "expected_test_instances": "20",
+    "status": "ready_not_submitted",
+}
+
+
+def load_row(path: Path, index: int) -> dict[str, str]:
+    with path.open(newline="", encoding="utf-8-sig") as stream:
+        rows = list(csv.DictReader(stream))
+    if len(rows) != 10:
+        raise ValueError(f"manifest must contain exactly ten rows, found {len(rows)}")
+    matches = [row for row in rows if row.get("array_index") == str(index)]
+    if len(matches) != 1:
+        raise ValueError(f"array index {index}: expected one row, found {len(matches)}")
+    row = matches[0]
+    for field, expected in EXPECTED.items():
+        if row.get(field) != expected:
+            raise ValueError(f"{row.get('manifest_id')}: {field}={row.get(field)!r}, expected {expected!r}")
+    if row.get("value_head") not in {"off", "on"}:
+        raise ValueError("invalid value_head")
+    if len({candidate["value_head"] for candidate in rows}) != 1:
+        raise ValueError("a submission manifest must contain only one value-head mode")
+    if not row.get("checkpoint"):
+        raise ValueError("missing checkpoint")
+    return row
+
+
+def experiment_arguments(
+    row: dict[str, str], completion: Path, smoke_instance: int | None = None,
+    smoke_timeout: int = 600,
+) -> list[str]:
+    workers = 1 if smoke_instance is not None else int(row["workers"])
+    timeout = smoke_timeout if smoke_instance is not None else int(row["instance_timeout_seconds"])
+    args = [
+        "./run_experiment",
+        row["architecture_module"],
+        row["domain_module"],
+        "--resume-from", row["checkpoint"],
+        "--eval-with-mcts",
+        "--mcts-expansion-size", row["width"],
+        "--mcts-iterations", row["iterations"],
+        "--mcts-exploration-weight", row["puct"],
+        "--use-estimator", row["estimator"],
+        "--eval-scheduling", row["evaluation_scheduling"],
+        "--eval-completion-file", str(completion),
+        "--eval-instance-timeout", str(timeout),
+        "--eval-max-actions", row["max_external_actions"],
+        "--num-workers", str(workers),
+        "--jpddl-max-heap", "4g",
+        "--worker-logs",
+        "--random-seed", row["seed"],
+    ]
+    if row["value_head"] == "off":
+        args.append("--disable-value-head")
+    if smoke_instance is not None:
+        if not 1 <= smoke_instance <= int(row["expected_test_instances"]):
+            raise ValueError("smoke instance is outside the declared test set")
+        skip = [
+            str(number)
+            for number in range(1, int(row["expected_test_instances"]) + 1)
+            if number != smoke_instance
+        ]
+        args += ["--skip-instance-numbers", ",".join(skip)]
+    return args
+
+
+def append_attempt(path: Path, fields: dict[str, object]) -> None:
+    columns = [
+        "manifest_id", "slurm_job_id", "restart_count", "started_at", "ended_at",
+        "evaluation_returncode", "validation_returncode", "log_path",
+        "completion_record_path", "val_summary_path", "smoke_instance",
+    ]
+    new_file = not path.exists()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=columns, delimiter="\t", lineterminator="\n")
+        if new_file:
+            writer.writeheader()
+        writer.writerow(fields)
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
+def run_and_tee(command: list[str], log_path: Path, env: dict[str, str]) -> int:
+    with log_path.open("w", encoding="utf-8") as log:
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            env=env,
+        )
+        assert process.stdout is not None
+        for line in process.stdout:
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            log.write(line)
+            log.flush()
+        return process.wait()
+
+
+def ensure_val_summary(path: Path) -> None:
+    """Keep a durable empty VAL artifact when no successful plan was printed."""
+    if path.exists():
+        return
+    with path.open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.writer(stream, lineterminator="\n")
+        writer.writerow(["instance", "candidate_plans", "selected_steps", "val_valid", "reason"])
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--index", type=int, required=True)
+    parser.add_argument("--checkout", type=Path, required=True)
+    parser.add_argument("--production", type=Path, required=True)
+    parser.add_argument("--container", type=Path, required=True)
+    parser.add_argument("--validator", type=Path, required=True)
+    parser.add_argument("--output-root", type=Path, required=True)
+    parser.add_argument("--code-commit", required=True)
+    parser.add_argument("--smoke-instance", type=int)
+    parser.add_argument("--smoke-timeout", type=int, default=600)
+    parser.add_argument("--print-command", action="store_true")
+    args = parser.parse_args()
+
+    row = load_row(args.manifest, args.index)
+    actual_commit = subprocess.check_output(
+        ["git", "-C", str(args.checkout), "rev-parse", "HEAD"], text=True
+    ).strip()
+    if actual_commit != args.code_commit:
+        raise RuntimeError(f"checkout commit {actual_commit} != declared {args.code_commit}")
+    if not Path(row["checkpoint"]).is_dir():
+        raise RuntimeError(f"checkpoint missing: {row['checkpoint']}")
+    for required in (args.container, args.validator, args.production / "venv-asnets/bin/activate"):
+        if not required.exists():
+            raise RuntimeError(f"required runtime artifact missing: {required}")
+
+    scope = "smoke" if args.smoke_instance is not None else "full"
+    output = args.output_root / row["value_head"] / row["seed"] / scope
+    completion_dir = output / "completion"
+    attempts_dir = output / "attempts"
+    validation_dir = output / "validation"
+    for directory in (completion_dir, attempts_dir, validation_dir):
+        directory.mkdir(parents=True, exist_ok=True)
+    identity = row["manifest_id"]
+    if args.smoke_instance is not None:
+        identity += f"-instance{args.smoke_instance}"
+    completion = completion_dir / f"{identity}.jsonl"
+    job_id = os.environ.get("SLURM_JOB_ID", "local")
+    restart = os.environ.get("SLURM_RESTART_COUNT", "0")
+    attempt = f"{job_id}_r{restart}"
+    log_path = attempts_dir / f"{attempt}.txt"
+    val_summary = validation_dir / f"{attempt}.val.csv"
+
+    experiment_args = experiment_arguments(
+        row, completion, args.smoke_instance, args.smoke_timeout
+    )
+    inner = (
+        "set -euo pipefail; "
+        f"cd {shlex.quote(str(args.checkout / 'asnets'))}; "
+        f"source {shlex.quote(str(args.production / 'venv-asnets/bin/activate'))}; "
+        f"export PYTHONPATH={shlex.quote(str(args.checkout))}:{shlex.quote(str(args.checkout / 'asnets'))}:${{PYTHONPATH:-}}; "
+        f"export ENHSP_CONFIG_OVERRIDE={shlex.quote(row['teacher'])}; "
+        + shlex.join(experiment_args)
+    )
+    command = [
+        "apptainer", "exec",
+        "--bind", "/home/hersco:/home/hersco",
+        "--bind", "/home/hersco/apptainer_fake_passwd:/etc/passwd",
+        str(args.container), "/bin/bash", "-lc", inner,
+    ]
+    if args.print_command:
+        print(shlex.join(command))
+        return 0
+
+    print(
+        f"[MPRIME S1 PHASE-B-A MCTS] identity={identity} vh={row['value_head']} "
+        f"seed={row['seed']} epoch={row['selected_epoch']} smoke={args.smoke_instance or 'no'}"
+    )
+    print("[MPRIME S1 PHASE-B-A MCTS] fixed=20/70 puct=.1 estimator=.5")
+    print(f"[MPRIME S1 PHASE-B-A MCTS] checkpoint={row['checkpoint']} commit={actual_commit}")
+    started = dt.datetime.now(dt.timezone.utc).isoformat()
+    evaluation_rc = run_and_tee(command, log_path, os.environ.copy())
+    validation_command = [
+        sys.executable,
+        str(args.checkout / "asnets/tools/validate_eval_log_with_summary.py"),
+        "--log", str(log_path),
+        "--domain", "mprime",
+        "--validator", str(args.validator),
+        "--allow-incomplete",
+        "--summary-csv", str(val_summary),
+    ]
+    validation_rc = subprocess.run(validation_command).returncode
+    if validation_rc == 0:
+        ensure_val_summary(val_summary)
+    append_attempt(output / "attempts.tsv", {
+        "manifest_id": row["manifest_id"],
+        "slurm_job_id": job_id,
+        "restart_count": restart,
+        "started_at": started,
+        "ended_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "evaluation_returncode": evaluation_rc,
+        "validation_returncode": validation_rc,
+        "log_path": log_path,
+        "completion_record_path": completion,
+        "val_summary_path": val_summary,
+        "smoke_instance": args.smoke_instance or "",
+    })
+    if validation_rc:
+        return validation_rc
+    return evaluation_rc
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

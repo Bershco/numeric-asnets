@@ -1,4 +1,4 @@
-# MPrime validation adequacy Phase B — active, 6 September 2026
+# MPrime validation adequacy Phase B — complete, refreshed 11 September 2026
 
 The earlier preparation-only status is superseded. There are 240 deterministic
 candidates, two independent seed pools and three structural tiers. The generator
@@ -38,15 +38,46 @@ It contains `planner_task_N.csv`, planner plans and VAL logs,
 `rescore/` outputs. The two new domain modules are added to the isolated
 safe-context checkout; production domain definitions are untouched.
 
+## Final result
+
+All **2,260/2,260** checkpoint–replicate evaluations and all **60/60**
+lineages are complete. The final cell summary is:
+
+| Branch | VH | Replicate rank agreement | Validation–test rank agreement | Mean selection regret |
+|---|---|---:|---:|---:|
+| Stage 1 | off | .547 | .308 | 1.90 plans |
+| Stage 1 | on | .729 | .490 | 1.60 plans |
+| Validation-led Stage 2 | off | .266 | .162 | 1.60 plans |
+| Validation-led Stage 2 | on | .241 | .018 | 2.30 plans |
+
+The harder sets remove the original Stage-2 30/30 saturation. They are better
+diagnostics, but Stage-2 checkpoint ordering remains weak—especially VH-on.
+Taking the mean of the two replicates is not a universal cure: compared with
+using either replicate alone, it improves Stage-2/VH-off mean regret to 1.6
+plans but worsens Stage-2/VH-on regret to 2.3 plans.
+
+The next defensible step is not another full 2,260-evaluation replication drawn
+from the same generator. If MPrime continues, freeze a structurally redesigned
+set and evaluate only a predeclared candidate union (top checkpoints from each
+existing replicate plus final/baseline checkpoints). This avoids using test
+scores as a selector and reduces a possible Phase C to at most 12 candidates
+per primary lineage rather than every saved checkpoint.
+
 ## Interpretation and remaining scientific work
 
 The candidate set is not declared adequate merely because the planners solve it.
-After rescoring, assess saturation, within-lineage rank agreement between the
-two replicates, bootstrap stability and selected epochs. The current campaign
-tests Stage-1/Stage-2 checkpoint selection. Anchor-rank stability additionally
-requires rescoring the saved 28 anchor-tuning lineages on the same frozen sets;
-that follow-up is documented but has not been submitted by this controller.
+The completed campaign tests Stage-1/Stage-2 **checkpoint selection only**.
+It does not establish anchor-rank stability. That distinct question would require
+rescoring the saved 28 anchor-tuning lineages and is not part of Phase B.
 No MPrime MCTS evaluation is submitted or authorized by this workflow.
+
+Canonical outputs are `phase_b_checkpoint_scores_latest.csv`,
+`phase_b_lineage_summary_latest.csv`, `phase_b_cell_summary_latest.csv`,
+`phase_b_lineage_selector_comparison_latest.csv`, and
+`phase_b_cell_selector_comparison_latest.csv`. Every checkpoint row carries its
+source training/test job and log, its durable remote replicate-summary paths,
+and the Phase-B array-log glob. Historical array task-to-lineage mapping was not
+frozen, so the latter is a global log pattern rather than a claimed exact task ID.
 
 Local candidate hashes, parameters and seeds are in `candidates.csv`; generated
 PDDL files are in `candidates/`. Planner evidence is copied locally as compact

@@ -91,7 +91,7 @@ registry_updates = {
     "TPP-CATASTROPHIC-MCTS": {
         "status": "three-terminal-one-running-final-instance",
         "next_action": (
-            "Fixed narrow4/20 OOM; PW20 10/20 OOM; PW70 7/20 OOM-partial; fixed normal4/20 "
+            "Fixed narrow4/20 OOM; PW20 10/20 OOM; PW70 7/20 OOM-terminal endpoint; fixed normal4/20 "
             "after19 classified with one exact instance active and at most six hours remaining."
         ),
     },

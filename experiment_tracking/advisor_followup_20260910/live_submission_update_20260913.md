@@ -1,10 +1,10 @@
-# Live submission update — 13 September 2026, 13:00 IDT
+# Live submission update — 13 September 2026, 17:58 IDT
 
 Only validation-led work is treated as thesis-primary. Terminal-led campaigns remain archived context and are not continued, plotted, or included in RQ families.
 
 ## Counters tie-break confirmation
 
-Compute smoke `21233924` completed in 1m15s and passed 23 tests, CLI checks, the complete 20-row manifest, and all checkpoint existence checks. Scientific array `21233925[0-19]` is submitted at low priority. Task 0 is running and tasks 1–19 are resource-pending.
+Compute smoke `21233924` completed in 1m15s and passed 23 tests, CLI checks, the complete 20-row manifest, and all checkpoint existence checks. All 20 low-priority scientific tasks have now received compute: two are terminal and 18 are running. The first completed matched seed (`1073581256`) scores 59/59 with both action-ID and policy-prior tie-breaking, with every plan VAL-valid. This is one neutral pair, not an interim domain-wide effect estimate.
 
 The array is a strict same-build Stage-1 VH-off comparison over all ten validation-selected checkpoints and all 59 test instances:
 
@@ -17,15 +17,23 @@ The array is a strict same-build Stage-1 VH-off comparison over all ten validati
 
 Historical comparable Counters jobs have a median whole-job runtime near 49.9 hours; each task's hard bound is 72 hours after it starts. The array directly tests whether the candidate recovers the main RQ2 VH-off downgrade. Q-only final tie-breaking was not promoted because it recovered none of the three causal diagnostic instances.
 
-The causal screen motivating this confirmation is final: action-ID and Q tie-breaking solved 0/3 targeted VH-off failures, while policy-prior tie-breaking solved all 3/3 by two hours with VAL-valid plans. The matched VH-on control remained 0/3 under all three rules. This is strong targeted mechanism evidence, not yet a domain-wide effect estimate.
+The causal screen motivating this confirmation is final: action-ID and Q tie-breaking solved 0/3 targeted VH-off failures, while policy-prior tie-breaking solved all 3/3 by two hours with VAL-valid plans. The VH-on arm also scored 0/3 under all three rules, but its policy solved none of those three instances and only 3/59 overall. It is therefore only a matched-mode behavior check, not a policy-preservation control or evidence against VH-on recovery. This is strong targeted VH-off mechanism evidence, not yet a domain-wide effect estimate.
+
+The action-ID half is intentionally rerun. It makes the domain-wide comparison same-build and same-scheduler-era, so any net difference can be attributed to tie-breaking rather than comparing the new policy-prior rule against historical binaries and environments. Historical and current baselines will not be pooled.
 
 ## MPrime
 
-The original anchor-rescore array has 18 live tasks. Six exact failed/held-index replacements are live. At the snapshot, 317/588 checkpoint validations are complete. The original tasks have at most 8h07m left in their 24-hour allocations; the replacements have nearly their full 24-hour bounds.
+At this snapshot, 406/588 checkpoint validations are complete. Fourteen long-running original tasks and six resumable replacement tasks are live, requesting 80 CPUs and 400 GiB in total. The original tasks have about 3h10m to their 24-hour hard bounds; the replacement tasks have about 18h50m. Recheck controller `21233927` remains dependency-pending and will skip every completed point.
 
-Controller `21233927` is dependency-pending. It audits paired done/summary markers, submits only incomplete lineage indices, and can repeat this bounded recovery up to four times before submitting the analysis-only coefficient finalizer. It cannot launch Stage-2 training itself: the frozen coefficient still requires manual curve review. Once frozen, the approved path is up to twenty validation-led Stage-2 lineages, policy curves/endpoints, then matched fixed MCTS. An existing lineage is reused only if its Stage-1 source checkpoint hash, newly selected coefficient, code and complete configuration match exactly; at least 16/20 known source checkpoints differ and require retraining. The eventual fixed-MCTS scope is Stage 1 and Stage 2 × two VH modes × ten seeds = up to 40 evaluations, reduced only by exact reusable identities.
+Controller `21233927` audits paired done/summary markers, submits only incomplete lineage indices, and can repeat this bounded recovery up to four times before submitting the analysis-only coefficient finalizer. It cannot launch Stage-2 training itself: the frozen coefficient still requires manual curve review. Once frozen, the approved path is up to twenty validation-led Stage-2 lineages, policy curves/endpoints, then matched Stage-2 fixed MCTS. An existing lineage is reused only if its Stage-1 source checkpoint hash, newly selected coefficient, code and complete configuration match exactly; the final fresh-training count will be decided by that identity audit rather than assumed.
 
-MPrime PW has not been run. It is gated behind canonical Stage-2 endpoints and the fixed-MCTS baseline; the efficient next step is a two-seed PW70 screen, not immediate ten-seed confirmation.
+The Phase-B-A Stage-1 checkpoints are already final. An exact identity audit found 0/20 reusable Stage-1 fixed-MCTS evaluations, so all 20 are genuinely missing and may run independently of Stage-2. Their manifest and compute scripts are being prepared from the frozen selection ledger; a Stage-1 PW screen is gated on having that fixed comparator only, not on Stage-2 training.
+
+MPrime PW has not been run. Stage-1 PW can begin with a two-seed screen after the Stage-1 fixed comparator; Stage-2 PW remains gated on canonical Stage-2 endpoints and its fixed comparator.
+
+## Block Grouping tie-break diagnostic
+
+A two-job same-build screen is prepared for the four exact Stage-1 VH-off seed `1963100312` instances that policy solved and historical narrow MCTS drove to 10,000 actions. It compares action-ID against policy-prior final tie-breaking with one worker, 2 CPUs, 120 GiB and 30 hours per task. It also records action-level evidence. This selected-failure diagnostic is eligible because Block Grouping has 16 VH-off policy-success/MCTS-failure cases across eight seeds, but it is deliberately not a premature 20-job domain confirmation and does not test PW70.
 
 Phase C itself is complete. It removed the original validation saturation, but Phase-B replicate A had the best available rank/stability trade-off and is frozen as the final MPrime validator. The current rescore is the required bridge from that validator decision to defensible Stage-2 training.
 

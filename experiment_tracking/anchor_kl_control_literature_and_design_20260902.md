@@ -1,7 +1,6 @@
 # ANCHOR-KL-CONTROL: literature-grounded nonconstant Stage-2 anchoring
 
-Status: **adaptive controller implemented and locally smoke-tested; no Slurm
-jobs submitted**.
+Status: **two adaptive arms completed; controller did not activate**.
 
 ## Immediate TPP/off causal screen
 
@@ -142,3 +141,21 @@ Git worktree omitted the ignored compiled `_asnet_ops_impl.so`. The isolated
 checkout now links the checksum-verified production build. This was a deployment
 packaging failure, not an optimization result, and cost about one minute per
 job. The retry ledger's `retry_of` field preserves that lineage explicitly.
+
+## Final training result — 11 September 2026
+
+Both adaptive jobs completed 100 updates:
+
+| Role | Job | Final cumulative epoch | Final validation | Coefficient path | Controller adjustments |
+|---|---:|---:|---:|---:|---:|
+| Catastrophic seed 1972442430 | 21144388 | 114 | 21/30 | 3 → 3 | 0 |
+| Stable control 1963100312 | 21144389 | 102 | 30/30 | 3 → 3 | 0 |
+
+The realized post-update KL never crossed the controller's upper threshold, so
+the adaptive arm was behaviorally identical to a constant-coefficient arm for
+all 200 logged updates. This does **not** show that adaptive KL fails; it shows
+that this target/floor calibration never applied the treatment. A test-policy
+evaluation can quantify the new trajectories, but it cannot establish the
+causal benefit of adaptation because no coefficient change occurred. A further
+training rerun would require a recalibrated, predeclared target or a true
+trust-region rule; it should not be launched merely to rescue this screen.

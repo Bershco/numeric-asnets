@@ -51,11 +51,19 @@ def upsert(experiment_id: str, **values: str) -> None:
 
 upsert(
     "MPRIME-VAL-ADEQUACY",
-    status="live-tail-2243-of2260-replicates-58-of60-lineages-complete",
+    status="completed-2260-of2260-60-of60-lineages",
     scope="All 1,130 saved MPrime checkpoints x two independently frozen harder validation sets",
+    primary_question="Does validation rank saved checkpoints reliably without saturating?",
     results_file="experiment_tracking/mprime_validation_phase_b_20260906/phase_b_cell_summary_latest.csv",
     manifest_path="experiment_tracking/mprime_validation_phase_b_20260906/checkpoints.csv;experiment_tracking/mprime_validation_phase_b_20260906/protocol.json;problems/numeric/mprime/validation_ipc_scale_v1/manifest.csv",
-    next_action="Exact two-lineage tail array 21178598 is running after the import-path repair; rebuild summaries at 2260/2260, inspect replicate agreement, then freeze validation-led checkpoints only.",
+    next_action="Phase B removed saturation but Stage2 validation-test rank agreement remains weak; do not repeat the same full design. If MPrime continues, prepare a structurally redesigned candidate-limited Phase C.",
+)
+upsert(
+    "MAIN-EXT6-MPRIME",
+    status="completed-policy-with-validation-audit",
+    primary_question="Do MAIN-VAL policy conclusions extend from the original five imperfect domains to MPrime as a sixth?",
+    held_reason="Phase B shows that both the old and harder validation distributions rank Stage-2 checkpoints weakly",
+    next_action="Retain completed policy results as provisional extension. If MPrime continues, use a structurally redesigned candidate-limited validation audit before selecting further checkpoints.",
 )
 upsert(
     "MCTS-PW",
@@ -67,8 +75,9 @@ upsert(
 )
 upsert(
     "ANCHOR-KL-CONTROL",
-    status="live-outlier-98-of100-updates-control-complete",
-    next_action="Outlier adaptive job 21144388 has 98/100 logged updates; coefficient is still 3 because post-update KL stays below the target. Evaluate comparable test checkpoints before any method claim.",
+    status="completed-no-controller-activation",
+    results_file="experiment_tracking/anchor_kl_control_summary_latest.csv",
+    next_action="Both adaptive jobs completed 100 updates but coefficient remained 3 throughout; the adaptive treatment never activated.",
 )
 upsert(
     "MCTS-PW70-CROSS-DOMAIN",
@@ -78,7 +87,7 @@ upsert(
 upsert(
     "MCTS-PW70-TEN-SEED",
     status="completed-declared-budget-with-one-starred-partial",
-    next_action="Retain all ten declared-budget seeds. FO/off is 8.4/20 with one 7/20 OOM-partial seed; report the complete-allocation n=9 sensitivity separately.",
+    next_action="Freeze all ten declared-budget seeds. FO/off is final at 8.4/20; one 7/20 seed is an OOM-terminal declared-budget endpoint whose unclassified instance counts unsuccessful.",
 )
 upsert(
     "MCTS-LEGACY-FO",
@@ -107,13 +116,13 @@ upsert(
     "COUNTERS-VISIT-AUDIT",
     display_name="Counters root visit-distribution audit",
     role="search-diagnostic",
-    status="live-two-jobs",
+    status="live-control-vh-off-complete",
     scope="Three exact validation-led Stage-2 Counters instances under VH-off failure and matched VH-on control",
     primary_question="Does 20-visit root selection override a good policy because visit evidence is too coarse?",
     configuration_summary="Narrow 5 children/20 simulations; one worker; 6h per instance; action, prior, visit, Q and U traces",
-    results_file="experiment_tracking/advisor_followup_20260910/counters_visit_audit_manifest.csv",
+    results_file="experiment_tracking/advisor_followup_20260910/counters_visit_audit_latest_milestones.csv",
     manifest_path="experiment_tracking/advisor_followup_20260910/counters_visit_audit_manifest.csv",
-    next_action="Jobs 21178320 and 21178321 are live; summarize exact 30m/2h/6h root-decision distributions after completion.",
+    next_action="VH-off complete and shows first divergences at steps 881/993/1105 under tied 9-visit maxima and equal Q; VH-on control remains live.",
 )
 upsert(
     "FO-S2-VAL-RECOVERY",
@@ -174,11 +183,15 @@ write(pw_live, pw_rows)
 
 # Build a current catalog by joining the master registry to the scheduler snapshot.
 workload = read(TRACK / "cluster_workload_latest.csv")
+live_experiment_map = {
+    "COUNTERS-VISIT-AUDIT": "Counters root-visit distribution audit",
+    "FO-S2-VAL-RECOVERY": "FO Counters validation-led Stage-2 exact recovery",
+    "MAIN-VAL-S2-MCTS": "FO Counters validation-led Stage-2 exact recovery",
+}
 catalog = []
 for row in registry:
-    label = row["display_name"].lower()
-    matches = [job for job in workload if row["experiment_id"].lower() in job["experiment"].lower()
-               or any(token in job["experiment"].lower() for token in label.split()[:2])]
+    live_name = live_experiment_map.get(row["experiment_id"])
+    matches = [job for job in workload if live_name and job["experiment"] == live_name]
     catalog.append({
         "experiment_id": row["experiment_id"],
         "display_name": row["display_name"],
@@ -329,9 +342,16 @@ must read the canonical files below; it must not infer liveness from an old date
 | Master experiment registry | `experiment_tracking/experiment_registry.csv` |
 | Joined current catalog | `experiment_tracking/experiment_catalog_latest.csv` |
 | RQ-separated primary statistics | `experiment_tracking/advisor_followup_20260910/rq_primary_validation_led.csv` |
+| RQ2 raw levels | `experiment_tracking/advisor_followup_20260910/rq2_raw_means_validation_led.csv` |
+| RQ3 raw levels and interaction | `experiment_tracking/advisor_followup_20260910/rq3_raw_means_validation_led.csv` |
+| RQ4 raw levels | `experiment_tracking/advisor_followup_20260910/rq4_raw_means_validation_led.csv` |
 | Advisor narrative and tables | `experiment_tracking/advisor_followup_20260910/README.md` |
 | Dynamic job evidence | `experiment_tracking/dynamic_experiment_jobs_latest.csv` |
 | MPrime Phase-B checkpoint evidence | `experiment_tracking/mprime_validation_phase_b_20260906/phase_b_checkpoint_scores_latest.csv` |
+| MPrime Phase-B selector comparison | `experiment_tracking/mprime_validation_phase_b_20260906/phase_b_cell_selector_comparison_latest.csv` |
+| Counters visit milestones | `experiment_tracking/advisor_followup_20260910/counters_visit_audit_latest_milestones.csv` |
+| FO recovery progress | `experiment_tracking/advisor_followup_20260910/fo_stage2_validation_recovery_progress_latest.csv` |
+| Adaptive-KL summary | `experiment_tracking/anchor_kl_control_summary_latest.csv` |
 | CSV provenance audit | `experiment_tracking/result_csv_provenance_index_latest.csv` |
 | Registry reference integrity | `experiment_tracking/registry_reference_audit_latest.csv` |
 | Historical experiment-ID aliases | `experiment_tracking/experiment_id_aliases.csv` |
@@ -369,12 +389,14 @@ historical snapshots. Full RQ tables, methods and conclusions are in
 
 ## Current scientific endpoints
 
-- MPrime Phase B: 2,243/2,260 checkpoint-replicates and 58/60 complete
-  lineages; repaired exact two-lineage tail `21178598[15,42]` is running.
-- Adaptive KL: stable control complete; outlier has 98/100 logged updates and
-  has not changed its coefficient from 3.
-- Counters visit audit: two jobs are running on the exact three-instance failure
-  set and matched VH-on control.
+- MPrime Phase B: complete at 2,260/2,260 checkpoint-replicates and 60/60
+  lineages. Harder validation removed saturation but Stage-2 rank agreement with
+  test remains weak.
+- Adaptive KL: both arms completed 100 updates. Neither changed coefficient 3,
+  so the adaptive treatment never activated.
+- Counters visit audit: VH-off is complete; the matched VH-on control remains
+  live. The first VH-off divergences occur after 881–1,105 actions under tied
+  visit maxima and equal Q values, not at the first action.
 - FO Counters validation-led Stage-2 MCTS: three minimal jobs are running only
   the 42 instances left unclassified by three historical partial allocations.
 
