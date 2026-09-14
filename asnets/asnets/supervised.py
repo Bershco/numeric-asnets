@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import datetime
 
 from asnets.checkpointing import save_checkpoint_dir, resolve_optimizer_path
+from asnets.frozen_replay import FrozenReplaySchedule
 from asnets.heur_inputs import ActionCountDataGenerator, \
     HeuristicDataGenerator, LMCutDataGenerator, RelaxedDeadendDetector, \
     NumericLandmarkGenerator
@@ -473,6 +474,7 @@ class SupervisedTrainer(BaseTrainer):
                  policy_anchor_kl_coeff=0.0,
                  policy_anchor_kl_mode="constant",
                  policy_anchor_kl_target=None,
+                 frozen_replay_batch_dir=None,
                  main_road_fraction=0.75,
                  tree_policy_weight=0.5,
                  grad_clip_norm=5.0,
@@ -522,7 +524,15 @@ class SupervisedTrainer(BaseTrainer):
         self._policy_anchor_weights_np = None
         self._first_update_audit_path = os.environ.get(
             "ASN_FIRST_UPDATE_AUDIT_PATH")
+        self._first_update_weight_dir = os.environ.get(
+            "ASN_FIRST_UPDATE_WEIGHT_DIR")
         self._first_update_audit_step = 0
+        self._replay_optimizer_step = 0
+        self._frozen_replay_schedule = (
+            FrozenReplaySchedule(
+                frozen_replay_batch_dir, self.train_steps_per_epoch)
+            if frozen_replay_batch_dir else None
+        )
         if self.policy_anchor_kl_coeff > 0:
             os.makedirs(self.snapshot_dir, exist_ok=True)
             anchor_path = os.path.join(
@@ -678,6 +688,8 @@ class SupervisedTrainer(BaseTrainer):
         self.tf_init_done = True
 
     def train(self, max_epochs):
+        if self._frozen_replay_schedule is not None:
+            return self._train_frozen_replay(max_epochs)
         last_rate = None
         time_since_best = 0
 
@@ -1015,6 +1027,90 @@ class SupervisedTrainer(BaseTrainer):
                 break
         return last_rate, elapsed_time, int(epoch)
 
+    def _train_frozen_replay(self, max_epochs):
+        """Apply one captured replay schedule without generating new targets.
+
+        This path exists only for the TPP first-update causal cross-over.  It
+        intentionally skips exploration and replay ingestion so checkpoint
+        identity and archived replay content are the only crossed factors.
+        """
+        if max_epochs != 1:
+            raise ValueError(
+                "Frozen replay diagnostics require exactly one epoch")
+        if not self.explorer.problems_by_signature:
+            raise ValueError(
+                "Frozen replay diagnostics require pre-initialized problem "
+                "buckets")
+        self._write_first_update_audit({
+            "record_type": "frozen_replay_start",
+            "source_directory": str(
+                self._frozen_replay_schedule.directory.resolve()),
+            "expected_steps": self._frozen_replay_schedule.expected_steps,
+            "exploration_skipped": True,
+        })
+        weights_before = [
+            weight.numpy().copy()
+            for weight in self._weight_manager.all_weights
+        ]
+        train_stats = self.train_from_replay()
+        if train_stats["updates"] != self.train_steps_per_epoch:
+            raise RuntimeError(
+                "Frozen replay did not apply the complete schedule: "
+                f"{train_stats['updates']} of {self.train_steps_per_epoch}")
+
+        success_rates, overall_succ_rate, validation_outs = \
+            self.validator.evaluate(self._weight_manager.export_numpy())
+        solved_outs = [out for out in validation_outs if out.hit_goal]
+        avg_plan_len = (
+            sum(len(out.plan) for out in solved_outs) / len(solved_outs)
+            if solved_outs else float("inf")
+        )
+        snapshot_name = f"snapshot_0_{overall_succ_rate:.4f}"
+        checkpoint_path = os.path.join(self.snapshot_dir, snapshot_name)
+        validation_state = ValidationState(
+            fingerprint=validation_set_fingerprint(self.validator.specs),
+            trainer_kind="stage2_mcts",
+        )
+        validation_state.observe(
+            overall_succ_rate, avg_plan_len, checkpoint_path, 0)
+        save_checkpoint_dir(
+            snapshot_dir=self.snapshot_dir,
+            snapshot_name=snapshot_name,
+            weight_manager=self._weight_manager,
+            optimizer=self.optimizer,
+            trainer_state={
+                "epoch_num": 0,
+                "cumulative_epoch": 0,
+                "best_rate": float(overall_succ_rate),
+                "time_since_best": 0,
+                "validation_state": validation_state.to_dict(),
+                "policy_anchor_kl_controller":
+                    self.policy_anchor_kl_controller.to_dict(),
+                "frozen_replay_source": str(
+                    self._frozen_replay_schedule.directory.resolve()),
+            },
+        )
+        deltas = [
+            weight.numpy() - before
+            for weight, before in zip(
+                self._weight_manager.all_weights, weights_before)
+        ]
+        cumulative_delta_l2 = float(np.sqrt(sum(
+            np.sum(np.square(delta), dtype=np.float64)
+            for delta in deltas)))
+        elapsed_time = time() - self.start_time
+        self._write_first_update_audit({
+            "record_type": "frozen_replay_complete",
+            "updates": int(train_stats["updates"]),
+            "validation_success_rate": float(overall_succ_rate),
+            "validation_average_plan_length": (
+                float(avg_plan_len) if np.isfinite(avg_plan_len) else None),
+            "cumulative_parameter_delta_l2": cumulative_delta_l2,
+            "checkpoint": checkpoint_path,
+        })
+        tf.summary.flush()
+        return float(overall_succ_rate), elapsed_time, 0
+
     def can_progress(self, success_rates):
         thresholds = {
             InstanceDifficulty.EASY: 0.90,
@@ -1157,11 +1253,25 @@ class SupervisedTrainer(BaseTrainer):
 
     def _train_replay_step(self):
         params = self._weight_manager.all_weights
-        sampled_batches = [
-            (problem, self._sample_mixed_replay_batch(problem))
-            for problem in self.explorer.problems
-        ]
-        sampled_batches = [(problem, batch) for problem, batch in sampled_batches if batch is not None]
+        frozen_step = None
+        if self._frozen_replay_schedule is not None:
+            frozen_step = self._frozen_replay_schedule.load_step(
+                self._replay_optimizer_step,
+                self.explorer.problems_by_signature,
+            )
+            sampled_batches = [
+                (self.explorer.problems_by_signature[signature], batch)
+                for signature, batch in frozen_step.batches
+            ]
+        else:
+            sampled_batches = [
+                (problem, self._sample_mixed_replay_batch(problem))
+                for problem in self.explorer.problems
+            ]
+            sampled_batches = [
+                (problem, batch) for problem, batch in sampled_batches
+                if batch is not None
+            ]
         if not sampled_batches:
             return None
 
@@ -1406,9 +1516,36 @@ class SupervisedTrainer(BaseTrainer):
                 "frozen_batch_file": os.path.join(
                     self._first_update_audit_path + ".batches",
                     f"optimizer_step_{self._first_update_audit_step:03d}.npz"),
+                "source_frozen_batch_file": (
+                    str(frozen_step.path) if frozen_step is not None else None),
+                "source_frozen_batch_sha256": (
+                    frozen_step.sha256 if frozen_step is not None else None),
                 "batches": batch_records,
             })
+            if self._first_update_weight_dir:
+                step_weight_dir = os.path.join(
+                    self._first_update_weight_dir,
+                    f"optimizer_step_{self._first_update_audit_step:03d}",
+                )
+                os.makedirs(step_weight_dir, exist_ok=True)
+                weight_path = os.path.join(
+                    step_weight_dir,
+                    "weights.joblib",
+                )
+                temp_path = f"{weight_path}.{os.getpid()}.tmp"
+                joblib.dump(
+                    self._weight_manager.export_numpy(),
+                    temp_path,
+                    compress=True,
+                )
+                os.replace(temp_path, weight_path)
+                self._write_first_update_audit({
+                    "record_type": "optimizer_step_weights",
+                    "step": self._first_update_audit_step,
+                    "path": weight_path,
+                })
             self._first_update_audit_step += 1
+        self._replay_optimizer_step += 1
         if controller_record["adjusted"]:
             print(
                 "[POLICY ANCHOR ADAPT] "

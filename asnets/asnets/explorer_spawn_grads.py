@@ -181,6 +181,8 @@ class ParallelMCTSExplorerGrads:
             return self.problems_by_signature[signature]
 
         problem = self.bucket_factory(out.problem_init_data)
+        problem.compatibility_signature = signature
+        problem.compatibility_payload = out.compatibility_payload
         self.problems_by_signature[signature] = problem
         self._signature_payloads[signature] = out.compatibility_payload
         self.problems.append(problem)
@@ -193,6 +195,27 @@ class ParallelMCTSExplorerGrads:
             f"| signature={signature[:12]}",
             flush=True,
         )
+        return problem
+
+    def register_problem_bucket(
+            self,
+            signature: str,
+            payload: tuple,
+            init_data: ProblemInitData,
+    ) -> SingleProblem:
+        """Register a grounded bucket without ingesting worker trajectories."""
+        existing_payload = self._signature_payloads.get(signature)
+        if existing_payload is not None:
+            if existing_payload != payload:
+                raise ValueError(
+                    f"Compatibility-signature collision for {signature[:12]}")
+            return self.problems_by_signature[signature]
+        problem = self.bucket_factory(init_data)
+        problem.compatibility_signature = signature
+        problem.compatibility_payload = payload
+        self.problems_by_signature[signature] = problem
+        self._signature_payloads[signature] = payload
+        self.problems.append(problem)
         return problem
 
     def add_worker_outputs_to_main_road_replay(

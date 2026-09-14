@@ -27,7 +27,12 @@ from asnets.parllel_explore_spawn_grads import make_specs
 from asnets.utils.tf_utils import configure_tf_gpu_memory_growth
 from asnets.prob_dom_meta import DomainType
 from asnets.state_reprs import CanonicalState
-from asnets.spawn_train_worker import run_worker_eval_policy_only, run_worker_eval_mcts, run_worker_eval_enhsp
+from asnets.spawn_train_worker import (
+    compatibility_identity_for_problem,
+    run_worker_eval_policy_only,
+    run_worker_eval_mcts,
+    run_worker_eval_enhsp,
+)
 
 import numpy as np
 import rpyc, gc
@@ -429,6 +434,14 @@ parser.add_argument(
     default=None,
     help=('Positive target KL required by --policy-anchor-kl-mode '
           'adaptive_target.')
+)
+parser.add_argument(
+    '--frozen-replay-batch-dir',
+    default=None,
+    help=(
+        'Diagnostic-only directory containing a complete numbered optimizer '
+        'batch schedule captured by ASN_FIRST_UPDATE_AUDIT_PATH. This skips '
+        'new exploration and applies exactly one frozen replay epoch.')
 )
 parser.add_argument(
     '--teacher-planner',
@@ -1016,6 +1029,22 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             max_replay_size=args.max_replay_size,
             minimization=args.minimization,
         )
+        if args.frozen_replay_batch_dir:
+            init_data = run_parallel_problem_init_data_collection(
+                specs=specs, max_workers=args.num_workers)
+            specs_by_slot = {int(spec.slot_id): spec for spec in specs}
+            for item in init_data:
+                spec = specs_by_slot[int(item.slot_id)]
+                signature, payload = compatibility_identity_for_problem(
+                    spec, item, dg_extra_dim)
+                explorer.register_problem_bucket(
+                    signature, payload, item)
+            print(
+                "[FROZEN REPLAY] initialized "
+                f"{len(explorer.problems_by_signature)} grounded buckets; "
+                "new exploration will be skipped",
+                flush=True,
+            )
         validation_sets = {
             "easy": args.validation_pddls_easy,
             "medium": args.validation_pddls_medium,
@@ -1054,6 +1083,7 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             policy_anchor_kl_coeff=args.policy_anchor_kl_coeff,
             policy_anchor_kl_mode=args.policy_anchor_kl_mode,
             policy_anchor_kl_target=args.policy_anchor_kl_target,
+            frozen_replay_batch_dir=args.frozen_replay_batch_dir,
             main_road_fraction=0.75,
             grad_clip_norm=5.0,
             start_time=start_time,
@@ -1462,6 +1492,15 @@ def main():
         parser.error('--mcts-pw-alpha must be in (0, 1]')
     if args.policy_anchor_kl_coeff < 0:
         parser.error('--policy-anchor-kl-coeff must be non-negative')
+    if args.frozen_replay_batch_dir:
+        if args.exploration_algorithm != 'mcts':
+            parser.error(
+                '--frozen-replay-batch-dir requires MCTS exploration mode')
+        if args.no_train:
+            parser.error('--frozen-replay-batch-dir requires training')
+        if args.max_opt_epochs != 1:
+            parser.error(
+                '--frozen-replay-batch-dir requires --max-opt-epochs 1')
     if args.policy_anchor_kl_mode == 'adaptive_target':
         if args.policy_anchor_kl_coeff <= 0:
             parser.error(

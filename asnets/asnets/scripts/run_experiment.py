@@ -613,6 +613,13 @@ parser.add_argument(
     help='Positive target KL for the adaptive_target anchor controller.'
 )
 parser.add_argument(
+    '--frozen-replay-batch-dir',
+    default=None,
+    help=(
+        'Diagnostic-only captured optimizer-batch directory. Applies one '
+        'frozen replay epoch without generating new MCTS targets.')
+)
+parser.add_argument(
     '--mcts-iterations',
     type=int,
     default=0,
@@ -762,6 +769,7 @@ def main():
                policy_anchor_kl_coeff=args.policy_anchor_kl_coeff,
                policy_anchor_kl_mode=args.policy_anchor_kl_mode,
                policy_anchor_kl_target=args.policy_anchor_kl_target,
+               frozen_replay_batch_dir=args.frozen_replay_batch_dir,
                serial_test=args.serial_test,
                no_eval=args.no_eval,
                eval_with_mcts=args.eval_with_mcts,
@@ -834,6 +842,7 @@ def main_inner(*,
                policy_anchor_kl_coeff=0.0,
                policy_anchor_kl_mode='constant',
                policy_anchor_kl_target=None,
+               frozen_replay_batch_dir=None,
                serial_test=None,
                no_eval=None,
                eval_with_mcts=False,
@@ -948,6 +957,11 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend([
                 '--policy-anchor-kl-target',
                 str(policy_anchor_kl_target),
+            ])
+        if frozen_replay_batch_dir is not None:
+            train_flags.extend([
+                '--frozen-replay-batch-dir',
+                str(frozen_replay_batch_dir),
             ])
         if mcts_expansion_size:
             train_flags.extend(['--mcts-expansion-size', str(mcts_expansion_size)])

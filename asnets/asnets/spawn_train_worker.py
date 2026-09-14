@@ -179,6 +179,27 @@ def _compatibility_signature(payload: tuple) -> str:
     return hashlib.sha256(repr(payload).encode("utf-8")).hexdigest()
 
 
+def compatibility_identity_for_problem(
+        spec,
+        init_data: ProblemInitData,
+        aux_dim: int,
+) -> tuple[str, tuple]:
+    """Build the replay identity without running a training trajectory.
+
+    Frozen-replay diagnostics need to instantiate the same grounded network
+    buckets that produced an archived batch schedule, while deliberately
+    skipping target generation.  Keeping the identity construction here makes
+    that path use the exact production replay contract.
+    """
+    payload = _make_compatibility_payload(
+        spec,
+        init_data.prob_meta,
+        obs_dim=init_data.obs_dim,
+        aux_dim=aux_dim,
+    )
+    return _compatibility_signature(payload), payload
+
+
 class DataSource(Enum):
     TRAJECTORY = auto()
     TREE_SAMPLE = auto()
