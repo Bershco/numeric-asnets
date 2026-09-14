@@ -115,3 +115,21 @@ a separate result identity: none of its historical runs used the final
 Phase-B-A-selected checkpoint, so all 20 exact Stage-1 MCTS evaluations were
 required even though some old Stage-2 training lineages may still prove
 reusable.
+
+At 14 September 23:19 IDT, 587/588 checkpoint evaluations were durable. Only
+task `21254779_7` remained running, requesting 4 CPUs and 20 GiB with about
+14 hours left on its 24-hour hard allocation; analysis-only controller
+`21254780` remained dependency-pending. One point is too little to justify an
+early coefficient freeze: the complete curves still require manual review
+before any Stage-2 reuse or retraining decision.
+
+At 23:30 IDT the final point completed and controller `21254780` finalized the
+full 588/588 evidence set. The declared rule selects **anchor 30 for VH-off**
+and **anchor 10 for VH-on**. Manual review found no completeness or parsing
+anomaly. VH-off anchor 30 narrowly exceeds anchor 10 on AUC in both tuning
+seeds; VH-on anchor 10 has the best aggregate AUC, peak and final score,
+although the two individual seeds do not prefer it uniformly over anchor 30.
+The coefficients are therefore frozen under the predeclared selection rule,
+not because of an exact tie or a smallest-coefficient fallback. Local copies
+with remote provenance are `anchor_evidence_final.csv` and
+`proposed_anchor_freeze_final.csv`.

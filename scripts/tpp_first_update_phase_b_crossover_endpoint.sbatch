@@ -8,7 +8,7 @@
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_b_crossover/endpoint_%A_%a.txt
 
 set -euo pipefail
-REPO=${CHECKOUT:-/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context}
+REPO=${CHECKOUT:-/home/hersco/bershco-nu-asnets/tpp-first-update-b-9732f3a5}
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
 ROOT=/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_b_crossover
 PHASE_A=/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_a

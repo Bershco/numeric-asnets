@@ -1,0 +1,15 @@
+value_head,anchor,points,mean_auc,mean_peak,mean_final,remote_evidence
+off,0,42,0.603174603,0.750000000,0.466666667,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv
+off,0.03,42,0.638095238,0.800000000,0.616666667,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv
+off,0.3,42,0.690476190,0.833333333,0.650000000,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv
+off,1,42,0.696031746,0.800000000,0.700000000,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv
+off,3,42,0.765079365,0.850000000,0.800000000,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv
+off,10,42,0.768253968,0.883333333,0.766666667,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv
+off,30,42,0.775396825,0.850000000,0.800000000,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv
+on,0,42,0.680952381,0.783333333,0.716666667,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv
+on,0.03,42,0.657936508,0.750000000,0.583333333,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv
+on,0.3,42,0.737301587,0.833333333,0.716666667,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv
+on,1,42,0.772222222,0.866666667,0.750000000,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv
+on,3,42,0.874603175,0.950000000,0.916666667,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv
+on,10,42,0.903968254,0.966666667,0.933333333,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv
+on,30,42,0.895238095,0.933333333,0.883333333,cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/anchor_evidence.csv

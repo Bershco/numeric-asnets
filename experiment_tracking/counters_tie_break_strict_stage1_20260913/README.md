@@ -43,3 +43,35 @@ logs, pure-policy score, classified count, search successes, classified
 policy-success/action-ID-failure opportunities, gains over policy, and
 unclassified policy-success instances for both rules. Current workload
 provenance is refreshed separately in the advisor-followup workload ledger.
+
+At 14 September 23:19 IDT, seven tasks were terminal and thirteen were still
+running. The same three matched pairs above remained the only complete pairs,
+so the domain-wide treatment estimate and RQ2 table remain frozen. Current
+durable ledgers contain 255 action-ID successes among 467 classified outcomes
+and 253 policy-prior successes among 475 classified outcomes; these unpaired
+lower bounds are operational progress only and are not a treatment comparison.
+
+## Instrumentation limit and follow-up gate
+
+The strict campaign was designed as a full-domain coverage confirmation. It
+used lean worker logs and deliberately omitted per-root `--action-debug` to
+avoid enormous I/O over 1,180 seed-instance evaluations. It was therefore a
+mistake to expect every first-divergence root vector to be recoverable from
+these logs afterward. The separate three-instance pilot did record the root
+vectors and remains the valid mechanism evidence.
+
+After all twenty strict tasks classify, the minimal mechanism repair is to
+rerun only the union of policy-success/action-ID-failure identities with
+`--action-debug` under the exact checkpoint, build and search configuration.
+Within-search `--puct-debug` is optional and should be added only if the root
+vector cannot explain the choice, because it is substantially more verbose.
+No successful instance or full-domain arm needs to be repeated.
+
+A possible future *search-abstention* treatment is policy-relative rather than
+time-relative: accept the MCTS winner only when it leads the applicable policy
+argmax by at least two visits; otherwise follow the policy. A two-visit margin
+cannot be reversed by moving a single simulation. A stricter alternative also
+requires a majority (at least 11 of 20 edge visits), but may discard valid
+multi-action search evidence. Neither threshold is established by the current
+test failures; any candidate must be calibrated and frozen on validation
+traces before a test-set comparison.

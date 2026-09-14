@@ -61,3 +61,11 @@ Smoke `21266623` completed successfully in 5m11s. At the 19:05 IDT
 snapshot, trace task 0 was running and tasks 1-3 were resource-pending. This
 is normal capacity waiting, not a scientific hold. No mechanism conclusion is
 drawn until the four traces are parsed against their exact source-policy plans.
+
+At 14 September 23:19 IDT, tasks 0 and 1 were running at 4h34m and 3h59m;
+tasks 2 and 3 were array-limit pending and will take their places. The active
+footprint is 4 CPUs and 240 GiB. The first two outcomes are due no later than
+approximately 02:20 IDT under their seven-hour allocations. If the second wave
+starts immediately, all four allocations end by approximately 09:20 IDT;
+queue handoff delay can move that bound later. No terminal trace or mechanism
+conclusion was available at the snapshot.

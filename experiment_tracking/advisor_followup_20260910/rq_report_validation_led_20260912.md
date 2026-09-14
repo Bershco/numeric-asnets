@@ -2,9 +2,9 @@
 
 This is the primary thesis view. Terminal-led campaigns are excluded. Fixed-search 30-minute and two-hour figures are deterministic cutoffs of the same six-hour runs, not separate reruns. Block Grouping and Counters use narrow fixed search (5 retained children, 20 simulations); Drone, FO Counters and Rover use normal fixed search (20 children, 70 simulations). Counts are solved test instances; Counters has 59 instances and the other domains have 20.
 
-Effects are seed-paired mean differences; confidence intervals are paired t-intervals; raw p-values are two-sided exact sign-flip tests; Holm correction is applied separately within each RQ × stage × cutoff × estimand family. All five-domain fixed-search families are now complete. PW uses separate two-domain families and is never pooled with fixed search. **Bold entries are Holm-significant at .05; raw-only significance is not bolded.**
+Effects are seed-paired mean differences; confidence intervals are paired t-intervals; raw p-values are two-sided exact sign-flip tests; Holm correction is applied separately within each RQ × stage × cutoff × estimand family. Stage-1 fixed-search families now include six domains with final MPrime results; Stage 2 contains the five completed validation-led domains. PW uses separate families and is never pooled with fixed search. **Bold entries are Holm-significant at .05; raw-only significance is not bolded.**
 
-MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator, but exactly 16 existing Stage-2 networks were trained from superseded Stage-1 selections. Four more are only reuse candidates until the frozen coefficient, checkpoint hash, code and complete configuration are matched. A clean result therefore requires 16-20 new validation-led Stage-2 lineages. This is separate from the Stage-1 fixed-MCTS audit, which found 0/20 reusable search evaluations.
+MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator and the complete anchor rescore froze coefficient 30 for VH-off and 10 for VH-on. All ten old VH-off lineages now have the wrong coefficient; eight VH-on lineages have a superseded Stage-1 source. Two VH-on lineages remain reuse candidates until checkpoint hash, code and full configuration are matched. A clean result therefore requires 18-20 new validation-led Stage-2 lineages. This is separate from the Stage-1 fixed-MCTS audit, which found 0/20 reusable search evaluations.
 
 ## RQ1 — Does Stage-2 training improve policy coverage without a value head?
 
@@ -28,11 +28,12 @@ All fixed-search rows below use the historical final action-index tie-break. The
 
 | Stage | Domain | Search | Policy | 30m: MCTS; Δ [95% CI]; raw/Holm p | 2h | 6h |
 |---|---|---|---|---|---|---|
-| Stage 1 | Block Grouping | Narrow 5/20 | 16.3 | **11.6; -4.7 [-5.53, -3.87]; p=0.002/0.0098** | 14.8; -1.5 [-2.68, -0.32]; p=0.0352/0.125 | 15.4; -0.9 [-1.88, 0.08]; p=0.1094/0.2227 |
-| Stage 1 | Drone | Normal 20/70 | 5.9 | 6.9; +1 [0.05, 1.95]; p=0.0742/0.1875 | 6.9; +1 [0.05, 1.95]; p=0.0742/0.1484 | 6.9; +1 [0.05, 1.95]; p=0.0742/0.2227 |
-| Stage 1 | FO Counters | Normal 20/70 | 4.2 | **7.5; +3.3 [2.04, 4.56]; p=0.0039/0.0156** | **7.8; +3.6 [2.2, 5]; p=0.0039/0.0195** | **7.8; +3.6 [2.2, 5]; p=0.0039/0.0195** |
-| Stage 1 | Rover | Normal 20/70 | 4 | 4.8; +0.8 [0.06, 1.54]; p=0.0625/0.1875 | 5; +1 [0.25, 1.75]; p=0.0312/0.125 | 5; +1 [0.25, 1.75]; p=0.0312/0.125 |
-| Stage 1 | Counters | Narrow 5/20 | 32.5 | 24.9; -7.6 [-18.52, 3.32]; p=0.2031/0.2031 | 25.6; -6.9 [-17.95, 4.15]; p=0.25/0.25 | 25.7; -6.8 [-17.73, 4.13]; p=0.25/0.25 |
+| Stage 1 | Block Grouping | Narrow 5/20 | 16.3 | **11.6; -4.7 [-5.53, -3.87]; p=0.002/0.0117** | 14.8; -1.5 [-2.68, -0.32]; p=0.0352/0.1562 | 15.4; -0.9 [-1.88, 0.08]; p=0.1094/0.3281 |
+| Stage 1 | Drone | Normal 20/70 | 5.9 | 6.9; +1 [0.05, 1.95]; p=0.0742/0.1875 | 6.9; +1 [0.05, 1.95]; p=0.0742/0.2227 | 6.9; +1 [0.05, 1.95]; p=0.0742/0.2969 |
+| Stage 1 | FO Counters | Normal 20/70 | 4.2 | **7.5; +3.3 [2.04, 4.56]; p=0.0039/0.0195** | **7.8; +3.6 [2.2, 5]; p=0.0039/0.0234** | **7.8; +3.6 [2.2, 5]; p=0.0039/0.0234** |
+| Stage 1 | Rover | Normal 20/70 | 4 | 4.8; +0.8 [0.06, 1.54]; p=0.0625/0.1875 | 5; +1 [0.25, 1.75]; p=0.0312/0.1562 | 5; +1 [0.25, 1.75]; p=0.0312/0.1562 |
+| Stage 1 | Counters | Narrow 5/20 | 32.5 | 24.9; -7.6 [-18.52, 3.32]; p=0.2031/0.2031 | 25.6; -6.9 [-17.95, 4.15]; p=0.25/0.25 | 25.7; -6.8 [-17.73, 4.13]; p=0.25/0.5 |
+| Stage 1 | MPrime | Normal 20/70 | 16.3 | **13; -3.3 [-5.18, -1.42]; p=0.0098/0.0391** | 14.7; -1.6 [-3.48, 0.28]; p=0.1133/0.2266 | 15.7; -0.6 [-2, 0.8]; p=0.4453/0.5 |
 | Stage 2 | Block Grouping | Narrow 5/20 | 16 | **11.4; -4.6 [-5.37, -3.83]; p=0.002/0.0098** | 15; -1 [-2.01, 0.01]; p=0.0938/0.375 | 15.7; -0.3 [-0.89, 0.29]; p=0.5/1 |
 | Stage 2 | Drone | Normal 20/70 | 6.7 | 7.5; +0.8 [-0.58, 2.18]; p=0.3594/0.7188 | 7.7; +1 [-0.43, 2.43]; p=0.1953/0.3906 | 7.7; +1 [-0.43, 2.43]; p=0.1953/0.5859 |
 | Stage 2 | FO Counters | Normal 20/70 | 2.9 | **6.1; +3.2 [1.74, 4.66]; p=0.002/0.0098** | **6.1; +3.2 [1.74, 4.66]; p=0.002/0.0098** | **6.1; +3.2 [1.74, 4.66]; p=0.002/0.0098** |
@@ -100,11 +101,12 @@ As in RQ2, these fixed-search values retain the historical action-index tie-brea
 
 | Stage | Domain | Baseline | 30m: mean; Δ [95% CI]; raw/Holm p | 2h | 6h |
 |---|---|---|---|---|---|
-| Stage 1 | Block Grouping | 15.9 | **12; -3.9 [-4.94, -2.86]; p=0.002/0.0098** | **14; -1.9 [-2.94, -0.86]; p=0.0098/0.0293** | 16.2; +0.3 [-0.29, 0.89]; p=0.4531/0.6562 |
-| Stage 1 | Drone | 5.1 | **10; +4.9 [3.07, 6.73]; p=0.002/0.0098** | **10.4; +5.3 [3.42, 7.18]; p=0.002/0.0098** | **10.4; +5.3 [3.42, 7.18]; p=0.002/0.0098** |
-| Stage 1 | FO Counters | 3.7 | **5.3; +1.6 [0.83, 2.37]; p=0.0039/0.0117** | **5.7; +2 [1.05, 2.95]; p=0.0039/0.0156** | **5.7; +2 [1.05, 2.95]; p=0.0039/0.0156** |
-| Stage 1 | Rover | 3.8 | 4.4; +0.6 [0, 1.2]; p=0.125/0.25 | 4.4; +0.6 [0, 1.2]; p=0.125/0.25 | 4.4; +0.6 [0, 1.2]; p=0.125/0.375 |
-| Stage 1 | Counters | 18.6 | 20.3; +1.7 [-8.94, 12.34]; p=0.7871/0.7871 | 22.1; +3.5 [-5.56, 12.56]; p=0.4531/0.4531 | 22.5; +3.9 [-4.33, 12.13]; p=0.3281/0.6562 |
+| Stage 1 | Block Grouping | 15.9 | **12; -3.9 [-4.94, -2.86]; p=0.002/0.0117** | **14; -1.9 [-2.94, -0.86]; p=0.0098/0.0391** | 16.2; +0.3 [-0.29, 0.89]; p=0.4531/0.9844 |
+| Stage 1 | Drone | 5.1 | **10; +4.9 [3.07, 6.73]; p=0.002/0.0117** | **10.4; +5.3 [3.42, 7.18]; p=0.002/0.0117** | **10.4; +5.3 [3.42, 7.18]; p=0.002/0.0117** |
+| Stage 1 | FO Counters | 3.7 | **5.3; +1.6 [0.83, 2.37]; p=0.0039/0.0156** | **5.7; +2 [1.05, 2.95]; p=0.0039/0.0195** | **5.7; +2 [1.05, 2.95]; p=0.0039/0.0195** |
+| Stage 1 | Rover | 3.8 | 4.4; +0.6 [0, 1.2]; p=0.125/0.25 | 4.4; +0.6 [0, 1.2]; p=0.125/0.375 | 4.4; +0.6 [0, 1.2]; p=0.125/0.5 |
+| Stage 1 | Counters | 18.6 | 20.3; +1.7 [-8.94, 12.34]; p=0.7871/0.7871 | 22.1; +3.5 [-5.56, 12.56]; p=0.4531/0.9062 | 22.5; +3.9 [-4.33, 12.13]; p=0.3281/0.9844 |
+| Stage 1 | MPrime | 15.7 | 13.3; -2.4 [-4.16, -0.64]; p=0.0234/0.0703 | 15.1; -0.6 [-2.33, 1.13]; p=0.5039/0.9062 | 16; +0.3 [-1.7, 2.3]; p=0.8281/0.9844 |
 | Stage 2 | Block Grouping | 12.8 | **10.1; -2.7 [-3.38, -2.02]; p=0.002/0.0098** | **10.6; -2.2 [-3.26, -1.14]; p=0.0078/0.0234** | 12.6; -0.2 [-1.08, 0.68]; p=0.8125/0.8125 |
 | Stage 2 | Drone | 5 | **10.9; +5.9 [4.23, 7.57]; p=0.002/0.0098** | **11.2; +6.2 [4.33, 8.07]; p=0.002/0.0098** | **11.2; +6.2 [4.33, 8.07]; p=0.002/0.0098** |
 | Stage 2 | FO Counters | 3.1 | **5.2; +2.1 [1.12, 3.08]; p=0.0039/0.0117** | **5.4; +2.3 [1.23, 3.37]; p=0.0039/0.0156** | **5.4; +2.3 [1.23, 3.37]; p=0.0039/0.0156** |
@@ -115,11 +117,12 @@ As in RQ2, these fixed-search values retain the historical action-index tie-brea
 
 | Stage | Domain | Baseline | 30m: mean; Δ [95% CI]; raw/Holm p | 2h | 6h |
 |---|---|---|---|---|---|
-| Stage 1 | Block Grouping | 16.3 | **12; -4.3 [-5.61, -2.99]; p=0.002/0.0098** | **14; -2.3 [-3.52, -1.08]; p=0.0039/0.0195** | 16.2; -0.1 [-1.38, 1.18]; p=1/1 |
-| Stage 1 | Drone | 5.9 | 10; +4.1 [0.25, 7.95]; p=0.0469/0.1406 | 10.4; +4.5 [0.52, 8.48]; p=0.0391/0.1562 | 10.4; +4.5 [0.52, 8.48]; p=0.0391/0.1953 |
-| Stage 1 | FO Counters | 4.2 | 5.3; +1.1 [-0.09, 2.29]; p=0.0938/0.1875 | 5.7; +1.5 [-0.05, 3.05]; p=0.0781/0.2109 | 5.7; +1.5 [-0.05, 3.05]; p=0.0781/0.2812 |
-| Stage 1 | Rover | 4 | 4.4; +0.4 [-0.1, 0.9]; p=0.25/0.25 | 4.4; +0.4 [-0.1, 0.9]; p=0.25/0.25 | 4.4; +0.4 [-0.1, 0.9]; p=0.25/0.5 |
-| Stage 1 | Counters | 32.5 | 20.3; -12.2 [-23.77, -0.63]; p=0.0332/0.1328 | 22.1; -10.4 [-21.77, 0.97]; p=0.0703/0.2109 | 22.5; -10 [-21.01, 1.01]; p=0.0703/0.2812 |
+| Stage 1 | Block Grouping | 16.3 | **12; -4.3 [-5.61, -2.99]; p=0.002/0.0117** | **14; -2.3 [-3.52, -1.08]; p=0.0039/0.0234** | 16.2; -0.1 [-1.38, 1.18]; p=1/1 |
+| Stage 1 | Drone | 5.9 | 10; +4.1 [0.25, 7.95]; p=0.0469/0.1465 | 10.4; +4.5 [0.52, 8.48]; p=0.0391/0.1953 | 10.4; +4.5 [0.52, 8.48]; p=0.0391/0.2344 |
+| Stage 1 | FO Counters | 4.2 | 5.3; +1.1 [-0.09, 2.29]; p=0.0938/0.1875 | 5.7; +1.5 [-0.05, 3.05]; p=0.0781/0.2812 | 5.7; +1.5 [-0.05, 3.05]; p=0.0781/0.3516 |
+| Stage 1 | Rover | 4 | 4.4; +0.4 [-0.1, 0.9]; p=0.25/0.25 | 4.4; +0.4 [-0.1, 0.9]; p=0.25/0.4141 | 4.4; +0.4 [-0.1, 0.9]; p=0.25/0.75 |
+| Stage 1 | Counters | 32.5 | 20.3; -12.2 [-23.77, -0.63]; p=0.0332/0.1465 | 22.1; -10.4 [-21.77, 0.97]; p=0.0703/0.2812 | 22.5; -10 [-21.01, 1.01]; p=0.0703/0.3516 |
+| Stage 1 | MPrime | 16.3 | 13.3; -3 [-5.29, -0.71]; p=0.0293/0.1465 | 15.1; -1.2 [-2.98, 0.58]; p=0.207/0.4141 | 16; -0.3 [-1.81, 1.21]; p=0.7578/1 |
 | Stage 2 | Block Grouping | 16 | **10.1; -5.9 [-6.94, -4.86]; p=0.002/0.0098** | **10.6; -5.4 [-6.8, -4]; p=0.002/0.0098** | **12.6; -3.4 [-4.8, -2]; p=0.0039/0.0195** |
 | Stage 2 | Drone | 6.7 | 10.9; +4.2 [0.8, 7.6]; p=0.0312/0.0938 | 11.2; +4.5 [1.01, 7.99]; p=0.0293/0.0879 | 11.2; +4.5 [1.01, 7.99]; p=0.0293/0.0879 |
 | Stage 2 | FO Counters | 2.9 | 5.2; +2.3 [0.58, 4.02]; p=0.0234/0.0938 | 5.4; +2.5 [0.77, 4.23]; p=0.0156/0.0625 | 5.4; +2.5 [0.77, 4.23]; p=0.0156/0.0625 |
@@ -130,11 +133,12 @@ As in RQ2, these fixed-search values retain the historical action-index tie-brea
 
 | Stage | Domain | Baseline | 30m: mean; Δ [95% CI]; raw/Holm p | 2h | 6h |
 |---|---|---|---|---|---|
-| Stage 1 | Block Grouping | -4.7 | -3.9; +0.8 [-0.26, 1.86]; p=0.1875/0.4688 | -1.9; -0.4 [-1.67, 0.87]; p=0.6289/1 | 0.3; +1.2 [0.14, 2.26]; p=0.0625/0.2031 |
-| Stage 1 | Drone | 1 | **4.9; +3.9 [1.86, 5.94]; p=0.0078/0.0391** | **5.3; +4.3 [2.19, 6.41]; p=0.0078/0.0391** | **5.3; +4.3 [2.19, 6.41]; p=0.0078/0.0391** |
-| Stage 1 | FO Counters | 3.3 | 1.6; -1.7 [-3.09, -0.31]; p=0.0352/0.1406 | 2; -1.6 [-3.04, -0.16]; p=0.0508/0.2031 | 2; -1.6 [-3.04, -0.16]; p=0.0508/0.2031 |
-| Stage 1 | Rover | 0.8 | 0.6; -0.2 [-1.08, 0.68]; p=0.8438/0.8438 | 0.6; -0.4 [-1.37, 0.57]; p=0.5156/1 | 0.6; -0.4 [-1.37, 0.57]; p=0.5156/0.5156 |
-| Stage 1 | Counters | -7.6 | 1.7; +9.3 [-4.46, 23.06]; p=0.1562/0.4688 | 3.5; +10.4 [-4.34, 25.14]; p=0.1484/0.4453 | 3.9; +10.7 [-3.3, 24.7]; p=0.1289/0.2578 |
+| Stage 1 | Block Grouping | -4.7 | -3.9; +0.8 [-0.26, 1.86]; p=0.1875/0.625 | -1.9; -0.4 [-1.67, 0.87]; p=0.6289/1 | 0.3; +1.2 [0.14, 2.26]; p=0.0625/0.2539 |
+| Stage 1 | Drone | 1 | **4.9; +3.9 [1.86, 5.94]; p=0.0078/0.0469** | **5.3; +4.3 [2.19, 6.41]; p=0.0078/0.0469** | **5.3; +4.3 [2.19, 6.41]; p=0.0078/0.0469** |
+| Stage 1 | FO Counters | 3.3 | 1.6; -1.7 [-3.09, -0.31]; p=0.0352/0.1758 | 2; -1.6 [-3.04, -0.16]; p=0.0508/0.2539 | 2; -1.6 [-3.04, -0.16]; p=0.0508/0.2539 |
+| Stage 1 | Rover | 0.8 | 0.6; -0.2 [-1.08, 0.68]; p=0.8438/0.9219 | 0.6; -0.4 [-1.37, 0.57]; p=0.5156/1 | 0.6; -0.4 [-1.37, 0.57]; p=0.5156/1 |
+| Stage 1 | Counters | -7.6 | 1.7; +9.3 [-4.46, 23.06]; p=0.1562/0.625 | 3.5; +10.4 [-4.34, 25.14]; p=0.1484/0.5938 | 3.9; +10.7 [-3.3, 24.7]; p=0.1289/0.3867 |
+| Stage 1 | MPrime | -3.3 | -2.4; +0.9 [-1.52, 3.32]; p=0.4609/0.9219 | -0.6; +1 [-1.7, 3.7]; p=0.5059/1 | 0.3; +0.9 [-1.91, 3.71]; p=0.6113/1 |
 | Stage 2 | Block Grouping | -4.6 | -2.7; +1.9 [0.76, 3.04]; p=0.0156/0.0625 | -2.2; -1.2 [-2.81, 0.41]; p=0.1562/0.625 | -0.2; +0.1 [-0.82, 1.02]; p=1/1 |
 | Stage 2 | Drone | 0.8 | **5.9; +5.1 [3.3, 6.9]; p=0.002/0.0098** | **6.2; +5.2 [3.24, 7.16]; p=0.002/0.0098** | **6.2; +5.2 [3.24, 7.16]; p=0.002/0.0098** |
 | Stage 2 | FO Counters | 3.2 | 2.1; -1.1 [-2.7, 0.5]; p=0.1953/0.5859 | 2.3; -0.9 [-2.31, 0.51]; p=0.2344/0.6445 | 2.3; -0.9 [-2.31, 0.51]; p=0.2344/0.7031 |
@@ -166,10 +170,12 @@ As in RQ2, these fixed-search values retain the historical action-index tie-brea
 
 ## Results still required
 
-1. **MPrime anchor:** 469/588 checkpoint validations are durable. Six recovery tasks are running; the original attempts have left the queue. Recheck `21233927` is dependency-pending and submits only still-missing identities before an analysis-only finalizer. Stage-2 training remains gated on complete curves and manual coefficient review. Sixteen old lineages definitely require retraining; four remain exact-identity reuse candidates.
-2. **Counters tie-break:** four strict-confirmation tasks are terminal and 16 are running. The two completed matched seed pairs are exact ties: seed `1073581256` scores 59/59 under both rules, and seed `2011206605` scores 20/59 under both rules. This is neutral interim evidence, not a ten-seed conclusion. The targeted pilot remains action-ID 0/3, Q 0/3 and policy-prior 3/3 by two hours, all VAL-valid. Its VH-on 0/3 arm is not a positive control because the exact VH-on policy solved none of those targets.
+1. **MPrime anchor:** complete at 588/588. The declared rule and manual review freeze anchor 30 for VH-off and 10 for VH-on. This makes all ten old VH-off lineages non-reusable and leaves only two VH-on exact-identity reuse candidates; 18-20 new Stage-2 lineages are required after the final hash/configuration audit.
+2. **Counters tie-break:** seven strict-confirmation tasks are terminal and 13 are running. Three complete matched seed pairs are exact ties: seed `1073581256` scores 59/59 under both rules, seed `1239739722` scores 17/59 under both, and seed `2011206605` scores 20/59 under both. None contains a classified policy-success/action-ID-failure opportunity, so this is neutral interim evidence rather than evidence against the rescue mechanism. The targeted pilot remains action-ID 0/3, Q 0/3 and policy-prior 3/3 by two hours, all VAL-valid. Its VH-on 0/3 arm is not a positive control because the exact VH-on policy solved none of those targets.
 3. **Block Grouping tie-break transfer:** both same-build four-target arms completed 0/4. Every outcome was an ordinary 10,000-action failure, not a timeout. Policy-prior tie-breaking therefore did not transfer to this selected seed, and the fixed-search branch will not be expanded from this negative screen.
-4. **MPrime Stage-1 fixed search:** all 20 canonical evaluations are running as arrays `21237328`/`21237329`. Current durable successes are lower bounds of at least 7.2/20 VH-off and 7.7/20 VH-on; no seed is terminal, so no CI, cutoff comparison or RQ conclusion is yet valid.
-5. **MPrime Stage-1 PW:** the matched four-task PW70 screen `21240256[0-3]` is running over two seeds and both VH modes. It uses the exact fixed-arm checkpoints and configuration, changing only to PW70 (`Kmin=3`, `c=.6`, `alpha=.5`). No scientific score was available at the latest snapshot. Stage-2 fixed/PW evaluation still requires corrected Stage-2 endpoints.
+4. **MPrime Stage-1 fixed search:** all 20 canonical evaluations are complete and now extend RQ2/RQ4. VH-off scores are 13.0 / 14.7 / 15.7 at 30m / 2h / 6h versus policy 16.3; VH-on scores are 13.3 / 15.1 / 16.0 versus policy 15.7.
+5. **MPrime Stage-1 PW70:** the two-seed screen is complete and the other sixteen identities were submitted without duplicating those four screen cells. Fourteen extension tasks are terminal and exactly two are running: VH-off seed 1073581256 and VH-on seed 1239739722. Conservative ten-seed lower bounds are 15.7 / 17.6 / 17.7 VH-off and 14.5 / 16.8 / 17.4 VH-on. Final CIs, exact tests and RQ admission wait for all twenty identities to reconcile.
+6. **Block Grouping PW70 trace:** two of four logging-only tasks are running and two are array-limit pending. They record complete root priors, visits, Q/U values and elapsed time on four exact policy-success/historical-PW-timeout targets. No mechanism conclusion is available before the traces terminate.
+7. **TPP first-update cross-over:** corrected smoke `21281126` passed and both one-epoch training arms completed. The stable-checkpoint x bad-replay endpoint is 20/20; the reciprocal bad-checkpoint x stable-replay endpoint remains live. Catastrophic replay alone is therefore not sufficient to damage the stable checkpoint, but final attribution still waits for the reciprocal endpoint. This diagnostic is outside the primary RQ family.
 
 Canonical evidence files: [`rq_primary_validation_led.csv`](rq_primary_validation_led.csv), [`rq2_raw_means_validation_led.csv`](rq2_raw_means_validation_led.csv), [`rq3_raw_means_validation_led.csv`](rq3_raw_means_validation_led.csv), [`rq4_raw_means_validation_led.csv`](rq4_raw_means_validation_led.csv), [`rq2_pw70_branch_latest.csv`](rq2_pw70_branch_latest.csv), and [`rq4_pw70_branch_latest.csv`](rq4_pw70_branch_latest.csv). Their row-level job/log routes are indexed in [`../result_csv_provenance_index_latest.csv`](../result_csv_provenance_index_latest.csv).

@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TRACK = ROOT / "experiment_tracking"
 OUT = TRACK / "result_csv_provenance_index_latest.csv"
-PROVENANCE_TOKENS = ("job", "log", "path", "checkpoint", "manifest", "source", "provenance", "ledger")
+PROVENANCE_TOKENS = ("job", "log", "path", "checkpoint", "manifest", "source", "provenance", "ledger", "evidence")
 RESULT_TOKENS = ("score", "success", "coverage", "effect", "mean", "p_value", "raw_p", "holm_p", "runtime", "regret")
 
 

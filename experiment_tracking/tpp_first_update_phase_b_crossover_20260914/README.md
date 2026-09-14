@@ -29,6 +29,16 @@ It deliberately preserves the legacy asymmetric KL forwards (current policy
 in training mode; frozen anchor in inference mode). Changing that behavior in
 Phase B would confound replay/checkpoint attribution with a new treatment.
 
+This asymmetry is not automatically a software bug: it can be interpreted as
+regularizing a dropout-noisy student toward a deterministic teacher. It does,
+however, mean that the measured KL penalizes dropout-induced disagreement as
+well as parameter drift. Simply enabling independent dropout in the frozen
+anchor is not the preferred control because it would add a second independent
+noise source. If a treatment is justified after the crossover, the clean
+primary comparison is deterministic current and frozen forwards for the KL
+term while retaining dropout for the replay/task loss; a shared-mask paired
+dropout KL is a secondary alternative.
+
 ## Interpretation frozen before outcomes
 
 | Off-diagonal result | Primary interpretation |
@@ -139,8 +149,30 @@ scientific training; dependents `21266582` and `21266583` cancelled without
 work.
 
 Commit `a6c773f2` restricts those mutable fields to `WorkerOutput`, preserving
-frozen initialization records unchanged. That exact revision is deployed in
-the isolated checkout. Replacement smoke `21267359` gates the two one-epoch
-crossover tasks `21267360[0-1]`, which gate endpoint tasks
-`21267361[0-1]`. The complete attempt history is retained in
+frozen initialization records unchanged. Smoke `21267359` nevertheless failed
+before training because it targeted the shared safe-context checkout rather
+than the documented detached cross-over checkout, so the frozen-replay module
+was absent. The first repair, smoke `21280249`, selected the same wrong
+checkout and inverted the compile path; it verified all 120 batches and then
+failed before training on the missing `frozen_replay.py`. Both dependency
+chains cancelled without scientific work.
+
+The execution scripts now default to the actual isolated checkout
+`/home/hersco/bershco-nu-asnets/tpp-first-update-b-9732f3a5`, restore the
+correct nested package paths, and carry the reviewed `a6c773f2`
+`spawn_train_worker.py` fix inside that checkout. Replacement smoke
+`21280647` then verified the frozen data but exposed one final static-path
+error: the nested `asnets/scripts` compile paths were written as top-level
+`scripts`. It also failed before training. All six compiled paths now match
+files verified in the detached checkout. Replacement smoke `21281126` gates
+the two one-epoch cross-over tasks `21281127[0-1]`, which gate endpoint tasks
+`21281128[0-1]`. The complete attempt history is retained in
 `submissions.tsv`. Phase C remains held and unsubmitted.
+
+Smoke `21281126` passed and released both scientific crossover tasks. Both
+one-epoch training arms completed. At the 15 September 00:09 IDT verification,
+the stable-checkpoint x bad-replay endpoint had completed at 20/20, while the
+bad-checkpoint x stable-replay endpoint was still running. The completed arm
+shows that the catastrophic replay schedule is not by itself sufficient to
+damage the stable checkpoint. Final attribution still requires the reciprocal
+endpoint.

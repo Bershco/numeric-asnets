@@ -1,0 +1,3 @@
+value_head,anchor,points,mean_auc,mean_peak,mean_final,status,manual_review,remote_evidence
+off,30,42,0.775396825,0.850000000,0.800000000,frozen,"Both tuning seeds slightly favor anchor30 over anchor10 on AUC; no completeness or parsing anomaly",cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/proposed_anchor_freeze.csv
+on,10,42,0.903968254,0.966666667,0.933333333,frozen,"Anchor10 wins aggregate AUC and has the best aggregate peak/final; seed preferences are not uniform but no lower anchor is competitive",cluster://uni-cluster/home/hersco/training_new_domains/2026-09-12/mprime_anchor_phase_b_a/proposed_anchor_freeze.csv

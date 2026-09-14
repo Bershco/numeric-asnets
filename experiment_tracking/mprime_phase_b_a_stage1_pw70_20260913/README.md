@@ -134,3 +134,22 @@ coverage at 30 minutes / 2 hours / 6 hours, and PW70 coverage at the same three
 cutoffs. It must include paired PW-minus-policy and PW-minus-fixed confidence
 intervals and exact raw/Holm-adjusted p-values; a PW improvement is not claimed
 from policy comparison alone.
+
+At 14 September 23:21 IDT, fourteen of the sixteen confirmation-extension
+tasks had left the queue and two were still running: VH-off seed `1073581256`
+and replacement VH-on seed `1239739722`. Together with the four completed
+screen identities, every ten-seed cell has durable evidence. Conservative
+means, counting every not-yet-classified instance as failure, are:
+
+| VH | Policy | Fixed 30m / 2h / 6h | PW70 lower bound 30m / 2h / 6h |
+|---|---:|---:|---:|
+| off | 16.3 | 13.0 / 14.7 / 15.7 | >=15.7 / >=17.6 / >=17.7 |
+| on | 15.7 | 13.3 / 15.1 / 16.0 | >=14.5 / >=16.8 / >=17.4 |
+
+PW70 therefore already exceeds fixed search at every cutoff and exceeds policy
+by two hours in both modes. It does not yet exceed policy at 30 minutes. The
+remaining durable ledgers contain four and thirteen unclassified instances;
+with three workers and a six-hour per-instance cap, their evidence-based
+remaining workloads are at most roughly 12 and 30 allocation-hours,
+respectively. Final confidence intervals and exact tests remain gated on full
+terminal reconciliation.

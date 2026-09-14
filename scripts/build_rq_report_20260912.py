@@ -22,8 +22,10 @@ DOMAIN_LABEL = {
     "fo_counters": "FO Counters",
     "rover": "Rover",
     "counters": "Counters",
+    "mprime": "MPrime",
 }
 DOMAIN_ORDER = list(DOMAIN_LABEL)
+POLICY_DOMAIN_ORDER = [domain for domain in DOMAIN_ORDER if domain != "mprime"]
 CUTOFF_ORDER = {"30m": 0, "2h": 1, "6h": 2, "endpoint": 0}
 
 
@@ -83,7 +85,7 @@ rq3d_map = {r["domain"]: r for r in rq3_direct}
 rq3i_map = {r["domain"]: r for r in rq3_inter}
 
 rq1_rows = []
-for domain in DOMAIN_ORDER:
+for domain in POLICY_DOMAIN_ORDER:
     r = rq1_map[domain]
     rq1_rows.append([
         DOMAIN_LABEL[domain], number(r["baseline_mean"]), number(r["comparison_mean"]),
@@ -112,7 +114,7 @@ for stage in ("Stage 1", "Stage 2"):
         rq2_rows.append(row)
 
 rq3_rows = []
-for domain in DOMAIN_ORDER:
+for domain in POLICY_DOMAIN_ORDER:
     d, i = rq3d_map[domain], rq3i_map[domain]
     rq3_rows.append([
         DOMAIN_LABEL[domain], f"{number(d['baseline_mean'])} → {number(d['comparison_mean'])}",
@@ -194,9 +196,9 @@ text = f"""# Validation-led RQ report — 14 September 2026
 
 This is the primary thesis view. Terminal-led campaigns are excluded. Fixed-search 30-minute and two-hour figures are deterministic cutoffs of the same six-hour runs, not separate reruns. Block Grouping and Counters use narrow fixed search (5 retained children, 20 simulations); Drone, FO Counters and Rover use normal fixed search (20 children, 70 simulations). Counts are solved test instances; Counters has 59 instances and the other domains have 20.
 
-Effects are seed-paired mean differences; confidence intervals are paired t-intervals; raw p-values are two-sided exact sign-flip tests; Holm correction is applied separately within each RQ × stage × cutoff × estimand family. All five-domain fixed-search families are now complete. PW uses separate two-domain families and is never pooled with fixed search. **Bold entries are Holm-significant at .05; raw-only significance is not bolded.**
+Effects are seed-paired mean differences; confidence intervals are paired t-intervals; raw p-values are two-sided exact sign-flip tests; Holm correction is applied separately within each RQ × stage × cutoff × estimand family. Stage-1 fixed-search families now include six domains with final MPrime results; Stage 2 contains the five completed validation-led domains. PW uses separate families and is never pooled with fixed search. **Bold entries are Holm-significant at .05; raw-only significance is not bolded.**
 
-MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator, but exactly 16 existing Stage-2 networks were trained from superseded Stage-1 selections. Four more are only reuse candidates until the frozen coefficient, checkpoint hash, code and complete configuration are matched. A clean result therefore requires 16-20 new validation-led Stage-2 lineages. This is separate from the Stage-1 fixed-MCTS audit, which found 0/20 reusable search evaluations.
+MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator and the complete anchor rescore froze coefficient 30 for VH-off and 10 for VH-on. All ten old VH-off lineages now have the wrong coefficient; eight VH-on lineages have a superseded Stage-1 source. Two VH-on lineages remain reuse candidates until checkpoint hash, code and full configuration are matched. A clean result therefore requires 18-20 new validation-led Stage-2 lineages. This is separate from the Stage-1 fixed-MCTS audit, which found 0/20 reusable search evaluations.
 
 ## RQ1 — Does Stage-2 training improve policy coverage without a value head?
 
@@ -292,11 +294,13 @@ As in RQ2, these fixed-search values retain the historical action-index tie-brea
 
 ## Results still required
 
-1. **MPrime anchor:** 469/588 checkpoint validations are durable. Six recovery tasks are running; the original attempts have left the queue. Recheck `21233927` is dependency-pending and submits only still-missing identities before an analysis-only finalizer. Stage-2 training remains gated on complete curves and manual coefficient review. Sixteen old lineages definitely require retraining; four remain exact-identity reuse candidates.
-2. **Counters tie-break:** four strict-confirmation tasks are terminal and 16 are running. The two completed matched seed pairs are exact ties: seed `1073581256` scores 59/59 under both rules, and seed `2011206605` scores 20/59 under both rules. This is neutral interim evidence, not a ten-seed conclusion. The targeted pilot remains action-ID 0/3, Q 0/3 and policy-prior 3/3 by two hours, all VAL-valid. Its VH-on 0/3 arm is not a positive control because the exact VH-on policy solved none of those targets.
+1. **MPrime anchor:** complete at 588/588. The declared rule and manual review freeze anchor 30 for VH-off and 10 for VH-on. This makes all ten old VH-off lineages non-reusable and leaves only two VH-on exact-identity reuse candidates; 18-20 new Stage-2 lineages are required after the final hash/configuration audit.
+2. **Counters tie-break:** seven strict-confirmation tasks are terminal and 13 are running. Three complete matched seed pairs are exact ties: seed `1073581256` scores 59/59 under both rules, seed `1239739722` scores 17/59 under both, and seed `2011206605` scores 20/59 under both. None contains a classified policy-success/action-ID-failure opportunity, so this is neutral interim evidence rather than evidence against the rescue mechanism. The targeted pilot remains action-ID 0/3, Q 0/3 and policy-prior 3/3 by two hours, all VAL-valid. Its VH-on 0/3 arm is not a positive control because the exact VH-on policy solved none of those targets.
 3. **Block Grouping tie-break transfer:** both same-build four-target arms completed 0/4. Every outcome was an ordinary 10,000-action failure, not a timeout. Policy-prior tie-breaking therefore did not transfer to this selected seed, and the fixed-search branch will not be expanded from this negative screen.
-4. **MPrime Stage-1 fixed search:** all 20 canonical evaluations are running as arrays `21237328`/`21237329`. Current durable successes are lower bounds of at least 7.2/20 VH-off and 7.7/20 VH-on; no seed is terminal, so no CI, cutoff comparison or RQ conclusion is yet valid.
-5. **MPrime Stage-1 PW:** the matched four-task PW70 screen `21240256[0-3]` is running over two seeds and both VH modes. It uses the exact fixed-arm checkpoints and configuration, changing only to PW70 (`Kmin=3`, `c=.6`, `alpha=.5`). No scientific score was available at the latest snapshot. Stage-2 fixed/PW evaluation still requires corrected Stage-2 endpoints.
+4. **MPrime Stage-1 fixed search:** all 20 canonical evaluations are complete and now extend RQ2/RQ4. VH-off scores are 13.0 / 14.7 / 15.7 at 30m / 2h / 6h versus policy 16.3; VH-on scores are 13.3 / 15.1 / 16.0 versus policy 15.7.
+5. **MPrime Stage-1 PW70:** the two-seed screen is complete and the other sixteen identities were submitted without duplicating those four screen cells. Fourteen extension tasks are terminal and exactly two are running: VH-off seed 1073581256 and VH-on seed 1239739722. Conservative ten-seed lower bounds are 15.7 / 17.6 / 17.7 VH-off and 14.5 / 16.8 / 17.4 VH-on. Final CIs, exact tests and RQ admission wait for all twenty identities to reconcile.
+6. **Block Grouping PW70 trace:** two of four logging-only tasks are running and two are array-limit pending. They record complete root priors, visits, Q/U values and elapsed time on four exact policy-success/historical-PW-timeout targets. No mechanism conclusion is available before the traces terminate.
+7. **TPP first-update cross-over:** corrected smoke `21281126` passed and both one-epoch training arms completed. The stable-checkpoint x bad-replay endpoint is 20/20; the reciprocal bad-checkpoint x stable-replay endpoint remains live. Catastrophic replay alone is therefore not sufficient to damage the stable checkpoint, but final attribution still waits for the reciprocal endpoint. This diagnostic is outside the primary RQ family.
 
 Canonical evidence files: [`rq_primary_validation_led.csv`](rq_primary_validation_led.csv), [`rq2_raw_means_validation_led.csv`](rq2_raw_means_validation_led.csv), [`rq3_raw_means_validation_led.csv`](rq3_raw_means_validation_led.csv), [`rq4_raw_means_validation_led.csv`](rq4_raw_means_validation_led.csv), [`rq2_pw70_branch_latest.csv`](rq2_pw70_branch_latest.csv), and [`rq4_pw70_branch_latest.csv`](rq4_pw70_branch_latest.csv). Their row-level job/log routes are indexed in [`../result_csv_provenance_index_latest.csv`](../result_csv_provenance_index_latest.csv).
 """

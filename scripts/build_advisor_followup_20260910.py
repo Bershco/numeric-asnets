@@ -20,12 +20,14 @@ TRACK = ROOT / "experiment_tracking"
 OUT = TRACK / "advisor_followup_20260910"
 OUT.mkdir(parents=True, exist_ok=True)
 DOMAINS = ["block_grouping", "drone", "fo_counters", "rover", "counters"]
+MCTS_DOMAINS = [*DOMAINS, "mprime"]
 LABELS = {
     "block_grouping": "Block Grouping",
     "drone": "Drone",
     "fo_counters": "FO Counters",
     "rover": "Rover",
     "counters": "Counters",
+    "mprime": "MPrime",
 }
 
 FO_STAGE2_PARTIAL_PROVENANCE = (
@@ -50,6 +52,7 @@ FO_STAGE2_VH_OFF_EXACT_PROVENANCE = (
 )
 CAPACITY = {domain: 20 for domain in DOMAINS}
 CAPACITY["counters"] = 59
+CAPACITY["mprime"] = 20
 T95 = {10: 2.262157, 9: 2.306004, 8: 2.364624, 7: 2.446912,
        6: 2.570582, 5: 2.776445, 4: 3.182446, 3: 4.302653,
        2: 12.706205}
@@ -195,10 +198,27 @@ def build_rq_rows() -> list[dict[str, object]]:
         ("Stage 2", TRACK / "stage2_policy_mcts_seed_cutoffs_latest.csv", "validation_led"),
     ):
         rows = read_csv(path)
+        if stage == "Stage 1":
+            mprime_path = (
+                TRACK / "mprime_phase_b_a_stage1_mcts_20260913" /
+                "results_20260914" / "per_seed_results.csv"
+            )
+            rows += [
+                {
+                    "domain": "mprime",
+                    "value_head": row["value_head"],
+                    "seed": row["seed"],
+                    "policy_score": row["policy_score"],
+                    "mcts_30m": row["mcts_30m"],
+                    "mcts_2h": row["mcts_2h"],
+                    "mcts_6h": row["mcts_6h"],
+                }
+                for row in read_csv(mprime_path)
+            ]
         if branch:
             rows = [row for row in rows if row.get("stage2_branch") == branch]
         mapping = {(row["domain"], row["value_head"], row["seed"]): row for row in rows}
-        available_domains = [domain for domain in DOMAINS
+        available_domains = [domain for domain in MCTS_DOMAINS
                              if any(row["domain"] == domain for row in rows)]
         for domain in available_domains:
             for cutoff in ("30m", "2h", "6h"):
@@ -368,7 +388,7 @@ def plot_rows(rows: list[dict[str, object]], rq: str, output_name: str, title: s
         return left + (bounded - axis_low) / (axis_high - axis_low) * (right - left)
 
     family_note = (
-        " All five fixed-search domains are exact at both stages."
+        " Six fixed-search domains are exact at Stage 1; five are exact at Stage 2."
         if rq in {"RQ2", "RQ4"} else ""
     )
     parts = [
@@ -439,9 +459,28 @@ def build_raw_mean_rows(rq_rows: list[dict[str, object]]) -> tuple[list[dict[str
         ("Stage 2", TRACK / "stage2_policy_mcts_seed_cutoffs_latest.csv", "validation_led"),
     ):
         source = read_csv(path)
+        source_path = path
+        if stage == "Stage 1":
+            mprime_path = (
+                TRACK / "mprime_phase_b_a_stage1_mcts_20260913" /
+                "results_20260914" / "per_seed_results.csv"
+            )
+            source += [
+                {
+                    "domain": "mprime",
+                    "value_head": row["value_head"],
+                    "seed": row["seed"],
+                    "policy_score": row["policy_score"],
+                    "mcts_30m": row["mcts_30m"],
+                    "mcts_2h": row["mcts_2h"],
+                    "mcts_6h": row["mcts_6h"],
+                    "evidence_status": "complete",
+                }
+                for row in read_csv(mprime_path)
+            ]
         if branch:
             source = [row for row in source if row.get("stage2_branch") == branch]
-        for domain in DOMAINS:
+        for domain in MCTS_DOMAINS:
             for vh in ("off", "on"):
                 group = [row for row in source if row["domain"] == domain and row["value_head"] == vh]
                 if not group:
@@ -459,8 +498,17 @@ def build_raw_mean_rows(rq_rows: list[dict[str, object]]) -> tuple[list[dict[str
                     "mcts_2h_mean": statistics.mean(float(row["mcts_2h"]) for row in group),
                     "mcts_6h_mean": statistics.mean(float(row["mcts_6h"]) for row in group),
                     "evidence_status": "complete" if complete else "partial_lower_bound",
-                    "seed_level_source": str(path.relative_to(ROOT)).replace("\\", "/"),
-                    "job_log_columns": "mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger",
+                    "seed_level_source": (
+                        "experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/"
+                        "results_20260914/per_instance_results.csv"
+                        if domain == "mprime" else
+                        str(source_path.relative_to(ROOT)).replace("\\", "/")
+                    ),
+                    "job_log_columns": (
+                        "source_job_id;source_attempt_log;source_completion_record;source_training_job_id;source_policy_job_id"
+                        if domain == "mprime" else
+                        "mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger"
+                    ),
                 }
                 rq4.append(raw_row)
                 if vh == "off":
@@ -526,7 +574,7 @@ def plot_rq2_raw(rows: list[dict[str, object]]) -> None:
     width, height = 1750, 760
     parts = _raw_plot_header(
         "RQ2 raw coverage — VH-off policy versus MCTS at both stages",
-        "Stage 2 uses validation-led checkpoints. BG/Counters use narrow 5/20; Drone/FO/Rover use normal 20/70. MPrime is omitted while canonical evaluations are live.",
+        "Stage 2 uses validation-led checkpoints. BG/Counters use narrow 5/20; other cells use normal 20/70. MPrime Stage 1 is final; Stage 2 awaits valid retraining.",
         width, height,
     )
     colors = {"Policy": "#e68632", "30m": "#9ecae1", "2h": "#4292c6", "6h": "#08519c"}
@@ -542,7 +590,7 @@ def plot_rq2_raw(rows: list[dict[str, object]]) -> None:
             parts += [f'<line x1="{x0}" y1="{y:.1f}" x2="{x0 + panel_w}" y2="{y:.1f}" stroke="#e4e9ee"/>']
             if panel_index == 0:
                 parts += [f'<text x="{x0 - 8}" y="{y + 4:.1f}" text-anchor="end" class="sub">{tick}%</text>']
-        data = sorted([row for row in rows if row["stage"] == stage], key=lambda row: DOMAINS.index(str(row["domain"])))
+        data = sorted([row for row in rows if row["stage"] == stage], key=lambda row: MCTS_DOMAINS.index(str(row["domain"])))
         group_w = panel_w / len(data)
         bar_w = 25
         for di, row in enumerate(data):
@@ -614,7 +662,7 @@ def plot_rq4_raw(rq2_rows: list[dict[str, object]], rq4_rows: list[dict[str, obj
     width, height = 1750, 760
     parts = _raw_plot_header(
         "RQ4 raw policy and six-hour MCTS coverage by value-head mode",
-        "Stage 2 uses validation-led checkpoints. BG/Counters use narrow 5/20; Drone/FO/Rover use normal 20/70. MPrime is omitted while canonical evaluations are live.",
+        "Stage 2 uses validation-led checkpoints. BG/Counters use narrow 5/20; other cells use normal 20/70. MPrime Stage 1 is final; Stage 2 awaits valid retraining.",
         width, height,
     )
     effect_map = {(str(row["stage"]), str(row["domain"])): row for row in effects if row["rq"] == "RQ4" and row["cutoff"] == "6h" and str(row["estimand"]).startswith("VH interaction")}
@@ -631,7 +679,7 @@ def plot_rq4_raw(rq2_rows: list[dict[str, object]], rq4_rows: list[dict[str, obj
             if panel_index == 0:
                 parts += [f'<text x="{x0 - 8}" y="{y + 4:.1f}" text-anchor="end" class="sub">{tick}%</text>']
         data_domains = [
-            domain for domain in DOMAINS
+            domain for domain in MCTS_DOMAINS
             if any(row["stage"] == stage and row["domain"] == domain for row in rq4_rows)
         ]
         group_w = panel_w / len(data_domains)
@@ -663,7 +711,7 @@ def plot_rq4_raw(rq2_rows: list[dict[str, object]], rq4_rows: list[dict[str, obj
     parts += [
         '<line x1="630" y1="699" x2="670" y2="699" stroke="#4c78a8" stroke-width="3"/><text x="680" y="703" class="sub">VH-off</text>',
         '<line x1="800" y1="699" x2="840" y2="699" stroke="#d95f02" stroke-width="3"/><text x="850" y="703" class="sub">VH-on</text>',
-        '<text x="28" y="738" class="sub">Open marker: policy. Filled marker: exact six-hour MCTS mean. All five-domain validation-led families are complete.</text>',
+        '<text x="28" y="738" class="sub">Open marker: policy. Filled marker: exact six-hour MCTS mean. Stage 1 includes final MPrime; Stage 2 remains the five completed validation-led domains.</text>',
         '</svg>',
     ]
     (OUT / "rq4_raw_means_6h_by_stage.svg").write_text("".join(parts), encoding="utf-8")
