@@ -1,0 +1,4 @@
+role	job_id	dependency	script
+smoke	21260859		/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_b_crossover/tpp_first_update_phase_b_crossover_smoke.sbatch
+training	21260860	afterok:21260859	/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_b_crossover/tpp_first_update_phase_b_crossover_train.sbatch
+endpoint	21260862	afterok:21260860	/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_b_crossover/tpp_first_update_phase_b_crossover_endpoint.sbatch

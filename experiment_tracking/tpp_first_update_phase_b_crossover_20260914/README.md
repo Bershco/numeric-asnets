@@ -107,5 +107,23 @@ Phase-B mechanism is reviewed.
 - Real-path smoke: `scripts/tpp_first_update_phase_b_crossover_smoke.sbatch`.
 - Safe submitter: `scripts/submit_tpp_first_update_phase_b_crossover.py`.
 - Checksum freezer/verifier: `scripts/freeze_tpp_phase_a_batch_checksums.py`.
+- Frozen 120-file schedule ledger: `frozen_schedule_checksums.csv`.
+- Submitted dependency chain: `submissions.tsv`.
 
-No Phase-B or Phase-C job has been submitted by this implementation task.
+## Current execution
+
+Implementation commit `9732f3a5` was deployed as the detached cluster
+worktree `/home/hersco/bershco-nu-asnets/tpp-first-update-b-9732f3a5` so no
+shared checkout used by other live jobs was modified. The two 60-batch
+schedules were frozen and verified as 120 files with aggregate SHA-256 values
+`a834cfeaaba3c481dd97e25650b53b5eaec229e7d67dcf35e020dc12ab3a708c`
+and `e659e4161fbb866f9eddf858c643c7387b29aaddf25062ffc03385a5dd090025`.
+
+The guarded chain was submitted on 14 September 2026:
+
+- smoke `21260859`;
+- crossover training `21260860[0-1]`, dependency `afterok:21260859`;
+- endpoints `21260862[0-1]`, dependency `afterok:21260860`.
+
+At 15:49 IDT the smoke was priority-pending and both scientific arrays were
+dependency-pending. Phase C remains held and unsubmitted.
