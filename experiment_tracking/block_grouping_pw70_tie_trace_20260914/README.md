@@ -24,7 +24,8 @@ The compute smoke uses target row 0 for at most three minutes of evaluator time.
 The four scientific tasks are dependency-gated on that smoke and concurrency
 limited to two. Each task uses one worker, 2 CPUs, 120 GiB and at most seven
 hours. Therefore the experiment can occupy at most 4 CPUs and 240 GiB, with a
-maximum two-wave wall-clock bound of 14 hours after the first two tasks start.
+maximum two-wave allocation-runtime bound of 14 hours after the first two
+tasks start, excluding any queue wait before or between waves.
 
 Decision gate: expand or test a PW policy-prior treatment only if multiple
 targets first diverge at an equal maximum-visit root and policy-prior would

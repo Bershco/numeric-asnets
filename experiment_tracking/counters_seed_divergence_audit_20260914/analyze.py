@@ -185,7 +185,7 @@ def main() -> None:
                 # non-policy actions.
                 row["selection_mechanism"] = "search_override_consistent_with_policy_action_not_visit_max_root_trace_absent"
             elif pair["pair_mechanism"] == "initial_tie_rescued_but_later_search_override":
-                row["selection_mechanism"] = "max_visit_tie_action_id_overrode_policy"
+                row["selection_mechanism"] = "early_action_id_divergence_root_topology_unobserved"
             elif pair["pair_mechanism"] == "same_first_divergence_action_both_rules_root_cause_unresolved":
                 row["selection_mechanism"] = "same_first_divergence_action_both_rules_root_cause_unresolved"
             else:
@@ -218,7 +218,7 @@ def main() -> None:
         writer = csv.writer(handle)
         writer.writerow(["local_file", "bytes", "sha256"])
         for path in sorted(RAW.glob("*")):
-            if not path.is_file() or path.name == ".gitkeep":
+            if not path.is_file() or path.name.startswith("."):
                 continue
             writer.writerow([str(path.relative_to(ROOT)), path.stat().st_size, file_sha256(path)])
 
