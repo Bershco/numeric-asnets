@@ -990,7 +990,10 @@ def run_worker_opt_profiled(
         # Optional: coarse phase timings even without pstats
         duration = time.time() - t0
         print(f"[WORKER TIMING] pid={os.getpid()} total={duration:.2f}s", flush=True)
-        if output is not None:
+        # The profiling wrapper is also used by the frozen ProblemInitData
+        # initialization path.  Only WorkerOutput owns these mutable fields;
+        # ProblemInitData is deliberately frozen and must pass through intact.
+        if isinstance(output, WorkerOutput):
             output.profile_duration_s = duration
             output.profile_paths = profile_paths
     return output
