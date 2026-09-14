@@ -1,6 +1,9 @@
 snapshot_time_idt,experiment,state,jobs,requested_cpus,requested_memory_gib,scheduler_source
-2026-09-14T00:21:46+03:00,Counters Stage1 strict tie-break confirmation,RUNNING,16,96,1920.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-14T00:21:46+03:00,MPrime Phase-B-A Stage1 PW70 screen,RUNNING,4,24,480.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-14T00:21:46+03:00,MPrime Phase-B-A Stage1 fixed MCTS,RUNNING,20,120,2400.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-14T00:21:46+03:00,MPrime Phase-B-A anchor rescore recovery tasks,RUNNING,6,24,120.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-14T00:21:46+03:00,MPrime Phase-B-A rescore controller,PENDING,1,1,2.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-14T15:42:39+03:00,Counters Stage1 strict tie-break confirmation,RUNNING,14,84,1680.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-14T15:42:39+03:00,MPrime Phase-B-A Stage1 PW70 confirmation,RUNNING_PLUS_PENDING,16,96,1920.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-14T15:42:39+03:00,MPrime Phase-B-A Stage1 fixed-MCTS exact recovery,RUNNING,15,30,1800.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-14T15:42:39+03:00,MPrime Phase-B-A anchor rescore successor,RUNNING,12,48,240.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-14T15:42:39+03:00,MPrime Phase-B-A rescore controller,PENDING,1,1,2.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-14T15:42:39+03:00,TPP frozen-replay causal crossover,PENDING,2,12,96.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-14T15:42:39+03:00,TPP frozen-replay crossover smoke,PENDING,1,6,48.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-14T15:42:39+03:00,TPP frozen-replay endpoint probes,PENDING,2,10,40.0,experiment_tracking/cluster_workload_latest.csv

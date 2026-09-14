@@ -64,6 +64,19 @@ Thus the candidate rule was genuinely exercised in at least two of four
 targets, but changing that decision was insufficient; later search/trajectory
 dynamics, not merely whether the rule was invoked, explain the negative result.
 
+The direct alignment to the successful source-policy plans is recorded in
+`policy_alignment_20260914.csv`.  On `instance_100_20_5_1`, action-ID MCTS
+first departs from the pure policy at zero-based trace step 409 on a five-way
+visit tie; policy-prior takes the pure-policy action there and postpones its
+first policy divergence until step 490, where one child has a unique visit
+maximum.  On `instance_100_25_6_2`, the corresponding steps are 468 and 645.
+Thus policy-prior did exactly what it was designed to do at both clean ties and
+kept both trajectories on-policy longer.  It still did not solve either
+instance because later, non-tied search decisions departed from the successful
+policy trajectory.  The negative result is therefore not evidence that the
+tie-break failed to preserve the policy at the intervention point; it is
+evidence that this intervention alone is insufficient for Block Grouping.
+
 PW70 remains a separate question. In the two-seed PW70 Block Grouping screen,
 17/27 six-hour PW failures are policy-success/PW-failure cases, so its coverage
 loss is not merely inherited policy failure. All 17 are recorded timeouts, and

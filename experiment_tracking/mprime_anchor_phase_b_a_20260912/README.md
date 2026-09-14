@@ -93,16 +93,25 @@ No Stage-2 training can be launched by this chain: its proposed coefficient
 winners require manual curve review first.
 
 At 12:48 IDT those five allocations had left the queue and the durable count
-was 520/588. The login node then stalled while the controller transition was
-being queried, so the successor job ID is deliberately left unreported until
-it can be read rather than inferred. The idempotent controller remains the
-declared mechanism for resubmitting only missing identities.
+was 520/588. This was only a short controller transition, not an unhandled
+failure or a Slurm requeue. Controller `21233927` audited the paired done
+markers and submitted successor array `21254779` for the 17 lineage indices
+that were still incomplete; analysis-only controller `21254780` is held by its
+declared dependency until that array terminates. By the 14 September 15:01 IDT
+audit, 15 successor tasks were visible as running and the durable count had
+advanced to 534/588. The successor is idempotent: each task skips every valid
+checkpoint result already present and evaluates only missing identities.
 
 The Stage-2 reuse question is separate from the Stage-1 MCTS reuse audit. An
 exact epoch join shows that 16/20 old validation-led Stage-2 lineages definitely
 start from a different Stage-1 checkpoint than the final Phase-B-A selection.
-Four are only candidates for reuse: off/1239739722, off/1472491096,
-on/1963100312 and on/2082152039. They remain reusable only if checkpoint hash,
-the eventual frozen coefficient, code and full training configuration also
-match. Consequently the defensible fresh-training count is currently 16--20,
-not a proven 20.
+Four initially appeared to have the same selected epoch: off/1239739722,
+off/1472491096, on/1963100312 and on/2082152039. That epoch match alone does
+not establish reusable Stage-2 training: reuse additionally requires the exact
+Stage-1 checkpoint hash, the eventual frozen coefficient, code and full
+training configuration to match. The final reuse decision is therefore made
+only after the coefficient curves are complete and reviewed. Stage-1 MCTS is
+a separate result identity: none of its historical runs used the final
+Phase-B-A-selected checkpoint, so all 20 exact Stage-1 MCTS evaluations were
+required even though some old Stage-2 training lineages may still prove
+reusable.

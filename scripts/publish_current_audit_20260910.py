@@ -156,10 +156,10 @@ upsert(
 )
 upsert(
     "MCTS-COUNTERS-TIEBREAK-STRICT",
-    status="live-16-running-4-complete",
-    results_file="experiment_tracking/advisor_followup_20260910/live_submission_update_20260913.md",
+    status="live-14-running-6-complete",
+    results_file="experiment_tracking/counters_tie_break_strict_stage1_20260913/progress_20260914_1502.csv",
     manifest_path="experiment_tracking/counters_tie_break_strict_stage1_20260913/manifest.csv",
-    next_action="Two completed matched pairs are neutral:59/59 and20/59 under both rules; wait for all ten pairs before changing any RQ score.",
+    next_action="Three complete matched pairs are neutral but contain zero classified policy-success/action-ID-failure opportunities; wait for all ten pairs before changing RQ2.",
 )
 upsert(
     "MCTS-BG-TIEBREAK-SCREEN",
@@ -170,29 +170,41 @@ upsert(
 )
 upsert(
     "MPRIME-ANCHOR-PBA",
-    status="live-469-of588",
+    status="live-541-of588",
     results_file="experiment_tracking/mprime_anchor_phase_b_a_20260912/README.md",
     manifest_path="experiment_tracking/mprime_anchor_phase_b_a_20260912/manifest.csv",
-    next_action="Six recovery tasks running and original attempts out of queue; controller21233927 skips completed points and finalizes only after manual curve review.",
+    next_action="Successor21254779 has12 tasks running and47 points remaining; controller21254780 waits on it and may only propose coefficients for manual review.",
 )
 upsert(
     "MPRIME-PBA-S1-MCTS",
-    status="live-20-running-no-terminal-seeds",
+    status="live-15-exact-instance-recoveries",
     results_file="experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/README.md",
     manifest_path="experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/manifest_off.csv;experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/manifest_on.csv",
-    next_action="All20 canonical checkpoints are running; current success lower bounds are at least7.2/20 off and7.7/20 on with no CI or inference until seeds terminate.",
+    next_action="Fifteen exact missing-instance recoveries are running; later accidental duplicate21254307 was explicitly cancelled while canonical21253780 and21254295 remain active.",
 )
 upsert(
     "MPRIME-PBA-S1-PW-SCREEN",
-    display_name="MPrime final-validator Stage1 PW70 screen",
-    role="search-screen",
-    status="running-four-task-screen",
-    scope="Two predeclared Phase-B-A Stage1 seeds x two VH modes",
+    display_name="MPrime final-validator Stage1 PW70 confirmation",
+    role="search-confirmation",
+    status="live-fourteen-running-two-low-priority-pending",
+    scope="Ten matched Phase-B-A Stage1 seeds x two VH modes: four completed screen tasks plus sixteen confirmation tasks",
     primary_question="Does PW70 retain the MPrime fixed-search benefit with lower search cost?",
-    configuration_summary="PW70 Kmin3 c0.6 alpha0.5; two matched seeds per VH; normal fixed comparator; terminal-safe off; 6h per instance; four tasks",
-    results_file="experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/submissions.tsv",
-    manifest_path="experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/manifest.csv",
-    next_action="Array21240256[0-3] is running after compute smoke21240250 passed; compare against the exact matched fixed rows when both arms terminate.",
+    configuration_summary="PW70 Kmin3 c0.6 alpha0.5; ten matched seeds per VH; normal fixed comparator; terminal-safe off; 6h per instance; twenty total tasks",
+    results_file="experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/results_20260914.csv;experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/confirmation_submissions.tsv",
+    manifest_path="experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/manifest.csv;experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/manifest_confirmation_remaining.csv",
+    next_action="Arrays21259752-21259755 contain exactly the sixteen unused mode/seed identities;14 are running and2 remain low-priority pending. Combine with the four completed screen tasks only after terminal validation.",
+)
+upsert(
+    "TPP-FIRST-UPDATE-B",
+    display_name="TPP frozen-replay first-update crossover",
+    role="training-diagnostic",
+    status="submitted-smoke-priority-pending",
+    scope="Two missing checkpoint x frozen-replay crossover cells plus two dependent policy endpoints",
+    primary_question="Was the one-epoch TPP collapse driven by checkpoint susceptibility, replay content, or their interaction?",
+    configuration_summary="VH-off; one Stage2 epoch; exact frozen60-batch schedules; anchor3; lr0.0003; smoke6CPU48GiB then two6CPU48GiB training tasks and two5CPU20GiB endpoints",
+    results_file="experiment_tracking/tpp_first_update_phase_b_crossover_20260914/README.md",
+    manifest_path="experiment_tracking/tpp_first_update_phase_b_crossover_20260914/manifest.csv",
+    next_action="Smoke21260859 gates crossover21260860[0-1] and endpoints21260862[0-1]; interpret only after both off-diagonal endpoints complete.",
 )
 upsert(
     "FO-S2-VAL-RECOVERY",
@@ -259,8 +271,10 @@ live_experiment_map = {
     "MAIN-VAL-S2-MCTS": ["FO Counters validation-led Stage-2 exact recovery"],
     "MCTS-COUNTERS-TIEBREAK-STRICT": ["Counters Stage1 strict tie-break confirmation"],
     "MCTS-BG-TIEBREAK-SCREEN": ["Block Grouping selected-failure tie-break screen"],
-    "MPRIME-ANCHOR-PBA": ["MPrime Phase-B-A anchor rescore original tasks", "MPrime Phase-B-A anchor rescore recovery tasks", "MPrime Phase-B-A rescore controller"],
-    "MPRIME-PBA-S1-MCTS": ["MPrime Phase-B-A Stage1 fixed MCTS"],
+    "MPRIME-ANCHOR-PBA": ["MPrime Phase-B-A anchor rescore successor", "MPrime Phase-B-A rescore controller"],
+    "MPRIME-PBA-S1-MCTS": ["MPrime Phase-B-A Stage1 fixed-MCTS exact recovery"],
+    "MPRIME-PBA-S1-PW-SCREEN": ["MPrime Phase-B-A Stage1 PW70 confirmation"],
+    "TPP-FIRST-UPDATE-B": ["TPP frozen-replay crossover smoke", "TPP frozen-replay causal crossover", "TPP frozen-replay endpoint probes"],
 }
 catalog = []
 for row in registry:
@@ -500,7 +514,7 @@ must read the canonical files below; it must not infer liveness from an old date
 
 workload_lines = [
     f"| {row['experiment']} | "
-    f"{'running' if row['running'] else 'pending'} | {row['jobs']} | "
+    f"{('running + pending' if row['running'] and row['pending'] else ('running' if row['running'] else 'pending'))} | {row['jobs']} | "
     f"{row['requested_cpus']} | {row['requested_memory_gib']} GiB |"
     for row in live_rows
 ]

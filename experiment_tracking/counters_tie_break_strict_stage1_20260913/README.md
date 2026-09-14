@@ -27,11 +27,19 @@ every task.
 
 ## Live status
 
-At the 14 September 2026 12:24 IDT snapshot, six tasks were terminal and 14
+At the 14 September 2026 15:02 IDT snapshot, six tasks were terminal and 14
 were running. Three complete matched seed pairs were neutral: seed
 `1073581256` scored 59/59 under both rules, seed `1239739722` scored 17/59
 under both, and seed `2011206605` scored 20/59 under both. The matched
-three-pair effect is exactly zero but remains interim evidence; unpaired live
-lower bounds must not be used as a treatment comparison. RQ2 remains frozen
-until all ten pairs terminate. Current workload provenance is in
-`../advisor_followup_20260910/live_workload_targeted_20260914_1248.csv`.
+three-pair effect is exactly zero, but these three checkpoints contain zero
+classified policy-success/action-ID-failure opportunities. Their neutrality
+therefore does not test the proposed rescue mechanism. The informative
+high-policy-coverage pairs remain live; unpaired lower bounds must not be used
+as a treatment comparison. RQ2 remains frozen until all ten pairs terminate.
+
+The complete interim, seed-level join is in `progress_20260914_1502.csv`. It
+records the exact validation-selected checkpoint, source training and policy
+logs, pure-policy score, classified count, search successes, classified
+policy-success/action-ID-failure opportunities, gains over policy, and
+unclassified policy-success instances for both rules. Current workload
+provenance is refreshed separately in the advisor-followup workload ledger.

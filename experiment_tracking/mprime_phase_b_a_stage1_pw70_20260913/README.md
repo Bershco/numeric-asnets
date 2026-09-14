@@ -81,3 +81,43 @@ matched seeds no useful confidence interval or significance claim is made,
 and the still-incomplete fixed-MCTS recovery prevents a clean PW-versus-fixed
 comparison. Exact results, elapsed times and source paths are in
 `results_20260914.csv`.
+
+## Ten-seed confirmation extension
+
+The promising two-seed result is being expanded to the complete matched
+ten-seed Stage-1 Phase-B-A cohort. The extension contains exactly the other
+eight canonical seeds in each VH mode (16 tasks); it excludes the two completed
+screen seeds and therefore performs no duplicate scientific evaluation.
+
+`manifest_confirmation_remaining.csv` is the authoritative 16-row manifest.
+The unchanged compute-smoked runner requires four rows per array, so runtime
+copies are split across `manifest_confirmation_part1.csv` through
+`manifest_confirmation_part4.csv`. These copies preserve each authoritative
+row byte-for-byte except for the local array index. All rows inherit the exact
+checkpoint, selector hash, fixed-comparator manifest hash, policy provenance,
+and resource/search identity already frozen for the canonical fixed-MCTS arm.
+
+The four unthrottled, low-priority arrays were submitted at 15:10 IDT on 14
+September 2026:
+
+- `21259752[0-3]`: VH-off, seeds 534933607, 923500475, 1073581256,
+  1239739722;
+- `21259753[0-3]`: VH-off, seeds 1472491096, 1510771779, 1972442430,
+  2082152039;
+- `21259754[0-3]`: VH-on, seeds 534933607, 923500475, 1073581256,
+  1239739722;
+- `21259755[0-3]`: VH-on, seeds 1472491096, 1510771779, 1972442430,
+  2082152039.
+
+Each task requests 6 CPUs, 120 GiB, and at most 72 hours. If all sixteen run
+simultaneously, the extension requests 96 CPUs and 1,920 GiB. Immediately
+before submission the verified live footprint was 180 CPUs and 4,140 GiB, so
+full concurrent admission would reach 276 CPUs and 6,060 GiB—84 GiB below the
+observed 6 TiB account ceiling. Slurm initially left all sixteen pending for
+cluster resources. `Nice=10000` gives this extension lower priority than the
+already-running work; there is no artificial array concurrency throttle. The
+known incompatible node `ise-cpu-intl-13` remains the only excluded node.
+
+Exact row-to-job, log, output, commit and runtime-manifest provenance is in
+`confirmation_submissions.tsv`. The hard completion bound is 72 hours after
+each task actually starts; no defensible queue-start estimate is available.

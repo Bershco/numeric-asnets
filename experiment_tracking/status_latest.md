@@ -1,6 +1,6 @@
 # Current experiment status
 
-Updated: 2026-09-14T00:21:46+03:00
+Updated: 2026-09-14T15:42:39+03:00
 
 This is the only canonical changing Markdown status page. Dated status files are
 historical snapshots. Full RQ tables, methods and conclusions are in
@@ -10,11 +10,14 @@ historical snapshots. Full RQ tables, methods and conclusions are in
 
 | Experiment | State | Jobs | CPU | RAM |
 |---|---|---:|---:|---:|
-| Counters Stage1 strict tie-break confirmation | running | 16 | 96 | 1920.0 GiB |
-| MPrime Phase-B-A Stage1 PW70 screen | running | 4 | 24 | 480.0 GiB |
-| MPrime Phase-B-A Stage1 fixed MCTS | running | 20 | 120 | 2400.0 GiB |
-| MPrime Phase-B-A anchor rescore recovery tasks | running | 6 | 24 | 120.0 GiB |
+| Counters Stage1 strict tie-break confirmation | running | 14 | 84 | 1680.0 GiB |
+| MPrime Phase-B-A Stage1 PW70 confirmation | running + pending | 16 | 96 | 1920.0 GiB |
+| MPrime Phase-B-A Stage1 fixed-MCTS exact recovery | running | 15 | 30 | 1800.0 GiB |
+| MPrime Phase-B-A anchor rescore successor | running | 12 | 48 | 240.0 GiB |
 | MPrime Phase-B-A rescore controller | pending | 1 | 1 | 2.0 GiB |
+| TPP frozen-replay causal crossover | pending | 2 | 12 | 96.0 GiB |
+| TPP frozen-replay crossover smoke | pending | 1 | 6 | 48.0 GiB |
+| TPP frozen-replay endpoint probes | pending | 2 | 10 | 40.0 GiB |
 
 ## Current scientific endpoints
 
