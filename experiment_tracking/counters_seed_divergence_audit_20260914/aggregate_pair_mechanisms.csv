@@ -1,0 +1,9 @@
+seed,pair_mechanism,count
+2082152039,at_least_one_arm_unclassified,1
+2082152039,both_search_arms_succeed,19
+2082152039,initial_tie_rescued_but_later_search_override,14
+2082152039,same_first_divergence_action_both_rules_root_cause_unresolved,1
+534933607,at_least_one_arm_unclassified,28
+534933607,both_search_arms_succeed,19
+534933607,policy_prior_introduces_failure,1
+534933607,same_first_divergence_action_both_rules_root_cause_unresolved,11

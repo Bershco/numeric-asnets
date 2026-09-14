@@ -67,15 +67,31 @@ Example commands are intentionally not recorded with a mutable commit hash.
 At deployment, set `CODE_COMMIT` to the exact deployed commit and submit the
 smoke or full runner with `--export=ALL,CODE_COMMIT=<hash>,VALUE_HEAD=off|on`.
 
-## Status
+## Final status — 14 September 2026
 
-Compute smoke `21237283` passed on the isolated checkout. The full arrays are
-running as `21237328` (VH-off, ten tasks) and `21237329` (VH-on, ten tasks).
-At the 14 September 2026 00:21 IDT snapshot, all twenty tasks were live at
-about 5h31m elapsed. No seed was terminal. Durable success lower bounds were
-at least 7.2/20 VH-off and 7.7/20 VH-on; these are progress indicators, not
-final means, and do not support a CI, p-value or RQ conclusion. With three
-workers and twenty six-hour-capped instances, seven waves give an
-evaluator-derived total bound of roughly 42 hours plus overhead; the
-scheduler hard remainder was about 66h29m. Current result/log routes are indexed in
-`../advisor_followup_20260910/live_result_progress_20260914_0021.csv`.
+Compute smoke `21237283` passed. Full arrays `21237328` and `21237329`
+evaluated the twenty final-validator checkpoints. Fifteen instances were left
+without terminal records when their original allocations ended; the exact
+recovery campaign ran only those identities. All fifteen reached their
+six-hour per-instance timeout. Three initial recovery tasks failed before
+inference and were replaced exactly; no scientific identity was duplicated.
+
+The locally reconciled result is complete: `400/400` instances classified,
+`317` unique successes, `82` six-hour timeouts and one ordinary-unsolved
+result. All `317` unique successful plans are covered by VAL-valid records
+(the raw VAL files contain one duplicate validation row, hence 318 rows).
+
+| VH | Policy | Fixed MCTS 30m / 2h / 6h | Six-hour change [95% CI] | Raw / provisional six-domain Holm p |
+|---|---:|---:|---:|---:|
+| Off | 16.3/20 | 13.0 / 14.7 / 15.7 | -0.6 [-2.00, 0.80] | .445 / .500 |
+| On | 15.7/20 | 13.3 / 15.1 / 16.0 | +0.3 [-1.70, 2.30] | .828 / .984 |
+
+At 30 minutes, VH-off fixed search is significantly below its policy baseline
+after provisional six-domain Holm correction: `-3.3 [-5.18,-1.42]`, raw
+`p=.0098`, Holm `p=.0391`. By six hours neither mode differs reliably from its
+own policy. The VH interaction is not reliable at any cutoff.
+
+Auditable outputs are in `results_20260914/`: `per_instance_results.csv`
+contains the exact evaluation job and original cluster log/completion route;
+`per_seed_results.csv` joins training, policy and checkpoint provenance; and
+`mprime_rq_extension.csv` records the paired RQ2/RQ4 estimates.

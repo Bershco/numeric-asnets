@@ -121,3 +121,16 @@ known incompatible node `ise-cpu-intl-13` remains the only excluded node.
 Exact row-to-job, log, output, commit and runtime-manifest provenance is in
 `confirmation_submissions.tsv`. The hard completion bound is 72 hours after
 each task actually starts; no defensible queue-start estimate is available.
+
+Task `21259754_3` (VH-on seed `1239739722`, selected epoch `20`) failed
+before inference with native evaluator exit `-4` on `ise-cpu-intl-11`; it
+produced zero classifications. Exact replacement `21264782_3` uses the same
+manifest row and immutable checkout while excluding only
+`ise-cpu-intl-11` and the already documented incompatible
+`ise-cpu-intl-13`. No completed or running identity was duplicated.
+
+The final analysis must report, for each VH mode, policy coverage, fixed-search
+coverage at 30 minutes / 2 hours / 6 hours, and PW70 coverage at the same three
+cutoffs. It must include paired PW-minus-policy and PW-minus-fixed confidence
+intervals and exact raw/Holm-adjusted p-values; a PW improvement is not claimed
+from policy comparison alone.

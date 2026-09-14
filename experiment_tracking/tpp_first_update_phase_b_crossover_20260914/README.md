@@ -119,11 +119,28 @@ schedules were frozen and verified as 120 files with aggregate SHA-256 values
 `a834cfeaaba3c481dd97e25650b53b5eaec229e7d67dcf35e020dc12ab3a708c`
 and `e659e4161fbb866f9eddf858c643c7387b29aaddf25062ffc03385a5dd090025`.
 
-The guarded chain was submitted on 14 September 2026:
+The first smoke (`21260859`) failed because the isolated checkout did not expose
+the compiled TensorFlow operator at the package path used at runtime. The
+operator link was repaired and its checksum matched the production build. The
+second smoke (`21264717`) passed all five frozen-replay loader tests and
+verified all 120 frozen batches, but its native training child exited `-4` on
+`ise-cpu-intl-10` before completing the scientific step. Both dependency-gated
+chains cancelled cleanly, so neither produced scientific evidence.
 
-- smoke `21260859`;
-- crossover training `21260860[0-1]`, dependency `afterok:21260859`;
-- endpoints `21260862[0-1]`, dependency `afterok:21260860`.
+The `21265386` chain was cancelled before starting when the parallel
+Block Grouping smoke exposed the same native `-4` failure on another already
+documented incompatible node. Smoke `21266581` used the complete exact
+node blacklist already maintained by the MPrime controller
+(`ise-cpu-intl-01,09,10,11,13,27`) without excluding an entire node family,
+but exposed a distinct instrumentation defect rather than a node failure:
+`run_worker_opt_profiled` tried to attach profiling fields to the deliberately
+frozen `ProblemInitData` returned during initialization. It failed before
+scientific training; dependents `21266582` and `21266583` cancelled without
+work.
 
-At 15:49 IDT the smoke was priority-pending and both scientific arrays were
-dependency-pending. Phase C remains held and unsubmitted.
+Commit `a6c773f2` restricts those mutable fields to `WorkerOutput`, preserving
+frozen initialization records unchanged. That exact revision is deployed in
+the isolated checkout. Replacement smoke `21267359` gates the two one-epoch
+crossover tasks `21267360[0-1]`, which gate endpoint tasks
+`21267361[0-1]`. The complete attempt history is retained in
+`submissions.tsv`. Phase C remains held and unsubmitted.
