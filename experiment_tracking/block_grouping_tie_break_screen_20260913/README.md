@@ -51,6 +51,19 @@ domain/mechanism-specific unless another domain produces directly traced tied
 root visits. The exact node `ise-cpu-intl-13` was excluded after a native
 evaluator exit `-4`.
 
+The post-completion root-trace audit in `trace_audit_summary_20260914.csv`
+clarifies the mechanism. The four targets were selected because policy solved
+and historical MCTS failed, not because a tied-visit divergence had already
+been established. In two targets, the new runs do show a clean intervention:
+at the first same-state action difference every retained child had the same
+maximum visit count, action-ID chose the lowest index, and policy-prior chose
+the network argmax. Both altered trajectories still exhausted 10,000 actions.
+The other two targets first differ only after their tree/action-history
+statistics have already diverged, so they are not clean tie-causal examples.
+Thus the candidate rule was genuinely exercised in at least two of four
+targets, but changing that decision was insufficient; later search/trajectory
+dynamics, not merely whether the rule was invoked, explain the negative result.
+
 PW70 remains a separate question. In the two-seed PW70 Block Grouping screen,
 17/27 six-hour PW failures are policy-success/PW-failure cases, so its coverage
 loss is not merely inherited policy failure. All 17 are recorded timeouts, and
