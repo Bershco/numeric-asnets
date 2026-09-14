@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import hashlib
 import json
 import signal
 from collections import defaultdict
@@ -108,8 +109,11 @@ def run_epoch_spawn_grads(
             timeout=epoch_timeout,
             return_when=ALL_COMPLETED,
         )
+        future_specs = dict(zip(futs, specs))
+        ingestion_order = []
         for fut in done:
             outs.append(fut.result())
+            ingestion_order.append(int(future_specs[fut].slot_id))
         if not_done:
             print(
                 f"[TRAINER WARNING] {len(not_done)} worker(s) timed out | "
@@ -125,6 +129,39 @@ def run_epoch_spawn_grads(
                 f"[TRAINER WARNING] {len(unfinished)} {plural} timed out | "
                 f"The timeout was {epoch_timeout:.1f} seconds."
             )
+        audit_path = os.environ.get("ASN_FIRST_UPDATE_AUDIT_PATH")
+        if audit_path and curr_epoch == 0:
+            def pddl_record(path):
+                with open(path, "rb") as pddl_f:
+                    payload = pddl_f.read()
+                return {
+                    "path": path,
+                    "sha256": hashlib.sha256(payload).hexdigest(),
+                }
+
+            timed_out = {future_specs[fut].slot_id for fut in unfinished}
+            audit_parent = os.path.dirname(audit_path)
+            if audit_parent:
+                os.makedirs(audit_parent, exist_ok=True)
+            with open(audit_path, "a", encoding="utf-8") as audit_f:
+                audit_f.write(json.dumps({
+                    "record_type": "worker_schedule",
+                    "epoch": int(curr_epoch),
+                    # `done` is a set; this is the actual order in which
+                    # completed outputs enter the replay, not wall-clock order.
+                    "ingestion_order": ingestion_order,
+                    "workers": [{
+                        "slot_id": int(spec.slot_id),
+                        "worker_seed": int(
+                            spec.trainer_seed + spec.slot_id
+                            + (0 if curr_epoch is None else curr_epoch * 128)),
+                        "name": os.path.basename(spec.pddls[1]),
+                        "status": (
+                            "timed_out" if spec.slot_id in timed_out
+                            else "completed"),
+                        "pddls": [pddl_record(path) for path in spec.pddls],
+                    } for spec in specs],
+                }, sort_keys=True) + "\n")
     return outs
 
 

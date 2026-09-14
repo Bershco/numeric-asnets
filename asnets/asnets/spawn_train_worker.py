@@ -1571,6 +1571,70 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
         wm_local,
         planner_exts.problem_meta,
     )
+    probe_capture_dir = os.environ.get("ASN_POLICY_PROBE_CAPTURE_DIR")
+    probe_input_dir = os.environ.get("ASN_POLICY_PROBE_INPUT_DIR")
+    probe_output_dir = os.environ.get("ASN_POLICY_PROBE_OUTPUT_DIR")
+    probe_key = (
+        f"slot_{int(inp.spec.slot_id)}_"
+        f"{os.path.basename(inp.spec.pddls[1]).replace('.', '_')}")
+    captured_obs, captured_masked_pi, captured_masks, captured_actions = \
+        [], [], [], []
+
+    def save_probe_capture():
+        if not probe_capture_dir or not captured_obs:
+            return
+        os.makedirs(probe_capture_dir, exist_ok=True)
+        np.savez_compressed(
+            os.path.join(probe_capture_dir, probe_key + ".npz"),
+            obs=np.asarray(captured_obs, dtype=np.float32),
+            masked_policy=np.asarray(captured_masked_pi, dtype=np.float32),
+            applicable_mask=np.asarray(captured_masks, dtype=np.float32),
+            selected_action=np.asarray(captured_actions, dtype=np.int64),
+        )
+
+    if probe_input_dir and probe_output_dir:
+        probe_path = os.path.join(probe_input_dir, probe_key + ".npz")
+        if os.path.exists(probe_path):
+            probe = np.load(probe_path)
+            probe_obs = probe["obs"]
+            anchor_policy = probe["masked_policy"]
+            probe_masks = probe["applicable_mask"]
+            anchor_actions = probe["selected_action"]
+            probe_out = net(probe_obs, training=False)
+            current_policy = probe_out[0] if isinstance(probe_out, tuple) \
+                else probe_out
+            current_policy = current_policy.numpy() * probe_masks
+            current_policy = np.divide(
+                current_policy,
+                current_policy.sum(axis=1, keepdims=True),
+                out=np.zeros_like(current_policy),
+                where=current_policy.sum(axis=1, keepdims=True) > 0,
+            )
+            per_state_kl = np.sum(
+                anchor_policy * (
+                    np.log(np.clip(anchor_policy, 1e-8, 1.0))
+                    - np.log(np.clip(current_policy, 1e-8, 1.0))
+                ), axis=1)
+            current_actions = np.argmax(current_policy, axis=1)
+            os.makedirs(probe_output_dir, exist_ok=True)
+            with open(
+                    os.path.join(probe_output_dir, probe_key + ".json"),
+                    "w", encoding="utf-8") as probe_f:
+                json.dump({
+                    "probe_path": probe_path,
+                    "states": int(len(probe_obs)),
+                    "anchor_kl_mean": float(np.mean(per_state_kl)),
+                    "anchor_kl_p90": float(np.quantile(per_state_kl, .90)),
+                    "anchor_kl_p99": float(np.quantile(per_state_kl, .99)),
+                    "anchor_kl_max": float(np.max(per_state_kl)),
+                    "action_flip_count": int(np.sum(
+                        current_actions != anchor_actions)),
+                    "action_flip_rate": float(np.mean(
+                        current_actions != anchor_actions)),
+                    "per_state_kl": per_state_kl.tolist(),
+                    "anchor_actions": anchor_actions.tolist(),
+                    "current_actions": current_actions.tolist(),
+                }, probe_f, sort_keys=True)
     estimator = _build_estimator(planner_exts, inp.spec)
     ctx = LocalExploreContext(
         planner_exts=planner_exts,
@@ -1591,6 +1655,7 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
                 print(f"comps: {cstate.comps_true}")
             if timed_out:
                 print(f"{worker_tag} timed out after {inp.spec.timeout} seconds")
+            save_probe_capture()
             return EvalWorkerOutput(
                 hit_goal=float(cstate.is_goal),
                 steps=step,
@@ -1619,6 +1684,12 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
             mcts=None,  # intentionally None
             pi=masked_pi,
         )
+        if probe_capture_dir:
+            captured_obs.append(np.asarray(obs, dtype=np.float32))
+            captured_masked_pi.append(
+                np.asarray(masked_pi, dtype=np.float32))
+            captured_masks.append(np.asarray(mask, dtype=np.float32))
+            captured_actions.append(int(action_id))
         cstate = ctx.env_simulate_step(cstate, action_id)
         bound_act, _ = cstate.acts_enabled[action_id]
         plan.append(bound_act.unique_ident)  # do not pass indices, you will be perplexed by misaligned ones..
@@ -1626,6 +1697,7 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
         print(f"{worker_tag} is_goal={cstate.is_goal} | is_terminal={cstate.is_terminal}")
         print(f"fluents: {cstate.flnt_values}")
         print(f"comps: {cstate.comps_true}")
+    save_probe_capture()
     return EvalWorkerOutput(
         hit_goal=float(cstate.is_goal),
         steps=max_len,

@@ -161,7 +161,7 @@ def plot(rq2: list[dict[str, object]], rq4: list[dict[str, object]]) -> None:
         divider_x = x0 + 224
         parts += [
             f'<line x1="{divider_x}" y1="122" x2="{divider_x}" y2="{base_y}" stroke="#657080" stroke-width="2" stroke-dasharray="7 7"/>',
-            f'<text x="{divider_x}" y="118" class="value" text-anchor="middle" fill="#657080">VH mode divider</text>',
+            f'<text x="{divider_x + 16}" y="132" class="value" text-anchor="start" fill="#657080" transform="rotate(90 {divider_x + 16} 132)">VH-off | VH-on</text>',
         ]
         name = "FO Counters" if row["domain"] == "fo_counters" else "Rover"
         off = next(item for item in rq2 if item["domain"] == row["domain"] and item["cutoff"] == "6h")

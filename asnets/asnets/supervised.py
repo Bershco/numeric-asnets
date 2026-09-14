@@ -3,6 +3,8 @@ from enum import Enum
 from functools import lru_cache
 from itertools import repeat
 
+import hashlib
+import json
 import joblib
 import logging
 import numpy as np
@@ -518,6 +520,9 @@ class SupervisedTrainer(BaseTrainer):
         self.resume_from = resume_from
         self._policy_anchor_networks = {}
         self._policy_anchor_weights_np = None
+        self._first_update_audit_path = os.environ.get(
+            "ASN_FIRST_UPDATE_AUDIT_PATH")
+        self._first_update_audit_step = 0
         if self.policy_anchor_kl_coeff > 0:
             os.makedirs(self.snapshot_dir, exist_ok=True)
             anchor_path = os.path.join(
@@ -753,6 +758,32 @@ class SupervisedTrainer(BaseTrainer):
             if not worker_outs:
                 LOGGER.warning("No worker outputs this epoch")
                 continue
+
+            if self._first_update_audit_path and epoch_num == 0:
+                self._write_first_update_audit({
+                    "record_type": "worker_outputs",
+                    "epoch": int(cumulative_epoch),
+                    "returned_workers": len(worker_outs),
+                    "workers": [{
+                        "slot_id": (
+                            int(out.slot_id) if out.slot_id is not None else None),
+                        "hit_goal_mean": float(out.hit_goal_mean),
+                        "n_samples": int(out.n_samples),
+                        "main_samples": len(out.main_trajectory),
+                        "expert_samples": len(out.expert_trajectory),
+                        "tree_samples": len(out.tree_samples),
+                        "root_target_entropy": self._finite_or_none(
+                            out.root_target_entropy),
+                        "root_pred_entropy": self._finite_or_none(
+                            out.root_pred_entropy),
+                        "root_kl": self._finite_or_none(out.root_kl),
+                        "instance_difficulty": (
+                            out.instance_diff.name
+                            if out.instance_diff is not None else None),
+                        "profile_duration_s": self._finite_or_none(
+                            out.profile_duration_s),
+                    } for out in worker_outs],
+                })
 
             # --------------------------------------------------
             # 1.1. LOGGING (output logs from trajectories)
@@ -1078,6 +1109,32 @@ class SupervisedTrainer(BaseTrainer):
             else anchor_out
         return tf.stop_gradient(anchor_policy)
 
+    @staticmethod
+    def _finite_or_none(value):
+        if value is None:
+            return None
+        value = float(value)
+        return value if np.isfinite(value) else None
+
+    def _write_first_update_audit(self, record):
+        """Append one deterministic JSON record for the opt-in epoch-0 audit."""
+        if not self._first_update_audit_path:
+            return
+        audit_parent = os.path.dirname(self._first_update_audit_path)
+        if audit_parent:
+            os.makedirs(audit_parent, exist_ok=True)
+        with open(self._first_update_audit_path, "a", encoding="utf-8") as audit_f:
+            audit_f.write(json.dumps(record, sort_keys=True) + "\n")
+
+    @staticmethod
+    def _row_sha256(row):
+        arr = np.ascontiguousarray(row)
+        digest = hashlib.sha256()
+        digest.update(str(arr.dtype).encode("ascii"))
+        digest.update(repr(arr.shape).encode("ascii"))
+        digest.update(arr.tobytes())
+        return digest.hexdigest()
+
     def _measure_policy_anchor_kl(self, sampled_batches):
         """Measure realized post-update KL on the batches just optimized."""
         anchor_kl_losses = []
@@ -1109,7 +1166,31 @@ class SupervisedTrainer(BaseTrainer):
             return None
 
         anchor_coeff_before = self.policy_anchor_kl_coeff
-        with tf.GradientTape() as tape:
+        audit_batches = []
+        params_before = None
+        if self._first_update_audit_path:
+            params_before = [param.numpy().copy() for param in params]
+            batch_dir = self._first_update_audit_path + ".batches"
+            os.makedirs(batch_dir, exist_ok=True)
+            frozen_payload = {}
+            for batch_idx, (problem, batch) in enumerate(sampled_batches):
+                obs, pi_tgt, z_tgt, policy_weights = batch
+                frozen_payload[f"obs_{batch_idx}"] = np.asarray(obs)
+                frozen_payload[f"pi_tgt_{batch_idx}"] = np.asarray(pi_tgt)
+                frozen_payload[f"policy_weights_{batch_idx}"] = np.asarray(
+                    policy_weights)
+                if z_tgt is not None:
+                    frozen_payload[f"z_tgt_{batch_idx}"] = np.asarray(z_tgt)
+                frozen_payload[f"problem_signature_{batch_idx}"] = np.asarray(
+                    getattr(problem, "compatibility_signature", ""))
+            np.savez_compressed(
+                os.path.join(
+                    batch_dir,
+                    f"optimizer_step_{self._first_update_audit_step:03d}.npz"),
+                **frozen_payload,
+            )
+        with tf.GradientTape(
+                persistent=bool(self._first_update_audit_path)) as tape:
             policy_losses, value_losses, anchor_kl_losses = [], [], []
             for problem, (obs, pi_tgt, z_tgt, policy_weights) in sampled_batches:
                 obs_tf = tf.convert_to_tensor(obs, dtype=tf.float32)
@@ -1128,6 +1209,7 @@ class SupervisedTrainer(BaseTrainer):
                     tf.reduce_sum(xent_per_example * policy_weights_tf),
                     tf.reduce_sum(policy_weights_tf),
                 ))
+                anchor_pi = None
                 if self.policy_anchor_kl_coeff > 0:
                     anchor_pi = self._anchor_policy(problem, obs_tf)
                     anchor_kl_per_example = tf.reduce_sum(
@@ -1141,6 +1223,24 @@ class SupervisedTrainer(BaseTrainer):
                     )
                     anchor_kl_losses.append(
                         tf.reduce_mean(anchor_kl_per_example))
+                if self._first_update_audit_path:
+                    target_entropy = -tf.reduce_sum(
+                        pi_tgt_tf * tf.math.log(tf.clip_by_value(
+                            pi_tgt_tf, 1e-8, 1.0)), axis=1)
+                    audit_batches.append({
+                        "problem_signature": getattr(
+                            problem, "compatibility_signature", None),
+                        "obs": np.asarray(obs),
+                        "pi_tgt": np.asarray(pi_tgt),
+                        "policy_weights": np.asarray(policy_weights),
+                        "target_entropy": target_entropy.numpy(),
+                        "pi_pred_pre": pi_pred.numpy(),
+                        "pred_argmax": np.argmax(pi_pred.numpy(), axis=1),
+                        "target_argmax": np.argmax(pi_tgt, axis=1),
+                        "anchor_kl_pre": (
+                            anchor_kl_per_example.numpy()
+                            if anchor_pi is not None else None),
+                    })
                 if value_pred is not None:
                     value_pred = tf.squeeze(value_pred, axis=-1)
                     z_tgt_tf = tf.convert_to_tensor(z_tgt, dtype=value_pred.dtype)
@@ -1164,6 +1264,35 @@ class SupervisedTrainer(BaseTrainer):
             )
 
         raw_grads = tape.gradient(total_loss, params)
+        policy_grad_norm = None
+        anchor_grad_norm = None
+        policy_anchor_grad_cosine = None
+        if self._first_update_audit_path:
+            policy_grads = tape.gradient(policy_loss, params)
+            anchor_grads = tape.gradient(policy_anchor_kl_loss, params)
+            policy_grads = [
+                tf.zeros_like(param) if grad is None else grad
+                for param, grad in zip(params, policy_grads)
+            ]
+            anchor_grads = [
+                tf.zeros_like(param) if grad is None else (
+                    grad * tf.cast(
+                        self.policy_anchor_kl_coeff, grad.dtype))
+                for param, grad in zip(params, anchor_grads)
+            ]
+            policy_grad_norm_tf = tf.linalg.global_norm(policy_grads)
+            anchor_grad_norm_tf = tf.linalg.global_norm(anchor_grads)
+            grad_dot = tf.add_n([
+                tf.reduce_sum(policy_grad * anchor_grad)
+                for policy_grad, anchor_grad in zip(
+                    policy_grads, anchor_grads)
+            ])
+            grad_denom = policy_grad_norm_tf * anchor_grad_norm_tf
+            policy_grad_norm = float(policy_grad_norm_tf.numpy())
+            anchor_grad_norm = float(anchor_grad_norm_tf.numpy())
+            policy_anchor_grad_cosine = float(
+                tf.math.divide_no_nan(grad_dot, grad_denom).numpy())
+            del tape
         none_grad_count = sum(grad is None for grad in raw_grads)
         grads = [tf.zeros_like(param) if grad is None else grad for param, grad in zip(params, raw_grads)]
         for grad in grads:
@@ -1185,6 +1314,101 @@ class SupervisedTrainer(BaseTrainer):
             post_update_anchor_kl)
         self.policy_anchor_kl_coeff = \
             self.policy_anchor_kl_controller.coefficient
+        if self._first_update_audit_path:
+            deltas = [
+                param.numpy() - before
+                for param, before in zip(params, params_before)
+            ]
+            delta_l2 = float(np.sqrt(sum(
+                np.sum(np.square(delta), dtype=np.float64)
+                for delta in deltas)))
+            delta_linf = float(max(
+                np.max(np.abs(delta)) for delta in deltas))
+            batch_records = []
+            for (problem, _sampled), audit_batch in zip(
+                    sampled_batches, audit_batches):
+                obs_tf = tf.convert_to_tensor(
+                    audit_batch["obs"], dtype=tf.float32)
+                pred_out = problem.network(obs_tf, training=False)
+                pi_post = pred_out[0] if isinstance(pred_out, tuple) \
+                    else pred_out
+                pi_pre = audit_batch["pi_pred_pre"]
+                step_kl = np.sum(
+                    pi_pre * (
+                        np.log(np.clip(pi_pre, 1e-8, 1.0))
+                        - np.log(np.clip(pi_post.numpy(), 1e-8, 1.0))
+                    ), axis=1)
+                anchor_pi = self._anchor_policy(problem, obs_tf)
+                kl_post = tf.reduce_sum(
+                    anchor_pi * (
+                        tf.math.log(tf.clip_by_value(anchor_pi, 1e-8, 1.0))
+                        - tf.math.log(tf.clip_by_value(
+                            pi_post, 1e-8, 1.0))
+                    ), axis=1).numpy()
+                rows = []
+                for row_idx in range(len(audit_batch["obs"])):
+                    rows.append({
+                        "obs_sha256": self._row_sha256(
+                            audit_batch["obs"][row_idx]),
+                        "target_sha256": self._row_sha256(
+                            audit_batch["pi_tgt"][row_idx]),
+                        "source": (
+                            "main_road" if audit_batch["policy_weights"][row_idx]
+                            == 1.0 else "tree"),
+                        "policy_weight": float(
+                            audit_batch["policy_weights"][row_idx]),
+                        "target_entropy": float(
+                            audit_batch["target_entropy"][row_idx]),
+                        "target_pred_argmax_disagree_pre": bool(
+                            audit_batch["pred_argmax"][row_idx]
+                            != audit_batch["target_argmax"][row_idx]),
+                        "anchor_kl_pre": float(
+                            audit_batch["anchor_kl_pre"][row_idx]),
+                        "anchor_kl_post": float(kl_post[row_idx]),
+                        "step_kl_pre_to_post": float(step_kl[row_idx]),
+                    })
+                batch_records.append({
+                    "problem_signature": audit_batch["problem_signature"],
+                    "rows": rows,
+                })
+            all_pre = np.concatenate([
+                batch["anchor_kl_pre"] for batch in audit_batches])
+            all_post = np.concatenate([
+                np.asarray([row["anchor_kl_post"] for row in batch["rows"]])
+                for batch in batch_records])
+            all_step_kl = np.concatenate([
+                np.asarray([
+                    row["step_kl_pre_to_post"] for row in batch["rows"]
+                ]) for batch in batch_records])
+            self._write_first_update_audit({
+                "record_type": "optimizer_step",
+                "step": self._first_update_audit_step,
+                "coefficient": float(anchor_coeff_before),
+                "gradient_l2_unclipped": float(grad_norm.numpy()),
+                "gradient_l2_applied": float(clipped_grad_norm.numpy()),
+                "policy_gradient_l2": policy_grad_norm,
+                "weighted_anchor_gradient_l2": anchor_grad_norm,
+                "policy_anchor_gradient_cosine": policy_anchor_grad_cosine,
+                "parameter_delta_l2": delta_l2,
+                "parameter_delta_linf": delta_linf,
+                "anchor_kl_pre_mean": float(np.mean(all_pre)),
+                "anchor_kl_pre_p90": float(np.quantile(all_pre, .90)),
+                "anchor_kl_pre_p99": float(np.quantile(all_pre, .99)),
+                "anchor_kl_pre_max": float(np.max(all_pre)),
+                "anchor_kl_post_mean": float(np.mean(all_post)),
+                "anchor_kl_post_p90": float(np.quantile(all_post, .90)),
+                "anchor_kl_post_p99": float(np.quantile(all_post, .99)),
+                "anchor_kl_post_max": float(np.max(all_post)),
+                "step_kl_mean": float(np.mean(all_step_kl)),
+                "step_kl_p90": float(np.quantile(all_step_kl, .90)),
+                "step_kl_p99": float(np.quantile(all_step_kl, .99)),
+                "step_kl_max": float(np.max(all_step_kl)),
+                "frozen_batch_file": os.path.join(
+                    self._first_update_audit_path + ".batches",
+                    f"optimizer_step_{self._first_update_audit_step:03d}.npz"),
+                "batches": batch_records,
+            })
+            self._first_update_audit_step += 1
         if controller_record["adjusted"]:
             print(
                 "[POLICY ANCHOR ADAPT] "
