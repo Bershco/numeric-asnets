@@ -15,10 +15,11 @@ PRODUCTION=${PRODUCTION:-/home/hersco/bershco-nu-asnets/numeric-asnets}
 CONTAINER=${CONTAINER:-/home/hersco/Docker/image.sif}
 VALIDATOR=${VALIDATOR:-/home/hersco/tools/VAL/build/bin/Validate}
 OUTPUT_ROOT=${OUTPUT_ROOT:-/home/hersco/training_new_domains/2026-09-14/mprime_phase_b_a_stage1_mcts_recovery}
+DEPLOY_DIR=${DEPLOY_DIR:-$CHECKOUT/scripts}
 RECOVERY_MANIFEST=${RECOVERY_MANIFEST:-$CHECKOUT/experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/recovery_manifest_20260914.csv}
 
 mkdir -p "$OUTPUT_ROOT/slurm"
-python "$CHECKOUT/scripts/run_mprime_phase_b_a_stage1_mcts_recovery_20260914.py" \
+python "$DEPLOY_DIR/run_mprime_phase_b_a_stage1_mcts_recovery_20260914.py" \
   --recovery-manifest "$RECOVERY_MANIFEST" \
   --recovery-index "$SLURM_ARRAY_TASK_ID" \
   --checkout "$CHECKOUT" --production "$PRODUCTION" \
