@@ -68,3 +68,16 @@ The scientific array is `21240256[0-3]`, submitted at 00:15 IDT on 14 September
 120 GiB and 72 hours; the maximum concurrent request is 24 CPUs and 480 GiB.
 Only `ise-cpu-intl-13` is excluded. Exact row/job/log mappings are in
 `submissions.tsv`, and smoke provenance is in `smoke.tsv`.
+
+## Completed result
+
+All four tasks completed. VH-off scores are 20/20 and 17/20 versus matched
+policy scores 20/20 and 13/20: mean policy 16.5, mean PW70 18.5, mean change
++2.0. VH-on scores are 18/20 and 20/20 versus 17/20 and 16/20: mean policy
+16.5, mean PW70 19.0, mean change +2.5.
+
+This is a promising two-seed screen, not confirmatory evidence. With two
+matched seeds no useful confidence interval or significance claim is made,
+and the still-incomplete fixed-MCTS recovery prevents a clean PW-versus-fixed
+comparison. Exact results, elapsed times and source paths are in
+`results_20260914.csv`.

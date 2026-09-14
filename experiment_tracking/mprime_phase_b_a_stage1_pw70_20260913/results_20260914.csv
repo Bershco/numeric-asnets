@@ -1,0 +1,5 @@
+value_head,seed,selected_epoch,policy_score,pw70_score,pw_minus_policy,job_id,elapsed,state,stdout_log,output_root
+off,1963100312,5,20,20,0,21240256_0,01:30:52,COMPLETED,/home/hersco/training_new_domains/2026-09-13/mprime_phase_b_a_stage1_pw70/slurm/21240256_0.out,/home/hersco/training_new_domains/2026-09-13/mprime_phase_b_a_stage1_pw70/off/1963100312/full
+off,2011206605,5,13,17,4,21240256_1,06:48:07,COMPLETED,/home/hersco/training_new_domains/2026-09-13/mprime_phase_b_a_stage1_pw70/slurm/21240256_1.out,/home/hersco/training_new_domains/2026-09-13/mprime_phase_b_a_stage1_pw70/off/2011206605/full
+on,1963100312,6,17,18,1,21240256_2,06:15:58,COMPLETED,/home/hersco/training_new_domains/2026-09-13/mprime_phase_b_a_stage1_pw70/slurm/21240256_2.out,/home/hersco/training_new_domains/2026-09-13/mprime_phase_b_a_stage1_pw70/on/1963100312/full
+on,2011206605,5,16,20,4,21240256_3,02:17:11,COMPLETED,/home/hersco/training_new_domains/2026-09-13/mprime_phase_b_a_stage1_pw70/slurm/21240256_3.out,/home/hersco/training_new_domains/2026-09-13/mprime_phase_b_a_stage1_pw70/on/2011206605/full

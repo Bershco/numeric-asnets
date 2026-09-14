@@ -71,3 +71,35 @@ and the Stage-1-to-endpoint trajectory-probe round trip. Scientific training
 array `21253011[0-1]` and Stage-1 probe array `21253014[0-1]` are submitted.
 Endpoint/probe array `21253018[0-1]` is dependency-pending on both arrays.
 Exact job IDs, resources and output paths are recorded in `submissions.tsv`.
+
+## 14 September 12:24 IDT interim result
+
+Both one-epoch training tasks and both Stage-1 probe captures completed. The
+stable-control endpoint completed at **20/20**; the catastrophic-seed endpoint
+remains live, so Phase A has not yet established whether the historical 20 to
+10 collapse reproduces.
+
+The one-epoch audit already narrows the causal story:
+
+- both seeds lost worker slot 2 and ingested the surviving slots in order
+  `1,0`; the simple omitted-slot/count and completion-order explanation is
+  therefore not supported;
+- the catastrophic seed has mean per-step policy KL `0.1421` versus `0.0993`
+  for the control, maximum step KL `3.7681` versus `2.1516`, and cumulative
+  parameter displacement `2.0949` versus `1.7239`;
+- the catastrophic seed's target/Stage-1 argmax disagreement rate is lower,
+  not higher (`41.0%` versus `48.5%`), so a simple excess-disagreement-count
+  explanation is not supported;
+- its replay is more diverse and more entropic in this run: 36 unique
+  observations and 41 unique targets versus 27 and 36, with mean target
+  entropy `0.1870` versus `0.1362`.
+
+These are matched descriptive diagnostics, not a statistical population
+comparison. If the catastrophic endpoint reproduces the severe loss, the
+larger realized update/movement becomes the leading actionable mechanism and
+the gated hard-rollback treatment is justified. If it does not reproduce,
+the historical failure depends on a process detail not held fixed by this
+rerun, and Phase B must not be launched yet.
+
+Exact metrics, job identities and source paths are in
+`phase_a_interim_results_20260914.csv`.

@@ -1,5 +1,5 @@
 submitted_at_idt	role	job_id	tasks	state_at_submission	cpus_per_task	memory_per_task	time_limit	dependency	checkout_commit	remote_output
 2026-09-14T11:43:53+03:00	compute_smoke	21252717	1	COMPLETED	6	24G	01:00:00		d0e001c0	/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_a/smoke_21252717.txt
-2026-09-14T11:50:00+03:00	one_epoch_training	21253011	2	SUBMITTED	6	48G	04:00:00		d0e001c0	/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_a/train_21253011_%a.txt
-2026-09-14T11:50:00+03:00	stage1_probe_capture	21253014	2	SUBMITTED	5	20G	02:00:00		d0e001c0	/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_a/stage1_probe_21253014_%a.txt
-2026-09-14T11:50:00+03:00	endpoint_probe_evaluation	21253018	2	DEPENDENCY_PENDING	5	20G	02:00:00	afterok:21253011:21253014	d0e001c0	/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_a/endpoint_21253018_%a.txt
+2026-09-14T11:50:00+03:00	one_epoch_training	21253011	2	COMPLETED	6	48G	04:00:00		d0e001c0	/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_a/train_21253011_%a.txt
+2026-09-14T11:50:00+03:00	stage1_probe_capture	21253014	2	COMPLETED	5	20G	02:00:00		d0e001c0	/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_a/stage1_probe_21253014_%a.txt
+2026-09-14T11:50:00+03:00	endpoint_probe_evaluation	21253018	2	1_COMPLETED_1_RUNNING	5	20G	02:00:00	afterok:21253011:21253014	d0e001c0	/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_a/endpoint_21253018_%a.txt

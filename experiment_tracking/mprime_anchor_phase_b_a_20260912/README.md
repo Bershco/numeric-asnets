@@ -83,7 +83,7 @@ held, so an exact paired-marker audit created six resumable recovery tasks as
 it remains dependency-pending and will submit only still-incomplete lineage
 indices before launching an analysis-only finalizer.
 
-At the 14 September 00:21 IDT snapshot, 469/588 checkpoint evaluations were
+At the 14 September 12:24 IDT snapshot, 519/588 checkpoint evaluations were
 complete. All original task attempts had left the queue. Six resumable recovery
 tasks were running, requesting 24 CPUs and 120 GiB, with about 12h26m to their
 24-hour hard bounds. Recheck controller `21233927` remained dependency-pending

@@ -27,12 +27,11 @@ every task.
 
 ## Live status
 
-At the 14 September 2026 00:21 IDT snapshot, four tasks were terminal and 16
-were running. The two complete matched seed pairs were neutral: seed
-`1073581256` scored 59/59 under both rules and seed `2011206605` scored 20/59
-under both rules. Across all durable live ledgers, action-ID had classified
-414/590 seed-instances with at least 254 successes; policy-prior had classified
-409/590 with at least 249 successes. These whole-arm figures are conservative
-live lower bounds, not a paired effect estimate. RQ2 remains frozen until all
-ten pairs terminate. Exact current sources are in
-`../advisor_followup_20260910/live_result_progress_20260914_0021.csv`.
+At the 14 September 2026 12:24 IDT snapshot, six tasks were terminal and 14
+were running. Three complete matched seed pairs were neutral: seed
+`1073581256` scored 59/59 under both rules, seed `1239739722` scored 17/59
+under both, and seed `2011206605` scored 20/59 under both. The matched
+three-pair effect is exactly zero but remains interim evidence; unpaired live
+lower bounds must not be used as a treatment comparison. RQ2 remains frozen
+until all ten pairs terminate. Current workload provenance is in
+`../advisor_followup_20260910/live_workload_targeted_20260914_1224.csv`.
