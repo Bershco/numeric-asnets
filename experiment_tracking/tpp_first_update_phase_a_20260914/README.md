@@ -69,7 +69,7 @@ Compute smoke `21252717` completed in 5m39s and verified all five controller
 tests, one real instrumented optimizer step, a frozen replay-batch artifact,
 and the Stage-1-to-endpoint trajectory-probe round trip. Scientific training
 array `21253011[0-1]` and Stage-1 probe array `21253014[0-1]` are submitted.
-Endpoint/probe array `21253018[0-1]` is dependency-pending on both arrays.
+Endpoint/probe array `21253018[0-1]` was submitted dependency-pending on both arrays.
 Exact job IDs, resources and output paths are recorded in `submissions.tsv`.
 
 ## 14 September 12:24 IDT interim result

@@ -34,4 +34,4 @@ under both, and seed `2011206605` scored 20/59 under both. The matched
 three-pair effect is exactly zero but remains interim evidence; unpaired live
 lower bounds must not be used as a treatment comparison. RQ2 remains frozen
 until all ten pairs terminate. Current workload provenance is in
-`../advisor_followup_20260910/live_workload_targeted_20260914_1224.csv`.
+`../advisor_followup_20260910/live_workload_targeted_20260914_1248.csv`.

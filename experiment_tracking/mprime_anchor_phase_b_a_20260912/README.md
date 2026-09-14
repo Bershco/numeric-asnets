@@ -84,12 +84,19 @@ it remains dependency-pending and will submit only still-incomplete lineage
 indices before launching an analysis-only finalizer.
 
 At the 14 September 12:24 IDT snapshot, 519/588 checkpoint evaluations were
-complete. All original task attempts had left the queue. Six resumable recovery
-tasks were running, requesting 24 CPUs and 120 GiB, with about 12h26m to their
-24-hour hard bounds. Recheck controller `21233927` remained dependency-pending
-and will audit and resubmit only identities still missing after those six tasks.
+complete. All original task attempts had left the queue. Five resumable recovery
+tasks were running, requesting 20 CPUs and 100 GiB, with about 24 minutes to
+their 24-hour hard bounds. Recheck controller `21233927` remained
+dependency-pending and will audit and resubmit only identities still missing
+after those tasks.
 No Stage-2 training can be launched by this chain: its proposed coefficient
 winners require manual curve review first.
+
+At 12:48 IDT those five allocations had left the queue and the durable count
+was 520/588. The login node then stalled while the controller transition was
+being queried, so the successor job ID is deliberately left unreported until
+it can be read rather than inferred. The idempotent controller remains the
+declared mechanism for resubmitting only missing identities.
 
 The Stage-2 reuse question is separate from the Stage-1 MCTS reuse audit. An
 exact epoch join shows that 16/20 old validation-led Stage-2 lineages definitely
