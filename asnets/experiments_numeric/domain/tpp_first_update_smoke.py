@@ -3,5 +3,4 @@
 from .tpp import *
 
 TRAIN_PDDLS = ['instances/pfile1.pddl']
-TEST_RUNS = [(['instances/pfile1.pddl'], None)]
-
+TEST_RUNS = [(['instances/pfile2.pddl'], None)]
