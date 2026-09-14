@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context
+REPO=${CHECKOUT:-/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context}
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
 ROOT=/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_a
 
@@ -44,7 +44,7 @@ apptainer exec \
     set -euo pipefail
     cd '$REPO/asnets'
     source '$PRODUCTION_REPO/venv-asnets/bin/activate'
-    export PYTHONPATH='$REPO':\${PYTHONPATH:-}
+    export PYTHONPATH='$REPO/asnets':'$REPO':\${PYTHONPATH:-}
     export ASN_FIRST_UPDATE_AUDIT_PATH='$ASN_FIRST_UPDATE_AUDIT_PATH'
     ./run_experiment \
       experiments_numeric.architecture_2.tpp_mcts \
@@ -86,4 +86,3 @@ assert len(schedule) == 1, len(schedule)
 assert all(pathlib.Path(r["frozen_batch_file"]).is_file() for r in steps)
 print(f"[TPP-FIRST-UPDATE-A] audit verified: {len(steps)} optimizer steps")
 PY
-

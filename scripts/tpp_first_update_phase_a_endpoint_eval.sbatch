@@ -8,7 +8,7 @@
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_a/endpoint_%A_%a.txt
 
 set -euo pipefail
-REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context
+REPO=${CHECKOUT:-/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context}
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
 ROOT=/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_a
 
@@ -28,11 +28,10 @@ apptainer exec --bind /home/hersco:/home/hersco --bind /home/hersco/apptainer_fa
   set -euo pipefail
   cd '$REPO/asnets'
   source '$PRODUCTION_REPO/venv-asnets/bin/activate'
-  export PYTHONPATH='$REPO':\${PYTHONPATH:-}
+  export PYTHONPATH='$REPO/asnets':'$REPO':\${PYTHONPATH:-}
   export ASN_POLICY_PROBE_INPUT_DIR='$ASN_POLICY_PROBE_INPUT_DIR'
   export ASN_POLICY_PROBE_OUTPUT_DIR='$ASN_POLICY_PROBE_OUTPUT_DIR'
   ./run_experiment experiments_numeric.architecture_2.tpp_mcts experiments_numeric.domain.tpp \
     --resume-from '$CHECKPOINT' --disable-value-head --random-seed '$SEED' \
     --num-workers 5 --jpddl-max-heap 4g
 "
-

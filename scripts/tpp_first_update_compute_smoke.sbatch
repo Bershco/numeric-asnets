@@ -7,7 +7,7 @@
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_a/smoke_%j.txt
 
 set -euo pipefail
-REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context
+REPO=${CHECKOUT:-/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context}
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
 OUT=/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_a/smoke_${SLURM_JOB_ID}
 SOURCE='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.tpp-experiments_numeric.architecture_2.tpp-2026-08-25T06:23:43.293616/P[domain,pfile1,pfile2,pfile4]-S[0.003,50,enhsp-hadd-gbfs]-MO[]-T[518400]-04911937-faf7d6/snapshots/snapshot_5_0.667'
@@ -17,9 +17,11 @@ apptainer exec --bind /home/hersco:/home/hersco --bind /home/hersco/apptainer_fa
   set -euo pipefail
   cd '$REPO/asnets'
   source '$PRODUCTION_REPO/venv-asnets/bin/activate'
-  export PYTHONPATH='$REPO':\${PYTHONPATH:-}
+  export PYTHONPATH='$REPO/asnets':'$REPO':\${PYTHONPATH:-}
   python -m py_compile asnets/supervised.py asnets/parllel_explore_spawn_grads.py asnets/spawn_train_worker.py
-  python -m unittest discover -s tests -p 'test_policy_anchor.py' -v
+  TEST_OUTPUT=\$(python -m unittest discover -s tests -p 'test_policy_anchor_kl_controller.py' -v 2>&1)
+  printf '%s\n' "\$TEST_OUTPUT"
+  grep -Eq '^Ran [1-9][0-9]* tests?' <<<"\$TEST_OUTPUT"
   export ASN_FIRST_UPDATE_AUDIT_PATH='$OUT/audit.jsonl'
   ./run_experiment \
     experiments_numeric.architecture_2.tpp_mcts_first_update_smoke \
