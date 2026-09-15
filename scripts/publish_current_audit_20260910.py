@@ -71,7 +71,7 @@ upsert(
     primary_question="Does validation rank saved checkpoints reliably without saturating?",
     results_file="experiment_tracking/mprime_validation_phase_b_20260906/phase_b_cell_summary_latest.csv",
     manifest_path="experiment_tracking/mprime_validation_phase_b_20260906/checkpoints.csv;experiment_tracking/mprime_validation_phase_b_20260906/protocol.json;problems/numeric/mprime/validation_ipc_scale_v1/manifest.csv",
-    next_action="Phase B removed saturation but Stage2 validation-test rank agreement remains weak; do not repeat the same full design. If MPrime continues, prepare a structurally redesigned candidate-limited Phase C.",
+    next_action="Phase C is complete; Phase-B replicate A had the best available rank/stability trade-off and is frozen as the final validator. Final Stage2 is tracked by MPRIME-FINAL-S2.",
 )
 upsert(
     "MPRIME-VAL-ADEQUACY-C",
@@ -82,10 +82,10 @@ upsert(
 )
 upsert(
     "MAIN-EXT6-MPRIME",
-    status="completed-policy-with-validation-audit",
+    status="live-final-stage2-and-policy-curves",
     primary_question="Do MAIN-VAL policy conclusions extend from the original five imperfect domains to MPrime as a sixth?",
-    held_reason="Phase B shows that both the old and harder validation distributions rank Stage-2 checkpoints weakly",
-    next_action="Retain completed policy results as provisional extension. If MPrime continues, use a structurally redesigned candidate-limited validation audit before selecting further checkpoints.",
+    held_reason="",
+    next_action="Phase-B-A is frozen; one of twenty final Stage2 lineages was terminal and nineteen live at the18:57 audit. Live policy controller21345695 had24 completed and22 active curve jobs. Final selected endpoints and fixed/PW evaluation remain gated.",
 )
 upsert(
     "MCTS-PW",
@@ -156,10 +156,10 @@ upsert(
 )
 upsert(
     "MCTS-COUNTERS-TIEBREAK-STRICT",
-    status="live-14-running-6-complete",
+    status="live-five-original-two-exact-recovery",
     results_file="experiment_tracking/counters_tie_break_strict_stage1_20260913/progress_20260914_1502.csv;experiment_tracking/counters_seed_divergence_audit_20260914/README.md;experiment_tracking/counters_seed_divergence_audit_20260914/per_instance_divergence.csv;experiment_tracking/counters_seed_divergence_audit_20260914/per_instance_pair_join.csv",
     manifest_path="experiment_tracking/counters_tie_break_strict_stage1_20260913/manifest.csv",
-    next_action="Wait for all ten pairs before changing RQ2. Two high-policy seeds show only ordinary10000-action wanted losses: policy-prior delays14/15 overlapping failures for seed2082152039 but has not rescued coverage; seed534933607 includes one policy-prior regression.",
+    next_action="Five original tasks remain live. Exact recovery21347260 tasks7 and19 runs only three identities left unclassified after explicit 21600-second timeout reconciliation. Wait for all ten pairs before changing RQ2.",
 )
 upsert(
     "MCTS-BG-TIEBREAK-SCREEN",
@@ -172,20 +172,20 @@ upsert(
     "MCTS-BG-PW70-TRACE",
     display_name="Block Grouping PW70 policy-divergence mechanism trace",
     role="search-diagnostic",
-    status="live-one-running-three-pending",
+    status="completed-negative-mechanism-gate",
     scope="Four frozen policy-success/PW70-six-hour-timeout instances; one from each original VH x seed cell",
     primary_question="Do Block Grouping PW70 failures first leave the successful policy at an equal maximum-visit tie, or through a different search/compute mechanism?",
-    configuration_summary="Logging only; exact historical PW70 Kmin3 c0.6 alpha0.5 70 simulations; action-ID rule; one worker;2CPU120GiB;6h per instance; four tasks throttled to2",
-    results_file="experiment_tracking/block_grouping_pw70_tie_trace_20260914/README.md;experiment_tracking/block_grouping_pw70_tie_trace_20260914/submissions.tsv",
+    configuration_summary="Logging only; exact historical PW70 Kmin3 c0.6 alpha0.5 70 simulations; action-ID rule; one worker;2CPU120GiB;6h per instance",
+    results_file="experiment_tracking/block_grouping_pw70_tie_trace_20260914/README.md;experiment_tracking/block_grouping_pw70_tie_trace_20260914/results_20260915.csv",
     manifest_path="experiment_tracking/block_grouping_pw70_tie_trace_20260914/manifest.csv",
-    next_action="Smoke21266623 passed. Trace21266624_0 runs and tasks1-3 are resource-pending. Expand to a PW tie-break treatment only if multiple traced first divergences are policy-recoverable visit ties.",
+    next_action="All four traces timed out. Three first divergences had unique visit winners; the fourth maximum tie excluded the policy action. Do not expand a PW policy-tie treatment from this screen.",
 )
 upsert(
     "MPRIME-ANCHOR-PBA",
-    status="live-568-of588",
+    status="completed-frozen-off30-on10",
     results_file="experiment_tracking/mprime_anchor_phase_b_a_20260912/README.md",
     manifest_path="experiment_tracking/mprime_anchor_phase_b_a_20260912/manifest.csv",
-    next_action="Successor21254779 has7 running tasks and20 points remaining across7 incomplete lineages; controller21254780 waits on it and may only propose coefficients for manual review.",
+    next_action="All588 Phase-B-A anchor evaluations completed; manual review froze coefficient30 for VH-off and10 for VH-on. All20 uniform lineages were submitted and started; current state is tracked by MPRIME-FINAL-S2.",
 )
 upsert(
     "MPRIME-PBA-S1-MCTS",
@@ -198,13 +198,13 @@ upsert(
     "MPRIME-PBA-S1-PW-SCREEN",
     display_name="MPrime final-validator Stage1 PW70 confirmation",
     role="search-confirmation",
-    status="live-fifteen-running-one-complete",
+    status="completed-twenty-of-twenty",
     scope="Ten matched Phase-B-A Stage1 seeds x two VH modes: four completed screen tasks plus sixteen confirmation tasks",
     primary_question="Does PW70 retain the MPrime fixed-search benefit with lower search cost?",
     configuration_summary="PW70 Kmin3 c0.6 alpha0.5; ten matched seeds per VH; normal fixed comparator; terminal-safe off; 6h per instance; twenty total tasks",
     results_file="experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/results_20260914.csv;experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/confirmation_submissions.tsv",
     manifest_path="experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/manifest.csv;experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/manifest_confirmation_remaining.csv",
-    next_action="One of16 confirmation identities is complete and15 run. Failed task21259754_3 produced zero classifications and is replaced exactly by21264782_3. Final analysis compares PW with both policy and fixed at30m2h6h.",
+    next_action="All20 identities are final. PW70 off=15.7/17.6/17.7 and on=15.5/17.9/18.5 at30m/2h/6h; compare with both policy and fixed in RQ2/RQ4.",
 )
 upsert(
     "TPP-FIRST-UPDATE-A",
@@ -222,13 +222,26 @@ upsert(
     "TPP-FIRST-UPDATE-B",
     display_name="TPP frozen-replay first-update crossover",
     role="training-diagnostic",
-    status="repaired-smoke-resource-pending",
+    status="completed-four-cell-crossover",
     scope="Two missing checkpoint x frozen-replay crossover cells plus two dependent policy endpoints",
     primary_question="Was the one-epoch TPP collapse driven by checkpoint susceptibility, replay content, or their interaction?",
     configuration_summary="VH-off; one Stage2 epoch; exact frozen60-batch schedules; anchor3; lr0.0003; smoke6CPU48GiB then two6CPU48GiB training tasks and two5CPU20GiB endpoints",
     results_file="experiment_tracking/tpp_first_update_phase_b_crossover_20260914/README.md",
     manifest_path="experiment_tracking/tpp_first_update_phase_b_crossover_20260914/manifest.csv",
-    next_action="Smoke21266581 exposed and motivated fix a6c773f2 for frozen init profiling. Replacement21267359 gates crossover21267360 and endpoints21267361; interpret only after both off-diagonal endpoints complete.",
+    next_action="Bad checkpoint x stable replay=3/20; stable checkpoint x bad replay=20/20; diagonals10/20 and20/20. Starting-checkpoint susceptibility is necessary in this selected frozen pair.",
+)
+upsert(
+    "MPRIME-FINAL-S2",
+    status="live-nineteen-training-one-terminal-policy-curves-live",
+    results_file="experiment_tracking/mprime_final_stage2_validation_20260915/README.md;experiment_tracking/mprime_final_stage2_validation_20260915/submissions.tsv;experiment_tracking/mprime_final_stage2_validation_20260915/live_policy_ready_20260915_1810.csv;experiment_tracking/mprime_final_stage2_validation_20260915/live_policy_submissions_20260915_1810.tsv",
+    manifest_path="experiment_tracking/mprime_final_stage2_validation_20260915/manifest.csv",
+    next_action="At the18:57 audit one training lineage was terminal and nineteen live at epochs42-98. Controller21345695 had24 completed and22 active learning-curve jobs. Select endpoints only after terminal epoch99 evidence then submit matched fixed and PW evaluations.",
+)
+upsert(
+    "MCTS-COUNTERS-TIEBREAK-TRACE",
+    status="dependency-pending-corrected-controller",
+    results_file="experiment_tracking/counters_tie_break_strict_stage1_20260913/README.md;experiment_tracking/counters_tie_break_strict_stage1_20260913/full_trace_submission_20260915.csv",
+    next_action="Controller21347597 waits for arrays21233925 and21347260; reconciles explicit hard timeouts and traces only the policy-success/action-ID-failure union under both rules.",
 )
 upsert(
     "FO-S2-VAL-RECOVERY",
@@ -294,11 +307,13 @@ live_experiment_map = {
     "FO-S2-VAL-RECOVERY": ["FO Counters validation-led Stage-2 exact recovery"],
     "MAIN-VAL-S2-MCTS": ["FO Counters validation-led Stage-2 exact recovery"],
     "MCTS-COUNTERS-TIEBREAK-STRICT": ["Counters Stage1 strict tie-break confirmation"],
+    "MCTS-COUNTERS-TIEBREAK-TRACE": ["Counters full-root failure trace controller"],
     "MCTS-BG-TIEBREAK-SCREEN": ["Block Grouping selected-failure tie-break screen"],
     "MCTS-BG-PW70-TRACE": ["Block Grouping PW70 mechanism smoke", "Block Grouping PW70 mechanism trace"],
     "MPRIME-ANCHOR-PBA": ["MPrime Phase-B-A anchor rescore successor", "MPrime Phase-B-A rescore controller"],
     "MPRIME-PBA-S1-MCTS": ["MPrime Phase-B-A Stage1 fixed-MCTS exact recovery"],
     "MPRIME-PBA-S1-PW-SCREEN": ["MPrime Phase-B-A Stage1 PW70 confirmation"],
+    "MPRIME-FINAL-S2": ["MPrime final validation-led Stage2", "MPrime live policy evaluations", "MPrime live policy controller"],
     "TPP-FIRST-UPDATE-B": ["TPP frozen-replay crossover smoke", "TPP frozen-replay causal crossover", "TPP frozen-replay endpoint probes"],
 }
 catalog = []

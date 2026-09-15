@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+from collections import defaultdict
 from pathlib import Path
 
 
@@ -17,9 +18,11 @@ RESULT_TOKENS = ("score", "success", "coverage", "effect", "mean", "p_value", "r
 
 paths = sorted(TRACK.rglob("*.csv"))
 rows: list[dict[str, object]] = []
+duplicates: dict[str, list[str]] = defaultdict(list)
 for path in paths:
     rel = path.relative_to(ROOT).as_posix()
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    duplicates[digest].append(rel)
     try:
         with path.open(newline="", encoding="utf-8-sig") as handle:
             reader = csv.DictReader(handle)
@@ -58,3 +61,62 @@ with OUT.open("w", newline="", encoding="utf-8") as handle:
     writer.writeheader()
     writer.writerows(rows)
 print(f"{OUT}: {len(rows)} CSV files")
+
+# Keep the registry-path and byte-duplicate companion audits synchronized with
+# the same filesystem snapshot.  The older all-purpose publication script also
+# writes these files, but it can rewrite narrative status pages and is therefore
+# not appropriate for a provenance-only refresh.
+registry_path = TRACK / "experiment_registry.csv"
+with registry_path.open(newline="", encoding="utf-8-sig") as handle:
+    registry = list(csv.DictReader(handle))
+reference_rows: list[dict[str, str]] = []
+for row in registry:
+    for field in ("results_file", "manifest_path"):
+        refs = [part.strip() for part in row.get(field, "").split(";") if part.strip()]
+        if not refs:
+            reference_rows.append({
+                "experiment_id": row["experiment_id"], "field": field,
+                "reference": "", "state": "not_declared",
+            })
+        for ref in refs:
+            if ref.startswith(("http://", "https://", "/home/")):
+                state = "remote_reference"
+            else:
+                state = "exists_local" if (ROOT / ref).exists() else "missing_local"
+            reference_rows.append({
+                "experiment_id": row["experiment_id"], "field": field,
+                "reference": ref, "state": state,
+            })
+reference_out = TRACK / "registry_reference_audit_latest.csv"
+with reference_out.open("w", newline="", encoding="utf-8") as handle:
+    writer = csv.DictWriter(handle, fieldnames=["experiment_id", "field", "reference", "state"])
+    writer.writeheader()
+    writer.writerows(reference_rows)
+
+duplicate_rows: list[dict[str, object]] = []
+for digest, rels in duplicates.items():
+    if len(rels) < 2:
+        continue
+    registry_mirror = set(rels) == {
+        "experiment_tracking/experiment_registry.csv",
+        "experiment_tracking/experiments.csv",
+    }
+    duplicate_rows.append({
+        "sha256": digest,
+        "copies": len(rels),
+        "paths": ";".join(rels),
+        "disposition": (
+            "experiments.csv is a generated compatibility mirror; edit only experiment_registry.csv"
+            if registry_mirror else
+            "retain if dated snapshot; canonical readers must use the *_latest or master path"
+        ),
+    })
+duplicate_out = TRACK / "documentation_redundancy_audit_latest.csv"
+with duplicate_out.open("w", newline="", encoding="utf-8") as handle:
+    writer = csv.DictWriter(
+        handle, fieldnames=["sha256", "copies", "paths", "disposition"]
+    )
+    writer.writeheader()
+    writer.writerows(duplicate_rows)
+print(f"{reference_out}: {len(reference_rows)} references")
+print(f"{duplicate_out}: {len(duplicate_rows)} duplicate groups")

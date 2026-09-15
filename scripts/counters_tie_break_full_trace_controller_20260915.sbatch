@@ -25,11 +25,17 @@ if [[ -e "$out/submissions.csv" ]]; then
 fi
 
 sha256sum \
+  "$repo/scripts/reconcile_counters_tie_break_terminal_records_20260915.py" \
+  "$repo/scripts/reconcile_counters_tie_break_all_action_id_20260915.py" \
   "$repo/scripts/build_counters_tie_break_full_trace_manifest_20260915.py" \
   "$repo/scripts/run_counters_tie_break_full_trace_20260915.py" \
   "$repo/scripts/counters_tie_break_full_trace_20260915.sbatch" \
   "$repo/scripts/counters_tie_break_full_trace_controller_20260915.sbatch" \
   "$base_manifest" > "$out/deployed_inputs.sha256"
+
+python "$repo/scripts/reconcile_counters_tie_break_all_action_id_20260915.py" \
+  --manifest "$base_manifest" \
+  > "$out/action_id_terminal_reconciliation.json"
 
 python "$repo/scripts/build_counters_tie_break_full_trace_manifest_20260915.py" \
   --base-manifest "$base_manifest" \

@@ -152,7 +152,9 @@ constant-coefficient learning-rate-backtracking treatment. Smoke `21318360`
 completed in 4m54s. Both one-epoch treatments `21318362[0-1]` completed: the
 catastrophic seed required 11 backtracking retries and the stable control 4;
 all 60 optimizer updates were eventually accepted in each arm. Endpoint jobs
-`21318364[0-1]` then completed at 20/20 for both arms.
+`21318364[0-1]` then completed at 20/20 for both arms: catastrophic seed
+`1972442430` and stable control seed `2082152039`. The exact stable seed is
+confirmed by the deployed manifest and the `21318362_1`/`21318364_1` logs.
 
 This is a successful prevention result for the deliberately selected outlier:
 the catastrophic seed improved from its historical first-Stage-2 10/20 to
@@ -164,6 +166,34 @@ rescaling. `results_final_20260915.csv` records the endpoint, retry count,
 parameter displacement and exact remote audit/log routes. The old
 coefficient-doubling attempt remains in place and is explicitly labelled a
 failed treatment implementation.
+
+The result must not be described as gradient clipping. Gradient clipping
+rescales a gradient before applying it. This treatment first proposes a whole
+Adam update, measures its deterministic policy displacement, restores both
+network and optimizer state when the displacement is excessive, lowers the
+learning rate, and recomputes the same data batch. It also changed the KL
+measurement from a dropout-contaminated current-policy forward to a
+deterministic current-policy forward. The two changes jointly define the
+successful treatment; this selected pair does not identify either one as the
+sole repair.
+
+## Remaining causal closure
+
+No additional 100-epoch training is needed to support the narrow conclusion
+that the selected collapse was preventable. Two follow-ups would close the
+remaining causal questions:
+
+1. Repeat the catastrophic and stable one-epoch treatments while restoring the
+   dropout RNG state on every rejected retry, followed by two endpoints. This
+   separates rollback/learning-rate scaling from lucky dropout resampling.
+2. After that mechanism check, run one guarded epoch plus one endpoint on the
+   other eight TPP/off seeds (or all ten under one uniform same-build protocol)
+   to estimate non-regression and how often the guard activates. This is a
+   population screen, not required to explain the already selected pair.
+
+The first option is four small jobs. The second is sixteen jobs when reusing
+the completed selected pair as historical evidence, or twenty jobs for a
+strict uniform rerun. These remain documented next steps and are not submitted.
 
 ## Reproduction
 

@@ -81,6 +81,14 @@ def main() -> None:
     parser.add_argument("--output-prefix", required=True)
     parser.add_argument("--queue-cap", type=int, default=1999)
     parser.add_argument("--max-per-cycle", type=int, default=100)
+    parser.add_argument(
+        "--max-active", type=int,
+        help="Maximum submitted policy jobs that may be PENDING or RUNNING.",
+    )
+    parser.add_argument(
+        "--one-cycle", action="store_true",
+        help="Submit one bounded wave and return instead of waiting for queue room.",
+    )
     args = parser.parse_args()
     rows = read(args.manifest); validate(rows)
     existing = {row["manifest_id"] for row in read(args.ledger, "\t")} if args.ledger.exists() else set()
@@ -95,8 +103,28 @@ def main() -> None:
         if not remaining:
             print(f"[COMPLETE] submitted={len(existing)}", flush=True); return
         queued = len(subprocess.check_output(["squeue", "-u", "hersco", "-h"], text=True).splitlines())
-        allowance = min(max(0, args.queue_cap - queued), args.max_per_cycle, len(remaining))
-        print(f"[CONTROLLER] queue={queued} remaining={len(remaining)} allowance={allowance}", flush=True)
+        active = 0
+        if args.max_active is not None and args.ledger.exists():
+            submitted_rows = read(args.ledger, "\t")
+            submitted_ids = [row["slurm_job_id"] for row in submitted_rows]
+            if submitted_ids:
+                active_text = subprocess.check_output(
+                    ["squeue", "-h", "-j", ",".join(submitted_ids), "-o", "%T"],
+                    text=True,
+                )
+                active = sum(
+                    state.strip() in {"PENDING", "RUNNING", "COMPLETING", "CONFIGURING"}
+                    for state in active_text.splitlines()
+                )
+        active_room = len(remaining) if args.max_active is None else max(0, args.max_active - active)
+        allowance = min(
+            max(0, args.queue_cap - queued), active_room,
+            args.max_per_cycle, len(remaining),
+        )
+        print(
+            f"[CONTROLLER] queue={queued} active={active} remaining={len(remaining)} "
+            f"allowance={allowance}", flush=True,
+        )
         for row in remaining[:allowance]:
             job_id = submit(row, False, args.suffix_prefix, args.output_prefix)
             new = not args.ledger.exists()
@@ -114,6 +142,9 @@ def main() -> None:
                 stream.flush(); os.fsync(stream.fileno())
             existing.add(row["manifest_id"])
             print(f"[SUBMITTED] {job_id} {row['manifest_id']}", flush=True)
+        if args.one_cycle:
+            print(f"[ONE CYCLE] submitted={allowance}", flush=True)
+            return
         if allowance == 0:
             time.sleep(60)
 

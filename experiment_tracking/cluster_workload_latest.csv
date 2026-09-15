@@ -1,5 +1,7 @@
 snapshot_time_idt,experiment,job_id,job_name,state,tasks,cpus,memory_gib,elapsed,time_limit,reason_or_node,priority,array_job_id,scheduler_source
-2026-09-15T14:39:55+03:00,MPrime final validation-led Stage2,21303717-21303736,MPRIME_FINAL_S2,RUNNING,20,120,960.0,03:25:48-04:15:21,3-00:00:00,multiple,117,21303717-21303736,squeue://hersco/21303717-21303736
-2026-09-15T14:39:55+03:00,Counters Stage1 strict tie-break confirmation,"21233925_[0-1,7,9-11,17,19]",COUNTERS_TIE_STRICT,RUNNING,8,48,960.0,05:41:03-2-01:40:20,3-00:00:00,multiple,1,21233925,squeue://hersco/21233925
-2026-09-15T14:39:55+03:00,Counters exact OOM recovery,"21308619_[4,6,14]",COUNTERS_TIE_RECOVER,RUNNING,3,18,600.0,03:25:16,3-00:00:00,multiple,1,21308619,squeue://hersco/21308619
-2026-09-15T14:39:55+03:00,Counters full-root failure trace controller,21319149,COUNTERS_TRACE_CTL,PENDING,1,1,2.0,00:00:00,00:30:00,Dependency,1,21319149,squeue://hersco/21319149
+2026-09-15T18:57:00+03:00,MPrime final validation-led Stage2,21303717-21303736,MPRIME_FINAL_S2,RUNNING_PLUS_ONE_TERMINAL,19,114,912.0,07:45:12-08:34:45,3-00:00:00,multiple,117,21303717-21303736,squeue://hersco/21303717-21303736
+2026-09-15T18:57:00+03:00,MPrime live policy evaluations,"21344381-21349575; noncontiguous; see submission ledger",MPFINALV_S2POL,RUNNING,22,220,440.0,00:02:45-00:52:06,04:00:00,multiple,117,,experiment_tracking/mprime_final_stage2_validation_20260915/live_policy_submissions_20260915_1810.tsv
+2026-09-15T18:57:00+03:00,MPrime live policy controller,21345695,MPRIME_S2_POLICY_CTL,RUNNING,1,2,2.0,00:48:38,3-00:00:00,cs-cpu-05,117,21345695,squeue://hersco/21345695
+2026-09-15T18:57:00+03:00,Counters Stage1 strict tie-break confirmation,"21233925_[0,1,9-11]",COUNTERS_TIE_STRICT,RUNNING,5,30,600.0,10:00:27-2-05:59:44,3-00:00:00,multiple,1,21233925,squeue://hersco/21233925
+2026-09-15T18:57:00+03:00,Counters exact unclassified-instance recovery,"21347260_[7,19]",COUNTERS_TIE_EXACT2,RUNNING,2,4,240.0,00:15:15-00:18:18,14:00:00,multiple,1,21347260,squeue://hersco/21347260
+2026-09-15T18:57:00+03:00,Counters full-root failure trace controller,21347597,COUNTERS_TRACE_CTL,PENDING,1,0,0.0,00:00:00,00:30:00,Dependency,1,21347597,squeue://hersco/21347597

@@ -78,9 +78,11 @@ traces before a test-set comparison.
 
 ## Dependency-gated full-root trace follow-up (submitted 15 September)
 
-The exact mechanism follow-up is implemented and controller `21319149` is
-dependency-pending. Its controller waits for strict array `21233925` and OOM
-recovery `21308619`, then
+The exact mechanism follow-up is implemented. The original controller
+`21319149` was cancelled and superseded after the timeout-ledger defect below
+was found.
+Corrected controller `21347597` waits for strict array `21233925` and exact
+recovery `21347260`, then
 fails closed unless all ten action-ID ledgers contain exactly one terminal
 record for every evaluator identity 1-59 and each parsed policy score matches
 the frozen manifest. Inclusion is exactly `policy success AND same-build
@@ -109,3 +111,29 @@ submission record already exists. Deployed script hashes, exact dependencies,
 resources and paths are recorded in `full_trace_submission_20260915.csv`; the
 controller will additionally freeze the actual inputs in
 `deployed_inputs.sha256` beside its scheduler output.
+
+## 15 September 18:41 correction: timeout evidence and exact recovery
+
+The first recovery design was not actually exact. The rolling evaluator wrote
+success and ordinary 10,000-action outcomes to JSONL but printed six-hour hard
+timeouts only to stdout. Consequently recovery `21308619[4,6,14]` treated
+already classified timeouts as absent and began repeating them, while the first
+controller could never satisfy its 59-JSONL-row gate.
+
+The three recovery tasks were checksummed, cancelled without deleting output,
+and reconciled using only explicit
+`[EVAL INSTANCE] timeout ... limit=21600.0s` events. No absence or Slurm walltime
+was interpreted as a scientific timeout. This proved that tasks 4, 6 and 14
+were already scientifically complete. The same reconciliation completed tasks
+16 and 17. Only three identities remained genuinely unclassified: task 7 has
+one crashed identity and task 19 has two.
+
+Exact replacement `21347260[7,19]` therefore runs only those three identities,
+with one worker per task, two CPUs, 120 GiB, a six-hour per-instance cap and a
+14-hour walltime. Corrected controller `21347597` depends on both the original
+strict array and `21347260`. Before building the trace manifest it reconciles
+all ten action-ID logs, requires exactly 59 unique terminal identities per seed,
+allows only success, ordinary-unsolved and explicit hard-timeout statuses, and
+then emits only `policy success AND action-ID failure` identities under the two
+tie rules. The broader visit-margin calibration remains documented but held
+until this exact-tie confirmation and trace follow-up finish.

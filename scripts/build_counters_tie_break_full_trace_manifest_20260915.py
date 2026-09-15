@@ -64,7 +64,7 @@ def load_complete_action_id_ledger(path: Path) -> dict[int, dict]:
         raise RuntimeError(
             f"action-ID ledger is not complete: {path}; missing={missing}, extra={extra}"
         )
-    allowed = {"success", "finished_unsolved"}
+    allowed = {"success", "finished_unsolved", "hard_timeout"}
     bad_status = sorted(
         (int(record["instance_number"]), record.get("status"))
         for record in records

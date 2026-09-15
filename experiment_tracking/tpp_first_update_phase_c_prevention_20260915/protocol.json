@@ -38,5 +38,5 @@
     "partition": "main",
     "excluded_nodes": ["ise-cpu-intl-01", "ise-cpu-intl-09", "ise-cpu-intl-10", "ise-cpu-intl-11", "ise-cpu-intl-13", "ise-cpu-intl-27"]
   },
-  "submission_state": "lr_backtracking_correction_prepared_not_submitted"
+  "submission_state": "completed_selected_pair_prevention_screen"
 }
