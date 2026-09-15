@@ -152,3 +152,13 @@ allows only success, ordinary-unsolved and explicit hard-timeout statuses, and
 then emits only `policy success AND action-ID failure` identities under the two
 tie rules. The broader visit-margin calibration remains documented but held
 until this exact-tie confirmation and trace follow-up finish.
+
+At the 16 September 2026 01:37 IDT refresh, task 7's sole missing identity
+(`fz_instance_56.pddl`) reached the exact 21,600-second limit and printed an
+explicit timeout event. It is scientifically terminal. Its JSONL remains at
+58/59 only because the recovery runner reconciles before evaluation; controller
+`21362904` performs the required post-terminal reconciliation before applying
+the 59/59 gate, so the identity will not be rerun. Task 19 also printed an
+explicit timeout for its first of two missing identities and is evaluating the
+second. Task 9 is evaluating the first of three exact identities. No RQ2 score
+changes until all ten matched pairs and the reconciliation gate are complete.

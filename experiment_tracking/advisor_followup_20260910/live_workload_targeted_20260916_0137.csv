@@ -1,0 +1,7 @@
+snapshot_time_idt,experiment,job_id,job_name,state,tasks,cpus,memory_gib,elapsed,hard_remainder,row_level_provenance
+2026-09-16T01:37:30+03:00,MPrime final validation-led Stage2,21303720,MPRIME_FINAL_S2,RUNNING_PLUS_19_TERMINAL,1,6,48.0,14:23:23,2-09:36:37,sacct+scontrol+training log snapshot78
+2026-09-16T01:37:30+03:00,MPrime live policy evaluations,"noncontiguous; see primary and retry ledgers",MPFINALV_S2POL,RUNNING_PLUS_TERMINAL_AND_FAILED_ATTEMPTS,30,300,600.0,00:02:40-01:18:45,<=03:57:20,experiment_tracking/mprime_final_stage2_validation_20260915/live_policy_submissions_20260916_0134.tsv;experiment_tracking/mprime_final_stage2_validation_20260915/live_policy_retry_submissions_20260916_0134.tsv
+2026-09-16T01:37:30+03:00,MPrime policy controllers,"21362560;21362500","MPRIME_S2_POLICY_CTL;MPRIME_S2_POL_RETRY",RUNNING,2,4,4.0,01:14:18-01:19:02,2-22:40:58,controller logs
+2026-09-16T01:37:30+03:00,Counters Stage1 strict tie-break confirmation,"21233925_[0,1,10,11]",COUNTERS_TIE_STRICT,RUNNING,4,24,480.0,16:38:38-2-12:37:55,<=2-07:21:22,squeue+sacct+strict completion ledgers
+2026-09-16T01:37:30+03:00,Counters exact identity recovery,"21347260_19;21362903_9","COUNTERS_TIE_EXACT2;COUNTERS_TIE_EXACT3",RUNNING_PLUS_TASK7_TERMINAL,2,4,240.0,00:54:19-06:53:26,<=19:05:41,recovery stdout+completion ledgers
+2026-09-16T01:37:30+03:00,Counters full-root failure trace controller,21362904,COUNTERS_TRACE_CTL,DEPENDENCY_PENDING,0,0,0.0,00:00:00,dependency-gated,experiment_tracking/counters_tie_break_strict_stage1_20260913/full_trace_submission_20260915.csv

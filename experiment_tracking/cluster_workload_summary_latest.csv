@@ -1,8 +1,8 @@
 snapshot_time_idt,experiment,state,jobs,requested_cpus,requested_memory_gib,scheduler_source
-2026-09-16T01:16:00+03:00,MPrime final validation-led Stage2,RUNNING,3,18,144.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-16T01:16:00+03:00,MPrime live policy evaluations,RUNNING,30,300,600.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-16T01:16:00+03:00,MPrime policy controllers,RUNNING,2,4,4.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-16T01:16:00+03:00,Counters Stage1 strict tie-break confirmation,RUNNING,4,24,480.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-16T01:16:00+03:00,Counters exact identity recovery,RUNNING,3,6,360.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-16T01:16:00+03:00,Counters full-root failure trace controller,DEPENDENCY_PENDING,1,0,0.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-16T01:16:00+03:00,Total allocated workload,RUNNING,42,352,1588.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-16T01:37:30+03:00,MPrime final validation-led Stage2,RUNNING,1,6,48.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-16T01:37:30+03:00,MPrime live policy evaluations,RUNNING,30,300,600.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-16T01:37:30+03:00,MPrime policy controllers,RUNNING,2,4,4.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-16T01:37:30+03:00,Counters Stage1 strict tie-break confirmation,RUNNING,4,24,480.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-16T01:37:30+03:00,Counters exact identity recovery,RUNNING,2,4,240.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-16T01:37:30+03:00,Counters full-root failure trace controller,DEPENDENCY_PENDING,1,0,0.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-16T01:37:30+03:00,Total allocated workload,RUNNING,39,338,1372.0,experiment_tracking/cluster_workload_latest.csv

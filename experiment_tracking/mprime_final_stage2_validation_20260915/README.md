@@ -15,8 +15,9 @@ All twenty lineages are retrained in one uniform current-code campaign. Two hist
 
 ## Live overlap and policy-curve materialization
 
-At the 16 September 2026 01:10 IDT audit, seventeen of the twenty training jobs
-`21303717`-`21303736` were terminal at epoch 99 and three were running. Epoch 99 is the final checkpoint
+At the 16 September 2026 01:37 IDT audit, nineteen of the twenty training jobs
+`21303717`-`21303736` were terminal at epoch 99 and only `21303720` was running,
+at snapshot 78. Epoch 99 is the final checkpoint
 after 100 zero-indexed Stage-2 epochs. A safe live scanner/controller overlaps
 policy-only curve evaluation with the remaining training:
 
@@ -24,10 +25,10 @@ policy-only curve evaluation with the remaining training:
 - failure-aware retry controller `21362500`, one task, two CPUs and 2 GiB;
 - at most 24 primary and 36 retry policy jobs active simultaneously; each uses
   10 CPUs, 20 GiB and a four-hour hard limit;
-- 413 immutable checkpoint rows discovered, 259 primary submissions and 34
-  retry attempts in the dated 01:12 local archive;
-- the subsequent scheduler count reconciles those 293 attempts exactly: 225
-  complete, 30 running and 38 failed; attempts are not unique scientific identities;
+- 414 immutable checkpoint rows discovered, 269 primary submissions and 40
+  retry attempts in the dated 01:34 local archive;
+- the subsequent scheduler count reconciles those 309 attempts exactly: 237
+  complete, 30 running and 42 failed; attempts are not unique scientific identities;
 - every live row is `learning_curve` only; validation-selected and final roles
   are withheld until the corresponding training lineage is scientifically
   complete through epoch 99;
@@ -43,9 +44,9 @@ the private excluded-node wrapper. No partial policy score is reused after a
 pre-inference failure.
 
 Current direct local provenance is frozen in
-`live_policy_ready_20260916_0112.csv`,
-`live_policy_submissions_20260916_0112.tsv`, and
-`live_policy_retry_submissions_20260916_0112.tsv`. Earlier dated files remain
+`live_policy_ready_20260916_0134.csv`,
+`live_policy_submissions_20260916_0134.tsv`, and
+`live_policy_retry_submissions_20260916_0134.tsv`. Earlier dated files remain
 immutable historical snapshots.
 
 The controller exits only after all twenty lineages are complete and every

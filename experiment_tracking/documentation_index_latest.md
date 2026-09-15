@@ -1,6 +1,6 @@
 # Canonical experiment-documentation index
 
-Updated: 2026-09-16T01:16:00+03:00
+Updated: 2026-09-16T01:37:30+03:00
 
 This index resolves the apparent duplication created by dated audit snapshots.
 Dated files are immutable historical evidence, not current status.  New analysis
@@ -20,7 +20,7 @@ must read the canonical files below; it must not infer liveness from an old date
 | Validation-led RQ report and plots | `experiment_tracking/advisor_followup_20260910/rq_report_validation_led_20260912.md` |
 | Advisor narrative and tables | `experiment_tracking/advisor_followup_20260910/README.md` |
 | Latest advisor delta note | `experiment_tracking/status_latest.md` |
-| Latest exact workload snapshot | `experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260916_0116.csv` |
+| Latest exact workload snapshot | `experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260916_0137.csv` |
 | Historical job-level evidence (not live state) | `experiment_tracking/dynamic_experiment_jobs_latest.csv` |
 | MPrime Phase-B checkpoint evidence | `experiment_tracking/mprime_validation_phase_b_20260906/phase_b_checkpoint_scores_latest.csv` |
 | MPrime Phase-B selector comparison | `experiment_tracking/mprime_validation_phase_b_20260906/phase_b_cell_selector_comparison_latest.csv` |
