@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import csv
+import itertools
 import math
+import statistics
 from collections import defaultdict
 from pathlib import Path
 
@@ -14,6 +16,8 @@ OUT = ROOT / "experiment_tracking" / "advisor_followup_20260910"
 PRIMARY = OUT / "rq_primary_validation_led.csv"
 PW2 = OUT / "rq2_pw70_branch_latest.csv"
 PW4 = OUT / "rq4_pw70_branch_latest.csv"
+PRESERVE = ROOT / "experiment_tracking" / "four_domain_preservation" / "stable_domain_stage2_statistics_20260902.csv"
+PRESERVE_SEEDS = ROOT / "experiment_tracking" / "four_domain_preservation" / "stable_domain_stage2_seed_pairs_20260902.csv"
 REPORT = OUT / "rq_report_validation_led_20260912.md"
 
 DOMAIN_LABEL = {
@@ -75,6 +79,29 @@ def md_table(headers: list[str], rows: list[list[str]]) -> str:
 primary = read_rows(PRIMARY)
 pw2 = read_rows(PW2)
 pw4 = read_rows(PW4)
+preserve = read_rows(PRESERVE)
+preserve_seeds = read_rows(PRESERVE_SEEDS)
+
+
+def paired_stats(diffs: list[float]) -> tuple[float, float, float, float]:
+    mean = statistics.mean(diffs)
+    critical = {8: 2.364624251, 10: 2.262157163}.get(len(diffs), 1.96)
+    half = critical * statistics.stdev(diffs) / math.sqrt(len(diffs)) if len(diffs) > 1 else 0.0
+    observed = abs(mean)
+    extreme = sum(
+        abs(statistics.mean(sign * value for sign, value in zip(signs, diffs))) >= observed - 1e-12
+        for signs in itertools.product((-1, 1), repeat=len(diffs))
+    )
+    return mean, mean - half, mean + half, extreme / (2 ** len(diffs))
+
+
+def holm_values(raw: dict[str, float]) -> dict[str, float]:
+    ordered = sorted(raw, key=raw.get)
+    adjusted, running = {}, 0.0
+    for rank, key in enumerate(ordered):
+        running = max(running, (len(ordered) - rank) * raw[key])
+        adjusted[key] = min(1.0, running)
+    return adjusted
 
 rq1 = [r for r in primary if r["rq"] == "RQ1"]
 rq3_direct = [r for r in primary if r["rq"] == "RQ3" and r["estimand"].startswith("VH-on direct")]
@@ -123,6 +150,52 @@ for domain in POLICY_DOMAIN_ORDER:
         effect_with_p(i),
     ])
 
+preserve_rq1_rows = []
+preserve_rq3_rows = []
+preserve_heldout_off = {}
+preserve_interactions = {}
+for domain in ("delivery", "tpp", "zenotravel"):
+    heldout = [r for r in preserve_seeds if r["domain"] == domain and r["value_head"] == "off" and r["seed_role"] == "held_out"]
+    preserve_heldout_off[domain] = (
+        statistics.mean(float(r["stage1_selected"]) for r in heldout),
+        statistics.mean(float(r["stage2_selected"]) for r in heldout),
+        *paired_stats([float(r["change"]) for r in heldout]),
+    )
+    by_seed = defaultdict(dict)
+    for row in preserve_seeds:
+        if row["domain"] == domain:
+            by_seed[row["seed"]][row["value_head"]] = float(row["change"])
+    preserve_interactions[domain] = paired_stats([
+        pair["on"] - pair["off"] for pair in by_seed.values()
+    ])
+heldout_holm = holm_values({domain: values[-1] for domain, values in preserve_heldout_off.items()})
+interaction_holm = holm_values({domain: values[-1] for domain, values in preserve_interactions.items()})
+for domain in ("delivery", "tpp", "zenotravel"):
+    off = next(r for r in preserve if r["domain"] == domain and r["value_head"] == "off")
+    on = next(r for r in preserve if r["domain"] == domain and r["value_head"] == "on")
+    label = {"delivery": "Delivery", "tpp": "TPP", "zenotravel": "Zenotravel"}[domain]
+    h_s1, h_s2, h_delta, h_low, h_high, h_raw = preserve_heldout_off[domain]
+    h_holm = heldout_holm[domain]
+    preserve_rq1_rows.append([
+        label, "10 (8 held-out + 2 tuning)", number(off["stage1_selected_mean"]),
+        number(off["stage2_selected_mean_all10"]), f"{number(h_s1)} → {number(h_s2)}",
+        f"{number(h_delta)} [{number(h_low)}, {number(h_high)}]; p={number(h_raw,4)}/{number(h_holm,4)}",
+        f"{number(off['mean_change'])} [{number(off['ci95_low'])}, {number(off['ci95_high'])}]",
+        f"{number(off['raw_sign_flip_p'],4)} / {number(off['holm_p'],4)}",
+        off["note"] or "Preserved on average",
+    ])
+    off_change = float(off["mean_change"])
+    on_change = float(on["mean_change"])
+    inter, inter_low, inter_high, inter_raw = preserve_interactions[domain]
+    inter_holm = interaction_holm[domain]
+    preserve_rq3_rows.append([
+        label, f"{number(on['stage1_selected_mean'])} → {number(on['stage2_selected_mean_all10'])}",
+        f"{number(on['mean_change'])} [{number(on['ci95_low'])}, {number(on['ci95_high'])}]; p={number(on['raw_sign_flip_p'],4)}/{number(on['holm_p'],4)}",
+        number(off_change),
+        f"{number(inter)} [{number(inter_low)}, {number(inter_high)}]; p={number(inter_raw,4)}/{number(inter_holm,4)}",
+        "Exploratory post-hoc interaction; separate 3-domain family",
+    ])
+
 rq4 = [r for r in primary if r["rq"] == "RQ4"]
 rq4_group = defaultdict(dict)
 for r in rq4:
@@ -149,11 +222,12 @@ def rq4_table(match: str) -> str:
     return md_table(["Stage", "Domain", "Baseline", "30m: mean; Δ [95% CI]; raw/Holm p", "2h", "6h"], rows)
 
 
+pw_domains = [domain for domain in ("fo_counters", "rover", "mprime") if any(r["domain"] == domain for r in pw2)]
 pw2_rows = []
-for domain in ("fo_counters", "rover"):
+for domain in pw_domains:
     group = {r["cutoff"]: r for r in pw2 if r["domain"] == domain}
     r6 = group["6h"]
-    effects, pvalues = [], []
+    effects, pvalues, fixed_effects, fixed_pvalues = [], [], [], []
     for cutoff in ("30m", "2h", "6h"):
         r = group[cutoff]
         effect = f"{number(r['pw70_minus_policy'])} [{number(r['ci95_low'])}, {number(r['ci95_high'])}]"
@@ -162,15 +236,23 @@ for domain in ("fo_counters", "rover"):
             effect, pvalue = f"**{effect}**", f"**{pvalue}**"
         effects.append(effect)
         pvalues.append(pvalue)
+        fixed_effect = f"{number(r['pw70_minus_fixed'])} [{number(r['pw70_minus_fixed_ci95_low'])}, {number(r['pw70_minus_fixed_ci95_high'])}]"
+        fixed_pvalue = f"{number(r['pw70_minus_fixed_raw_p'], 4)}/{number(r['pw70_minus_fixed_holm_p'], 4)}"
+        if float(r["pw70_minus_fixed_holm_p"]) < 0.05:
+            fixed_effect, fixed_pvalue = f"**{fixed_effect}**", f"**{fixed_pvalue}**"
+        fixed_effects.append(fixed_effect)
+        fixed_pvalues.append(fixed_pvalue)
     pw2_rows.append([
         DOMAIN_LABEL[domain], r6["n"], number(r6["vh_off_policy_mean"]),
         " / ".join(number(group[c]["vh_off_fixed_mcts_mean"]) for c in ("30m", "2h", "6h")),
         " / ".join(number(group[c]["vh_off_pw70_mean"]) for c in ("30m", "2h", "6h")),
         " / ".join(effects), " / ".join(pvalues),
+        " / ".join(fixed_effects), " / ".join(fixed_pvalues),
     ])
 
 pw4_rows = []
-for domain in ("fo_counters", "rover"):
+pw4_fixed_rows = []
+for domain in pw_domains:
     estimands = sorted({r["estimand"] for r in pw4 if r["domain"] == domain})
     for estimand in estimands:
         group = {r["cutoff"]: r for r in pw4 if r["domain"] == domain and r["estimand"] == estimand}
@@ -191,14 +273,30 @@ for domain in ("fo_counters", "rover"):
              f"on PW {' / '.join(number(group[c]['vh_on_pw70_mean']) for c in ('30m', '2h', '6h'))}"),
             " / ".join(effects), " / ".join(pvalues),
         ])
+    direct_group = {r["cutoff"]: r for r in pw4 if r["domain"] == domain and r["estimand"] == "VH-on PW70 - VH-on policy"}
+    fixed_effects, fixed_pvalues = [], []
+    for cutoff in ("30m", "2h", "6h"):
+        r = direct_group[cutoff]
+        effect = f"{number(r['pw70_minus_fixed'])} [{number(r['pw70_minus_fixed_ci95_low'])}, {number(r['pw70_minus_fixed_ci95_high'])}]"
+        pvalue = f"{number(r['pw70_minus_fixed_raw_p'],4)}/{number(r['pw70_minus_fixed_holm_p'],4)}"
+        if float(r["pw70_minus_fixed_holm_p"]) < 0.05:
+            effect, pvalue = f"**{effect}**", f"**{pvalue}**"
+        fixed_effects.append(effect)
+        fixed_pvalues.append(pvalue)
+    pw4_fixed_rows.append([
+        DOMAIN_LABEL[domain],
+        " / ".join(number(direct_group[c]["vh_on_fixed_mcts_mean"]) for c in ("30m", "2h", "6h")),
+        " / ".join(number(direct_group[c]["vh_on_pw70_mean"]) for c in ("30m", "2h", "6h")),
+        " / ".join(fixed_effects), " / ".join(fixed_pvalues),
+    ])
 
-text = f"""# Validation-led RQ report — 14 September 2026
+text = f"""# Validation-led RQ report — 15 September 2026
 
 This is the primary thesis view. Terminal-led campaigns are excluded. Fixed-search 30-minute and two-hour figures are deterministic cutoffs of the same six-hour runs, not separate reruns. Block Grouping and Counters use narrow fixed search (5 retained children, 20 simulations); Drone, FO Counters and Rover use normal fixed search (20 children, 70 simulations). Counts are solved test instances; Counters has 59 instances and the other domains have 20.
 
 Effects are seed-paired mean differences; confidence intervals are paired t-intervals; raw p-values are two-sided exact sign-flip tests; Holm correction is applied separately within each RQ × stage × cutoff × estimand family. Stage-1 fixed-search families now include six domains with final MPrime results; Stage 2 contains the five completed validation-led domains. PW uses separate families and is never pooled with fixed search. **Bold entries are Holm-significant at .05; raw-only significance is not bolded.**
 
-MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator and the complete anchor rescore froze coefficient 30 for VH-off and 10 for VH-on. All ten old VH-off lineages now have the wrong coefficient; eight VH-on lineages have a superseded Stage-1 source. Two VH-on lineages remain reuse candidates until checkpoint hash, code and full configuration are matched. A clean result therefore requires 18-20 new validation-led Stage-2 lineages. This is separate from the Stage-1 fixed-MCTS audit, which found 0/20 reusable search evaluations.
+MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator and the complete anchor rescore froze coefficient 30 for VH-off and 10 for VH-on. A final identity audit found that mixing two older candidate lineages with eighteen current-build lineages would create avoidable build heterogeneity, so all twenty clean validation-led Stage-2 lineages are now running. This is separate from the completed Stage-1 fixed-MCTS and PW70 evidence, which is already included in RQ2/RQ4.
 
 ## RQ1 — Does Stage-2 training improve policy coverage without a value head?
 
@@ -206,7 +304,17 @@ MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as t
 
 **Conclusion:** Stage 2 does not produce a Holm-significant VH-off policy improvement. FO Counters has a raw decline; Counters has a positive but highly variable mean.
 
+### RQ1 extension: PRESERVE-3 validation-led domains
+
+These stable-domain cells are reported separately from the primary five-domain multiplicity family. The paired held-out eight-seed contrast is the cleaner confirmation view; the all-ten means and inference are also shown so the two tuning seeds are not hidden.
+
+{md_table(['Domain', 'n', 'Stage-1 all 10', 'Stage-2 all 10', 'Held-out 8: S1 → S2', 'Held-out Δ [95% CI]; raw/Holm p', 'All-10 Δ [95% CI]', 'All-10 raw/Holm p', 'Conclusion'], preserve_rq1_rows)}
+
+**Extension conclusion:** Delivery and Zenotravel are preserved. TPP is preserved in nine of ten VH-off seeds, but one predeclared held-out seed collapses to 9/20; that outlier is a real seed-specific failure and is not hidden by the 18.9 mean.
+
 ![RQ1 paired Stage-2 effect](rq1_stage2_training_vh_off.png)
+
+![PRESERVE-3 validation-selected seed robustness](../advisor_meeting_20260910/after_review/04_preserve3_validation_seed_robustness.png)
 
 ## RQ2 — Does inference-time search improve coverage without a value head?
 
@@ -224,9 +332,11 @@ All fixed-search rows below use the historical final action-index tie-break. The
 
 ### Progressive widening (PW70; Stage 1 confirmation)
 
-{md_table(['Domain', 'n', 'Policy', 'Fixed MCTS 30m / 2h / 6h', 'PW70 30m / 2h / 6h', 'PW−policy [95% CI] at 30m / 2h / 6h', 'Raw/Holm p at 30m / 2h / 6h'], pw2_rows)}
+{md_table(['Domain', 'n', 'Policy', 'Fixed MCTS 30m / 2h / 6h', 'PW70 30m / 2h / 6h', 'PW−policy [95% CI] at 30m / 2h / 6h', 'Raw/Holm p', 'PW−fixed [95% CI] at 30m / 2h / 6h', 'Raw/Holm p'], pw2_rows)}
 
-**Conclusion:** PW70 gives large, corrected-significant FO Counters gains already at 30 minutes. Rover is approximately fixed-search parity, without a significant policy gain. These were the only cells promoted to ten seeds: the eight-seed Drone Kmin=3 extension and two-seed corrected Block Grouping screens lost fixed-search coverage, while the five-seed Counters confirmation did not establish a reliable advantage. The earlier accidental PW20 Block Grouping/Counters screen remains documented separately and is never pooled with PW70.
+**Conclusion:** PW70 gives large, corrected-significant VH-off FO Counters gains already at 30 minutes. Rover is approximately fixed-search parity, without a significant VH-off policy gain. MPrime VH-off PW70 significantly beats fixed search at every cutoff and exceeds its policy descriptively by 2h/6h. The corresponding VH-on results are reported under RQ4. These were the only cells promoted to ten seeds: the eight-seed Drone Kmin=3 extension and two-seed corrected Block Grouping screens lost fixed-search coverage, while the five-seed Counters confirmation did not establish a reliable advantage. The earlier accidental PW20 Block Grouping/Counters screen remains documented separately and is never pooled with PW70.
+
+The following are **descriptive exploratory screens**, not confirmatory families. CIs/tests were intentionally withheld because these small cells selected which branches to promote; they are not forgotten results.
 
 | Screen not promoted | Method | n | Policy | Fixed 30m / 2h / 6h | PW 30m / 2h / 6h | Decision |
 |---|---|---:|---:|---:|---:|---|
@@ -253,6 +363,12 @@ The direct column answers whether VH-on Stage 2 improves its own VH-on Stage-1 p
 {md_table(['Domain', 'VH-on raw S1 → S2', 'VH-on direct Δ [95% CI]; raw/Holm p', 'VH-off Δ', 'Interaction Δ [95% CI]; raw/Holm p'], rq3_rows)}
 
 **Conclusion:** Neither the direct VH-on changes nor the interactions show a corrected-significant benefit. Block Grouping is the clearest harmful tendency; the DiD does not hide a beneficial VH-on result.
+
+### RQ3 extension: PRESERVE-3 validation-led domains
+
+{md_table(['Domain', 'VH-on raw S1 → S2', 'VH-on direct Δ [95% CI]; raw/Holm p', 'VH-off Δ', 'Observed interaction', 'Scope'], preserve_rq3_rows)}
+
+**Extension conclusion:** The stable domains do not supply evidence that the value head improves refinement. Their near-ceiling scores primarily test preservation; TPP/off's single catastrophic seed is investigated separately as an optimization-path failure.
 
 ![RQ3 raw means and interaction](rq3_raw_means_and_interaction.png)
 
@@ -290,17 +406,21 @@ As in RQ2, these fixed-search values retain the historical action-index tie-brea
 
 {md_table(['Domain', 'Estimand', 'Raw means (policy; PW 30m / 2h / 6h)', 'Effect [95% CI] at 30m / 2h / 6h', 'Raw/Holm p at 30m / 2h / 6h'], pw4_rows)}
 
-**Conclusion:** PW preserves the distinction seen with fixed search: FO Counters has strong search gains. Its observed VH-off benefit is no smaller than its VH-on benefit, but that interaction is not significant. Rover shows parity-scale, non-significant effects. PW therefore strengthens RQ2 more than RQ4.
+Direct VH-on PW70 versus the corresponding VH-on fixed-search arm:
+
+{md_table(['Domain', 'VH-on fixed 30m / 2h / 6h', 'VH-on PW70 30m / 2h / 6h', 'PW−fixed [95% CI] at 30m / 2h / 6h', 'Raw/Holm p'], pw4_fixed_rows)}
+
+**Conclusion:** PW preserves the distinction seen with fixed search: FO Counters and MPrime have strong search gains, while Rover shows parity-scale, non-significant effects. MPrime VH-on PW reaches 18.5/20 at six hours, but its VH-on-versus-VH-off benefit interaction is not significant. PW therefore strengthens RQ2 more than RQ4.
 
 ## Results still required
 
-1. **MPrime anchor:** complete at 588/588. The declared rule and manual review freeze anchor 30 for VH-off and 10 for VH-on. This makes all ten old VH-off lineages non-reusable and leaves only two VH-on exact-identity reuse candidates; 18-20 new Stage-2 lineages are required after the final hash/configuration audit.
-2. **Counters tie-break:** seven strict-confirmation tasks are terminal and 13 are running. Three complete matched seed pairs are exact ties: seed `1073581256` scores 59/59 under both rules, seed `1239739722` scores 17/59 under both, and seed `2011206605` scores 20/59 under both. None contains a classified policy-success/action-ID-failure opportunity, so this is neutral interim evidence rather than evidence against the rescue mechanism. The targeted pilot remains action-ID 0/3, Q 0/3 and policy-prior 3/3 by two hours, all VAL-valid. Its VH-on 0/3 arm is not a positive control because the exact VH-on policy solved none of those targets.
+1. **MPrime Stage 2:** all twenty clean lineages are running from the final Phase-B-A Stage-1 checkpoints: ten VH-off with anchor 30 and ten VH-on with anchor 10. At the 14:39 IDT snapshot every job had saved checkpoints and the current range was epoch 22-60/100. Policy curves/endpoints and matched fixed/PW evaluations remain downstream; MPrime enters RQ1/RQ3 and Stage-2 RQ2/RQ4 only after those complete.
+2. **Counters tie-break:** nine original strict-confirmation tasks completed, eight are running and three ended OOM. Recovery array `21308619[4,6,14]` requests 200 GiB per task and reuses the exact original durable ledgers; it therefore runs only the remaining 49 unclassified identities rather than repeating 177. Dependency controller `21319149` is now queued and will fail closed unless all action-ID ledgers reach exactly 59 terminal identities; it then traces only the exact policy-success/action-ID-failure union under action-ID and policy-prior with complete root vectors. The targeted causal pilot remains action-ID 0/3, Q 0/3 and policy-prior 3/3, all VAL-valid; its VH-on 0/3 arm is not a positive control because that policy solved none of the three targets.
 3. **Block Grouping tie-break transfer:** both same-build four-target arms completed 0/4. Every outcome was an ordinary 10,000-action failure, not a timeout. Policy-prior tie-breaking therefore did not transfer to this selected seed, and the fixed-search branch will not be expanded from this negative screen.
 4. **MPrime Stage-1 fixed search:** all 20 canonical evaluations are complete and now extend RQ2/RQ4. VH-off scores are 13.0 / 14.7 / 15.7 at 30m / 2h / 6h versus policy 16.3; VH-on scores are 13.3 / 15.1 / 16.0 versus policy 15.7.
-5. **MPrime Stage-1 PW70:** the two-seed screen is complete and the other sixteen identities were submitted without duplicating those four screen cells. Fourteen extension tasks are terminal and exactly two are running: VH-off seed 1073581256 and VH-on seed 1239739722. Conservative ten-seed lower bounds are 15.7 / 17.6 / 17.7 VH-off and 14.5 / 16.8 / 17.4 VH-on. Final CIs, exact tests and RQ admission wait for all twenty identities to reconcile.
-6. **Block Grouping PW70 trace:** two of four logging-only tasks are running and two are array-limit pending. They record complete root priors, visits, Q/U values and elapsed time on four exact policy-success/historical-PW-timeout targets. No mechanism conclusion is available before the traces terminate.
-7. **TPP first-update cross-over:** corrected smoke `21281126` passed and both one-epoch training arms completed. The stable-checkpoint x bad-replay endpoint is 20/20; the reciprocal bad-checkpoint x stable-replay endpoint remains live. Catastrophic replay alone is therefore not sufficient to damage the stable checkpoint, but final attribution still waits for the reciprocal endpoint. This diagnostic is outside the primary RQ family.
+5. **MPrime Stage-1 PW70:** complete for all twenty identities. VH-off is 15.7 / 17.6 / 17.7 and VH-on is 15.5 / 17.9 / 18.5 at 30m / 2h / 6h. It now appears in RQ2/RQ4 above.
+6. **Block Grouping PW70 trace:** all four exact policy-success/historical-PW-timeout traces completed and timed out again. Three first divergences had a unique maximum-visit winner; the fourth had a three-way maximum tie but the policy action was not among it. The predeclared tie-transfer gate is negative: arbitrary action-ID tie-breaking is not the demonstrated cause of these PW losses.
+7. **TPP first-update causal chain:** the complete crossover is bad checkpoint × stable replay = 3/20 and stable checkpoint × bad replay = 20/20, versus diagonal 10/20 and 20/20. Starting-checkpoint susceptibility is necessary in this frozen pair; replay identity changes severity. The obsolete coefficient-doubling attempt failed because Adam-normalized proposals did not shrink. Corrected fixed-anchor/LR-backtracking treatment completed at 20/20 for both the catastrophic seed and stable control; the bad seed triggered 11 backtracks and the stable control 4. This prevents the selected collapse without damaging the control, but is a two-seed mechanism screen outside the primary RQ family; retries resample dropout, so it is not an exact deterministic learning-rate-rescaling experiment.
 
 Canonical evidence files: [`rq_primary_validation_led.csv`](rq_primary_validation_led.csv), [`rq2_raw_means_validation_led.csv`](rq2_raw_means_validation_led.csv), [`rq3_raw_means_validation_led.csv`](rq3_raw_means_validation_led.csv), [`rq4_raw_means_validation_led.csv`](rq4_raw_means_validation_led.csv), [`rq2_pw70_branch_latest.csv`](rq2_pw70_branch_latest.csv), and [`rq4_pw70_branch_latest.csv`](rq4_pw70_branch_latest.csv). Their row-level job/log routes are indexed in [`../result_csv_provenance_index_latest.csv`](../result_csv_provenance_index_latest.csv).
 """

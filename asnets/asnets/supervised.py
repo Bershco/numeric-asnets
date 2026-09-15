@@ -35,6 +35,7 @@ from asnets.utils.py_utils import TimerContext, strip_parens, weak_ref_to, weigh
 from asnets.utils.tf_utils import cross_entropy, mean_squared_error, empty_feed_value
 from asnets.models import PropNetwork, PropNetworkWeights
 from asnets.policy_anchor import PolicyAnchorKLController
+from asnets.policy_anchor_trust_region import PolicyAnchorTrustRegion
 from asnets.validation_state import (
     ValidationState,
     cumulative_epoch_offset,
@@ -474,6 +475,11 @@ class SupervisedTrainer(BaseTrainer):
                  policy_anchor_kl_coeff=0.0,
                  policy_anchor_kl_mode="constant",
                  policy_anchor_kl_target=None,
+                 policy_anchor_kl_deterministic_current=False,
+                 policy_anchor_trust_mean_kl_limit=None,
+                 policy_anchor_trust_p99_kl_limit=None,
+                 policy_anchor_trust_max_retries=2,
+                 policy_anchor_trust_lr_factor=0.5,
                  frozen_replay_batch_dir=None,
                  main_road_fraction=0.75,
                  tree_policy_weight=0.5,
@@ -510,6 +516,28 @@ class SupervisedTrainer(BaseTrainer):
             if persisted_trainer_state is not None else None)
         self.policy_anchor_kl_coeff = \
             self.policy_anchor_kl_controller.coefficient
+        self.policy_anchor_kl_deterministic_current = bool(
+            policy_anchor_kl_deterministic_current)
+        trust_limits = (
+            policy_anchor_trust_mean_kl_limit,
+            policy_anchor_trust_p99_kl_limit,
+        )
+        if any(value is not None for value in trust_limits):
+            if not all(value is not None for value in trust_limits):
+                raise ValueError(
+                    "Both policy-anchor trust-region KL limits are required")
+            if not self.policy_anchor_kl_deterministic_current:
+                raise ValueError(
+                    "Policy-anchor trust-region rollback requires a "
+                    "deterministic current-policy KL")
+            self._policy_anchor_trust_region = PolicyAnchorTrustRegion(
+                mean_kl_limit=policy_anchor_trust_mean_kl_limit,
+                p99_kl_limit=policy_anchor_trust_p99_kl_limit,
+                max_retries=policy_anchor_trust_max_retries,
+                learning_rate_factor=policy_anchor_trust_lr_factor,
+            )
+        else:
+            self._policy_anchor_trust_region = None
         self.main_road_fraction = main_road_fraction
         self.tree_policy_weight = tree_policy_weight
         self.grad_clip_norm = grad_clip_norm
@@ -578,9 +606,16 @@ class SupervisedTrainer(BaseTrainer):
                 f"mode={self.policy_anchor_kl_controller.mode}; "
                 f"coeff={self.policy_anchor_kl_coeff}; "
                 f"target={self.policy_anchor_kl_controller.target}; "
+                "current_forward="
+                f"{'deterministic' if self.policy_anchor_kl_deterministic_current else 'training'}; "
                 f"{anchor_source}; "
                 f"path={anchor_path}"
             )
+            if self._policy_anchor_trust_region is not None:
+                print(
+                    "[POLICY ANCHOR TRUST REGION] enabled "
+                    f"{self._policy_anchor_trust_region.to_dict()}"
+                )
         self._init_tf()
         if resume_from is not None and not resume_from.endswith(".pkl"):
             opt_path = os.path.join(resume_from, "optimizer.joblib")
@@ -1086,6 +1121,15 @@ class SupervisedTrainer(BaseTrainer):
                 "validation_state": validation_state.to_dict(),
                 "policy_anchor_kl_controller":
                     self.policy_anchor_kl_controller.to_dict(),
+                "policy_anchor_kl_deterministic_current":
+                    self.policy_anchor_kl_deterministic_current,
+                "policy_anchor_trust_region": (
+                    self._policy_anchor_trust_region.to_dict()
+                    if self._policy_anchor_trust_region is not None else None),
+                "trust_region_retries": int(
+                    train_stats.get("trust_region_retries", 0)),
+                "accepted_updates": int(
+                    train_stats.get("update_applied", 0)),
                 "frozen_replay_source": str(
                     self._frozen_replay_schedule.directory.resolve()),
             },
@@ -1102,6 +1146,10 @@ class SupervisedTrainer(BaseTrainer):
         self._write_first_update_audit({
             "record_type": "frozen_replay_complete",
             "updates": int(train_stats["updates"]),
+            "accepted_updates": int(
+                train_stats.get("update_applied", 0)),
+            "trust_region_retries": int(round(
+                train_stats.get("trust_region_retries", 0))),
             "validation_success_rate": float(overall_succ_rate),
             "validation_average_plan_length": (
                 float(avg_plan_len) if np.isfinite(avg_plan_len) else None),
@@ -1251,6 +1299,85 @@ class SupervisedTrainer(BaseTrainer):
         # negative; the controller operates on the mathematically valid range.
         return max(0.0, float(tf.reduce_mean(anchor_kl_losses).numpy()))
 
+    def _optimizer_variables(self):
+        variables = self.optimizer.variables
+        return list(variables() if callable(variables) else variables)
+
+    def _optimizer_learning_rate(self):
+        learning_rate = self.optimizer.learning_rate
+        try:
+            return float(learning_rate.numpy())
+        except AttributeError as exc:
+            raise RuntimeError(
+                "Trust-region backtracking requires an assignable scalar "
+                "optimizer learning rate") from exc
+
+    def _set_optimizer_learning_rate(self, value):
+        learning_rate = self.optimizer.learning_rate
+        if not hasattr(learning_rate, "assign"):
+            raise RuntimeError(
+                "Trust-region backtracking requires an assignable scalar "
+                "optimizer learning rate")
+        learning_rate.assign(float(value))
+
+    def _snapshot_replay_state(self, params):
+        """Snapshot model and complete Adam state for a possible rollback."""
+        model_values = [param.numpy().copy() for param in params]
+        optimizer_variables = self._optimizer_variables()
+        if len(optimizer_variables) <= 1:
+            # Older TensorFlow optimizers create slots lazily.  A zero update
+            # creates them without moving weights; restore the iteration so
+            # this setup is invisible to the scientific step count.
+            iteration = self.optimizer.iterations.numpy().copy()
+            self.optimizer.apply_gradients([
+                (tf.zeros_like(param), param) for param in params
+            ])
+            for param, value in zip(params, model_values):
+                param.assign(value)
+            self.optimizer.iterations.assign(iteration)
+            optimizer_variables = self._optimizer_variables()
+        return (
+            model_values,
+            [variable.numpy().copy() for variable in optimizer_variables],
+        )
+
+    def _restore_replay_state(self, params, snapshot):
+        model_values, optimizer_values = snapshot
+        optimizer_variables = self._optimizer_variables()
+        if len(params) != len(model_values):
+            raise RuntimeError("Model variable count changed during retry")
+        if len(optimizer_variables) != len(optimizer_values):
+            raise RuntimeError("Optimizer variable count changed during retry")
+        for variable, value in zip(params, model_values):
+            variable.assign(value)
+        for variable, value in zip(optimizer_variables, optimizer_values):
+            variable.assign(value)
+
+    @staticmethod
+    def _policy_from_output(output):
+        return output[0] if isinstance(output, tuple) else output
+
+    def _deterministic_current_policies(self, sampled_batches):
+        policies = []
+        for problem, (obs, _pi_tgt, _z_tgt, _policy_weights) in sampled_batches:
+            obs_tf = tf.convert_to_tensor(obs, dtype=tf.float32)
+            policies.append(self._policy_from_output(
+                problem.network(obs_tf, training=False)).numpy())
+        return policies
+
+    @staticmethod
+    def _policy_step_kl(pre_policies, post_policies):
+        values = []
+        for pre, post in zip(pre_policies, post_policies):
+            values.append(np.sum(
+                pre * (
+                    np.log(np.clip(pre, 1e-8, 1.0))
+                    - np.log(np.clip(post, 1e-8, 1.0))
+                ),
+                axis=1,
+            ))
+        return np.concatenate(values)
+
     def _train_replay_step(self):
         params = self._weight_manager.all_weights
         frozen_step = None
@@ -1275,8 +1402,7 @@ class SupervisedTrainer(BaseTrainer):
         if not sampled_batches:
             return None
 
-        anchor_coeff_before = self.policy_anchor_kl_coeff
-        audit_batches = []
+        initial_anchor_coeff = self.policy_anchor_kl_coeff
         params_before = None
         if self._first_update_audit_path:
             params_before = [param.numpy().copy() for param in params]
@@ -1299,120 +1425,224 @@ class SupervisedTrainer(BaseTrainer):
                     f"optimizer_step_{self._first_update_audit_step:03d}.npz"),
                 **frozen_payload,
             )
-        with tf.GradientTape(
-                persistent=bool(self._first_update_audit_path)) as tape:
-            policy_losses, value_losses, anchor_kl_losses = [], [], []
-            for problem, (obs, pi_tgt, z_tgt, policy_weights) in sampled_batches:
-                obs_tf = tf.convert_to_tensor(obs, dtype=tf.float32)
-                pi_tgt_tf = tf.convert_to_tensor(pi_tgt, dtype=tf.float32)
-                policy_weights_tf = tf.convert_to_tensor(policy_weights, dtype=tf.float32)
-                if problem.network.value_head_enabled:
-                    pi_pred, value_pred = problem.network(obs_tf, training=True)
-                else:
-                    pi_pred, value_pred = problem.network(obs_tf, training=True), None
+        trust_snapshot = None
+        trust_pre_policies = None
+        trust_attempts = []
+        trust_decision = None
+        update_applied = True
+        if self._policy_anchor_trust_region is not None:
+            trust_snapshot = self._snapshot_replay_state(params)
+            trust_pre_policies = self._deterministic_current_policies(
+                sampled_batches)
+            base_learning_rate = self._optimizer_learning_rate()
+        else:
+            base_learning_rate = None
 
-                xent_per_example = -tf.reduce_sum(
-                    pi_tgt_tf * tf.math.log(tf.clip_by_value(pi_pred, 1e-8, 1.0)),
-                    axis=1,
-                )
-                policy_losses.append(tf.math.divide_no_nan(
-                    tf.reduce_sum(xent_per_example * policy_weights_tf),
-                    tf.reduce_sum(policy_weights_tf),
-                ))
-                anchor_pi = None
-                if self.policy_anchor_kl_coeff > 0:
-                    anchor_pi = self._anchor_policy(problem, obs_tf)
-                    anchor_kl_per_example = tf.reduce_sum(
-                        anchor_pi * (
-                            tf.math.log(tf.clip_by_value(
-                                anchor_pi, 1e-8, 1.0))
-                            - tf.math.log(tf.clip_by_value(
-                                pi_pred, 1e-8, 1.0))
-                        ),
+        retry_number = 0
+        while True:
+            anchor_coeff_before = self.policy_anchor_kl_coeff
+            attempt_learning_rate = (
+                self._optimizer_learning_rate()
+                if self._policy_anchor_trust_region is not None else None)
+            optimizer_iteration_before = int(
+                self.optimizer.iterations.numpy())
+            audit_batches = []
+            with tf.GradientTape(
+                    persistent=bool(self._first_update_audit_path)) as tape:
+                policy_losses, value_losses, anchor_kl_losses = [], [], []
+                for problem, (obs, pi_tgt, z_tgt, policy_weights) \
+                        in sampled_batches:
+                    obs_tf = tf.convert_to_tensor(obs, dtype=tf.float32)
+                    pi_tgt_tf = tf.convert_to_tensor(
+                        pi_tgt, dtype=tf.float32)
+                    policy_weights_tf = tf.convert_to_tensor(
+                        policy_weights, dtype=tf.float32)
+                    train_out = problem.network(obs_tf, training=True)
+                    if problem.network.value_head_enabled:
+                        pi_pred, value_pred = train_out
+                    else:
+                        pi_pred, value_pred = train_out, None
+
+                    xent_per_example = -tf.reduce_sum(
+                        pi_tgt_tf * tf.math.log(tf.clip_by_value(
+                            pi_pred, 1e-8, 1.0)),
                         axis=1,
                     )
-                    anchor_kl_losses.append(
-                        tf.reduce_mean(anchor_kl_per_example))
-                if self._first_update_audit_path:
-                    target_entropy = -tf.reduce_sum(
-                        pi_tgt_tf * tf.math.log(tf.clip_by_value(
-                            pi_tgt_tf, 1e-8, 1.0)), axis=1)
-                    audit_batches.append({
-                        "problem_signature": getattr(
-                            problem, "compatibility_signature", None),
-                        "obs": np.asarray(obs),
-                        "pi_tgt": np.asarray(pi_tgt),
-                        "policy_weights": np.asarray(policy_weights),
-                        "target_entropy": target_entropy.numpy(),
-                        "pi_pred_pre": pi_pred.numpy(),
-                        "pred_argmax": np.argmax(pi_pred.numpy(), axis=1),
-                        "target_argmax": np.argmax(pi_tgt, axis=1),
-                        "anchor_kl_pre": (
-                            anchor_kl_per_example.numpy()
-                            if anchor_pi is not None else None),
-                    })
-                if value_pred is not None:
-                    value_pred = tf.squeeze(value_pred, axis=-1)
-                    z_tgt_tf = tf.convert_to_tensor(z_tgt, dtype=value_pred.dtype)
-                    value_losses.append(tf.reduce_mean(tf.square(value_pred - z_tgt_tf)))
+                    policy_losses.append(tf.math.divide_no_nan(
+                        tf.reduce_sum(xent_per_example * policy_weights_tf),
+                        tf.reduce_sum(policy_weights_tf),
+                    ))
+                    anchor_pi = None
+                    anchor_current_pi = pi_pred
+                    if self.policy_anchor_kl_deterministic_current:
+                        anchor_current_pi = self._policy_from_output(
+                            problem.network(obs_tf, training=False))
+                    if self.policy_anchor_kl_coeff > 0:
+                        anchor_pi = self._anchor_policy(problem, obs_tf)
+                        anchor_kl_per_example = tf.reduce_sum(
+                            anchor_pi * (
+                                tf.math.log(tf.clip_by_value(
+                                    anchor_pi, 1e-8, 1.0))
+                                - tf.math.log(tf.clip_by_value(
+                                    anchor_current_pi, 1e-8, 1.0))
+                            ),
+                            axis=1,
+                        )
+                        anchor_kl_losses.append(
+                            tf.reduce_mean(anchor_kl_per_example))
+                    if self._first_update_audit_path:
+                        target_entropy = -tf.reduce_sum(
+                            pi_tgt_tf * tf.math.log(tf.clip_by_value(
+                                pi_tgt_tf, 1e-8, 1.0)), axis=1)
+                        audit_batches.append({
+                            "problem_signature": getattr(
+                                problem, "compatibility_signature", None),
+                            "obs": np.asarray(obs),
+                            "pi_tgt": np.asarray(pi_tgt),
+                            "policy_weights": np.asarray(policy_weights),
+                            "target_entropy": target_entropy.numpy(),
+                            # Keep task-policy diagnostics tied to the dropout
+                            # forward used by the replay loss.
+                            "pi_pred_pre": pi_pred.numpy(),
+                            # Step drift and anchor diagnostics use the same
+                            # current-policy forward as the KL treatment.
+                            "pi_step_pre": anchor_current_pi.numpy(),
+                            "pred_argmax": np.argmax(
+                                pi_pred.numpy(), axis=1),
+                            "target_argmax": np.argmax(pi_tgt, axis=1),
+                            "anchor_kl_pre": (
+                                anchor_kl_per_example.numpy()
+                                if anchor_pi is not None else None),
+                        })
+                    if value_pred is not None:
+                        value_pred = tf.squeeze(value_pred, axis=-1)
+                        z_tgt_tf = tf.convert_to_tensor(
+                            z_tgt, dtype=value_pred.dtype)
+                        value_losses.append(tf.reduce_mean(
+                            tf.square(value_pred - z_tgt_tf)))
 
-            policy_loss = tf.reduce_mean(policy_losses)
-            value_loss = tf.reduce_mean(value_losses) if value_losses else tf.constant(0.0, policy_loss.dtype)
-            policy_anchor_kl_loss = (
-                tf.reduce_mean(anchor_kl_losses)
-                if anchor_kl_losses
-                else tf.constant(0.0, policy_loss.dtype)
-            )
-            reg_loss = self._replay_reg_loss(params, policy_loss.dtype)
-            total_loss = (
-                policy_loss
-                + tf.cast(self.mse_coeff, policy_loss.dtype) * value_loss
-                + tf.cast(
-                    self.policy_anchor_kl_coeff, policy_loss.dtype
-                ) * policy_anchor_kl_loss
-                + reg_loss
-            )
+                policy_loss = tf.reduce_mean(policy_losses)
+                value_loss = (
+                    tf.reduce_mean(value_losses) if value_losses
+                    else tf.constant(0.0, policy_loss.dtype)
+                )
+                policy_anchor_kl_loss = (
+                    tf.reduce_mean(anchor_kl_losses)
+                    if anchor_kl_losses
+                    else tf.constant(0.0, policy_loss.dtype)
+                )
+                reg_loss = self._replay_reg_loss(params, policy_loss.dtype)
+                total_loss = (
+                    policy_loss
+                    + tf.cast(self.mse_coeff, policy_loss.dtype) * value_loss
+                    + tf.cast(
+                        self.policy_anchor_kl_coeff, policy_loss.dtype
+                    ) * policy_anchor_kl_loss
+                    + reg_loss
+                )
 
-        raw_grads = tape.gradient(total_loss, params)
-        policy_grad_norm = None
-        anchor_grad_norm = None
-        policy_anchor_grad_cosine = None
-        if self._first_update_audit_path:
-            policy_grads = tape.gradient(policy_loss, params)
-            anchor_grads = tape.gradient(policy_anchor_kl_loss, params)
-            policy_grads = [
+            raw_grads = tape.gradient(total_loss, params)
+            policy_grad_norm = None
+            anchor_grad_norm = None
+            policy_anchor_grad_cosine = None
+            if self._first_update_audit_path:
+                policy_grads = tape.gradient(policy_loss, params)
+                anchor_grads = tape.gradient(policy_anchor_kl_loss, params)
+                policy_grads = [
+                    tf.zeros_like(param) if grad is None else grad
+                    for param, grad in zip(params, policy_grads)
+                ]
+                anchor_grads = [
+                    tf.zeros_like(param) if grad is None else (
+                        grad * tf.cast(
+                            self.policy_anchor_kl_coeff, grad.dtype))
+                    for param, grad in zip(params, anchor_grads)
+                ]
+                policy_grad_norm_tf = tf.linalg.global_norm(policy_grads)
+                anchor_grad_norm_tf = tf.linalg.global_norm(anchor_grads)
+                grad_dot = tf.add_n([
+                    tf.reduce_sum(policy_grad * anchor_grad)
+                    for policy_grad, anchor_grad in zip(
+                        policy_grads, anchor_grads)
+                ])
+                grad_denom = policy_grad_norm_tf * anchor_grad_norm_tf
+                policy_grad_norm = float(policy_grad_norm_tf.numpy())
+                anchor_grad_norm = float(anchor_grad_norm_tf.numpy())
+                policy_anchor_grad_cosine = float(
+                    tf.math.divide_no_nan(grad_dot, grad_denom).numpy())
+                del tape
+            none_grad_count = sum(grad is None for grad in raw_grads)
+            grads = [
                 tf.zeros_like(param) if grad is None else grad
-                for param, grad in zip(params, policy_grads)
+                for param, grad in zip(params, raw_grads)
             ]
-            anchor_grads = [
-                tf.zeros_like(param) if grad is None else (
-                    grad * tf.cast(
-                        self.policy_anchor_kl_coeff, grad.dtype))
-                for param, grad in zip(params, anchor_grads)
-            ]
-            policy_grad_norm_tf = tf.linalg.global_norm(policy_grads)
-            anchor_grad_norm_tf = tf.linalg.global_norm(anchor_grads)
-            grad_dot = tf.add_n([
-                tf.reduce_sum(policy_grad * anchor_grad)
-                for policy_grad, anchor_grad in zip(
-                    policy_grads, anchor_grads)
-            ])
-            grad_denom = policy_grad_norm_tf * anchor_grad_norm_tf
-            policy_grad_norm = float(policy_grad_norm_tf.numpy())
-            anchor_grad_norm = float(anchor_grad_norm_tf.numpy())
-            policy_anchor_grad_cosine = float(
-                tf.math.divide_no_nan(grad_dot, grad_denom).numpy())
-            del tape
-        none_grad_count = sum(grad is None for grad in raw_grads)
-        grads = [tf.zeros_like(param) if grad is None else grad for param, grad in zip(params, raw_grads)]
-        for grad in grads:
-            tf.debugging.assert_all_finite(grad, "Non-finite gradient detected during replay training")
+            for grad in grads:
+                tf.debugging.assert_all_finite(
+                    grad, "Non-finite gradient detected during replay training")
 
-        grad_norm = tf.linalg.global_norm(grads)
-        if self.grad_clip_norm is not None:
-            grads, _ = tf.clip_by_global_norm(grads, self.grad_clip_norm)
-        clipped_grad_norm = tf.linalg.global_norm(grads)
-        self.optimizer.apply_gradients(zip(grads, params))
+            grad_norm = tf.linalg.global_norm(grads)
+            if self.grad_clip_norm is not None:
+                grads, _ = tf.clip_by_global_norm(
+                    grads, self.grad_clip_norm)
+            clipped_grad_norm = tf.linalg.global_norm(grads)
+            self.optimizer.apply_gradients(zip(grads, params))
+
+            if self._policy_anchor_trust_region is None:
+                break
+            trust_post_policies = self._deterministic_current_policies(
+                sampled_batches)
+            trust_step_kl = self._policy_step_kl(
+                trust_pre_policies, trust_post_policies)
+            trust_decision = self._policy_anchor_trust_region.decide(
+                trust_step_kl)
+            trust_attempts.append({
+                "attempt": retry_number + 1,
+                "retry_number": retry_number,
+                "coefficient": float(anchor_coeff_before),
+                "learning_rate": attempt_learning_rate,
+                "optimizer_iteration_before": optimizer_iteration_before,
+                "optimizer_iteration_after": int(
+                    self.optimizer.iterations.numpy()),
+                "mean_kl": trust_decision.mean_kl,
+                "p99_kl": trust_decision.p99_kl,
+                "excessive": trust_decision.excessive,
+            })
+            if not trust_decision.excessive:
+                break
+            self._restore_replay_state(params, trust_snapshot)
+            if int(self.optimizer.iterations.numpy()) \
+                    != trust_attempts[0]["optimizer_iteration_before"]:
+                raise RuntimeError(
+                    "Trust-region rollback did not restore optimizer iteration")
+            if retry_number >= self._policy_anchor_trust_region.max_retries:
+                update_applied = False
+                print(
+                    "[POLICY ANCHOR TRUST REGION] rejected step "
+                    f"{self._replay_optimizer_step} after "
+                    f"{retry_number} retries; "
+                    f"mean_kl={trust_decision.mean_kl:.9g}; "
+                    f"p99_kl={trust_decision.p99_kl:.9g}",
+                    flush=True,
+                )
+                break
+            retry_number += 1
+            retry_learning_rate = \
+                self._policy_anchor_trust_region.retry_learning_rate(
+                    base_learning_rate, retry_number)
+            self._set_optimizer_learning_rate(retry_learning_rate)
+            print(
+                "[POLICY ANCHOR TRUST REGION] rollback and retry "
+                f"step={self._replay_optimizer_step}; retry={retry_number}; "
+                f"mean_kl={trust_decision.mean_kl:.9g}; "
+                f"p99_kl={trust_decision.p99_kl:.9g}; "
+                f"learning_rate={attempt_learning_rate:.9g}->"
+                f"{retry_learning_rate:.9g}; "
+                f"coeff={self.policy_anchor_kl_coeff:.9g}",
+                flush=True,
+            )
+
+        if base_learning_rate is not None:
+            self._set_optimizer_learning_rate(base_learning_rate)
 
         pre_update_anchor_kl = float(policy_anchor_kl_loss.numpy())
         if self.policy_anchor_kl_controller.mode == "adaptive_target":
@@ -1420,8 +1650,11 @@ class SupervisedTrainer(BaseTrainer):
                 sampled_batches)
         else:
             post_update_anchor_kl = pre_update_anchor_kl
-        controller_record = self.policy_anchor_kl_controller.observe(
-            post_update_anchor_kl)
+        controller_record = (
+            self.policy_anchor_kl_controller.observe(post_update_anchor_kl)
+            if update_applied
+            else {"adjusted": False, "action": "rejected"}
+        )
         self.policy_anchor_kl_coeff = \
             self.policy_anchor_kl_controller.coefficient
         if self._first_update_audit_path:
@@ -1442,7 +1675,7 @@ class SupervisedTrainer(BaseTrainer):
                 pred_out = problem.network(obs_tf, training=False)
                 pi_post = pred_out[0] if isinstance(pred_out, tuple) \
                     else pred_out
-                pi_pre = audit_batch["pi_pred_pre"]
+                pi_pre = audit_batch["pi_step_pre"]
                 step_kl = np.sum(
                     pi_pre * (
                         np.log(np.clip(pi_pre, 1e-8, 1.0))
@@ -1494,6 +1727,24 @@ class SupervisedTrainer(BaseTrainer):
                 "record_type": "optimizer_step",
                 "step": self._first_update_audit_step,
                 "coefficient": float(anchor_coeff_before),
+                "coefficient_initial": float(initial_anchor_coeff),
+                "kl_current_forward": (
+                    "deterministic"
+                    if self.policy_anchor_kl_deterministic_current
+                    else "training"),
+                "replay_loss_forward": "training",
+                "trust_region": (
+                    self._policy_anchor_trust_region.to_dict()
+                    if self._policy_anchor_trust_region is not None else None),
+                "trust_region_attempts": trust_attempts,
+                "trust_region_retries": retry_number,
+                "update_applied": update_applied,
+                "base_learning_rate": base_learning_rate,
+                "applied_learning_rate": (
+                    attempt_learning_rate if update_applied else None),
+                "learning_rate_restored": (
+                    base_learning_rate is None
+                    or self._optimizer_learning_rate() == base_learning_rate),
                 "gradient_l2_unclipped": float(grad_norm.numpy()),
                 "gradient_l2_applied": float(clipped_grad_norm.numpy()),
                 "policy_gradient_l2": policy_grad_norm,
@@ -1572,6 +1823,8 @@ class SupervisedTrainer(BaseTrainer):
             "policy_anchor_kl_coeff_after": self.policy_anchor_kl_coeff,
             "policy_anchor_kl_controller_adjustments":
                 controller_record["adjusted"],
+            "trust_region_retries": float(retry_number),
+            "update_applied": float(update_applied),
         }
 
     def train_from_replay(self):
@@ -1601,6 +1854,14 @@ class SupervisedTrainer(BaseTrainer):
             step_stats[-1]["policy_anchor_kl_coeff_after"]
         result["policy_anchor_kl_controller_adjustments"] = float(sum(
             stats["policy_anchor_kl_controller_adjustments"]
+            for stats in step_stats
+        ))
+        result["trust_region_retries"] = float(sum(
+            stats.get("trust_region_retries", 0.0)
+            for stats in step_stats
+        ))
+        result["update_applied"] = float(sum(
+            stats.get("update_applied", 1.0)
             for stats in step_stats
         ))
         return result

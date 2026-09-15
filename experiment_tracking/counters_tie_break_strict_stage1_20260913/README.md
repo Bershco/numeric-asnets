@@ -75,3 +75,37 @@ requires a majority (at least 11 of 20 edge visits), but may discard valid
 multi-action search evidence. Neither threshold is established by the current
 test failures; any candidate must be calibrated and frozen on validation
 traces before a test-set comparison.
+
+## Dependency-gated full-root trace follow-up (submitted 15 September)
+
+The exact mechanism follow-up is implemented and controller `21319149` is
+dependency-pending. Its controller waits for strict array `21233925` and OOM
+recovery `21308619`, then
+fails closed unless all ten action-ID ledgers contain exactly one terminal
+record for every evaluator identity 1-59 and each parsed policy score matches
+the frozen manifest. Inclusion is exactly `policy success AND same-build
+action-ID MCTS failure`. Each included seed-instance is emitted exactly twice,
+under `action_id` and `policy`; policy failures, MCTS successes, duplicates and
+unclassified records cannot enter.
+
+Each trace task retains the exact Stage-1 checkpoint and narrow 5/20 settings,
+runs one identity with one worker, two CPUs, 120 GiB, a six-hour instance limit
+and an eight-hour walltime, and records full `--action-debug` root vectors.
+`--puct-debug` remains disabled unless a root vector later proves insufficient.
+The low-priority array is capped at 12 tasks, hence at most 24 CPUs and 1,440
+GiB. If the final strict evidence contains `N` wanted identities, the array has
+exactly `2N` tasks and a queue-excluded wave bound of
+`ceil(2N / 12) * 8 hours`.
+
+The generated `full_trace_manifest.csv` and `full_trace_source_summary.csv`
+retain the source training jobs, policy jobs, checkpoints, logs and completion
+ledgers. The controller uses `afterany` because OOM-labelled strict tasks are
+completed by a separate recovery array; the manifest builder, not the Slurm
+label, proves scientific completeness. Submission is pinned to the isolated
+checkout through core-code commit
+`de1d29b83c6900e15de772074f8dd5595803dbbd`. The controller is explicitly
+non-requeueable and refuses to submit a duplicate trace array if its durable
+submission record already exists. Deployed script hashes, exact dependencies,
+resources and paths are recorded in `full_trace_submission_20260915.csv`; the
+controller will additionally freeze the actual inputs in
+`deployed_inputs.sha256` beside its scheduler output.

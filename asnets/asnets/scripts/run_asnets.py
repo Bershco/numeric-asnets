@@ -436,6 +436,35 @@ parser.add_argument(
           'adaptive_target.')
 )
 parser.add_argument(
+    '--policy-anchor-kl-deterministic-current',
+    action='store_true',
+    default=False,
+    help=(
+        'Evaluate the current-policy side of the anchor KL with '
+        'training=False while retaining training=True/dropout for the replay '
+        'policy and value losses.')
+)
+parser.add_argument(
+    '--policy-anchor-trust-mean-kl-limit',
+    type=float,
+    default=None,
+    help='Hard rollback limit for mean deterministic step KL.')
+parser.add_argument(
+    '--policy-anchor-trust-p99-kl-limit',
+    type=float,
+    default=None,
+    help='Hard rollback limit for p99 deterministic step KL.')
+parser.add_argument(
+    '--policy-anchor-trust-max-retries',
+    type=int,
+    default=2,
+    help='Maximum learning-rate backtracking retries after an excessive update.')
+parser.add_argument(
+    '--policy-anchor-trust-lr-factor',
+    type=float,
+    default=0.5,
+    help='Multiplicative learning-rate reduction for each rollback retry.')
+parser.add_argument(
     '--frozen-replay-batch-dir',
     default=None,
     help=(
@@ -1083,6 +1112,16 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
             policy_anchor_kl_coeff=args.policy_anchor_kl_coeff,
             policy_anchor_kl_mode=args.policy_anchor_kl_mode,
             policy_anchor_kl_target=args.policy_anchor_kl_target,
+            policy_anchor_kl_deterministic_current=(
+                args.policy_anchor_kl_deterministic_current),
+            policy_anchor_trust_mean_kl_limit=(
+                args.policy_anchor_trust_mean_kl_limit),
+            policy_anchor_trust_p99_kl_limit=(
+                args.policy_anchor_trust_p99_kl_limit),
+            policy_anchor_trust_max_retries=(
+                args.policy_anchor_trust_max_retries),
+            policy_anchor_trust_lr_factor=(
+                args.policy_anchor_trust_lr_factor),
             frozen_replay_batch_dir=args.frozen_replay_batch_dir,
             main_road_fraction=0.75,
             grad_clip_norm=5.0,
@@ -1492,6 +1531,41 @@ def main():
         parser.error('--mcts-pw-alpha must be in (0, 1]')
     if args.policy_anchor_kl_coeff < 0:
         parser.error('--policy-anchor-kl-coeff must be non-negative')
+    trust_limits = (
+        args.policy_anchor_trust_mean_kl_limit,
+        args.policy_anchor_trust_p99_kl_limit,
+    )
+    if any(value is not None for value in trust_limits):
+        if not all(value is not None for value in trust_limits):
+            parser.error(
+                'Both --policy-anchor-trust-mean-kl-limit and '
+                '--policy-anchor-trust-p99-kl-limit are required')
+        if any(not np.isfinite(value) or value <= 0 for value in trust_limits):
+            parser.error(
+                'Policy-anchor trust-region limits must be finite and positive')
+        if not args.policy_anchor_kl_deterministic_current:
+            parser.error(
+                'Policy-anchor trust-region rollback requires '
+                '--policy-anchor-kl-deterministic-current')
+        if args.policy_anchor_kl_coeff <= 0:
+            parser.error(
+                'Policy-anchor trust-region rollback requires a positive '
+                '--policy-anchor-kl-coeff')
+        if not args.frozen_replay_batch_dir:
+            parser.error(
+                'Policy-anchor trust-region rollback is restricted to a '
+                'frozen replay schedule')
+        if args.policy_anchor_kl_mode != 'constant':
+            parser.error(
+                'Policy-anchor trust-region rollback requires constant KL '
+                'mode so rollback is the only coefficient controller')
+    if args.policy_anchor_trust_max_retries < 0:
+        parser.error('--policy-anchor-trust-max-retries cannot be negative')
+    if (
+            not np.isfinite(args.policy_anchor_trust_lr_factor)
+            or not 0 < args.policy_anchor_trust_lr_factor < 1
+    ):
+        parser.error('--policy-anchor-trust-lr-factor must be in (0, 1)')
     if args.frozen_replay_batch_dir:
         if args.exploration_algorithm != 'mcts':
             parser.error(

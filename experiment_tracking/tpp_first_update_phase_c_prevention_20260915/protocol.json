@@ -1,0 +1,42 @@
+{
+  "campaign": "TPP-FIRST-UPDATE-PHASE-C-PREVENTION",
+  "frozen_at": "2026-09-15",
+  "phase_b_gate": {
+    "bad_checkpoint_bad_replay": "10/20",
+    "stable_checkpoint_stable_replay": "20/20",
+    "bad_checkpoint_stable_replay": "3/20",
+    "stable_checkpoint_bad_replay": "20/20",
+    "interpretation": "starting-checkpoint susceptibility dominates"
+  },
+  "scope": {
+    "arms": 2,
+    "epochs_per_arm": 1,
+    "frozen_optimizer_batches_per_arm": 60,
+    "new_mcts_exploration": false,
+    "stage1_rerun": false,
+    "test_probe_selects_treatment": false
+  },
+  "treatment": {
+    "anchor_kl": "KL(deterministic_stage1_anchor || deterministic_current)",
+    "replay_policy_loss_forward": "training=True with dropout retained",
+    "anchor_coefficient_initial": 3.0,
+    "rollback_guard": {
+      "calibration": "empirical 99th percentiles from the smoke's stable-control 60-step deterministic-current KL audit",
+      "mean_kl_limit": "frozen by compute smoke in calibrated_thresholds.json",
+      "p99_kl_limit": "frozen by compute smoke in calibrated_thresholds.json",
+      "excessive_if": "mean > mean_limit OR p99 > p99_limit",
+      "action": "restore model weights, Adam slots, and optimizer iteration; keep anchor coefficient 3; halve retry learning rate; recompute exact batch",
+      "learning_rate_backtrack_factor": 0.5,
+      "max_retries_after_initial_attempt": 2,
+      "final_excessive_action": "restore and reject update"
+    }
+  },
+  "resources": {
+    "smoke": {"jobs": 1, "cpus_per_task": 6, "memory_gib": 48, "time": "02:00:00"},
+    "training": {"tasks": 2, "cpus_per_task": 6, "memory_gib": 48, "time": "02:00:00"},
+    "endpoint": {"tasks": 2, "cpus_per_task": 5, "memory_gib": 20, "time": "02:00:00"},
+    "partition": "main",
+    "excluded_nodes": ["ise-cpu-intl-01", "ise-cpu-intl-09", "ise-cpu-intl-10", "ise-cpu-intl-11", "ise-cpu-intl-13", "ise-cpu-intl-27"]
+  },
+  "submission_state": "lr_backtracking_correction_prepared_not_submitted"
+}

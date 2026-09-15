@@ -1,0 +1,27 @@
+{
+  "calibrated_at": "2026-09-15",
+  "endpoint_used": false,
+  "stable_limits": {
+    "mean_kl": 0.0029394862423612693,
+    "p99_kl": 0.010741421002894625,
+    "source": "/home/hersco/training_new_domains/2026-09-15/tpp_first_update_phase_c_prevention/calibrated_thresholds.json"
+  },
+  "failed_catastrophic_proposals": {
+    "maximum_finite_mean_kl": 0.00788161104,
+    "maximum_finite_p99_kl": 0.0547681972,
+    "mean_limit_ratio": 2.681288630107265,
+    "p99_limit_ratio": 5.098785084882246,
+    "source": "/home/hersco/training_new_domains/2026-09-15/tpp_first_update_phase_c_prevention/catastrophic_outlier/first_update_audit.jsonl"
+  },
+  "backtracking": {
+    "base_learning_rate": 0.0003,
+    "factor": 0.5,
+    "max_retries": 2,
+    "retry_learning_rates": [0.00015, 0.000075],
+    "local_approximation": "KL scales quadratically with sufficiently small step size",
+    "worst_p99_ratio_after_one_halving": 1.2746962712205614,
+    "worst_p99_ratio_after_two_halvings": 0.31867406780514035,
+    "decision": "Two halvings are the smallest standard factor-0.5 schedule that covers the observed worst finite p99 scale with margin; acceptance still uses recomputed KL."
+  },
+  "anchor_coefficient": 3.0
+}

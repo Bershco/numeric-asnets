@@ -170,9 +170,17 @@ the two one-epoch cross-over tasks `21281127[0-1]`, which gate endpoint tasks
 `submissions.tsv`. Phase C remains held and unsubmitted.
 
 Smoke `21281126` passed and released both scientific crossover tasks. Both
-one-epoch training arms completed. At the 15 September 00:09 IDT verification,
-the stable-checkpoint x bad-replay endpoint had completed at 20/20, while the
-bad-checkpoint x stable-replay endpoint was still running. The completed arm
-shows that the catastrophic replay schedule is not by itself sufficient to
-damage the stable checkpoint. Final attribution still requires the reciprocal
-endpoint.
+one-epoch training arms and both endpoints completed. The final off-diagonal
+scores are:
+
+- catastrophic checkpoint x stable replay: `3/20`;
+- stable checkpoint x catastrophic replay: `20/20`.
+
+Together with the Phase-A diagonals (`10/20` catastrophic x catastrophic and
+`20/20` stable x stable), the collapse follows starting-checkpoint
+susceptibility rather than replay content alone. The catastrophic replay is
+not sufficient to damage the stable checkpoint, while stable replay does not
+rescue the susceptible checkpoint. This satisfies the predeclared Phase-C
+prevention gate. The two-arm, one-epoch Phase-C implementation and frozen
+protocol are in `../tpp_first_update_phase_c_prevention_20260915/`; they remain
+prepared but unsubmitted pending review.

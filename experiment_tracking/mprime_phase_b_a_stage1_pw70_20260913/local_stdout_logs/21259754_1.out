@@ -1,0 +1,1017 @@
+------------------------------------
+Mon 14 Sep 2026 15:34:42 IDT
+SLURM_JOBID:		21260477
+SLURM_JOB_NODELIST:	ise-cpu256-07
+SLURM_SCRATCH_DIR:	/scratch/hersco/21260477
+Allocated Resouces:	cpu - 6 / mem - 122880 MB / gpu - 
+SLURM_GPU_INDEX:	
+Running as hersco from shperbsh account with normal QOS
+------------------------------------
+[MPRIME S1 PBA PW70] identity=mprime-s1-phase-b-a-on-923500475-e0035-pw70-k3 vh=on seed=923500475 epoch=35 smoke=no
+[MPRIME S1 PBA PW70] width=20 simulations=70 Kmin=3 c=.6 alpha=.5 puct=.1 estimator=.5 terminal_safe=false
+[MPRIME S1 PBA PW70] checkpoint=/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.mprime_validation_ipc_scale_v1-experiments_numeric.architecture_2.mprime-2026-08-27T10:22:16.868149/P[domain,pfile01,pfile02,pfile04,pfile05]-S[0.003,50,enhsp-hmrp-ha-gbfs]-MO[]-T[518400]-04915056-5194f74/snapshots/snapshot_35_0.750 commit=9fe4f9e695ed290cc370dd5c5b877c276578525c
+2026-09-14 15:35:21.544706: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2026-09-14 15:35:21.544814: E tensorflow/compiler/xla/stream_executor/cuda/cuda_fft.cc:609] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2026-09-14 15:35:21.544876: E tensorflow/compiler/xla/stream_executor/cuda/cuda_blas.cc:1518] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2026-09-14 15:35:21.555425: I tensorflow/core/platform/cpu_feature_guard.cc:182] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+[JPDDL] Maximum heap per worker: 4g
+[2026-09-14 15:35:25,660] [INFO] [run_asnets.py:1491] Arguments are: Namespace(problems=None, domain_type=numeric, opt_patience=10, max_opt_epochs=1000, supervised_lr=0.003, lr_steps=[], supervised_bs=50, ssipp_teacher_heuristic='lm-cut', fd_teacher_heuristic='astar-hadd', enhsp_config='hmrp-ha-gbfs', supervised_early_stop=20, save_every=1, seed=923500475, optimizer_opts={}, resume_from='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.mprime_validation_ipc_scale_v1-experiments_numeric.architecture_2.mprime-2026-08-27T10:22:16.868149/P[domain,pfile01,pfile02,pfile04,pfile05]-S[0.003,50,enhsp-hmrp-ha-gbfs]-MO[]-T[518400]-04915056-5194f74/snapshots/snapshot_35_0.750', timeout=518400.0, model_opts={}, skip=True, num_layers=2, hidden_size=15, dropout=0.0, sup_objective=<SupervisedObjective.MCTS_VISIT_DIST: 3>, use_teacher_envelope=False, det_eval=True, ssipp_dg_heuristic=None, minimal_file_saves=True, use_lm_cuts=False, use_numeric_landmarks=False, use_contributions=False, use_act_history=True, save_training_set=None, use_saved_training_set=None, rounds_eval=1, limit_turns=10000, expt_dir='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.mprime_validation_ipc_scale_v1-experiments_numeric.architecture_2.mprime-2026-08-27T10:22:16.868149', dK='dk', no_train=True, l1_reg=0.0, l2_reg=0.005, l1_l2_reg=0.0, mse=0.5, policy_anchor_kl_coeff=0.0, policy_anchor_kl_mode='constant', policy_anchor_kl_target=None, teacher_planner='enhsp', opt_batch_per_epoch=60, exploration_algorithm='mcts', eval_with_mcts=True, eval_mcts_enforce_remaining_horizon=False, eval_mcts_terminal_safe_action_selection=False, eval_mcts_root_visit_tie_break='action_id', eval_mcts_context_diagnostics=False, eval_mcts_contextual_nodes=False, eval_mcts_context_witness_limit=128, eval_start_wave=1, eval_scheduling='rolling', skip_instance_numbers=(), eval_instance_timeout=21600.0, eval_completion_file='/home/hersco/training_new_domains/2026-09-13/mprime_phase_b_a_stage1_pw70/on/923500475/full/completion/mprime-s1-phase-b-a-on-923500475-e0035-pw70-k3.jsonl', jpddl_max_heap='4g', action_debug=False, puct_debug=False, rollouts=2, min_explored=10, max_explored=1000, exploration_learning_ratio=10.0, max_replay_size=150000, teacher_timeout_s=1, plan_file_name='plan_sas', limit_train_obs_size='1200', use_fluents=True, use_comparisons=False, pddls=['../problems/numeric/mprime/domain.pddl', '../problems/numeric/mprime/instances/pfile01.pddl', '../problems/numeric/mprime/instances/pfile02.pddl', '../problems/numeric/mprime/instances/pfile04.pddl', '../problems/numeric/mprime/instances/pfile05.pddl', '../problems/numeric/mprime/instances/pfile09.pddl', '../problems/numeric/mprime/instances/pfile13.pddl', '../problems/numeric/mprime/instances/pfile14.pddl', '../problems/numeric/mprime/instances/pfile15.pddl', '../problems/numeric/mprime/instances/pfile16.pddl', '../problems/numeric/mprime/instances/pfile18.pddl', '../problems/numeric/mprime/instances/pfile19.pddl', '../problems/numeric/mprime/instances/pfile20.pddl', '../problems/numeric/mprime/instances/pfile21.pddl', '../problems/numeric/mprime/instances/pfile22.pddl', '../problems/numeric/mprime/instances/pfile23.pddl', '../problems/numeric/mprime/instances/pfile24.pddl', '../problems/numeric/mprime/instances/pfile25.pddl', '../problems/numeric/mprime/instances/pfile26.pddl', '../problems/numeric/mprime/instances/pfile27.pddl', '../problems/numeric/mprime/instances/pfile28.pddl'], mcts_rollout_horizon=3, graceful_timeout=86400, mcts_expansion_size=20, no_eval=False, mcts_heuristic='hadd-gbfs', minimization=False, mcts_exploration_weight=0.1, mcts_progressive_widening=True, mcts_pw_min_width=3, mcts_pw_c=0.6, mcts_pw_alpha=0.5, disable_value_head=False, mcts_iterations=70, heuristic_bootstrapping=False, mcts_her_strategy=False, num_workers=3, slurm_job_id=0, worker_logs=False, corrupt_pi=None, corrupt_z=None, fixed_instance=False, original_training_set=False, sample_k_additional_states=0, profile_dir=None, profile_sample_epochs=(0, 5, 25, 100), profile_sample_every=200, freeze_train=False, goal_path_reconstruction=None, action_policy='argmax', action_policy_goal_chase_distance_threshold=None, action_policy_epsilon=0.0, action_policy_temperature=None, action_policy_decay_rate=None, action_policy_duplicate_penalty=0.0, estimator_h_to_v_coeff=1.0, use_estimator_decay=False, use_estimator=0.5, estimator_decay_epochs=None, estimator_decay_coeff_start=1.0, estimator_decay_coeff_end=0.2, validation_pddls_easy=['../problems/numeric/mprime/valid_easy/pfile0.pddl', '../problems/numeric/mprime/valid_easy/pfile1.pddl', '../problems/numeric/mprime/valid_easy/pfile2.pddl', '../problems/numeric/mprime/valid_easy/pfile3.pddl', '../problems/numeric/mprime/valid_easy/pfile4.pddl', '../problems/numeric/mprime/valid_easy/pfile5.pddl', '../problems/numeric/mprime/valid_easy/pfile6.pddl', '../problems/numeric/mprime/valid_easy/pfile7.pddl', '../problems/numeric/mprime/valid_easy/pfile8.pddl', '../problems/numeric/mprime/valid_easy/pfile9.pddl'], validation_pddls_medium=['../problems/numeric/mprime/valid_medium/pfile0.pddl', '../problems/numeric/mprime/valid_medium/pfile1.pddl', '../problems/numeric/mprime/valid_medium/pfile2.pddl', '../problems/numeric/mprime/valid_medium/pfile3.pddl', '../problems/numeric/mprime/valid_medium/pfile4.pddl', '../problems/numeric/mprime/valid_medium/pfile5.pddl', '../problems/numeric/mprime/valid_medium/pfile6.pddl', '../problems/numeric/mprime/valid_medium/pfile7.pddl', '../problems/numeric/mprime/valid_medium/pfile8.pddl', '../problems/numeric/mprime/valid_medium/pfile9.pddl'], validation_pddls_hard=['../problems/numeric/mprime/valid_hard/pfile0.pddl', '../problems/numeric/mprime/valid_hard/pfile1.pddl', '../problems/numeric/mprime/valid_hard/pfile2.pddl', '../problems/numeric/mprime/valid_hard/pfile3.pddl', '../problems/numeric/mprime/valid_hard/pfile4.pddl', '../problems/numeric/mprime/valid_hard/pfile5.pddl', '../problems/numeric/mprime/valid_hard/pfile6.pddl', '../problems/numeric/mprime/valid_hard/pfile7.pddl', '../problems/numeric/mprime/valid_hard/pfile8.pddl', '../problems/numeric/mprime/valid_hard/pfile9.pddl'], validation_on_test_instances=False)
+[2212938] Setting C/Python/Numpy/TF seeds to 923500475
+Unique prefix: P[domain,pfile01,pfile02,pfile04,pfile05,pfile09,...]-S[0.003,50,enhsp-hmrp-ha-gbfs]-MO[]-T[518400]-04941289-5194f74
+Snapshot directory: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.mprime_validation_ipc_scale_v1-experiments_numeric.architecture_2.mprime-2026-08-27T10:22:16.868149/P[domain,pfile01,pfile02,pfile04,pfile05,pfile09,...]-S[0.003,50,enhsp-hmrp-ha-gbfs]-MO[]-T[518400]-04941289-5194f74/snapshots
+Training supervised on random instances (SPAWN, NO RPyC)
+Instances: ['../problems/numeric/mprime/domain.pddl', '../problems/numeric/mprime/instances/pfile01.pddl', '../problems/numeric/mprime/instances/pfile02.pddl', '../problems/numeric/mprime/instances/pfile04.pddl', '../problems/numeric/mprime/instances/pfile05.pddl', '../problems/numeric/mprime/instances/pfile09.pddl', '../problems/numeric/mprime/instances/pfile13.pddl', '../problems/numeric/mprime/instances/pfile14.pddl', '../problems/numeric/mprime/instances/pfile15.pddl', '../problems/numeric/mprime/instances/pfile16.pddl', '../problems/numeric/mprime/instances/pfile18.pddl', '../problems/numeric/mprime/instances/pfile19.pddl', '../problems/numeric/mprime/instances/pfile20.pddl', '../problems/numeric/mprime/instances/pfile21.pddl', '../problems/numeric/mprime/instances/pfile22.pddl', '../problems/numeric/mprime/instances/pfile23.pddl', '../problems/numeric/mprime/instances/pfile24.pddl', '../problems/numeric/mprime/instances/pfile25.pddl', '../problems/numeric/mprime/instances/pfile26.pddl', '../problems/numeric/mprime/instances/pfile27.pddl', '../problems/numeric/mprime/instances/pfile28.pddl']
+Starting to parse mdpsim problem: mprime-x-1
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+Finished parsing mdpsim problem: mprime-x-1
+[WM] Successfully loaded previous weight manager from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.mprime_validation_ipc_scale_v1-experiments_numeric.architecture_2.mprime-2026-08-27T10:22:16.868149/P[domain,pfile01,pfile02,pfile04,pfile05]-S[0.003,50,enhsp-hmrp-ha-gbfs]-MO[]-T[518400]-04915056-5194f74/snapshots/snapshot_35_0.750/weights.joblib
+[WM LOAD CHECK] mean/std/norm= 0.03145110234618187 0.14290441572666168 1.2672069072723389
+[WM LOAD VERIFY] W0 saved mean/std/norm=(0.03145110234618187, 0.14290441572666168, 1.2672069072723389)
+[2026-09-14 15:35:29,390] [INFO] [run_asnets.py:967] Tensorboard summary path: /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.mprime_validation_ipc_scale_v1-experiments_numeric.architecture_2.mprime-2026-08-27T10:22:16.868149/P[domain,pfile01,pfile02,pfile04,pfile05,pfile09,...]-S[0.003,50,enhsp-hmrp-ha-gbfs]-MO[]-T[518400]-04941289-5194f74/tensorboard
+[EVAL INSTANCES] stable ordered test-set positions:
+[EVAL INSTANCES] 1: ../problems/numeric/mprime/instances/pfile01.pddl
+[EVAL INSTANCES] 2: ../problems/numeric/mprime/instances/pfile02.pddl
+[EVAL INSTANCES] 3: ../problems/numeric/mprime/instances/pfile04.pddl
+[EVAL INSTANCES] 4: ../problems/numeric/mprime/instances/pfile05.pddl
+[EVAL INSTANCES] 5: ../problems/numeric/mprime/instances/pfile09.pddl
+[EVAL INSTANCES] 6: ../problems/numeric/mprime/instances/pfile13.pddl
+[EVAL INSTANCES] 7: ../problems/numeric/mprime/instances/pfile14.pddl
+[EVAL INSTANCES] 8: ../problems/numeric/mprime/instances/pfile15.pddl
+[EVAL INSTANCES] 9: ../problems/numeric/mprime/instances/pfile16.pddl
+[EVAL INSTANCES] 10: ../problems/numeric/mprime/instances/pfile18.pddl
+[EVAL INSTANCES] 11: ../problems/numeric/mprime/instances/pfile19.pddl
+[EVAL INSTANCES] 12: ../problems/numeric/mprime/instances/pfile20.pddl
+[EVAL INSTANCES] 13: ../problems/numeric/mprime/instances/pfile21.pddl
+[EVAL INSTANCES] 14: ../problems/numeric/mprime/instances/pfile22.pddl
+[EVAL INSTANCES] 15: ../problems/numeric/mprime/instances/pfile23.pddl
+[EVAL INSTANCES] 16: ../problems/numeric/mprime/instances/pfile24.pddl
+[EVAL INSTANCES] 17: ../problems/numeric/mprime/instances/pfile25.pddl
+[EVAL INSTANCES] 18: ../problems/numeric/mprime/instances/pfile26.pddl
+[EVAL INSTANCES] 19: ../problems/numeric/mprime/instances/pfile27.pddl
+[EVAL INSTANCES] 20: ../problems/numeric/mprime/instances/pfile28.pddl
+[EVAL RESUME] starting wave 1; worker_count=3; instance_offset=0; total_instances=20
+[EVAL RESUME] selected instance numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+[EVAL] worker_fn=run_worker_eval_mcts
+[EVAL] worker_fn=run_worker_eval_mcts
+2026-09-14 15:35:29.957099: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2026-09-14 15:35:29.957191: E tensorflow/compiler/xla/stream_executor/cuda/cuda_fft.cc:609] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2026-09-14 15:35:29.957240: E tensorflow/compiler/xla/stream_executor/cuda/cuda_blas.cc:1518] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+[EVAL INSTANCE] started number=1 path=../problems/numeric/mprime/instances/pfile01.pddl pid=2213012
+[EVAL INSTANCE] started number=2 path=../problems/numeric/mprime/instances/pfile02.pddl pid=2213013
+[EVAL INSTANCE] started number=3 path=../problems/numeric/mprime/instances/pfile04.pddl pid=2213014
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2213012] Setting C/Python/Numpy/TF seeds to 923500475
+Starting [EVAL|Easy|2213012] on instance [0] ../problems/numeric/mprime/instances/pfile01.pddl
+Starting to parse mdpsim problem: mprime-x-1
+Finished parsing mdpsim problem: mprime-x-1
+[EVAL|Easy|2213012] ACTION POLICY INITIALIZED
+[EVAL|Easy|2213012] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2213012] distance_threshold = inf
+[EVAL|Easy|2213012] duplicate_penalty = 0.0
+[EVAL|Easy|2213012] root_visit_tie_break = action_id
+[2026-09-14 15:35:47,756] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_rk22_k27.pddl
+[2026-09-14 15:35:47,756] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_51rffc99.pddl
+[2026-09-14 15:35:48,374] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=5 nodes=677 peak_nodes=677 widening_events=311
+[MCTS WIDTH SUMMARY] final_widths=(count=677 min=0 mean=1.22 median=0 p90=3 p95=3 max=10) root_widths=(count=5 min=4 mean=7.60 median=8 p90=10 p95=10 max=10) widen_event_widths=(count=311 min=1 mean=3.43 median=3 p90=5 p95=6 max=10) admitted_policy_ranks=(count=824 min=1 mean=1.93 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=419,1=1,2=1,3=235,4=10,5=4,6=2,7=1,8=1,9=1,10=2) node_visit_bins=(0=382,1=38,2=13,3-4=23,5-8=40,9-16=57,17-32=51,33-64=59,65-128=9,129+=5) selection_depth_bins=(0=9,1=8,2=10,3-4=23,5-8=51,9-16=90,17-32=98,33-64=61)
+[MCTS WIDTH BY DEPTH] depth=0 count=349 min=3 mean=6.91 median=7 p90=10 p95=10 max=10
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=45,4=26,5=30,6=41,7=42,8=53,9=60,10=52)
+[MCTS WIDTH BY DEPTH] depth=1 count=340 min=3 mean=6.84 median=7 p90=10 p95=10 max=10
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=44,4=27,5=30,6=41,7=41,8=53,9=60,10=44)
+[MCTS WIDTH BY DEPTH] depth=2 count=331 min=3 mean=5.77 median=6 p90=8 p95=9 max=9
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=60,4=33,5=60,6=56,7=41,8=53,9=28)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=626 min=3 mean=4.23 median=4 p90=6 p95=7 max=8
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=266,4=125,5=114,6=73,7=41,8=7)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=1321 min=3 mean=3.17 median=3 p90=4 p95=4 max=5
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=1138,4=135,5=48)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=1774 min=3 mean=3.01 median=3 p90=3 p95=3 max=5
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=1752,4=21,5=1)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=1457 min=1 mean=2.96 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(1=18,2=18,3=1421)
+[MCTS DEPTH SUMMARY] selection_depths=(count=350 min=0 mean=17.45 median=15 p90=36 p95=37 max=39) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=5 min=1 mean=1.00 median=1 p90=1 p95=1 max=1) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=0.182104s expansion=12.257315s successor_generation=0.761184s network_inference=11.389323s evaluation=1.136038s backpropagation=0.037772s
+[2026-09-14 15:35:56,599] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_rk22_k27.pddl
+[2026-09-14 15:35:56,600] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_51rffc99.pddl
+[2026-09-14 15:35:56,600] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_rk22_k27.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_rk22_k27.pddl'
+[2026-09-14 15:35:56,600] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_51rffc99.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_51rffc99.pddl'
+[EVAL INSTANCE] completed number=1 path=../problems/numeric/mprime/instances/pfile01.pddl status=success elapsed=23.59s success=1.0 steps=5
+[EVAL][PLAN] EASY       | pfile01.pddl | steps=5 | plan=['overcome abrasion rest pork', 'feast rest pork lamb', 'feast rest lamb flounder', 'feast rest flounder rice', 'succumb abrasion rest rice']
+[EVAL INSTANCE] started number=4 path=../problems/numeric/mprime/instances/pfile05.pddl pid=2213185
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2213014] Setting C/Python/Numpy/TF seeds to 923500477
+Starting [EVAL|Easy|2213014] on instance [2] ../problems/numeric/mprime/instances/pfile04.pddl
+Starting to parse mdpsim problem: mprime-x-4
+Finished parsing mdpsim problem: mprime-x-4
+[EVAL|Easy|2213014] ACTION POLICY INITIALIZED
+[EVAL|Easy|2213014] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2213014] distance_threshold = inf
+[EVAL|Easy|2213014] duplicate_penalty = 0.0
+[EVAL|Easy|2213014] root_visit_tie_break = action_id
+[2026-09-14 15:35:59,257] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_pnx546xs.pddl
+[2026-09-14 15:35:59,258] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_vwx04pxg.pddl
+[2026-09-14 15:35:59,789] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=9 nodes=1064 peak_nodes=1064 widening_events=536
+[MCTS WIDTH SUMMARY] final_widths=(count=1064 min=0 mean=1.26 median=0 p90=3 p95=3 max=14) root_widths=(count=9 min=4 mean=9.78 median=10 p90=14 p95=14 max=14) widen_event_widths=(count=536 min=1 mean=3.81 median=3 p90=6 p95=9 max=14) admitted_policy_ranks=(count=1344 min=1 mean=1.90 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=658,1=2,3=355,4=28,5=9,6=2,7=1,8=1,9=1,10=2,11=1,12=1,13=1,14=2) node_visit_bins=(0=581,1=83,2=10,3-4=32,5-8=58,9-16=72,17-32=91,33-64=110,65-128=17,129+=10) selection_depth_bins=(0=13,1=12,2=12,3-4=31,5-8=81,9-16=168,17-32=175,33-64=138)
+[MCTS WIDTH BY DEPTH] depth=0 count=629 min=3 mean=9.24 median=10 p90=13 p95=13 max=14
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=45,4=26,5=30,6=41,7=42,8=53,9=60,10=67,11=72,12=80,13=86,14=27)
+[MCTS WIDTH BY DEPTH] depth=1 count=616 min=3 mean=9.15 median=10 p90=13 p95=13 max=14
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=44,4=27,5=30,6=41,7=41,8=53,9=60,10=67,11=72,12=80,13=86,14=15)
+[MCTS WIDTH BY DEPTH] depth=2 count=604 min=3 mean=8.66 median=9 p90=12 p95=12 max=13
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=44,4=27,5=30,6=41,7=41,8=53,9=94,10=101,11=72,12=80,13=21)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=1164 min=3 mean=6.81 median=7 p90=10 p95=11 max=12
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=268,4=79,5=60,6=94,7=128,8=148,9=139,10=134,11=91,12=23)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=2546 min=3 mean=3.98 median=3 p90=7 p95=8 max=10
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=1663,4=238,5=203,6=158,7=118,8=94,9=60,10=12)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=3472 min=3 mean=3.03 median=3 p90=3 p95=3 max=5
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=3377,4=90,5=5)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=3496 min=3 mean=3.12 median=3 p90=3 p95=4 max=6
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(3=3151,4=256,5=86,6=3)
+[MCTS DEPTH SUMMARY] selection_depths=(count=630 min=0 mean=19.53 median=16 p90=39 p95=44 max=46) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=9 min=1 mean=1.00 median=1 p90=1 p95=1 max=1) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=0.400384s expansion=24.624839s successor_generation=4.322910s network_inference=20.069260s evaluation=2.310011s backpropagation=0.074589s
+[2026-09-14 15:36:18,167] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_pnx546xs.pddl
+[2026-09-14 15:36:18,167] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_vwx04pxg.pddl
+[2026-09-14 15:36:18,168] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_pnx546xs.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_pnx546xs.pddl'
+[2026-09-14 15:36:18,168] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_vwx04pxg.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_vwx04pxg.pddl'
+[EVAL INSTANCE] completed number=3 path=../problems/numeric/mprime/instances/pfile04.pddl status=success elapsed=45.21s success=1.0 steps=9
+[EVAL][PLAN] EASY       | pfile04.pddl | steps=9 | plan=['feast aesthetics shrimp cherry', 'feast aesthetics cherry arugula', 'feast aesthetics arugula wurst', 'drink bacon wurst', 'feast aesthetics wurst grapefruit', 'overcome sciatica aesthetics grapefruit', 'drink muffin grapefruit', 'feast aesthetics grapefruit wurst', 'succumb sciatica aesthetics wurst']
+[EVAL INSTANCE] started number=5 path=../problems/numeric/mprime/instances/pfile09.pddl pid=2213282
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2213013] Setting C/Python/Numpy/TF seeds to 923500476
+Starting [EVAL|Easy|2213013] on instance [1] ../problems/numeric/mprime/instances/pfile02.pddl
+Starting to parse mdpsim problem: mprime-x-2
+Finished parsing mdpsim problem: mprime-x-2
+[EVAL|Easy|2213013] ACTION POLICY INITIALIZED
+[EVAL|Easy|2213013] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2213013] distance_threshold = inf
+[EVAL|Easy|2213013] duplicate_penalty = 0.0
+[EVAL|Easy|2213013] root_visit_tie_break = action_id
+[2026-09-14 15:36:19,711] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_8x40vdl6.pddl
+[2026-09-14 15:36:19,712] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_cfbv8r71.pddl
+[2026-09-14 15:36:20,514] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[EVAL|Easy|2213185] Setting C/Python/Numpy/TF seeds to 923500478
+Starting [EVAL|Easy|2213185] on instance [3] ../problems/numeric/mprime/instances/pfile05.pddl
+Starting to parse mdpsim problem: mprime-x-5
+Finished parsing mdpsim problem: mprime-x-5
+[EVAL|Easy|2213185] ACTION POLICY INITIALIZED
+[EVAL|Easy|2213185] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2213185] distance_threshold = inf
+[EVAL|Easy|2213185] duplicate_penalty = 0.0
+[EVAL|Easy|2213185] root_visit_tie_break = action_id
+[2026-09-14 15:36:36,904] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_frkumbpr.pddl
+[2026-09-14 15:36:36,905] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_xvvesecs.pddl
+[2026-09-14 15:36:37,607] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[EVAL|Easy|2213282] Setting C/Python/Numpy/TF seeds to 923500479
+Starting [EVAL|Easy|2213282] on instance [4] ../problems/numeric/mprime/instances/pfile09.pddl
+Starting to parse mdpsim problem: mprime-x-9
+Finished parsing mdpsim problem: mprime-x-9
+[EVAL|Easy|2213282] ACTION POLICY INITIALIZED
+[EVAL|Easy|2213282] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2213282] distance_threshold = inf
+[EVAL|Easy|2213282] duplicate_penalty = 0.0
+[EVAL|Easy|2213282] root_visit_tie_break = action_id
+[2026-09-14 15:36:52,292] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_2cfh6g79.pddl
+[2026-09-14 15:36:52,292] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_jn_jbumj.pddl
+[2026-09-14 15:36:52,972] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=8 nodes=1007 peak_nodes=1007 widening_events=520
+[MCTS WIDTH SUMMARY] final_widths=(count=1007 min=0 mean=1.31 median=0 p90=3 p95=3 max=13) root_widths=(count=8 min=4 mean=9.25 median=9 p90=13 p95=13 max=13) widen_event_widths=(count=520 min=3 mean=3.71 median=3 p90=6 p95=8 max=13) admitted_policy_ranks=(count=1324 min=1 mean=1.91 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=605,3=360,4=20,5=8,6=3,7=3,8=1,9=2,10=1,11=1,12=1,13=2) node_visit_bins=(0=512,1=99,2=26,3-4=47,5-8=55,9-16=60,17-32=85,33-64=98,65-128=14,129+=11) selection_depth_bins=(0=12,1=11,2=13,3-4=34,5-8=85,9-16=124,17-32=158,33-64=123)
+[MCTS WIDTH BY DEPTH] depth=0 count=559 min=3 mean=8.72 median=9 p90=12 p95=13 max=13
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=45,4=26,5=30,6=41,7=42,8=53,9=60,10=67,11=72,12=80,13=43)
+[MCTS WIDTH BY DEPTH] depth=1 count=547 min=3 mean=8.64 median=9 p90=12 p95=13 max=13
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=44,4=27,5=30,6=41,7=41,8=53,9=60,10=67,11=72,12=80,13=32)
+[MCTS WIDTH BY DEPTH] depth=2 count=536 min=3 mean=7.53 median=8 p90=11 p95=12 max=12
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=56,4=52,5=60,6=42,7=41,8=53,9=60,10=67,11=72,12=33)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=1021 min=3 mean=6.30 median=7 p90=10 p95=10 max=11
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=260,4=97,5=63,6=82,7=105,8=148,9=151,10=87,11=28)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=2184 min=3 mean=4.18 median=4 p90=6 p95=7 max=9
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=1071,4=356,5=330,6=216,7=157,8=47,9=7)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=3036 min=3 mean=3.09 median=3 p90=3 p95=4 max=5
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=2824,4=157,5=55)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=3327 min=3 mean=3.00 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(3=3327)
+[MCTS WIDTH BY DEPTH] depth=50-99 count=27 min=3 mean=3.00 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=50-99 counts=(3=27)
+[MCTS DEPTH SUMMARY] selection_depths=(count=560 min=0 mean=19.78 median=17 p90=38 p95=45 max=55) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=8 min=1 mean=1.00 median=1 p90=1 p95=1 max=1) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=0.426989s expansion=63.516147s successor_generation=18.915791s network_inference=44.066768s evaluation=10.905026s backpropagation=0.083387s
+[2026-09-14 15:37:15,977] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_8x40vdl6.pddl
+[2026-09-14 15:37:15,977] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_cfbv8r71.pddl
+[2026-09-14 15:37:15,977] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_8x40vdl6.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_8x40vdl6.pddl'
+[2026-09-14 15:37:15,977] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_cfbv8r71.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_cfbv8r71.pddl'
+[EVAL INSTANCE] completed number=2 path=../problems/numeric/mprime/instances/pfile02.pddl status=success elapsed=103.12s success=1.0 steps=8
+[EVAL][PLAN] EASY       | pfile02.pddl | steps=8 | plan=['overcome grief-7 entertainment ham', 'feast satiety onion beef', 'feast entertainment ham muffin', 'overcome depression-1 entertainment muffin', 'feast entertainment muffin onion', 'feast entertainment onion beef', 'succumb grief-7 entertainment beef', 'succumb depression-1 entertainment beef']
+[EVAL INSTANCE] started number=6 path=../problems/numeric/mprime/instances/pfile13.pddl pid=2213614
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=14 nodes=557 peak_nodes=557 widening_events=572
+[MCTS WIDTH SUMMARY] final_widths=(count=557 min=0 mean=1.95 median=0 p90=4 p95=8 max=17) root_widths=(count=14 min=4 mean=10.43 median=10 p90=15 p95=16 max=16) widen_event_widths=(count=572 min=3 mean=5.39 median=4 p90=10 p95=13 max=17) admitted_policy_ranks=(count=1084 min=1 mean=1.71 median=1 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=301,3=193,4=12,5=7,6=9,7=4,8=7,9=6,10=7,11=1,12=1,13=1,14=1,15=3,16=3,17=1) node_visit_bins=(0=152,1=153,2=19,3-4=52,5-8=46,9-16=39,17-32=17,33-64=24,65-128=19,129+=36) selection_depth_bins=(0=20,1=17,2=16,3-4=41,5-8=85,9-16=254,17-32=542,33-64=5)
+[MCTS WIDTH BY DEPTH] depth=0 count=979 min=3 mean=9.79 median=10 p90=15 p95=15 max=16
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=80,4=51,5=61,6=78,7=54,8=53,9=60,10=67,11=72,12=80,13=86,14=100,15=107,16=30)
+[MCTS WIDTH BY DEPTH] depth=1 count=959 min=3 mean=10.36 median=11 p90=15 p95=16 max=17
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=83,4=52,5=39,6=41,7=41,8=53,9=60,10=67,11=72,12=80,13=86,14=105,15=108,16=63,17=9)
+[MCTS WIDTH BY DEPTH] depth=2 count=941 min=3 mean=10.85 median=12 p90=16 p95=16 max=16
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=68,4=27,5=30,6=41,7=42,8=53,9=60,10=67,11=72,12=80,13=96,14=96,15=110,16=99)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=1826 min=3 mean=9.80 median=10 p90=15 p95=15 max=16
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=185,4=60,5=67,6=99,7=111,8=153,9=121,10=147,11=144,12=172,13=183,14=197,15=168,16=19)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=4199 min=3 mean=7.56 median=8 p90=12 p95=13 max=14
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=648,4=328,5=333,6=364,7=341,8=483,9=439,10=386,11=325,12=271,13=192,14=89)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=6132 min=3 mean=5.00 median=5 p90=8 p95=9 max=10
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=2254,4=751,5=768,6=763,7=715,8=500,9=318,10=63)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=1434 min=3 mean=3.83 median=3 p90=6 p95=8 max=10
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(3=980,4=145,5=123,6=76,7=23,8=42,9=41,10=4)
+[MCTS DEPTH SUMMARY] selection_depths=(count=980 min=0 mean=16.07 median=17 p90=25 p95=28 max=34) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=14 min=1 mean=1.07 median=1 p90=1 p95=2 max=2) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=0.803793s expansion=47.638213s successor_generation=11.968673s network_inference=35.169148s evaluation=11.956594s backpropagation=0.111094s
+[2026-09-14 15:37:21,798] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_frkumbpr.pddl
+[2026-09-14 15:37:21,798] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_xvvesecs.pddl
+[2026-09-14 15:37:21,799] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_frkumbpr.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_frkumbpr.pddl'
+[2026-09-14 15:37:21,799] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_xvvesecs.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_xvvesecs.pddl'
+[EVAL INSTANCE] completed number=4 path=../problems/numeric/mprime/instances/pfile05.pddl status=success elapsed=85.23s success=1.0 steps=14
+[EVAL][PLAN] EASY       | pfile05.pddl | steps=14 | plan=['overcome grief satisfaction broccoli', 'drink turkey sweetroll', 'feast satisfaction broccoli chocolate', 'feast satisfaction chocolate shrimp', 'succumb grief satisfaction shrimp', 'feast lubricity sweetroll scallop', 'drink chocolate sweetroll', 'feast satisfaction shrimp sweetroll', 'feast satisfaction sweetroll scallop', 'drink broccoli scallop', 'overcome loneliness satisfaction scallop', 'feast satisfaction scallop cherry', 'feast satisfaction cherry shrimp', 'succumb loneliness satisfaction shrimp']
+[EVAL INSTANCE] started number=7 path=../problems/numeric/mprime/instances/pfile14.pddl pid=2213642
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=12 nodes=764 peak_nodes=764 widening_events=588
+[MCTS WIDTH SUMMARY] final_widths=(count=764 min=0 mean=1.69 median=0 p90=3 p95=5 max=16) root_widths=(count=12 min=4 mean=11.17 median=11 p90=15 p95=16 max=16) widen_event_widths=(count=588 min=2 mean=4.43 median=3 p90=8 p95=11 max=16) admitted_policy_ranks=(count=1293 min=1 mean=1.82 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=410,2=3,3=278,4=23,5=22,6=13,7=1,8=2,9=2,10=2,11=1,12=1,13=1,14=1,15=2,16=2) node_visit_bins=(0=299,1=124,2=16,3-4=66,5-8=67,9-16=71,17-32=40,33-64=23,65-128=42,129+=16) selection_depth_bins=(0=16,1=14,2=16,3-4=35,5-8=98,9-16=270,17-32=391)
+[MCTS WIDTH BY DEPTH] depth=0 count=839 min=3 mean=10.63 median=11 p90=15 p95=15 max=16
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=45,4=26,5=30,6=41,7=42,8=53,9=60,10=67,11=72,12=80,13=86,14=100,15=105,16=32)
+[MCTS WIDTH BY DEPTH] depth=1 count=823 min=3 mean=10.54 median=11 p90=15 p95=15 max=16
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=44,4=27,5=30,6=41,7=41,8=53,9=60,10=67,11=72,12=80,13=86,14=104,15=100,16=18)
+[MCTS WIDTH BY DEPTH] depth=2 count=808 min=3 mean=9.94 median=10 p90=14 p95=14 max=15
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=45,4=27,5=30,6=41,7=41,8=53,9=107,10=86,11=72,12=80,13=95,14=95,15=36)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=1567 min=3 mean=8.49 median=8 p90=13 p95=13 max=14
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=119,4=87,5=121,6=183,7=128,8=148,9=133,10=134,11=144,12=171,13=151,14=48)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=3507 min=3 mean=5.82 median=5 p90=10 p95=11 max=12
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=952,4=363,5=541,6=391,7=312,8=304,9=257,10=189,11=136,12=62)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=4597 min=2 mean=3.39 median=3 p90=4 p95=5 max=7
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(2=7,3=3280,4=906,5=343,6=50,7=11)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=977 min=2 mean=3.13 median=3 p90=4 p95=4 max=5
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(2=5,3=838,4=133,5=1)
+[MCTS DEPTH SUMMARY] selection_depths=(count=840 min=0 mean=15.04 median=16 p90=24 p95=26 max=31) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=12 min=1 mean=1.00 median=1 p90=1 p95=1 max=1) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=0.588782s expansion=43.547326s successor_generation=10.521303s network_inference=32.572192s evaluation=7.367521s backpropagation=0.095403s
+[2026-09-14 15:37:29,620] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_2cfh6g79.pddl
+[2026-09-14 15:37:29,621] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_jn_jbumj.pddl
+[2026-09-14 15:37:29,621] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_2cfh6g79.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_2cfh6g79.pddl'
+[2026-09-14 15:37:29,621] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_jn_jbumj.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_jn_jbumj.pddl'
+[EVAL INSTANCE] completed number=5 path=../problems/numeric/mprime/instances/pfile09.pddl status=success elapsed=71.45s success=1.0 steps=12
+[EVAL][PLAN] EASY       | pfile09.pddl | steps=12 | plan=['overcome sciatica entertainment flounder', 'overcome jealousy excitement guava', 'feast excitement guava haroset', 'feast entertainment flounder hamburger', 'succumb sciatica entertainment hamburger', 'feast curiosity hotdog wurst', 'drink guava hotdog', 'drink guava hamburger', 'feast excitement haroset hamburger', 'feast excitement hamburger flounder', 'feast excitement flounder wurst', 'succumb jealousy excitement wurst']
+[EVAL INSTANCE] started number=8 path=../problems/numeric/mprime/instances/pfile15.pddl pid=2213689
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2213689] Setting C/Python/Numpy/TF seeds to 923500482
+Starting [EVAL|Easy|2213689] on instance [7] ../problems/numeric/mprime/instances/pfile15.pddl
+Starting to parse mdpsim problem: mprime-x-15
+Finished parsing mdpsim problem: mprime-x-15
+[EVAL|Easy|2213689] ACTION POLICY INITIALIZED
+[EVAL|Easy|2213689] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2213689] distance_threshold = inf
+[EVAL|Easy|2213689] duplicate_penalty = 0.0
+[EVAL|Easy|2213689] root_visit_tie_break = action_id
+[2026-09-14 15:40:19,352] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_88g__tdy.pddl
+[2026-09-14 15:40:19,353] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_gze5s0it.pddl
+[2026-09-14 15:40:21,268] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[EVAL|Easy|2213614] Setting C/Python/Numpy/TF seeds to 923500480
+Starting [EVAL|Easy|2213614] on instance [5] ../problems/numeric/mprime/instances/pfile13.pddl
+Starting to parse mdpsim problem: mprime-x-13
+Finished parsing mdpsim problem: mprime-x-13
+[EVAL|Easy|2213614] ACTION POLICY INITIALIZED
+[EVAL|Easy|2213614] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2213614] distance_threshold = inf
+[EVAL|Easy|2213614] duplicate_penalty = 0.0
+[EVAL|Easy|2213614] root_visit_tie_break = action_id
+[2026-09-14 15:45:00,980] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_pbvrss4q.pddl
+[2026-09-14 15:45:00,981] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_4sbmxgal.pddl
+[2026-09-14 15:45:03,831] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[EVAL|Easy|2213642] Setting C/Python/Numpy/TF seeds to 923500481
+Starting [EVAL|Easy|2213642] on instance [6] ../problems/numeric/mprime/instances/pfile14.pddl
+Starting to parse mdpsim problem: mprime-x-14
+Finished parsing mdpsim problem: mprime-x-14
+[EVAL|Easy|2213642] ACTION POLICY INITIALIZED
+[EVAL|Easy|2213642] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2213642] distance_threshold = inf
+[EVAL|Easy|2213642] duplicate_penalty = 0.0
+[EVAL|Easy|2213642] root_visit_tie_break = action_id
+[2026-09-14 15:47:42,965] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_orrzdgis.pddl
+[2026-09-14 15:47:42,966] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_1i8kmxqy.pddl
+[2026-09-14 15:47:48,032] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=31 nodes=5006 peak_nodes=5006 widening_events=2170
+[MCTS WIDTH SUMMARY] final_widths=(count=5006 min=0 mean=1.17 median=0 p90=3 p95=3 max=15) root_widths=(count=31 min=4 mean=8.77 median=8 p90=13 p95=15 max=15) widen_event_widths=(count=2170 min=3 mean=3.48 median=3 p90=4 p95=7 max=15) admitted_policy_ranks=(count=5880 min=1 mean=1.95 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=3151,3=1743,4=62,5=12,6=8,7=4,8=9,9=5,10=3,11=1,12=2,13=2,14=1,15=3) node_visit_bins=(0=3011,1=143,2=120,3-4=245,5-8=316,9-16=387,17-32=469,33-64=256,65-128=28,129+=31) selection_depth_bins=(0=50,1=69,2=81,3-4=159,5-8=342,9-16=581,17-32=541,33-64=347)
+[MCTS WIDTH BY DEPTH] depth=0 count=2169 min=3 mean=8.00 median=7 p90=13 p95=14 max=15
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=45,4=62,5=195,6=466,7=498,8=246,9=149,10=78,11=78,12=86,13=86,14=92,15=88)
+[MCTS WIDTH BY DEPTH] depth=1 count=2096 min=3 mean=6.99 median=6 p90=13 p95=14 max=15
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=451,4=209,5=249,6=202,7=161,8=244,9=105,10=70,11=72,12=80,13=86,14=100,15=67)
+[MCTS WIDTH BY DEPTH] depth=2 count=2004 min=3 mean=6.20 median=4 p90=13 p95=13 max=14
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=766,4=238,5=197,6=93,7=70,8=68,9=115,10=81,11=72,12=80,13=140,14=84)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=3762 min=3 mean=5.21 median=3 p90=11 p95=12 max=14
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=2078,4=444,5=146,6=114,7=92,8=106,9=120,10=134,11=185,12=230,13=109,14=4)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=7875 min=3 mean=4.12 median=3 p90=8 p95=9 max=12
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=5490,4=543,5=322,6=325,7=322,8=305,9=241,10=203,11=108,12=16)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=10008 min=3 mean=3.09 median=3 p90=3 p95=4 max=6
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=9383,4=426,5=156,6=43)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=9578 min=3 mean=3.00 median=3 p90=3 p95=3 max=4
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(3=9576,4=2)
+[MCTS WIDTH BY DEPTH] depth=50-99 count=141 min=3 mean=3.00 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=50-99 counts=(3=141)
+[MCTS DEPTH SUMMARY] selection_depths=(count=2170 min=0 mean=17.20 median=13 p90=39 p95=46 max=57) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=31 min=1 mean=1.77 median=1 p90=4 p95=5 max=8) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=1.262754s expansion=1348.665286s successor_generation=1097.065390s network_inference=242.038616s evaluation=811.119534s backpropagation=0.282510s
+[2026-09-14 16:15:09,257] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_88g__tdy.pddl
+[2026-09-14 16:15:09,257] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_gze5s0it.pddl
+[2026-09-14 16:15:09,257] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_88g__tdy.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_88g__tdy.pddl'
+[2026-09-14 16:15:09,257] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_gze5s0it.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_gze5s0it.pddl'
+[EVAL INSTANCE] completed number=8 path=../problems/numeric/mprime/instances/pfile15.pddl status=success elapsed=2259.57s success=1.0 steps=31
+[EVAL][PLAN] EASY       | pfile15.pddl | steps=31 | plan=['overcome jealousy satisfaction pistachio', 'feast empathy onion ham', 'feast satisfaction pistachio okra', 'feast lubricity okra pistachio', 'feast satisfaction okra cucumber', 'feast curiosity turkey cantelope', 'succumb jealousy satisfaction cucumber', 'overcome jealousy aesthetics cucumber', 'feast understanding cod pea', 'succumb jealousy aesthetics cucumber', 'overcome jealousy satisfaction cucumber', 'feast expectation lamb cod', 'succumb jealousy satisfaction cucumber', 'overcome jealousy aesthetics cucumber', 'feast aesthetics cucumber okra', 'feast aesthetics okra pistachio', 'feast curiosity cantelope chicken', 'feast expectation cod lemon', 'succumb jealousy aesthetics pistachio', 'overcome jealousy aesthetics pistachio', 'feast curiosity chicken cantelope', 'feast curiosity cantelope chicken', 'succumb jealousy aesthetics pistachio', 'overcome jealousy lubricity pistachio', 'feast expectation lemon cod', 'feast expectation cod lemon', 'feast lubricity pistachio broccoli', 'feast lubricity broccoli lemon', 'feast lubricity lemon cod', 'feast lubricity cod chicken', 'succumb jealousy lubricity chicken']
+[EVAL INSTANCE] started number=9 path=../problems/numeric/mprime/instances/pfile16.pddl pid=2219665
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2219665] Setting C/Python/Numpy/TF seeds to 923500483
+Starting [EVAL|Easy|2219665] on instance [8] ../problems/numeric/mprime/instances/pfile16.pddl
+Starting to parse mdpsim problem: mprime-x-16
+Finished parsing mdpsim problem: mprime-x-16
+[EVAL|Easy|2219665] ACTION POLICY INITIALIZED
+[EVAL|Easy|2219665] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2219665] distance_threshold = inf
+[EVAL|Easy|2219665] duplicate_penalty = 0.0
+[EVAL|Easy|2219665] root_visit_tie_break = action_id
+[2026-09-14 16:15:46,982] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_n8e_29y5.pddl
+[2026-09-14 16:15:46,982] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_gzgb74eg.pddl
+[2026-09-14 16:15:47,693] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=6 nodes=991 peak_nodes=991 widening_events=418
+[MCTS WIDTH SUMMARY] final_widths=(count=991 min=0 mean=1.15 median=0 p90=3 p95=3 max=11) root_widths=(count=6 min=4 mean=8.17 median=8 p90=11 p95=11 max=11) widen_event_widths=(count=418 min=3 mean=3.40 median=3 p90=4 p95=6 max=11) admitted_policy_ranks=(count=1142 min=1 mean=1.95 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=629,3=340,4=15,6=1,7=1,8=1,9=1,10=1,11=2) node_visit_bins=(0=586,1=45,2=12,3-4=24,5-8=48,9-16=105,17-32=93,33-64=66,65-128=6,129+=6) selection_depth_bins=(0=10,1=9,2=11,3-4=24,5-8=55,9-16=105,17-32=131,33-64=75)
+[MCTS WIDTH BY DEPTH] depth=0 count=419 min=3 mean=7.56 median=8 p90=11 p95=11 max=11
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=45,4=26,5=30,6=41,7=42,8=53,9=60,10=67,11=55)
+[MCTS WIDTH BY DEPTH] depth=1 count=409 min=3 mean=7.49 median=8 p90=11 p95=11 max=11
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=44,4=27,5=30,6=41,7=41,8=53,9=60,10=67,11=46)
+[MCTS WIDTH BY DEPTH] depth=2 count=399 min=3 mean=6.27 median=6 p90=9 p95=10 max=10
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=88,4=28,5=43,6=50,7=41,8=53,9=60,10=36)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=758 min=3 mean=4.59 median=4 p90=7 p95=8 max=9
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=363,4=79,5=77,6=82,7=82,8=54,9=21)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=1637 min=3 mean=3.15 median=3 p90=4 p95=4 max=6
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=1450,4=140,5=30,6=17)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=2272 min=3 mean=3.01 median=3 p90=3 p95=3 max=4
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=2241,4=31)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=2297 min=3 mean=3.00 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(3=2297)
+[MCTS WIDTH BY DEPTH] depth=50-99 count=31 min=3 mean=3.00 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=50-99 counts=(3=31)
+[MCTS DEPTH SUMMARY] selection_depths=(count=420 min=0 mean=19.44 median=16 p90=42 p95=46 max=56) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=6 min=1 mean=1.00 median=1 p90=1 p95=1 max=1) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=0.241773s expansion=55.621660s successor_generation=16.383336s network_inference=38.802119s evaluation=4.128057s backpropagation=0.049369s
+[2026-09-14 16:16:30,115] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_n8e_29y5.pddl
+[2026-09-14 16:16:30,115] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_gzgb74eg.pddl
+[2026-09-14 16:16:30,115] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_n8e_29y5.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_n8e_29y5.pddl'
+[2026-09-14 16:16:30,115] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_gzgb74eg.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_gzgb74eg.pddl'
+[EVAL INSTANCE] completed number=9 path=../problems/numeric/mprime/instances/pfile16.pddl status=success elapsed=80.40s success=1.0 steps=6
+[EVAL][PLAN] EASY       | pfile16.pddl | steps=6 | plan=['overcome abrasion learning baguette', 'overcome sciatica learning baguette', 'drink wonderbread baguette', 'feast learning baguette rice', 'succumb abrasion learning rice', 'succumb sciatica learning rice']
+[EVAL INSTANCE] started number=10 path=../problems/numeric/mprime/instances/pfile18.pddl pid=2219806
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2219806] Setting C/Python/Numpy/TF seeds to 923500484
+Starting [EVAL|Easy|2219806] on instance [9] ../problems/numeric/mprime/instances/pfile18.pddl
+Starting to parse mdpsim problem: mprime-x-18
+Finished parsing mdpsim problem: mprime-x-18
+[EVAL|Easy|2219806] ACTION POLICY INITIALIZED
+[EVAL|Easy|2219806] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2219806] distance_threshold = inf
+[EVAL|Easy|2219806] duplicate_penalty = 0.0
+[EVAL|Easy|2219806] root_visit_tie_break = action_id
+[2026-09-14 16:17:37,595] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_60dzw1kx.pddl
+[2026-09-14 16:17:37,595] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_0bpkaf8e.pddl
+[2026-09-14 16:17:38,754] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=19 nodes=3352 peak_nodes=3352 widening_events=1330
+[MCTS WIDTH SUMMARY] final_widths=(count=3352 min=0 mean=1.05 median=0 p90=3 p95=3 max=18) root_widths=(count=19 min=4 mean=11.84 median=13 p90=17 p95=18 max=18) widen_event_widths=(count=1330 min=3 mean=3.92 median=3 p90=6 p95=10 max=18) admitted_policy_ranks=(count=3510 min=1 mean=1.93 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=2262,3=1035,4=21,5=12,6=4,7=2,8=1,9=1,10=1,11=1,12=1,13=2,14=1,15=2,16=1,17=3,18=2) node_visit_bins=(0=2052,1=216,2=47,3-4=84,5-8=167,9-16=258,17-32=313,33-64=178,65-128=17,129+=20) selection_depth_bins=(0=24,1=27,2=28,3-4=65,5-8=140,9-16=326,17-32=414,33-64=306)
+[MCTS WIDTH BY DEPTH] depth=0 count=1329 min=3 mean=11.25 median=12 p90=17 p95=17 max=18
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=62,4=65,5=93,6=101,7=46,8=49,9=58,10=67,11=72,12=85,13=93,14=91,15=114,16=172,17=130,18=31)
+[MCTS WIDTH BY DEPTH] depth=1 count=1301 min=3 mean=11.00 median=12 p90=16 p95=17 max=18
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=145,4=79,5=51,6=37,7=46,8=53,9=54,10=66,11=76,12=87,13=85,14=93,15=158,16=141,17=65,18=65)
+[MCTS WIDTH BY DEPTH] depth=2 count=1270 min=3 mean=10.13 median=11 p90=16 p95=17 max=17
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=226,4=34,5=67,6=42,7=46,8=53,9=60,10=68,11=73,12=79,13=87,14=132,15=142,16=93,17=68)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=2445 min=3 mean=8.99 median=10 p90=15 p95=16 max=17
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=539,4=154,5=130,6=74,7=92,8=106,9=120,10=134,11=144,12=167,13=259,14=249,15=150,16=102,17=25)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=5498 min=3 mean=6.42 median=5 p90=12 p95=13 max=15
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=2338,4=381,5=203,6=259,7=262,8=260,9=303,10=341,11=370,12=368,13=222,14=123,15=68)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=7895 min=3 mean=3.65 median=3 p90=6 p95=8 max=11
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=6420,4=332,5=243,6=224,7=197,8=184,9=152,10=105,11=38)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=8428 min=3 mean=3.00 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(3=8428)
+[MCTS WIDTH BY DEPTH] depth=50-99 count=275 min=3 mean=3.00 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=50-99 counts=(3=275)
+[MCTS DEPTH SUMMARY] selection_depths=(count=1330 min=0 mean=21.20 median=18 p90=44 p95=50 max=61) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=19 min=1 mean=1.26 median=1 p90=1 p95=6 max=6) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=1.155862s expansion=2889.844042s successor_generation=2203.653684s network_inference=661.551220s evaluation=1417.333093s backpropagation=0.217528s
+[2026-09-14 16:55:10,692] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_orrzdgis.pddl
+[2026-09-14 16:55:10,693] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_1i8kmxqy.pddl
+[2026-09-14 16:55:10,693] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_orrzdgis.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_orrzdgis.pddl'
+[2026-09-14 16:55:10,693] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_1i8kmxqy.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_1i8kmxqy.pddl'
+[EVAL INSTANCE] completed number=7 path=../problems/numeric/mprime/instances/pfile14.pddl status=success elapsed=4669.52s success=1.0 steps=19
+[EVAL][PLAN] EASY       | pfile14.pddl | steps=19 | plan=['feast triumph pea potato', 'feast learning yogurt shrimp', 'feast rest scallop lemon', 'feast learning shrimp potato', 'feast learning potato pea', 'feast triumph potato pea', 'feast triumph pea potato', 'drink pea potato', 'drink pea mutton', 'feast love mutton pistachio', 'overcome anxiety-25 love pistachio', 'overcome prostatitis-23 love pistachio', 'feast love pistachio lettuce', 'feast love lettuce scallop', 'feast love scallop scallion', 'feast love scallion shrimp', 'feast love shrimp potato', 'succumb anxiety-25 love potato', 'succumb prostatitis-23 love potato']
+[EVAL INSTANCE] started number=11 path=../problems/numeric/mprime/instances/pfile19.pddl pid=2225799
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2225799] Setting C/Python/Numpy/TF seeds to 923500485
+Starting [EVAL|Easy|2225799] on instance [10] ../problems/numeric/mprime/instances/pfile19.pddl
+Starting to parse mdpsim problem: mprime-x-19
+Finished parsing mdpsim problem: mprime-x-19
+[EVAL|Easy|2225799] ACTION POLICY INITIALIZED
+[EVAL|Easy|2225799] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2225799] distance_threshold = inf
+[EVAL|Easy|2225799] duplicate_penalty = 0.0
+[EVAL|Easy|2225799] root_visit_tie_break = action_id
+[2026-09-14 16:57:07,842] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_8fhdp_si.pddl
+[2026-09-14 16:57:07,842] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_iosw_1_h.pddl
+[2026-09-14 16:57:10,413] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=26 nodes=2818 peak_nodes=2818 widening_events=1541
+[MCTS WIDTH SUMMARY] final_widths=(count=2818 min=0 mean=1.29 median=0 p90=3 p95=3 max=20) root_widths=(count=26 min=4 mean=14.35 median=16 p90=20 p95=20 max=20) widen_event_widths=(count=1541 min=3 mean=4.69 median=3 p90=10 p95=14 max=20) admitted_policy_ranks=(count=3639 min=1 mean=1.86 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=1769,3=910,4=79,5=19,6=11,7=3,9=3,10=2,11=1,12=2,13=1,14=2,15=1,16=3,17=5,20=7) node_visit_bins=(0=1445,1=320,2=64,3-4=98,5-8=140,9-16=208,17-32=245,33-64=224,65-128=42,129+=32) selection_depth_bins=(0=26,1=30,2=36,3-4=68,5-8=159,9-16=372,17-32=674,33-64=455)
+[MCTS WIDTH BY DEPTH] depth=0 count=1819 min=3 mean=13.81 median=15 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=55,4=65,5=60,6=64,7=46,8=47,9=64,10=70,11=50,12=82,13=88,14=102,15=155,16=375,17=76,19=89,20=331)
+[MCTS WIDTH BY DEPTH] depth=1 count=1790 min=3 mean=12.65 median=13 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=137,4=49,5=62,6=80,7=65,8=97,9=113,10=83,11=74,12=80,13=97,14=92,15=121,16=108,17=45,18=30,19=144,20=313)
+[MCTS WIDTH BY DEPTH] depth=2 count=1752 min=3 mean=11.95 median=12 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=184,4=58,5=67,6=78,7=95,8=90,9=68,10=69,11=133,12=88,13=90,14=92,15=114,16=43,18=115,19=146,20=222)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=3399 min=3 mean=11.42 median=12 p90=19 p95=19 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=482,4=143,5=116,6=124,7=113,8=168,9=171,10=195,11=152,12=166,13=172,14=203,15=222,16=58,17=202,18=272,19=290,20=150)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=7825 min=3 mean=9.69 median=10 p90=17 p95=18 max=19
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=1743,4=408,5=371,6=293,7=318,8=294,9=304,10=355,11=395,12=441,13=497,14=518,15=442,16=571,17=477,18=304,19=94)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=12217 min=3 mean=6.06 median=4 p90=12 p95=14 max=16
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=5666,4=973,5=628,6=560,7=495,8=552,9=595,10=582,11=537,12=512,13=432,14=351,15=296,16=38)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=12734 min=3 mean=3.12 median=3 p90=3 p95=4 max=8
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(3=11774,4=640,5=149,6=90,7=60,8=21)
+[MCTS WIDTH BY DEPTH] depth=50-99 count=104 min=3 mean=3.00 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=50-99 counts=(3=104)
+[MCTS DEPTH SUMMARY] selection_depths=(count=1820 min=0 mean=22.46 median=21 p90=42 p95=46 max=57) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=26 min=1 mean=1.12 median=1 p90=2 p95=2 max=2) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=2.111933s expansion=455.073388s successor_generation=278.799307s network_inference=169.194549s evaluation=177.166382s backpropagation=0.280861s
+[2026-09-14 17:06:48,847] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_8fhdp_si.pddl
+[2026-09-14 17:06:48,848] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_iosw_1_h.pddl
+[2026-09-14 17:06:48,848] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_8fhdp_si.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_8fhdp_si.pddl'
+[2026-09-14 17:06:48,848] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_iosw_1_h.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_iosw_1_h.pddl'
+[EVAL INSTANCE] completed number=11 path=../problems/numeric/mprime/instances/pfile19.pddl status=success elapsed=696.95s success=1.0 steps=26
+[EVAL][PLAN] EASY       | pfile19.pddl | steps=26 | plan=['feast love haroset lobster', 'feast stimulation lamb beef', 'overcome abrasion stimulation beef', 'feast stimulation beef marzipan', 'feast stimulation marzipan tofu', 'feast stimulation tofu marzipan', 'drink lemon wonderbread', 'feast aesthetics bacon wonderbread', 'drink marzipan bacon', 'feast aesthetics wonderbread bacon', 'feast love lobster bacon', 'feast love bacon lobster', 'drink marzipan bacon', 'succumb abrasion stimulation marzipan', 'drink bacon wonderbread', 'feast achievement wonderbread marzipan', 'overcome abrasion achievement marzipan', 'drink lamb bacon', 'drink lamb onion', 'feast learning snickers onion', 'drink flounder marzipan', 'feast achievement marzipan wonderbread', 'drink flounder wonderbread', 'feast achievement wonderbread bacon', 'feast achievement bacon lobster', 'succumb abrasion achievement lobster']
+[EVAL INSTANCE] started number=12 path=../problems/numeric/mprime/instances/pfile20.pddl pid=2228132
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2228132] Setting C/Python/Numpy/TF seeds to 923500486
+Starting [EVAL|Easy|2228132] on instance [11] ../problems/numeric/mprime/instances/pfile20.pddl
+Starting to parse mdpsim problem: mprime-x-20
+Finished parsing mdpsim problem: mprime-x-20
+[EVAL|Easy|2228132] ACTION POLICY INITIALIZED
+[EVAL|Easy|2228132] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2228132] distance_threshold = inf
+[EVAL|Easy|2228132] duplicate_penalty = 0.0
+[EVAL|Easy|2228132] root_visit_tie_break = action_id
+[2026-09-14 17:08:35,121] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_ozfpmawi.pddl
+[2026-09-14 17:08:35,121] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_0faomlym.pddl
+[2026-09-14 17:08:38,024] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=30 nodes=4299 peak_nodes=4299 widening_events=2100
+[MCTS WIDTH SUMMARY] final_widths=(count=4299 min=0 mean=1.13 median=0 p90=3 p95=3 max=20) root_widths=(count=30 min=4 mean=14.07 median=15 p90=20 p95=20 max=20) widen_event_widths=(count=2100 min=3 mean=5.35 median=3 p90=13 p95=16 max=20) admitted_policy_ranks=(count=4840 min=1 mean=1.85 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=2929,3=1256,4=37,5=19,6=6,7=5,8=3,9=3,10=3,11=1,12=1,13=1,14=2,15=3,17=4,18=6,19=8,20=12) node_visit_bins=(0=2333,1=609,2=98,3-4=230,5-8=230,9-16=269,17-32=274,33-64=172,65-128=31,129+=53) selection_depth_bins=(0=30,1=30,2=88,3-4=138,5-8=181,9-16=269,17-32=554,33-64=707,65-128=103)
+[MCTS WIDTH BY DEPTH] depth=0 count=2099 min=3 mean=13.56 median=15 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=45,4=26,5=56,6=106,7=129,8=114,9=108,10=67,11=72,12=91,13=118,14=106,15=112,16=191,17=134,18=170,19=214,20=240)
+[MCTS WIDTH BY DEPTH] depth=1 count=2069 min=3 mean=13.33 median=14 p90=19 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=45,4=61,5=93,6=97,7=84,8=106,9=101,10=67,11=83,12=106,13=104,14=104,15=100,16=187,17=141,18=165,19=222,20=203)
+[MCTS WIDTH BY DEPTH] depth=2 count=1984 min=3 mean=11.71 median=12 p90=19 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=254,4=72,5=91,6=101,7=82,8=72,9=60,10=78,11=96,12=99,13=88,14=102,15=114,16=121,17=144,18=151,19=155,20=104)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=3731 min=3 mean=11.94 median=13 p90=19 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=553,4=167,5=94,6=112,7=104,8=108,9=131,10=185,11=158,12=165,13=190,14=186,15=254,16=239,17=256,18=306,19=287,20=236)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=8500 min=3 mean=11.89 median=13 p90=19 p95=19 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=1243,4=308,5=188,6=197,7=285,8=265,9=326,10=423,11=371,12=418,13=454,14=514,15=604,16=612,17=686,18=744,19=612,20=250)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=14298 min=3 mean=11.46 median=13 p90=17 p95=18 max=19
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=1868,4=381,5=329,6=487,7=465,8=593,9=714,10=697,11=752,12=857,13=979,14=1136,15=1228,16=1309,17=1232,18=913,19=358)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=22587 min=3 mean=5.53 median=3 p90=12 p95=13 max=16
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(3=12568,4=1300,5=1035,6=906,7=859,8=867,9=857,10=869,11=847,12=830,13=717,14=539,15=322,16=71)
+[MCTS WIDTH BY DEPTH] depth=50-99 count=3587 min=3 mean=3.00 median=3 p90=3 p95=3 max=4
+[MCTS WIDTH COUNTS BY DEPTH] depth=50-99 counts=(3=3585,4=2)
+[MCTS DEPTH SUMMARY] selection_depths=(count=2100 min=0 mean=27.68 median=26 p90=55 p95=64 max=89) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=30 min=1 mean=1.80 median=1 p90=2 p95=8 max=11) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=4.391620s expansion=656.152719s successor_generation=476.056811s network_inference=168.399920s evaluation=328.680302s backpropagation=0.761886s
+[2026-09-14 17:24:20,896] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_ozfpmawi.pddl
+[2026-09-14 17:24:20,896] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_0faomlym.pddl
+[2026-09-14 17:24:20,897] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_ozfpmawi.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_ozfpmawi.pddl'
+[2026-09-14 17:24:20,897] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_0faomlym.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_0faomlym.pddl'
+[EVAL INSTANCE] completed number=12 path=../problems/numeric/mprime/instances/pfile20.pddl status=success elapsed=1051.51s success=1.0 steps=30
+[EVAL][PLAN] EASY       | pfile20.pddl | steps=30 | plan=['overcome abrasion intoxication wonderbread', 'feast satisfaction sweetroll muffin', 'feast achievement cherry pepper', 'feast triumph yogurt muffin', 'feast intoxication wonderbread yogurt', 'feast intoxication yogurt tuna', 'feast curiosity cod tuna', 'feast intoxication tuna cod', 'feast empathy pork cod', 'feast empathy cod tuna', 'feast intoxication cod tuna', 'feast intoxication tuna sweetroll', 'succumb abrasion intoxication sweetroll', 'feast curiosity tuna sweetroll', 'overcome abrasion intoxication sweetroll', 'feast intoxication sweetroll muffin', 'succumb abrasion intoxication muffin', 'overcome abrasion triumph muffin', 'feast triumph muffin sweetroll', 'succumb abrasion triumph sweetroll', 'overcome abrasion curiosity sweetroll', 'feast curiosity sweetroll pork', 'feast curiosity pork cod', 'succumb abrasion curiosity cod', 'feast understanding marzipan cod', 'overcome abrasion curiosity cod', 'feast curiosity cod marzipan', 'feast curiosity marzipan cherry', 'feast curiosity cherry pepper', 'succumb abrasion curiosity pepper']
+[EVAL INSTANCE] started number=13 path=../problems/numeric/mprime/instances/pfile21.pddl pid=2231799
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2231799] Setting C/Python/Numpy/TF seeds to 923500487
+Starting [EVAL|Easy|2231799] on instance [12] ../problems/numeric/mprime/instances/pfile21.pddl
+Starting to parse mdpsim problem: mprime-x-21
+Finished parsing mdpsim problem: mprime-x-21
+[EVAL|Easy|2231799] ACTION POLICY INITIALIZED
+[EVAL|Easy|2231799] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2231799] distance_threshold = inf
+[EVAL|Easy|2231799] duplicate_penalty = 0.0
+[EVAL|Easy|2231799] root_visit_tie_break = action_id
+[2026-09-14 17:28:07,174] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_fg6j66sz.pddl
+[2026-09-14 17:28:07,174] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_xeilnn3m.pddl
+[2026-09-14 17:28:11,153] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=7 nodes=631 peak_nodes=631 widening_events=379
+[MCTS WIDTH SUMMARY] final_widths=(count=631 min=0 mean=1.58 median=0 p90=3 p95=3 max=12) root_widths=(count=7 min=4 mean=8.71 median=9 p90=12 p95=12 max=12) widen_event_widths=(count=379 min=3 mean=3.62 median=3 p90=5 p95=8 max=12) admitted_policy_ranks=(count=995 min=1 mean=1.93 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=323,3=286,4=9,5=5,7=2,8=1,9=1,10=1,11=1,12=2) node_visit_bins=(0=281,1=43,2=10,3-4=11,5-8=28,9-16=66,17-32=109,33-64=69,65-128=6,129+=8) selection_depth_bins=(0=11,1=10,2=11,3-4=29,5-8=63,9-16=120,17-32=175,33-64=71)
+[MCTS WIDTH BY DEPTH] depth=0 count=489 min=3 mean=8.16 median=9 p90=12 p95=12 max=12
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=45,4=26,5=30,6=41,7=42,8=53,9=60,10=67,11=72,12=53)
+[MCTS WIDTH BY DEPTH] depth=1 count=478 min=3 mean=8.09 median=9 p90=11 p95=12 max=12
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=44,4=27,5=30,6=41,7=41,8=53,9=60,10=67,11=72,12=43)
+[MCTS WIDTH BY DEPTH] depth=2 count=467 min=3 mean=7.07 median=7 p90=10 p95=11 max=11
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=72,4=27,5=30,6=58,7=63,8=53,9=60,10=67,11=37)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=893 min=3 mean=5.37 median=5 p90=9 p95=9 max=10
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=289,4=104,5=108,6=102,7=87,8=101,9=74,10=28)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=1924 min=3 mean=3.30 median=3 p90=4 p95=5 max=7
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=1634,4=129,5=71,6=54,7=36)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=2733 min=3 mean=3.07 median=3 p90=3 p95=4 max=5
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=2579,4=104,5=50)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=1863 min=3 mean=3.00 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(3=1863)
+[MCTS DEPTH SUMMARY] selection_depths=(count=490 min=0 mean=17.68 median=17 p90=33 p95=34 max=43) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=7 min=1 mean=1.00 median=1 p90=1 p95=1 max=1) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=0.340349s expansion=324.937942s successor_generation=120.284501s network_inference=201.764260s evaluation=75.406545s backpropagation=0.072361s
+[2026-09-14 17:33:09,161] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_fg6j66sz.pddl
+[2026-09-14 17:33:09,161] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_xeilnn3m.pddl
+[2026-09-14 17:33:09,162] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_fg6j66sz.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_fg6j66sz.pddl'
+[2026-09-14 17:33:09,162] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_xeilnn3m.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_xeilnn3m.pddl'
+[EVAL INSTANCE] completed number=13 path=../problems/numeric/mprime/instances/pfile21.pddl status=success elapsed=527.52s success=1.0 steps=7
+[EVAL][PLAN] EASY       | pfile21.pddl | steps=7 | plan=['feast love flounder apple', 'feast learning lemon wurst', 'overcome sciatica learning wurst', 'drink popover wurst', 'feast learning wurst snickers', 'feast learning snickers apple', 'succumb sciatica learning apple']
+[EVAL INSTANCE] started number=14 path=../problems/numeric/mprime/instances/pfile22.pddl pid=2233057
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2233057] Setting C/Python/Numpy/TF seeds to 923500488
+Starting [EVAL|Easy|2233057] on instance [13] ../problems/numeric/mprime/instances/pfile22.pddl
+Starting to parse mdpsim problem: mprime-x-22
+Finished parsing mdpsim problem: mprime-x-22
+[EVAL|Easy|2233057] ACTION POLICY INITIALIZED
+[EVAL|Easy|2233057] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2233057] distance_threshold = inf
+[EVAL|Easy|2233057] duplicate_penalty = 0.0
+[EVAL|Easy|2233057] root_visit_tie_break = action_id
+[2026-09-14 17:41:47,956] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_h0bjr6r7.pddl
+[2026-09-14 17:41:47,956] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_88xrmz_q.pddl
+[2026-09-14 17:41:52,522] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=15 nodes=2447 peak_nodes=2447 widening_events=1050
+[MCTS WIDTH SUMMARY] final_widths=(count=2447 min=0 mean=1.09 median=0 p90=3 p95=3 max=18) root_widths=(count=15 min=4 mean=12.33 median=13 p90=17 p95=18 max=18) widen_event_widths=(count=1050 min=3 mean=4.03 median=3 p90=7 p95=11 max=18) admitted_policy_ranks=(count=2672 min=1 mean=1.91 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=1636,3=742,4=33,5=15,6=4,7=2,8=1,9=1,10=2,11=1,12=1,13=1,14=1,15=2,16=2,17=2,18=1) node_visit_bins=(0=1464,1=171,2=37,3-4=65,5-8=122,9-16=186,17-32=210,33-64=149,65-128=25,129+=18) selection_depth_bins=(0=18,1=15,2=21,3-4=41,5-8=102,9-16=271,17-32=322,33-64=258,65-128=2)
+[MCTS WIDTH BY DEPTH] depth=0 count=1049 min=3 mean=11.83 median=13 p90=17 p95=17 max=18
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=45,4=26,5=30,6=41,7=42,8=53,9=60,10=67,11=72,12=80,13=86,14=100,15=105,16=119,17=112,18=11)
+[MCTS WIDTH BY DEPTH] depth=1 count=1031 min=3 mean=11.74 median=13 p90=17 p95=17 max=17
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=44,4=27,5=30,6=41,7=41,8=53,9=60,10=67,11=72,12=80,13=86,14=104,15=100,16=119,17=107)
+[MCTS WIDTH BY DEPTH] depth=2 count=1016 min=3 mean=10.91 median=12 p90=16 p95=16 max=17
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=67,4=33,5=38,6=47,7=41,8=53,9=60,10=93,11=72,12=80,13=95,14=95,15=110,16=109,17=23)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=1964 min=3 mean=9.49 median=10 p90=15 p95=15 max=16
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=270,4=111,5=89,6=86,7=99,8=101,9=141,10=150,11=144,12=171,13=182,14=187,15=187,16=46)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=4486 min=3 mean=6.73 median=6 p90=12 p95=13 max=14
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=1424,4=417,5=252,6=270,7=256,8=307,9=329,10=339,11=325,12=272,13=194,14=101)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=6437 min=3 mean=3.58 median=3 p90=5 p95=7 max=10
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=4952,4=570,5=329,6=213,7=149,8=116,9=81,10=27)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=7449 min=3 mean=3.00 median=3 p90=3 p95=3 max=4
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(3=7429,4=20)
+[MCTS WIDTH BY DEPTH] depth=50-99 count=401 min=3 mean=3.00 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=50-99 counts=(3=401)
+[MCTS DEPTH SUMMARY] selection_depths=(count=1050 min=0 mean=22.47 median=19 p90=47 p95=52 max=66) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=15 min=1 mean=1.00 median=1 p90=1 p95=1 max=1) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=1.193725s expansion=2656.395743s successor_generation=2056.143832s network_inference=576.243455s evaluation=390.482372s backpropagation=0.267934s
+[2026-09-14 18:28:53,237] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_h0bjr6r7.pddl
+[2026-09-14 18:28:53,237] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_88xrmz_q.pddl
+[2026-09-14 18:28:53,238] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_h0bjr6r7.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_h0bjr6r7.pddl'
+[2026-09-14 18:28:53,253] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_88xrmz_q.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_88xrmz_q.pddl'
+[EVAL INSTANCE] completed number=14 path=../problems/numeric/mprime/instances/pfile22.pddl status=success elapsed=3345.66s success=1.0 steps=15
+[EVAL][PLAN] EASY       | pfile22.pddl | steps=15 | plan=['overcome hangover understanding ham', 'drink lamb guava', 'feast understanding ham popover', 'drink lamb muffin', 'feast understanding popover chicken', 'feast understanding chicken guava', 'feast understanding guava chicken', 'drink shrimp guava', 'feast understanding chicken cherry', 'drink shrimp chicken', 'drink shrimp cherry', 'feast understanding cherry scallop', 'feast understanding scallop cantelope', 'feast understanding cantelope lamb', 'succumb hangover understanding lamb']
+[EVAL INSTANCE] started number=15 path=../problems/numeric/mprime/instances/pfile23.pddl pid=2273277
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2273277] Setting C/Python/Numpy/TF seeds to 923500489
+Starting [EVAL|Easy|2273277] on instance [14] ../problems/numeric/mprime/instances/pfile23.pddl
+Starting to parse mdpsim problem: mprime-x-23
+Finished parsing mdpsim problem: mprime-x-23
+[EVAL|Easy|2273277] ACTION POLICY INITIALIZED
+[EVAL|Easy|2273277] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2273277] distance_threshold = inf
+[EVAL|Easy|2273277] duplicate_penalty = 0.0
+[EVAL|Easy|2273277] root_visit_tie_break = action_id
+[2026-09-14 18:31:23,997] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_jyhwz9pv.pddl
+[2026-09-14 18:31:23,997] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_5j8_qpvh.pddl
+[2026-09-14 18:31:27,195] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=27 nodes=4335 peak_nodes=4335 widening_events=1886
+[MCTS WIDTH SUMMARY] final_widths=(count=4335 min=0 mean=1.09 median=0 p90=3 p95=3 max=20) root_widths=(count=27 min=4 mean=15.44 median=17 p90=20 p95=20 max=20) widen_event_widths=(count=1886 min=3 mean=4.54 median=3 p90=10 p95=14 max=20) admitted_policy_ranks=(count=4740 min=1 mean=1.90 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=2908,3=1332,4=52,5=8,6=3,7=2,8=3,9=1,10=2,11=1,12=2,13=1,14=2,15=1,16=2,17=2,18=2,19=2,20=9) node_visit_bins=(0=2519,1=389,2=71,3-4=133,5-8=216,9-16=263,17-32=385,33-64=311,65-128=16,129+=32) selection_depth_bins=(0=21,1=21,2=34,3-4=60,5-8=137,9-16=330,17-32=694,33-64=540,65-128=53)
+[MCTS WIDTH BY DEPTH] depth=0 count=1889 min=3 mean=15.11 median=16 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=45,4=26,5=30,6=41,7=42,8=53,9=60,10=67,11=72,12=101,13=100,14=98,15=110,16=109,17=127,18=135,19=143,20=530)
+[MCTS WIDTH BY DEPTH] depth=1 count=1868 min=3 mean=15.05 median=16 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=44,4=27,5=30,6=41,7=41,8=53,9=60,10=67,11=80,12=101,13=97,14=92,15=113,16=110,17=122,18=135,19=143,20=512)
+[MCTS WIDTH BY DEPTH] depth=2 count=1838 min=3 mean=14.46 median=16 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=55,4=27,5=61,6=46,7=41,8=53,9=60,10=99,11=78,12=94,13=86,14=97,15=108,16=119,17=122,18=133,19=149,20=410)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=3581 min=3 mean=13.48 median=15 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=251,4=98,5=71,6=82,7=106,8=154,9=131,10=182,11=170,12=160,13=176,14=204,15=210,16=228,17=254,18=270,19=286,20=548)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=8371 min=3 mean=11.00 median=12 p90=18 p95=19 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=1606,4=281,5=176,6=163,7=349,8=387,9=398,10=365,11=375,12=417,13=456,14=488,15=550,16=582,17=627,18=590,19=399,20=162)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=13701 min=3 mean=6.68 median=4 p90=13 p95=15 max=17
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=6313,4=581,5=513,6=634,7=512,8=528,9=627,10=705,11=676,12=665,13=607,14=523,15=422,16=281,17=114)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=17119 min=3 mean=3.21 median=3 p90=3 p95=4 max=10
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(3=15844,4=425,5=248,6=185,7=168,8=146,9=84,10=19)
+[MCTS WIDTH BY DEPTH] depth=50-99 count=2206 min=3 mean=3.00 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=50-99 counts=(3=2206)
+[MCTS DEPTH SUMMARY] selection_depths=(count=1890 min=0 mean=26.51 median=24 p90=52 p95=62 max=76) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=27 min=1 mean=1.11 median=1 p90=1 p95=1 max=4) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=2.992286s expansion=941.956163s successor_generation=707.100716s network_inference=223.741551s evaluation=261.265465s backpropagation=0.522076s
+[2026-09-14 18:50:27,515] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_jyhwz9pv.pddl
+[2026-09-14 18:50:27,515] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_5j8_qpvh.pddl
+[2026-09-14 18:50:27,516] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_jyhwz9pv.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_jyhwz9pv.pddl'
+[2026-09-14 18:50:27,516] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_5j8_qpvh.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_5j8_qpvh.pddl'
+[EVAL INSTANCE] completed number=15 path=../problems/numeric/mprime/instances/pfile23.pddl status=success elapsed=1291.67s success=1.0 steps=27
+[EVAL][PLAN] EASY       | pfile23.pddl | steps=27 | plan=['feast intoxication onion apple', 'overcome laceration intoxication apple', 'drink grapefruit hotdog', 'feast intoxication apple pistachio', 'feast intoxication pistachio cherry', 'succumb laceration intoxication cherry', 'overcome laceration understanding cherry', 'feast understanding cherry pistachio', 'feast empathy haroset bacon', 'feast understanding pistachio apple', 'drink pistachio sweetroll', 'drink pistachio hotdog', 'feast satisfaction lamb hotdog', 'feast satisfaction hotdog chicken', 'feast learning okra lamb', 'feast learning lamb hotdog', 'feast learning hotdog chicken', 'drink lamb hotdog', 'drink chicken onion', 'feast intoxication cherry sweetroll', 'feast understanding apple onion', 'feast understanding onion flounder', 'feast understanding flounder lamb', 'drink cherry lamb', 'feast understanding lamb hotdog', 'feast understanding hotdog chicken', 'succumb laceration understanding chicken']
+[EVAL INSTANCE] started number=16 path=../problems/numeric/mprime/instances/pfile24.pddl pid=2286433
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2286433] Setting C/Python/Numpy/TF seeds to 923500490
+Starting [EVAL|Easy|2286433] on instance [15] ../problems/numeric/mprime/instances/pfile24.pddl
+Starting to parse mdpsim problem: mprime-x-24
+Finished parsing mdpsim problem: mprime-x-24
+[EVAL|Easy|2286433] ACTION POLICY INITIALIZED
+[EVAL|Easy|2286433] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2286433] distance_threshold = inf
+[EVAL|Easy|2286433] duplicate_penalty = 0.0
+[EVAL|Easy|2286433] root_visit_tie_break = action_id
+[2026-09-14 18:52:30,252] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_g9uww993.pddl
+[2026-09-14 18:52:30,252] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_q_tagjso.pddl
+[2026-09-14 18:52:32,869] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[EVAL INSTANCE] timeout number=6 path=../problems/numeric/mprime/instances/pfile13.pddl limit=21600.0s
+[EVAL INSTANCE] started number=17 path=../problems/numeric/mprime/instances/pfile25.pddl pid=2379217
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2379217] Setting C/Python/Numpy/TF seeds to 923500491
+Starting [EVAL|Easy|2379217] on instance [16] ../problems/numeric/mprime/instances/pfile25.pddl
+Starting to parse mdpsim problem: mprime-x-25
+Finished parsing mdpsim problem: mprime-x-25
+[EVAL|Easy|2379217] ACTION POLICY INITIALIZED
+[EVAL|Easy|2379217] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2379217] distance_threshold = inf
+[EVAL|Easy|2379217] duplicate_penalty = 0.0
+[EVAL|Easy|2379217] root_visit_tie_break = action_id
+[2026-09-14 21:37:31,382] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_2jhpxh7q.pddl
+[2026-09-14 21:37:31,382] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_rhq3pksd.pddl
+[2026-09-14 21:37:32,036] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=4 nodes=239 peak_nodes=239 widening_events=155
+[MCTS WIDTH SUMMARY] final_widths=(count=239 min=0 mean=1.53 median=0 p90=4 p95=4 max=9) root_widths=(count=4 min=4 mean=7.00 median=7 p90=9 p95=9 max=9) widen_event_widths=(count=155 min=1 mean=3.60 median=3 p90=5 p95=7 max=9) admitted_policy_ranks=(count=366 min=1 mean=1.86 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=131,1=2,2=1,3=80,4=16,5=5,7=1,8=1,9=2) node_visit_bins=(0=99,1=34,2=7,3-4=12,5-8=10,9-16=16,17-32=17,33-64=30,65-128=10,129+=4) selection_depth_bins=(0=8,1=7,2=8,3-4=22,5-8=40,9-16=129,17-32=66)
+[MCTS WIDTH BY DEPTH] depth=0 count=279 min=3 mean=6.20 median=6 p90=9 p95=9 max=9
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=45,4=26,5=30,6=41,7=42,8=53,9=42)
+[MCTS WIDTH BY DEPTH] depth=1 count=271 min=3 mean=6.13 median=6 p90=9 p95=9 max=9
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=44,4=27,5=30,6=41,7=41,8=53,9=35)
+[MCTS WIDTH BY DEPTH] depth=2 count=263 min=3 mean=4.85 median=5 p90=7 p95=7 max=8
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=78,4=46,5=44,6=41,7=41,8=13)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=492 min=3 mean=3.48 median=3 p90=5 p95=6 max=6
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=336,4=100,5=31,6=25)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=1034 min=3 mean=3.14 median=3 p90=4 p95=4 max=5
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=903,4=122,5=9)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=1151 min=0 mean=3.00 median=3 p90=4 p95=4 max=5
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(0=30,1=23,3=982,4=96,5=20)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=14 min=0 mean=2.57 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(0=2,3=12)
+[MCTS DEPTH SUMMARY] selection_depths=(count=280 min=0 mean=11.91 median=15 p90=17 p95=19 max=22) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=4 min=1 mean=1.00 median=1 p90=1 p95=1 max=1) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=0.115719s expansion=10.620135s successor_generation=0.492921s network_inference=10.083257s evaluation=1.246417s backpropagation=0.027043s
+[2026-09-14 21:37:38,114] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_2jhpxh7q.pddl
+[2026-09-14 21:37:38,114] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_rhq3pksd.pddl
+[2026-09-14 21:37:38,114] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_2jhpxh7q.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_2jhpxh7q.pddl'
+[2026-09-14 21:37:38,114] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_rhq3pksd.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_rhq3pksd.pddl'
+[EVAL INSTANCE] completed number=17 path=../problems/numeric/mprime/instances/pfile25.pddl status=success elapsed=21.54s success=1.0 steps=4
+[EVAL][PLAN] EASY       | pfile25.pddl | steps=4 | plan=['feast expectation tuna wurst', 'overcome depression expectation wurst', 'feast expectation wurst chicken', 'succumb depression expectation chicken']
+[EVAL INSTANCE] started number=18 path=../problems/numeric/mprime/instances/pfile26.pddl pid=2379458
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2379458] Setting C/Python/Numpy/TF seeds to 923500492
+Starting [EVAL|Easy|2379458] on instance [17] ../problems/numeric/mprime/instances/pfile26.pddl
+Starting to parse mdpsim problem: mprime-x-26
+Finished parsing mdpsim problem: mprime-x-26
+[EVAL|Easy|2379458] ACTION POLICY INITIALIZED
+[EVAL|Easy|2379458] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2379458] distance_threshold = inf
+[EVAL|Easy|2379458] duplicate_penalty = 0.0
+[EVAL|Easy|2379458] root_visit_tie_break = action_id
+[2026-09-14 21:38:09,805] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_ex9p1xu9.pddl
+[2026-09-14 21:38:09,806] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_z7tkynk0.pddl
+[2026-09-14 21:38:11,007] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=41 nodes=1833 peak_nodes=1833 widening_events=1920
+[MCTS WIDTH SUMMARY] final_widths=(count=1833 min=0 mean=1.91 median=0 p90=4 p95=7 max=20) root_widths=(count=41 min=4 mean=16.29 median=19 p90=20 p95=20 max=20) widen_event_widths=(count=1920 min=2 mean=6.24 median=4 p90=14 p95=16 max=20) admitted_policy_ranks=(count=3507 min=1 mean=1.68 median=1 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=1039,2=1,3=553,4=82,5=38,6=25,7=18,8=19,9=6,10=5,11=2,12=5,13=4,14=4,15=2,16=3,17=2,18=2,19=2,20=21) node_visit_bins=(0=458,1=580,2=58,3-4=72,5-8=103,9-16=126,17-32=134,33-64=128,65-128=75,129+=99) selection_depth_bins=(0=29,1=26,2=34,3-4=67,5-8=166,9-16=514,17-32=1033,33-64=996,65-128=5)
+[MCTS WIDTH BY DEPTH] depth=0 count=2869 min=3 mean=15.95 median=19 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=62,4=84,5=90,6=43,7=30,8=66,9=115,10=74,11=77,12=58,13=65,14=112,15=113,16=107,17=127,18=137,19=143,20=1366)
+[MCTS WIDTH BY DEPTH] depth=1 count=2833 min=3 mean=15.90 median=19 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=162,4=34,5=19,6=37,7=80,8=92,9=60,10=69,11=51,12=55,13=109,14=93,15=113,16=112,17=120,18=137,19=143,20=1347)
+[MCTS WIDTH BY DEPTH] depth=2 count=2806 min=3 mean=15.67 median=18 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=140,4=23,5=59,6=87,7=54,8=53,9=62,10=42,11=52,12=171,13=89,14=99,15=106,16=119,17=127,18=133,19=150,20=1240)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=5516 min=3 mean=15.11 median=18 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=393,4=88,5=102,6=88,7=83,8=134,9=157,10=232,11=227,12=165,13=178,14=202,15=213,16=227,17=254,18=270,19=291,20=2212)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=13094 min=3 mean=13.80 median=15 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=1335,4=342,5=365,6=361,7=379,8=447,9=403,10=360,11=370,12=521,13=566,14=591,15=555,16=587,17=631,18=703,19=749,20=3829)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=22062 min=3 mean=11.01 median=11 p90=19 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=3048,4=1005,5=932,6=1050,7=1155,8=1095,9=982,10=1073,11=1113,12=1093,13=1224,14=1169,15=1177,16=1224,17=1267,18=1114,19=944,20=1397)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=28035 min=2 mean=5.68 median=4 p90=11 p95=13 max=16
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(2=4,3=11699,4=3122,5=2392,6=2184,7=1719,8=1384,9=1079,10=994,11=1000,12=875,13=566,14=487,15=388,16=142)
+[MCTS WIDTH BY DEPTH] depth=50-99 count=874 min=2 mean=3.36 median=3 p90=5 p95=5 max=9
+[MCTS WIDTH COUNTS BY DEPTH] depth=50-99 counts=(2=1,3=701,4=81,5=58,6=24,7=2,8=3,9=4)
+[MCTS DEPTH SUMMARY] selection_depths=(count=2870 min=0 mean=26.49 median=26 p90=45 p95=51 max=80) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=41 min=1 mean=1.80 median=1 p90=5 p95=5 max=9) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=4.990966s expansion=63.395357s successor_generation=22.701791s network_inference=39.553181s evaluation=29.569269s backpropagation=0.438247s
+[2026-09-14 21:39:35,965] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_ex9p1xu9.pddl
+[2026-09-14 21:39:35,965] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_z7tkynk0.pddl
+[2026-09-14 21:39:35,965] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_ex9p1xu9.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_ex9p1xu9.pddl'
+[2026-09-14 21:39:35,965] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_z7tkynk0.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_z7tkynk0.pddl'
+[EVAL INSTANCE] completed number=18 path=../problems/numeric/mprime/instances/pfile26.pddl status=success elapsed=117.99s success=1.0 steps=41
+[EVAL][PLAN] EASY       | pfile26.pddl | steps=41 | plan=['overcome boils entertainment haroset', 'feast entertainment haroset rice', 'feast understanding papaya flounder', 'drink snickers papaya', 'feast understanding flounder papaya', 'drink endive marzipan', 'feast learning marzipan turkey', 'feast learning turkey papaya', 'feast learning papaya flounder', 'drink pistachio papaya', 'feast learning flounder papaya', 'feast understanding papaya turkey', 'drink scallop papaya', 'feast understanding turkey papaya', 'drink scallop flounder', 'feast learning papaya flounder', 'drink scallop papaya', 'feast learning flounder papaya', 'drink scallop flounder', 'feast learning papaya flounder', 'feast learning flounder papaya', 'drink rice papaya', 'drink hamburger flounder', 'feast learning papaya flounder', 'feast learning flounder papaya', 'drink hamburger papaya', 'drink hamburger flounder', 'feast learning papaya flounder', 'feast learning flounder papaya', 'drink hamburger flounder', 'drink haroset papaya', 'feast learning papaya flounder', 'feast learning flounder papaya', 'drink haroset pepper', 'feast entertainment rice haroset', 'feast entertainment haroset hamburger', 'feast entertainment hamburger marzipan', 'drink haroset marzipan', 'feast entertainment marzipan turkey', 'feast entertainment turkey papaya', 'succumb boils entertainment papaya']
+[EVAL INSTANCE] started number=19 path=../problems/numeric/mprime/instances/pfile27.pddl pid=2380713
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2380713] Setting C/Python/Numpy/TF seeds to 923500493
+Starting [EVAL|Easy|2380713] on instance [18] ../problems/numeric/mprime/instances/pfile27.pddl
+Starting to parse mdpsim problem: mprime-x-27
+Finished parsing mdpsim problem: mprime-x-27
+[EVAL|Easy|2380713] ACTION POLICY INITIALIZED
+[EVAL|Easy|2380713] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2380713] distance_threshold = inf
+[EVAL|Easy|2380713] duplicate_penalty = 0.0
+[EVAL|Easy|2380713] root_visit_tie_break = action_id
+[2026-09-14 21:39:58,177] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_ryuxfj17.pddl
+[2026-09-14 21:39:58,178] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_6v97hifm.pddl
+[2026-09-14 21:39:59,238] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=5 nodes=666 peak_nodes=666 widening_events=347
+[MCTS WIDTH SUMMARY] final_widths=(count=666 min=0 mean=1.33 median=0 p90=3 p95=4 max=10) root_widths=(count=5 min=4 mean=6.80 median=7 p90=9 p95=9 max=9) widen_event_widths=(count=347 min=3 mean=3.52 median=3 p90=5 p95=6 max=10) admitted_policy_ranks=(count=887 min=1 mean=1.91 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=396,3=236,4=20,5=2,6=4,7=3,8=2,9=2,10=1) node_visit_bins=(0=348,1=57,2=16,3-4=27,5-8=63,9-16=46,17-32=52,33-64=40,65-128=8,129+=9) selection_depth_bins=(0=10,1=8,2=10,3-4=24,5-8=65,9-16=102,17-32=83,33-64=48)
+[MCTS WIDTH BY DEPTH] depth=0 count=349 min=3 mean=5.95 median=6 p90=9 p95=9 max=9
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=45,4=48,5=60,6=59,7=42,8=53,9=42)
+[MCTS WIDTH BY DEPTH] depth=1 count=339 min=3 mean=6.63 median=7 p90=10 p95=10 max=10
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=44,4=27,5=30,6=41,7=75,8=54,9=25,10=43)
+[MCTS WIDTH BY DEPTH] depth=2 count=329 min=3 mean=5.71 median=6 p90=8 p95=9 max=9
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=76,4=27,5=52,6=66,7=7,8=72,9=29)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=622 min=3 mean=4.75 median=4 p90=7 p95=7 max=9
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=258,4=56,5=49,6=130,7=102,8=25,9=2)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=1267 min=3 mean=3.52 median=3 p90=5 p95=6 max=7
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=888,4=172,5=140,6=58,7=9)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=1496 min=3 mean=3.15 median=3 p90=4 p95=4 max=5
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=1310,4=149,5=37)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=1490 min=3 mean=3.02 median=3 p90=3 p95=3 max=4
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(3=1455,4=35)
+[MCTS WIDTH BY DEPTH] depth=50-99 count=142 min=3 mean=3.00 median=3 p90=3 p95=3 max=3
+[MCTS WIDTH COUNTS BY DEPTH] depth=50-99 counts=(3=142)
+[MCTS DEPTH SUMMARY] selection_depths=(count=350 min=0 mean=17.01 median=12 p90=43 p95=54 max=59) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=5 min=1 mean=1.00 median=1 p90=1 p95=1 max=1) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=0.211822s expansion=22.000722s successor_generation=3.191049s network_inference=18.667621s evaluation=3.868910s backpropagation=0.044130s
+[2026-09-14 21:40:16,485] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_ryuxfj17.pddl
+[2026-09-14 21:40:16,486] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_6v97hifm.pddl
+[2026-09-14 21:40:16,486] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_ryuxfj17.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_ryuxfj17.pddl'
+[2026-09-14 21:40:16,486] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_6v97hifm.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_6v97hifm.pddl'
+[EVAL INSTANCE] completed number=19 path=../problems/numeric/mprime/instances/pfile27.pddl status=success elapsed=40.34s success=1.0 steps=5
+[EVAL][PLAN] EASY       | pfile27.pddl | steps=5 | plan=['overcome boils satisfaction scallion', 'overcome grief satisfaction scallion', 'feast satisfaction scallion guava', 'succumb boils satisfaction guava', 'succumb grief satisfaction guava']
+[EVAL INSTANCE] started number=20 path=../problems/numeric/mprime/instances/pfile28.pddl pid=2380969
+mdpsim:../problems/numeric/mprime/domain.pddl:3: assuming `:typing' requirement
+mdpsim:../problems/numeric/mprime/domain.pddl:15: assuming `:fluents' requirement
+[EVAL|Easy|2380969] Setting C/Python/Numpy/TF seeds to 923500494
+Starting [EVAL|Easy|2380969] on instance [19] ../problems/numeric/mprime/instances/pfile28.pddl
+Starting to parse mdpsim problem: mprime-x-28
+Finished parsing mdpsim problem: mprime-x-28
+[EVAL|Easy|2380969] ACTION POLICY INITIALIZED
+[EVAL|Easy|2380969] policy_class = ArgmaxGoalChasePathDuplicatePenaltyPolicy
+[EVAL|Easy|2380969] distance_threshold = inf
+[EVAL|Easy|2380969] duplicate_penalty = 0.0
+[EVAL|Easy|2380969] root_visit_tie_break = action_id
+[2026-09-14 21:40:33,043] [INFO] [enhspwrapper.py:84] Created temporary domain file: /tmp/domain_heuristic_apx9f0s6.pddl
+[2026-09-14 21:40:33,044] [INFO] [enhspwrapper.py:93] Created temporary instance file: /tmp/instance_heuristic_cfgpnv_5.pddl
+[2026-09-14 21:40:33,820] [INFO] [enhspwrapper.py:51] Starting the heuristic server with config: hmrp-ha-gbfs
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=9 nodes=1088 peak_nodes=1088 widening_events=533
+[MCTS WIDTH SUMMARY] final_widths=(count=1088 min=0 mean=1.27 median=0 p90=3 p95=3 max=14) root_widths=(count=9 min=4 mean=9.78 median=10 p90=14 p95=14 max=14) widen_event_widths=(count=533 min=2 mean=3.78 median=3 p90=6 p95=9 max=14) admitted_policy_ranks=(count=1377 min=1 mean=1.92 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=665,2=2,3=389,4=15,5=6,7=1,8=2,9=1,10=2,11=1,12=1,13=1,14=2) node_visit_bins=(0=598,1=77,2=5,3-4=20,5-8=42,9-16=95,17-32=136,33-64=96,65-128=8,129+=11) selection_depth_bins=(0=13,1=12,2=12,3-4=27,5-8=74,9-16=149,17-32=216,33-64=127)
+[MCTS WIDTH BY DEPTH] depth=0 count=629 min=3 mean=9.24 median=10 p90=13 p95=13 max=14
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=45,4=26,5=30,6=41,7=42,8=53,9=60,10=67,11=72,12=80,13=86,14=27)
+[MCTS WIDTH BY DEPTH] depth=1 count=616 min=3 mean=9.15 median=10 p90=13 p95=13 max=14
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=44,4=27,5=30,6=41,7=41,8=53,9=60,10=67,11=72,12=80,13=86,14=15)
+[MCTS WIDTH BY DEPTH] depth=2 count=604 min=3 mean=8.61 median=9 p90=12 p95=12 max=13
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=50,4=27,5=30,6=41,7=41,8=53,9=81,10=108,11=72,12=80,13=21)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=1166 min=3 mean=6.93 median=8 p90=10 p95=11 max=12
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=263,4=54,5=79,6=82,7=101,8=187,9=152,10=134,11=91,12=23)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=2596 min=3 mean=4.12 median=3 p90=7 p95=8 max=10
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=1610,4=226,5=205,6=202,7=186,8=95,9=60,10=12)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=3729 min=3 mean=3.04 median=3 p90=3 p95=3 max=5
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=3641,4=43,5=45)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=3226 min=2 mean=3.06 median=3 p90=3 p95=4 max=5
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(2=39,3=2971,4=187,5=29)
+[MCTS DEPTH SUMMARY] selection_depths=(count=630 min=0 mean=19.62 median=18 p90=38 p95=39 max=42) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=9 min=1 mean=1.00 median=1 p90=1 p95=1 max=1) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=0.459476s expansion=15.595024s successor_generation=1.680526s network_inference=13.765014s evaluation=2.412321s backpropagation=0.067141s
+[2026-09-14 21:40:45,730] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_apx9f0s6.pddl
+[2026-09-14 21:40:45,731] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_cfgpnv_5.pddl
+[2026-09-14 21:40:45,731] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_apx9f0s6.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_apx9f0s6.pddl'
+[2026-09-14 21:40:45,731] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_cfgpnv_5.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_cfgpnv_5.pddl'
+[EVAL INSTANCE] completed number=20 path=../problems/numeric/mprime/instances/pfile28.pddl status=success elapsed=29.31s success=1.0 steps=9
+[EVAL][PLAN] EASY       | pfile28.pddl | steps=9 | plan=['feast intoxication wurst muffin', 'overcome anger intoxication muffin', 'feast intoxication muffin broccoli', 'feast intoxication broccoli lamb', 'succumb anger intoxication lamb', 'feast intoxication lamb broccoli', 'overcome boils intoxication broccoli', 'feast intoxication broccoli lamb', 'succumb boils intoxication lamb']
+[EVAL INSTANCE] timeout number=10 path=../problems/numeric/mprime/instances/pfile18.pddl limit=21600.0s
+[MCTS SEARCH SUMMARY] progressive_widening=True iterations_per_search=70 search_calls=111 nodes=8682 peak_nodes=8682 widening_events=7128
+[MCTS WIDTH SUMMARY] final_widths=(count=8682 min=0 mean=1.85 median=3 p90=3 p95=5 max=20) root_widths=(count=111 min=4 mean=11.46 median=10 p90=20 p95=20 max=20) widen_event_widths=(count=7128 min=3 mean=4.41 median=3 p90=8 p95=11 max=20) admitted_policy_ranks=(count=16088 min=1 mean=1.84 median=2 p90=3 p95=3 max=3)
+[MCTS DISTRIBUTION] final_width_counts=(0=4202,3=3662,4=291,5=176,6=124,7=77,8=31,9=28,10=22,11=11,12=10,13=8,14=4,15=7,16=4,17=2,18=3,19=3,20=17) node_visit_bins=(0=3787,1=477,2=325,3-4=445,5-8=647,9-16=862,17-32=919,33-64=632,65-128=340,129+=248) selection_depth_bins=(0=140,1=181,2=219,3-4=432,5-8=889,9-16=1595,17-32=2325,33-64=1893,65-128=96)
+[MCTS WIDTH BY DEPTH] depth=0 count=7769 min=3 mean=10.87 median=10 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=0 counts=(3=53,4=100,5=233,6=613,7=916,8=953,9=805,10=999,11=859,12=368,13=150,14=67,15=116,16=175,17=99,18=178,19=109,20=976)
+[MCTS WIDTH BY DEPTH] depth=1 count=7566 min=3 mean=9.78 median=9 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=1 counts=(3=1272,4=422,5=354,6=481,7=370,8=428,9=710,10=752,11=457,12=414,13=225,14=149,15=118,16=92,17=130,18=108,19=175,20=909)
+[MCTS WIDTH BY DEPTH] depth=2 count=7360 min=3 mean=8.79 median=7 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=2 counts=(3=1780,4=537,5=502,6=592,7=434,8=546,9=669,10=321,11=67,12=109,13=142,14=141,15=135,16=88,17=166,18=57,19=151,20=923)
+[MCTS WIDTH BY DEPTH] depth=3-4 count=14025 min=3 mean=8.17 median=6 p90=20 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=3-4 counts=(3=4272,4=1011,5=1146,6=1172,7=1104,8=1103,9=474,10=125,11=127,12=133,13=124,14=270,15=318,16=346,17=293,18=273,19=316,20=1418)
+[MCTS WIDTH BY DEPTH] depth=5-9 count=31154 min=3 mean=7.62 median=5 p90=18 p95=20 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=5-9 counts=(3=11560,4=2629,5=2940,6=2506,7=1584,8=714,9=464,10=323,11=329,12=533,13=753,14=871,15=816,16=880,17=819,18=848,19=1005,20=1580)
+[MCTS WIDTH BY DEPTH] depth=10-19 count=46898 min=3 mean=6.11 median=4 p90=14 p95=16 max=20
+[MCTS WIDTH COUNTS BY DEPTH] depth=10-19 counts=(3=21371,4=5783,5=3964,6=2383,7=1208,8=1120,9=1008,10=998,11=1081,12=1255,13=1468,14=1415,15=1256,16=910,17=772,18=678,19=222,20=6)
+[MCTS WIDTH BY DEPTH] depth=20-49 count=57665 min=3 mean=4.28 median=3 p90=8 p95=10 max=17
+[MCTS WIDTH COUNTS BY DEPTH] depth=20-49 counts=(3=37962,4=5459,5=3402,6=2495,7=1712,8=1473,9=1352,10=1251,11=1055,12=808,13=496,14=66,15=54,16=79,17=1)
+[MCTS WIDTH BY DEPTH] depth=50-99 count=4617 min=3 mean=3.15 median=3 p90=3 p95=4 max=10
+[MCTS WIDTH COUNTS BY DEPTH] depth=50-99 counts=(3=4240,4=225,5=64,6=45,7=27,8=7,9=6,10=3)
+[MCTS DEPTH SUMMARY] selection_depths=(count=7770 min=0 mean=22.36 median=19 p90=47 p95=54 max=85) horizon_cutoffs=(count=0)
+[MCTS ACTION SUMMARY] selected_raw_policy_ranks=(count=111 min=1 mean=2.32 median=1 p90=5 p95=10 max=18) known_goal_decisions=0 infeasible_known_goal_decisions=0
+[MCTS TIME SUMMARY] selection=9.026894s expansion=4162.179142s successor_generation=3762.241150s network_inference=373.736280s evaluation=8252.943450s backpropagation=1.583373s
+[2026-09-14 22:18:44,659] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/domain_heuristic_g9uww993.pddl
+[2026-09-14 22:18:44,659] [INFO] [enhspwrapper.py:224] Deleted temp file: /tmp/instance_heuristic_q_tagjso.pddl
+[2026-09-14 22:18:44,659] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/domain_heuristic_g9uww993.pddl: [Errno 2] No such file or directory: '/tmp/domain_heuristic_g9uww993.pddl'
+[2026-09-14 22:18:44,659] [WARNING] [enhspwrapper.py:226] Failed to delete temp file /tmp/instance_heuristic_q_tagjso.pddl: [Errno 2] No such file or directory: '/tmp/instance_heuristic_q_tagjso.pddl'
+[EVAL INSTANCE] completed number=16 path=../problems/numeric/mprime/instances/pfile24.pddl status=success elapsed=12496.66s success=1.0 steps=111
+[EVAL][PLAN] EASY       | pfile24.pddl | steps=111 | plan=['feast satiety bacon turkey', 'feast satiety turkey bacon', 'feast satiety bacon lettuce', 'feast satiety lettuce bacon', 'feast satiety bacon lettuce', 'feast satiety lettuce bacon', 'feast satiety bacon lettuce', 'feast satiety lettuce cherry', 'drink wurst cherry', 'feast achievement cherry lettuce', 'feast achievement lettuce bacon', 'feast achievement bacon turkey', 'feast achievement turkey chicken', 'feast achievement chicken cherry', 'drink chicken cherry', 'feast achievement cherry lettuce', 'drink muffin lettuce', 'feast achievement lettuce cherry', 'drink muffin bacon', 'drink muffin cherry', 'drink chocolate lettuce', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink chocolate lettuce', 'drink bacon cherry', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink chocolate cherry', 'drink chocolate lettuce', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink orange cherry', 'drink cherry lettuce', 'drink orange cherry', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink orange lettuce', 'drink lettuce cherry', 'feast achievement cherry lettuce', 'drink potato lettuce', 'feast achievement lettuce cherry', 'drink potato lettuce', 'drink lettuce cherry', 'drink cherry bacon', 'drink potato lettuce', 'drink lettuce cherry', 'drink potato lettuce', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink bacon lettuce', 'drink lettuce cherry', 'drink potato lettuce', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink potato lettuce', 'drink lettuce cherry', 'drink potato lettuce', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink potato lettuce', 'drink lettuce cherry', 'drink pepper lettuce', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink potato lettuce', 'drink lettuce cherry', 'drink cherry orange', 'drink pepper lettuce', 'drink lettuce cherry', 'feast achievement cherry lettuce', 'drink melon lettuce', 'feast achievement lettuce cherry', 'drink pepper lettuce', 'drink lettuce cherry', 'drink cherry chicken', 'drink melon cherry', 'drink cherry lettuce', 'drink lettuce cherry', 'drink cherry lettuce', 'drink orange cherry', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink melon cherry', 'drink cherry lettuce', 'drink lettuce bacon', 'drink chicken cherry', 'drink cherry orange', 'drink bacon lettuce', 'drink melon cherry', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink pepper bacon', 'drink bacon tofu', 'drink pepper cherry', 'feast achievement cherry lettuce', 'drink tofu lettuce', 'feast achievement lettuce cherry', 'drink pepper turkey', 'drink pepper lettuce', 'drink lettuce muffin', 'feast curiosity muffin apple', 'overcome anger-12 curiosity apple', 'drink pepper lettuce', 'drink lettuce muffin', 'drink melon chicken', 'drink melon apple', 'feast curiosity apple muffin', 'drink chicken tofu', 'feast curiosity muffin tofu', 'feast curiosity tofu cherry', 'succumb anger-12 curiosity cherry']
+
+[EVAL FINAL] success=18.0/20=0.900
+[EVAL] EASY       | success=0.900 | instances= 20 | avg_len_success=21.06 | avg_len_fail=-2.00
+
+[EVAL] SUCCESSFUL PLAN SUMMARY
+[EVAL][PLAN SUMMARY] EASY       | pfile01.pddl | steps=5 | plan=['overcome abrasion rest pork', 'feast rest pork lamb', 'feast rest lamb flounder', 'feast rest flounder rice', 'succumb abrasion rest rice']
+[EVAL][PLAN SUMMARY] EASY       | pfile02.pddl | steps=8 | plan=['overcome grief-7 entertainment ham', 'feast satiety onion beef', 'feast entertainment ham muffin', 'overcome depression-1 entertainment muffin', 'feast entertainment muffin onion', 'feast entertainment onion beef', 'succumb grief-7 entertainment beef', 'succumb depression-1 entertainment beef']
+[EVAL][PLAN SUMMARY] EASY       | pfile04.pddl | steps=9 | plan=['feast aesthetics shrimp cherry', 'feast aesthetics cherry arugula', 'feast aesthetics arugula wurst', 'drink bacon wurst', 'feast aesthetics wurst grapefruit', 'overcome sciatica aesthetics grapefruit', 'drink muffin grapefruit', 'feast aesthetics grapefruit wurst', 'succumb sciatica aesthetics wurst']
+[EVAL][PLAN SUMMARY] EASY       | pfile05.pddl | steps=14 | plan=['overcome grief satisfaction broccoli', 'drink turkey sweetroll', 'feast satisfaction broccoli chocolate', 'feast satisfaction chocolate shrimp', 'succumb grief satisfaction shrimp', 'feast lubricity sweetroll scallop', 'drink chocolate sweetroll', 'feast satisfaction shrimp sweetroll', 'feast satisfaction sweetroll scallop', 'drink broccoli scallop', 'overcome loneliness satisfaction scallop', 'feast satisfaction scallop cherry', 'feast satisfaction cherry shrimp', 'succumb loneliness satisfaction shrimp']
+[EVAL][PLAN SUMMARY] EASY       | pfile09.pddl | steps=12 | plan=['overcome sciatica entertainment flounder', 'overcome jealousy excitement guava', 'feast excitement guava haroset', 'feast entertainment flounder hamburger', 'succumb sciatica entertainment hamburger', 'feast curiosity hotdog wurst', 'drink guava hotdog', 'drink guava hamburger', 'feast excitement haroset hamburger', 'feast excitement hamburger flounder', 'feast excitement flounder wurst', 'succumb jealousy excitement wurst']
+[EVAL][PLAN SUMMARY] EASY       | pfile14.pddl | steps=19 | plan=['feast triumph pea potato', 'feast learning yogurt shrimp', 'feast rest scallop lemon', 'feast learning shrimp potato', 'feast learning potato pea', 'feast triumph potato pea', 'feast triumph pea potato', 'drink pea potato', 'drink pea mutton', 'feast love mutton pistachio', 'overcome anxiety-25 love pistachio', 'overcome prostatitis-23 love pistachio', 'feast love pistachio lettuce', 'feast love lettuce scallop', 'feast love scallop scallion', 'feast love scallion shrimp', 'feast love shrimp potato', 'succumb anxiety-25 love potato', 'succumb prostatitis-23 love potato']
+[EVAL][PLAN SUMMARY] EASY       | pfile15.pddl | steps=31 | plan=['overcome jealousy satisfaction pistachio', 'feast empathy onion ham', 'feast satisfaction pistachio okra', 'feast lubricity okra pistachio', 'feast satisfaction okra cucumber', 'feast curiosity turkey cantelope', 'succumb jealousy satisfaction cucumber', 'overcome jealousy aesthetics cucumber', 'feast understanding cod pea', 'succumb jealousy aesthetics cucumber', 'overcome jealousy satisfaction cucumber', 'feast expectation lamb cod', 'succumb jealousy satisfaction cucumber', 'overcome jealousy aesthetics cucumber', 'feast aesthetics cucumber okra', 'feast aesthetics okra pistachio', 'feast curiosity cantelope chicken', 'feast expectation cod lemon', 'succumb jealousy aesthetics pistachio', 'overcome jealousy aesthetics pistachio', 'feast curiosity chicken cantelope', 'feast curiosity cantelope chicken', 'succumb jealousy aesthetics pistachio', 'overcome jealousy lubricity pistachio', 'feast expectation lemon cod', 'feast expectation cod lemon', 'feast lubricity pistachio broccoli', 'feast lubricity broccoli lemon', 'feast lubricity lemon cod', 'feast lubricity cod chicken', 'succumb jealousy lubricity chicken']
+[EVAL][PLAN SUMMARY] EASY       | pfile16.pddl | steps=6 | plan=['overcome abrasion learning baguette', 'overcome sciatica learning baguette', 'drink wonderbread baguette', 'feast learning baguette rice', 'succumb abrasion learning rice', 'succumb sciatica learning rice']
+[EVAL][PLAN SUMMARY] EASY       | pfile19.pddl | steps=26 | plan=['feast love haroset lobster', 'feast stimulation lamb beef', 'overcome abrasion stimulation beef', 'feast stimulation beef marzipan', 'feast stimulation marzipan tofu', 'feast stimulation tofu marzipan', 'drink lemon wonderbread', 'feast aesthetics bacon wonderbread', 'drink marzipan bacon', 'feast aesthetics wonderbread bacon', 'feast love lobster bacon', 'feast love bacon lobster', 'drink marzipan bacon', 'succumb abrasion stimulation marzipan', 'drink bacon wonderbread', 'feast achievement wonderbread marzipan', 'overcome abrasion achievement marzipan', 'drink lamb bacon', 'drink lamb onion', 'feast learning snickers onion', 'drink flounder marzipan', 'feast achievement marzipan wonderbread', 'drink flounder wonderbread', 'feast achievement wonderbread bacon', 'feast achievement bacon lobster', 'succumb abrasion achievement lobster']
+[EVAL][PLAN SUMMARY] EASY       | pfile20.pddl | steps=30 | plan=['overcome abrasion intoxication wonderbread', 'feast satisfaction sweetroll muffin', 'feast achievement cherry pepper', 'feast triumph yogurt muffin', 'feast intoxication wonderbread yogurt', 'feast intoxication yogurt tuna', 'feast curiosity cod tuna', 'feast intoxication tuna cod', 'feast empathy pork cod', 'feast empathy cod tuna', 'feast intoxication cod tuna', 'feast intoxication tuna sweetroll', 'succumb abrasion intoxication sweetroll', 'feast curiosity tuna sweetroll', 'overcome abrasion intoxication sweetroll', 'feast intoxication sweetroll muffin', 'succumb abrasion intoxication muffin', 'overcome abrasion triumph muffin', 'feast triumph muffin sweetroll', 'succumb abrasion triumph sweetroll', 'overcome abrasion curiosity sweetroll', 'feast curiosity sweetroll pork', 'feast curiosity pork cod', 'succumb abrasion curiosity cod', 'feast understanding marzipan cod', 'overcome abrasion curiosity cod', 'feast curiosity cod marzipan', 'feast curiosity marzipan cherry', 'feast curiosity cherry pepper', 'succumb abrasion curiosity pepper']
+[EVAL][PLAN SUMMARY] EASY       | pfile21.pddl | steps=7 | plan=['feast love flounder apple', 'feast learning lemon wurst', 'overcome sciatica learning wurst', 'drink popover wurst', 'feast learning wurst snickers', 'feast learning snickers apple', 'succumb sciatica learning apple']
+[EVAL][PLAN SUMMARY] EASY       | pfile22.pddl | steps=15 | plan=['overcome hangover understanding ham', 'drink lamb guava', 'feast understanding ham popover', 'drink lamb muffin', 'feast understanding popover chicken', 'feast understanding chicken guava', 'feast understanding guava chicken', 'drink shrimp guava', 'feast understanding chicken cherry', 'drink shrimp chicken', 'drink shrimp cherry', 'feast understanding cherry scallop', 'feast understanding scallop cantelope', 'feast understanding cantelope lamb', 'succumb hangover understanding lamb']
+[EVAL][PLAN SUMMARY] EASY       | pfile23.pddl | steps=27 | plan=['feast intoxication onion apple', 'overcome laceration intoxication apple', 'drink grapefruit hotdog', 'feast intoxication apple pistachio', 'feast intoxication pistachio cherry', 'succumb laceration intoxication cherry', 'overcome laceration understanding cherry', 'feast understanding cherry pistachio', 'feast empathy haroset bacon', 'feast understanding pistachio apple', 'drink pistachio sweetroll', 'drink pistachio hotdog', 'feast satisfaction lamb hotdog', 'feast satisfaction hotdog chicken', 'feast learning okra lamb', 'feast learning lamb hotdog', 'feast learning hotdog chicken', 'drink lamb hotdog', 'drink chicken onion', 'feast intoxication cherry sweetroll', 'feast understanding apple onion', 'feast understanding onion flounder', 'feast understanding flounder lamb', 'drink cherry lamb', 'feast understanding lamb hotdog', 'feast understanding hotdog chicken', 'succumb laceration understanding chicken']
+[EVAL][PLAN SUMMARY] EASY       | pfile24.pddl | steps=111 | plan=['feast satiety bacon turkey', 'feast satiety turkey bacon', 'feast satiety bacon lettuce', 'feast satiety lettuce bacon', 'feast satiety bacon lettuce', 'feast satiety lettuce bacon', 'feast satiety bacon lettuce', 'feast satiety lettuce cherry', 'drink wurst cherry', 'feast achievement cherry lettuce', 'feast achievement lettuce bacon', 'feast achievement bacon turkey', 'feast achievement turkey chicken', 'feast achievement chicken cherry', 'drink chicken cherry', 'feast achievement cherry lettuce', 'drink muffin lettuce', 'feast achievement lettuce cherry', 'drink muffin bacon', 'drink muffin cherry', 'drink chocolate lettuce', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink chocolate lettuce', 'drink bacon cherry', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink chocolate cherry', 'drink chocolate lettuce', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink orange cherry', 'drink cherry lettuce', 'drink orange cherry', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink orange lettuce', 'drink lettuce cherry', 'feast achievement cherry lettuce', 'drink potato lettuce', 'feast achievement lettuce cherry', 'drink potato lettuce', 'drink lettuce cherry', 'drink cherry bacon', 'drink potato lettuce', 'drink lettuce cherry', 'drink potato lettuce', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink bacon lettuce', 'drink lettuce cherry', 'drink potato lettuce', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink potato lettuce', 'drink lettuce cherry', 'drink potato lettuce', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink potato lettuce', 'drink lettuce cherry', 'drink pepper lettuce', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink potato lettuce', 'drink lettuce cherry', 'drink cherry orange', 'drink pepper lettuce', 'drink lettuce cherry', 'feast achievement cherry lettuce', 'drink melon lettuce', 'feast achievement lettuce cherry', 'drink pepper lettuce', 'drink lettuce cherry', 'drink cherry chicken', 'drink melon cherry', 'drink cherry lettuce', 'drink lettuce cherry', 'drink cherry lettuce', 'drink orange cherry', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink melon cherry', 'drink cherry lettuce', 'drink lettuce bacon', 'drink chicken cherry', 'drink cherry orange', 'drink bacon lettuce', 'drink melon cherry', 'feast achievement cherry lettuce', 'feast achievement lettuce cherry', 'drink pepper bacon', 'drink bacon tofu', 'drink pepper cherry', 'feast achievement cherry lettuce', 'drink tofu lettuce', 'feast achievement lettuce cherry', 'drink pepper turkey', 'drink pepper lettuce', 'drink lettuce muffin', 'feast curiosity muffin apple', 'overcome anger-12 curiosity apple', 'drink pepper lettuce', 'drink lettuce muffin', 'drink melon chicken', 'drink melon apple', 'feast curiosity apple muffin', 'drink chicken tofu', 'feast curiosity muffin tofu', 'feast curiosity tofu cherry', 'succumb anger-12 curiosity cherry']
+[EVAL][PLAN SUMMARY] EASY       | pfile25.pddl | steps=4 | plan=['feast expectation tuna wurst', 'overcome depression expectation wurst', 'feast expectation wurst chicken', 'succumb depression expectation chicken']
+[EVAL][PLAN SUMMARY] EASY       | pfile26.pddl | steps=41 | plan=['overcome boils entertainment haroset', 'feast entertainment haroset rice', 'feast understanding papaya flounder', 'drink snickers papaya', 'feast understanding flounder papaya', 'drink endive marzipan', 'feast learning marzipan turkey', 'feast learning turkey papaya', 'feast learning papaya flounder', 'drink pistachio papaya', 'feast learning flounder papaya', 'feast understanding papaya turkey', 'drink scallop papaya', 'feast understanding turkey papaya', 'drink scallop flounder', 'feast learning papaya flounder', 'drink scallop papaya', 'feast learning flounder papaya', 'drink scallop flounder', 'feast learning papaya flounder', 'feast learning flounder papaya', 'drink rice papaya', 'drink hamburger flounder', 'feast learning papaya flounder', 'feast learning flounder papaya', 'drink hamburger papaya', 'drink hamburger flounder', 'feast learning papaya flounder', 'feast learning flounder papaya', 'drink hamburger flounder', 'drink haroset papaya', 'feast learning papaya flounder', 'feast learning flounder papaya', 'drink haroset pepper', 'feast entertainment rice haroset', 'feast entertainment haroset hamburger', 'feast entertainment hamburger marzipan', 'drink haroset marzipan', 'feast entertainment marzipan turkey', 'feast entertainment turkey papaya', 'succumb boils entertainment papaya']
+[EVAL][PLAN SUMMARY] EASY       | pfile27.pddl | steps=5 | plan=['overcome boils satisfaction scallion', 'overcome grief satisfaction scallion', 'feast satisfaction scallion guava', 'succumb boils satisfaction guava', 'succumb grief satisfaction guava']
+[EVAL][PLAN SUMMARY] EASY       | pfile28.pddl | steps=9 | plan=['feast intoxication wurst muffin', 'overcome anger intoxication muffin', 'feast intoxication muffin broccoli', 'feast intoxication broccoli lamb', 'succumb anger intoxication lamb', 'feast intoxication lamb broccoli', 'overcome boils intoxication broccoli', 'feast intoxication broccoli lamb', 'succumb boils intoxication lamb']
+
+[EVAL] OVERALL success=0.900
+spec:  
+=== SpawnExploreSpec ===
+
+  [ CORE ]
+    domain_type                              : numeric
+    pddls                                    : ('../problems/numeric/mprime/domain.pddl', '../problems/numeric/mprime/instances/pfile01.pddl')
+    difficulty                               : Easy
+    trainer_seed                             : 923500475
+    slot_id                                  : 0
+    num_slots                                : 20
+
+  [ PLANNER / TEACHER ]
+    teacher_planner                          : enhsp
+    teacher_timeout_s                        : 1
+    use_teacher_envelope                     : False
+    enhsp_config                             : hmrp-ha-gbfs
+    max_len                                  : 10000
+
+  [ HEURISTICS ]
+    ssipp_dg_heuristic                       : None
+    fd_heuristic                             : astar-hadd
+    ssipp_teacher_heuristic                  : lm-cut
+    use_lm_cuts                              : False
+    use_numeric_landmarks                    : False
+    use_contributions                        : False
+
+  [ MCTS & EXPLORATION ]
+    mcts_iterations                          : 70
+    mcts_expansion_k                         : 20
+    mcts_exploration_weight                  : 0.1
+    mcts_progressive_widening                : True
+    mcts_pw_min_width                        : 3
+    mcts_pw_c                                : 0.6
+    mcts_pw_alpha                            : 0.5
+    mcts_root_visit_tie_break                : action_id
+    mcts_her_strategy                        : False
+    sample_k_additional_states               : 0
+
+  [ ESTIMATOR & DECAY ]
+    estimator_h_to_v_coeff                   : 1.0
+    use_estimator                            : 0.5
+    estimator_decay_coeff_start              : 1.0
+    estimator_decay_coeff_end                : 0.2
+    estimator_decay_epochs                   : 0
+
+  [ ACTION POLICY ]
+    action_policy                            : argmax
+    action_policy_epsilon                    : 0.0
+    action_policy_temperature                : None
+    action_policy_decay_rate                 : None
+    action_policy_duplicate_penalty          : 0.0
+
+  [ MISC / TRAINING ]
+    use_fluents                              : True
+    use_comps                                : False
+    fixed_instance_pddl                      : False
+    original_training_set                    : False
+    freeze_train_steps                       : 50
+    freeze_batch_size                        : 32
+
+  [ OTHER ]
+    use_act_history                          : True
+    only_one_good_action                     : False
+    heuristic_bootstrapping                  : False
+    goal_path_reconstruction                 : None
+    ENHSP_plan_bootstrap                     : True
+    est_plan_z                               : False
+    timeout                                  : 86400
+    puct_debug                               : False
+    action_debug                             : False
+    use_estimator_decay                      : False
+    action_policy_goal_chase_distance_threshold : -1
+    evaluation_mode                          : True
+    evaluation_index                         : 1
+    mcts_enforce_remaining_horizon           : False
+    mcts_terminal_safe_action_selection      : False
+    mcts_context_diagnostics                 : False
+    mcts_contextual_nodes                    : False
+    mcts_context_witness_limit               : 128
+
+Inference success rate: 0.9, took: 24196.153239250183s
+Importing architecture from experiments_numeric.architecture_2.mprime_mcts
+Importing problem from experiments_numeric.domain.mprime
+Resuming from checkpoint "/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.mprime_validation_ipc_scale_v1-experiments_numeric.architecture_2.mprime-2026-08-27T10:22:16.868149/P[domain,pfile01,pfile02,pfile04,pfile05]-S[0.003,50,enhsp-hmrp-ha-gbfs]-MO[]-T[518400]-04915056-5194f74/snapshots/snapshot_35_0.750"
+Using experiment dir "/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.mprime_validation_ipc_scale_v1-experiments_numeric.architecture_2.mprime-2026-08-27T10:22:16.868149"
+
+
+
+
+
+
+Testing network
+Running command line "/home/hersco/bershco-nu-asnets/numeric-asnets/venv-asnets/bin/python3 -u -m asnets.scripts.run_asnets --no-train --minimal-file-saves --resume-from /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.mprime_validation_ipc_scale_v1-experiments_numeric.architecture_2.mprime-2026-08-27T10:22:16.868149/P[domain,pfile01,pfile02,pfile04,pfile05]-S[0.003,50,enhsp-hmrp-ha-gbfs]-MO[]-T[518400]-04915056-5194f74/snapshots/snapshot_35_0.750 -e /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.mprime_validation_ipc_scale_v1-experiments_numeric.architecture_2.mprime-2026-08-27T10:22:16.868149 --jpddl-max-heap 4g --eval-with-mcts --eval-scheduling rolling --eval-instance-timeout 21600.0 --eval-completion-file /home/hersco/training_new_domains/2026-09-13/mprime_phase_b_a_stage1_pw70/on/923500475/full/completion/mprime-s1-phase-b-a-on-923500475-e0035-pw70-k3.jsonl --det-eval --no-use-lm-cuts --use-act-history --no-use-teacher-envelope --max-opt-epochs 1000 --teacher-timeout-s 1 --use-fluents --enhsp-config hmrp-ha-gbfs --limit-train-obs-size 1200 --exploration-algorithm mcts --rollouts 2 --min-explored 10 --max-explored 1000 --exploration-learning-ratio 10 --max-replay-size 150000 --action-policy argmax --action-policy-epsilon 0.0 --domain-type numeric --num-layers 2 --hidden-size 15 --l2-reg 0.005 --l1-reg 0.0 --mse 0.5 -R 1 -L 10000 -t 518400 --supervised-lr 0.003 --supervised-bs 50 --supervised-early-stop 20 --save-every 1 --opt-batch-per-epoch 60 --teacher-planner enhsp --sup-objective MCTS_VISIT_DIST -L 10000 --seed 923500475 --mcts-expansion-size 20 --mcts-heuristic hadd-gbfs --mcts-exploration-weight 0.1 --mcts-progressive-widening --mcts-pw-min-width 3 --mcts-pw-c 0.6 --mcts-pw-alpha 0.5 --num-workers 3 --mcts-iterations 70 --use-estimator 0.5 ../problems/numeric/mprime/domain.pddl ../problems/numeric/mprime/instances/pfile01.pddl ../problems/numeric/mprime/instances/pfile02.pddl ../problems/numeric/mprime/instances/pfile04.pddl ../problems/numeric/mprime/instances/pfile05.pddl ../problems/numeric/mprime/instances/pfile09.pddl ../problems/numeric/mprime/instances/pfile13.pddl ../problems/numeric/mprime/instances/pfile14.pddl ../problems/numeric/mprime/instances/pfile15.pddl ../problems/numeric/mprime/instances/pfile16.pddl ../problems/numeric/mprime/instances/pfile18.pddl ../problems/numeric/mprime/instances/pfile19.pddl ../problems/numeric/mprime/instances/pfile20.pddl ../problems/numeric/mprime/instances/pfile21.pddl ../problems/numeric/mprime/instances/pfile22.pddl ../problems/numeric/mprime/instances/pfile23.pddl ../problems/numeric/mprime/instances/pfile24.pddl ../problems/numeric/mprime/instances/pfile25.pddl ../problems/numeric/mprime/instances/pfile26.pddl ../problems/numeric/mprime/instances/pfile27.pddl ../problems/numeric/mprime/instances/pfile28.pddl --validation-pddls-easy ../problems/numeric/mprime/valid_easy/pfile0.pddl ../problems/numeric/mprime/valid_easy/pfile1.pddl ../problems/numeric/mprime/valid_easy/pfile2.pddl ../problems/numeric/mprime/valid_easy/pfile3.pddl ../problems/numeric/mprime/valid_easy/pfile4.pddl ../problems/numeric/mprime/valid_easy/pfile5.pddl ../problems/numeric/mprime/valid_easy/pfile6.pddl ../problems/numeric/mprime/valid_easy/pfile7.pddl ../problems/numeric/mprime/valid_easy/pfile8.pddl ../problems/numeric/mprime/valid_easy/pfile9.pddl --validation-pddls-medium ../problems/numeric/mprime/valid_medium/pfile0.pddl ../problems/numeric/mprime/valid_medium/pfile1.pddl ../problems/numeric/mprime/valid_medium/pfile2.pddl ../problems/numeric/mprime/valid_medium/pfile3.pddl ../problems/numeric/mprime/valid_medium/pfile4.pddl ../problems/numeric/mprime/valid_medium/pfile5.pddl ../problems/numeric/mprime/valid_medium/pfile6.pddl ../problems/numeric/mprime/valid_medium/pfile7.pddl ../problems/numeric/mprime/valid_medium/pfile8.pddl ../problems/numeric/mprime/valid_medium/pfile9.pddl --validation-pddls-hard ../problems/numeric/mprime/valid_hard/pfile0.pddl ../problems/numeric/mprime/valid_hard/pfile1.pddl ../problems/numeric/mprime/valid_hard/pfile2.pddl ../problems/numeric/mprime/valid_hard/pfile3.pddl ../problems/numeric/mprime/valid_hard/pfile4.pddl ../problems/numeric/mprime/valid_hard/pfile5.pddl ../problems/numeric/mprime/valid_hard/pfile6.pddl ../problems/numeric/mprime/valid_hard/pfile7.pddl ../problems/numeric/mprime/valid_hard/pfile8.pddl ../problems/numeric/mprime/valid_hard/pfile9.pddl"
+Will write results to /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.mprime_validation_ipc_scale_v1-experiments_numeric.architecture_2.mprime-2026-08-27T10:22:16.868149/runs/99f4d4acc81454582c9d57d8be464931
+Force-killing a process
+Process exited with code -15: tee /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.mprime_validation_ipc_scale_v1-experiments_numeric.architecture_2.mprime-2026-08-27T10:22:16.868149/runs/99f4d4acc81454582c9d57d8be464931/stdout
+Force-killing a process
+Process exited with code -15: tee /home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.mprime_validation_ipc_scale_v1-experiments_numeric.architecture_2.mprime-2026-08-27T10:22:16.868149/runs/99f4d4acc81454582c9d57d8be464931/stderr
+Fin :-)
+INFO:    Terminating squashfuse_ll after timeout
+INFO:    Timeouts can be caused by a running background process
+[VAL] Starting validation guardrail
+[VAL] Log       : /home/hersco/training_new_domains/2026-09-13/mprime_phase_b_a_stage1_pw70/on/923500475/full/attempts/21260477_r0.txt
+[VAL] Domain    : mprime
+[VAL] Validator : /home/hersco/tools/VAL/build/bin/Validate
+[VAL] Domain module : /home/hersco/bershco-nu-asnets/numeric-asnets-mprime-pw-9fe4f9e6/asnets/experiments_numeric/domain/mprime.py
+[VAL] PDDL dir      : /home/hersco/bershco-nu-asnets/numeric-asnets-mprime-pw-9fe4f9e6/problems/numeric/mprime
+[VAL] COMMON_PDDLS  : /home/hersco/bershco-nu-asnets/numeric-asnets-mprime-pw-9fe4f9e6/problems/numeric/mprime/domain.pddl
+[VAL] Evaluator successes : 18
+[VAL] Evaluator total     : 20
+[VAL] Plan records found  : 18
+[VAL] Unique instances    : 18
+[VAL] OK   pfile01.pddl (1 candidate plan(s))
+[VAL] OK   pfile04.pddl (1 candidate plan(s))
+[VAL] OK   pfile02.pddl (1 candidate plan(s))
+[VAL] OK   pfile05.pddl (1 candidate plan(s))
+[VAL] OK   pfile09.pddl (1 candidate plan(s))
+[VAL] OK   pfile15.pddl (1 candidate plan(s))
+[VAL] OK   pfile16.pddl (1 candidate plan(s))
+[VAL] OK   pfile14.pddl (1 candidate plan(s))
+[VAL] OK   pfile19.pddl (1 candidate plan(s))
+[VAL] OK   pfile20.pddl (1 candidate plan(s))
+[VAL] OK   pfile21.pddl (1 candidate plan(s))
+[VAL] OK   pfile22.pddl (1 candidate plan(s))
+[VAL] OK   pfile23.pddl (1 candidate plan(s))
+[VAL] OK   pfile25.pddl (1 candidate plan(s))
+[VAL] OK   pfile26.pddl (1 candidate plan(s))
+[VAL] OK   pfile27.pddl (1 candidate plan(s))
+[VAL] OK   pfile28.pddl (1 candidate plan(s))
+[VAL] OK   pfile24.pddl (1 candidate plan(s))
+[VAL] Summary CSV        : /home/hersco/training_new_domains/2026-09-13/mprime_phase_b_a_stage1_pw70/on/923500475/full/validation/21260477_r0.val.csv
+
+[VAL] ===== VALIDATION SUMMARY =====
+[VAL] Evaluator successes : 18
+[VAL] Printed plan records: 18
+[VAL] Printed instances   : 18
+[VAL] VAL-valid plans     : 18
+[VAL] VAL-invalid plans   : 0
+[VAL] =================================
+[VAL] Retry-aware partial validation successful: all unique printed successful instances pass VAL

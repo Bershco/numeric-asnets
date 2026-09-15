@@ -1,0 +1,7 @@
+attempt,smoke_job,training_job,endpoint_job,scientific_work_started,status,reason,ledger
+1,21304220,21304221,21304222,false,failed_pre_science,missing frozen-replay module in fresh checkout,submissions_failed_21304220.tsv
+2,21304435,21304436,21304437,false,failed_pre_science,native TensorFlow operator linked outside asnets/ops,submissions_failed_21304435.tsv
+3,21304740,21304741,21304742,false,failed_pre_science,missing matching action_history_digest runtime helper,submissions_failed_21304740.tsv
+4,21305112,21305113,21305114,false,failed_after_scientific_smoke,deterministic calibration path passed; host-side threshold helper then lacked NumPy; dependents cancelled,submissions_failed_21305112.tsv
+5,21307445,21307446,21307448,true,failed_during_treatment,"stable arm completed 20/20 with one coefficient-doubling retry; catastrophic arm rejected all finite proposals and failed after coefficient explosion; endpoints cancelled",submissions.tsv
+6,21318360,21318362,21318364,false,smoke_running,"fresh non-overwriting LR-backtracking chain; coefficient fixed at 3; same-batch learning-rate retries 0.0003/0.00015/0.000075",submissions_lrbt.tsv

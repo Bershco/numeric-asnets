@@ -1,10 +1,5 @@
 snapshot_time_idt,experiment,job_id,job_name,state,tasks,cpus,memory_gib,elapsed,time_limit,reason_or_node,priority,array_job_id,scheduler_source
-2026-09-14T19:05:33+03:00,Counters Stage1 strict tie-break confirmation,"21233925_[0-1,4-7,9-11,14-17,19]",COUNTERS_TIE_STRICT,RUNNING,14,84,1680.0,1-05:49:52-1-06:05:58,3-00:00:00,multiple,1,21233925,squeue://hersco/21233925
-2026-09-14T19:05:33+03:00,MPrime Phase-B-A anchor rescore successor,"21254779_[0-3,7,14,21]",MPRIME_ANCHOR_PBA,RUNNING,7,28,140.0,05:47:15-06:17:11,1-00:00:00,multiple,1,21254779,squeue://hersco/21254779
-2026-09-14T19:05:33+03:00,MPrime Phase-B-A rescore controller,21254780,MPRIME_PBA_RECHECK,PENDING,1,1,2.0,00:00:00,00:15:00,Dependency,1,21254780,squeue://hersco/21254780
-2026-09-14T19:05:33+03:00,MPrime Phase-B-A Stage1 PW70 confirmation,"21259752_[0-3];21259753_[0-3];21259754_[0-2];21259755_[0-1,3];21264782_3",MPRIME_S1_PBA_PW70,RUNNING,15,90,1800.0,00:52:35-03:54:43,3-00:00:00,multiple,1,"21259752;21259753;21259754;21259755;21264782","squeue://hersco/21259752;squeue://hersco/21259753;squeue://hersco/21259754;squeue://hersco/21259755;squeue://hersco/21264782"
-2026-09-14T19:05:33+03:00,Block Grouping PW70 mechanism trace,21266624_0,BG_PW70_TIE_TRACE,RUNNING,1,2,120.0,00:18:19,07:00:00,ise-cpu-intl-23,1,21266624,squeue://hersco/21266624_0
-2026-09-14T19:05:33+03:00,Block Grouping PW70 mechanism trace,"21266624_[1-3]",BG_PW70_TIE_TRACE,PENDING,3,6,360.0,00:00:00,07:00:00,Resources,1,21266624,squeue://hersco/21266624
-2026-09-14T19:05:33+03:00,TPP frozen-replay crossover smoke,21267359,tpp_first_update_phase_b_crossover_smoke.sbatch,PENDING,1,6,48.0,00:00:00,02:00:00,Resources,6,21267359,squeue://hersco/21267359
-2026-09-14T19:05:33+03:00,TPP frozen-replay causal crossover,"21267360_[0-1]",tpp_first_update_phase_b_crossover_train.sbatch,PENDING,2,12,96.0,00:00:00,02:00:00,Dependency,6,21267360,squeue://hersco/21267360
-2026-09-14T19:05:33+03:00,TPP frozen-replay endpoint probes,"21267361_[0-1]",tpp_first_update_phase_b_crossover_endpoint.sbatch,PENDING,2,10,40.0,00:00:00,02:00:00,Dependency,6,21267361,squeue://hersco/21267361
+2026-09-15T14:39:55+03:00,MPrime final validation-led Stage2,21303717-21303736,MPRIME_FINAL_S2,RUNNING,20,120,960.0,03:25:48-04:15:21,3-00:00:00,multiple,117,21303717-21303736,squeue://hersco/21303717-21303736
+2026-09-15T14:39:55+03:00,Counters Stage1 strict tie-break confirmation,"21233925_[0-1,7,9-11,17,19]",COUNTERS_TIE_STRICT,RUNNING,8,48,960.0,05:41:03-2-01:40:20,3-00:00:00,multiple,1,21233925,squeue://hersco/21233925
+2026-09-15T14:39:55+03:00,Counters exact OOM recovery,"21308619_[4,6,14]",COUNTERS_TIE_RECOVER,RUNNING,3,18,600.0,03:25:16,3-00:00:00,multiple,1,21308619,squeue://hersco/21308619
+2026-09-15T14:39:55+03:00,Counters full-root failure trace controller,21319149,COUNTERS_TRACE_CTL,PENDING,1,1,2.0,00:00:00,00:30:00,Dependency,1,21319149,squeue://hersco/21319149

@@ -613,6 +613,38 @@ parser.add_argument(
     help='Positive target KL for the adaptive_target anchor controller.'
 )
 parser.add_argument(
+    '--policy-anchor-kl-deterministic-current',
+    action='store_true',
+    default=False,
+    help=(
+        'Use a deterministic current-policy forward only for the anchor KL; '
+        'the replay/task loss retains training-mode dropout.')
+)
+parser.add_argument(
+    '--policy-anchor-trust-mean-kl-limit',
+    type=float,
+    default=None,
+    help='Hard rollback limit for mean deterministic step KL.'
+)
+parser.add_argument(
+    '--policy-anchor-trust-p99-kl-limit',
+    type=float,
+    default=None,
+    help='Hard rollback limit for p99 deterministic step KL.'
+)
+parser.add_argument(
+    '--policy-anchor-trust-max-retries',
+    type=int,
+    default=2,
+    help='Maximum learning-rate backtracking retries after an excessive update.'
+)
+parser.add_argument(
+    '--policy-anchor-trust-lr-factor',
+    type=float,
+    default=0.5,
+    help='Multiplicative learning-rate reduction for each rollback retry.'
+)
+parser.add_argument(
     '--frozen-replay-batch-dir',
     default=None,
     help=(
@@ -769,6 +801,16 @@ def main():
                policy_anchor_kl_coeff=args.policy_anchor_kl_coeff,
                policy_anchor_kl_mode=args.policy_anchor_kl_mode,
                policy_anchor_kl_target=args.policy_anchor_kl_target,
+               policy_anchor_kl_deterministic_current=(
+                   args.policy_anchor_kl_deterministic_current),
+               policy_anchor_trust_mean_kl_limit=(
+                   args.policy_anchor_trust_mean_kl_limit),
+               policy_anchor_trust_p99_kl_limit=(
+                   args.policy_anchor_trust_p99_kl_limit),
+               policy_anchor_trust_max_retries=(
+                   args.policy_anchor_trust_max_retries),
+               policy_anchor_trust_lr_factor=(
+                   args.policy_anchor_trust_lr_factor),
                frozen_replay_batch_dir=args.frozen_replay_batch_dir,
                serial_test=args.serial_test,
                no_eval=args.no_eval,
@@ -842,6 +884,11 @@ def main_inner(*,
                policy_anchor_kl_coeff=0.0,
                policy_anchor_kl_mode='constant',
                policy_anchor_kl_target=None,
+               policy_anchor_kl_deterministic_current=False,
+               policy_anchor_trust_mean_kl_limit=None,
+               policy_anchor_trust_p99_kl_limit=None,
+               policy_anchor_trust_max_retries=2,
+               policy_anchor_trust_lr_factor=0.5,
                frozen_replay_batch_dir=None,
                serial_test=None,
                no_eval=None,
@@ -957,6 +1004,36 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend([
                 '--policy-anchor-kl-target',
                 str(policy_anchor_kl_target),
+            ])
+        if policy_anchor_kl_deterministic_current:
+            train_flags.append('--policy-anchor-kl-deterministic-current')
+        if policy_anchor_trust_mean_kl_limit is not None:
+            train_flags.extend([
+                '--policy-anchor-trust-mean-kl-limit',
+                str(policy_anchor_trust_mean_kl_limit),
+            ])
+        if policy_anchor_trust_p99_kl_limit is not None:
+            train_flags.extend([
+                '--policy-anchor-trust-p99-kl-limit',
+                str(policy_anchor_trust_p99_kl_limit),
+            ])
+        if (
+                policy_anchor_trust_mean_kl_limit is not None
+                or policy_anchor_trust_p99_kl_limit is not None
+                or policy_anchor_trust_max_retries != 2
+        ):
+            train_flags.extend([
+                '--policy-anchor-trust-max-retries',
+                str(policy_anchor_trust_max_retries),
+            ])
+        if (
+                policy_anchor_trust_mean_kl_limit is not None
+                or policy_anchor_trust_p99_kl_limit is not None
+                or policy_anchor_trust_lr_factor != 0.5
+        ):
+            train_flags.extend([
+                '--policy-anchor-trust-lr-factor',
+                str(policy_anchor_trust_lr_factor),
             ])
         if frozen_replay_batch_dir is not None:
             train_flags.extend([

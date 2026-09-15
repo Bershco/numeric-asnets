@@ -69,3 +69,25 @@ approximately 02:20 IDT under their seven-hour allocations. If the second wave
 starts immediately, all four allocations end by approximately 09:20 IDT;
 queue handoff delay can move that bound later. No terminal trace or mechanism
 conclusion was available at the snapshot.
+
+## Final result — 15 September 2026
+
+All four predeclared traces are terminal. Every source policy solved its target;
+every historical and traced PW70 evaluation exhausted the six-hour per-instance
+budget without solving it. The full root-vector join shows that none of the four
+first departures from the successful policy path was recoverable by changing
+only the final maximum-visit tie-break:
+
+- three roots had a unique maximum-visit PW action, with visit margins 11, 14
+  and 5 over the policy action;
+- the fourth root had a three-way maximum tie, but the policy action was one
+  visit below that maximum and therefore was not eligible for any tie-break.
+
+The mechanism gate is therefore negative. These cases support the explanation
+that PW70's accumulated search evidence and expensive per-root computation pull
+the trajectory away from policy and consume the six-hour budget. They do not
+support a broad policy-prior final tie-break campaign for Block Grouping.
+`results_20260915.csv` contains the four joined roots and exact job/log routes.
+`first_divergence_q_u_20260915.csv` contains the full locally cached Q/U/prior
+comparison for all four first-divergence roots, with the exact remote log path
+on every row.

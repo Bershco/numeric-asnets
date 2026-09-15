@@ -1,0 +1,4 @@
+role	job_id	dependency	script	checkout
+smoke	21318360		/home/hersco/training_new_domains/2026-09-15/tpp_first_update_phase_c_prevention_lrbt/tpp_first_update_phase_c_prevention_smoke.sbatch	/home/hersco/bershco-nu-asnets/numeric-asnets-tpp-phase-c-20260915
+training	21318362	afterok:21318360	/home/hersco/training_new_domains/2026-09-15/tpp_first_update_phase_c_prevention_lrbt/tpp_first_update_phase_c_prevention_train.sbatch	/home/hersco/bershco-nu-asnets/numeric-asnets-tpp-phase-c-20260915
+endpoint	21318364	afterok:21318362	/home/hersco/training_new_domains/2026-09-15/tpp_first_update_phase_c_prevention_lrbt/tpp_first_update_phase_c_prevention_endpoint.sbatch	/home/hersco/bershco-nu-asnets/numeric-asnets-tpp-phase-c-20260915

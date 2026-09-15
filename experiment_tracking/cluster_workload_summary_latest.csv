@@ -1,9 +1,5 @@
 snapshot_time_idt,experiment,state,jobs,requested_cpus,requested_memory_gib,scheduler_source
-2026-09-14T19:05:33+03:00,Block Grouping PW70 mechanism trace,RUNNING_PLUS_PENDING,4,8,480.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-14T19:05:33+03:00,Counters Stage1 strict tie-break confirmation,RUNNING,14,84,1680.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-14T19:05:33+03:00,MPrime Phase-B-A Stage1 PW70 confirmation,RUNNING,15,90,1800.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-14T19:05:33+03:00,MPrime Phase-B-A anchor rescore successor,RUNNING,7,28,140.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-14T19:05:33+03:00,MPrime Phase-B-A rescore controller,PENDING,1,1,2.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-14T19:05:33+03:00,TPP frozen-replay causal crossover,PENDING,2,12,96.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-14T19:05:33+03:00,TPP frozen-replay crossover smoke,PENDING,1,6,48.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-14T19:05:33+03:00,TPP frozen-replay endpoint probes,PENDING,2,10,40.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-15T14:39:55+03:00,MPrime final validation-led Stage2,RUNNING,20,120,960.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-15T14:39:55+03:00,Counters Stage1 strict tie-break confirmation,RUNNING,8,48,960.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-15T14:39:55+03:00,Counters exact OOM recovery,RUNNING,3,18,600.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-15T14:39:55+03:00,Counters full-root failure trace controller,DEPENDENCY_PENDING,1,0,0.0,experiment_tracking/cluster_workload_latest.csv

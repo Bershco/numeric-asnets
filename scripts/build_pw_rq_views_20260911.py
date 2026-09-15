@@ -13,13 +13,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "experiment_tracking/mcts_progressive_widening_cross_domain/pw70_ten_seed_results_latest.csv"
+MPRIME_SOURCE = ROOT / "experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/results_final_20260915.csv"
 OUT = ROOT / "experiment_tracking/advisor_followup_20260910"
 CUTOFFS = ("30m", "2h", "6h")
 
 
 def read() -> list[dict[str, str]]:
     with SOURCE.open(newline="", encoding="utf-8") as stream:
-        return list(csv.DictReader(stream))
+        rows = list(csv.DictReader(stream))
+    with MPRIME_SOURCE.open(newline="", encoding="utf-8") as stream:
+        for row in csv.DictReader(stream):
+            rows.append({"domain": "mprime", **row})
+    return rows
 
 
 def interval(diffs: list[float]) -> tuple[float, float]:
@@ -69,14 +74,19 @@ def write(path: Path, rows: list[dict[str, object]]) -> None:
 
 def build() -> tuple[list[dict[str, object]], list[dict[str, object]]]:
     rows = read()
+    domains = ("fo_counters", "rover", "mprime")
     cells = {(domain, vh): sorted(
         [row for row in rows if row["domain"] == domain and row["value_head"] == vh],
         key=lambda row: int(row["seed"]),
-    ) for domain in ("fo_counters", "rover") for vh in ("off", "on")}
+    ) for domain in domains for vh in ("off", "on")}
     rq2 = []
     rq4 = []
-    provenance = "experiment_tracking/mcts_progressive_widening_cross_domain/pw70_ten_seed_results_latest.csv"
-    for domain in ("fo_counters", "rover"):
+    for domain in domains:
+        provenance = (
+            "experiment_tracking/mprime_phase_b_a_stage1_pw70_20260913/results_final_20260915.csv"
+            if domain == "mprime" else
+            "experiment_tracking/mcts_progressive_widening_cross_domain/pw70_ten_seed_results_latest.csv"
+        )
         off = cells[(domain, "off")]
         on = cells[(domain, "on")]
         assert len(off) == len(on) == 10
@@ -90,19 +100,27 @@ def build() -> tuple[list[dict[str, object]], list[dict[str, object]]]:
             off_pw = [float(row[f"pw70_{cutoff}"]) for row in off]
             on_pw = [float(row[f"pw70_{cutoff}"]) for row in on]
             effect, low, high, raw = stats([a - b for a, b in zip(off_pw, off_policy)])
+            fixed_effect, fixed_low, fixed_high, fixed_raw = stats([a - b for a, b in zip(off_pw, off_fixed)])
             rq2.append({
                 "rq": "RQ2", "domain": domain, "cutoff": cutoff, "n": 10,
                 "vh_off_policy_mean": statistics.mean(off_policy),
                 "vh_off_fixed_mcts_mean": statistics.mean(off_fixed),
                 "vh_off_pw70_mean": statistics.mean(off_pw),
                 "pw70_minus_policy": effect, "ci95_low": low, "ci95_high": high,
-                "raw_p": raw, "holm_p": "", "status": "complete_declared_budget",
+                "raw_p": raw, "holm_p": "",
+                "pw70_minus_fixed": fixed_effect,
+                "pw70_minus_fixed_ci95_low": fixed_low,
+                "pw70_minus_fixed_ci95_high": fixed_high,
+                "pw70_minus_fixed_raw_p": fixed_raw,
+                "pw70_minus_fixed_holm_p": "",
+                "status": "complete_declared_budget",
                 "seed_level_provenance": provenance,
             })
             direct = stats([a - b for a, b in zip(on_pw, on_policy)])
             cross = stats([a - b for a, b in zip(on_pw, off_policy)])
             interaction = stats([(a - b) - (c - d) for a, b, c, d in
                                  zip(on_pw, on_policy, off_pw, off_policy)])
+            fixed_compare = stats([a - b for a, b in zip(on_pw, on_fixed)])
             for estimand, result in (
                 ("VH-on PW70 - VH-on policy", direct),
                 ("VH-on PW70 - parallel VH-off policy", cross),
@@ -119,18 +137,37 @@ def build() -> tuple[list[dict[str, object]], list[dict[str, object]]]:
                     "vh_off_pw70_mean": statistics.mean(off_pw),
                     "vh_on_pw70_mean": statistics.mean(on_pw),
                     "effect": effect, "ci95_low": low, "ci95_high": high,
-                    "raw_p": raw, "holm_p": "", "status": "complete_declared_budget",
+                    "raw_p": raw, "holm_p": "",
+                    "pw70_minus_fixed": fixed_compare[0],
+                    "pw70_minus_fixed_ci95_low": fixed_compare[1],
+                    "pw70_minus_fixed_ci95_high": fixed_compare[2],
+                    "pw70_minus_fixed_raw_p": fixed_compare[3],
+                    "pw70_minus_fixed_holm_p": "",
+                    "status": "complete_declared_budget",
                     "seed_level_provenance": provenance,
                 })
     holm(rq2, ("cutoff",))
     holm(rq4, ("cutoff", "estimand"))
+    off_fixed = [{"cutoff": row["cutoff"], "raw_p": row["pw70_minus_fixed_raw_p"],
+                  "holm_p": "", "target": row} for row in rq2]
+    holm(off_fixed, ("cutoff",))
+    for item in off_fixed:
+        item["target"]["pw70_minus_fixed_holm_p"] = item["holm_p"]
+    on_fixed = [{"cutoff": row["cutoff"], "raw_p": row["pw70_minus_fixed_raw_p"],
+                 "holm_p": "", "target": row} for row in rq4
+                if row["estimand"] == "VH-on PW70 - VH-on policy"]
+    holm(on_fixed, ("cutoff",))
+    adjusted = {(item["target"]["domain"], item["target"]["cutoff"]): item["holm_p"]
+                for item in on_fixed}
+    for row in rq4:
+        row["pw70_minus_fixed_holm_p"] = adjusted[(row["domain"], row["cutoff"])]
     return rq2, rq4
 
 
 def plot(rq2: list[dict[str, object]], rq4: list[dict[str, object]]) -> None:
     rows = [row for row in rq4 if row["cutoff"] == "6h" and
             row["estimand"] == "VH-on PW70 - VH-on policy"]
-    width, height = 1360, 650
+    width, height = 1780, 650
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
              '<style>text{font-family:Arial,sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.sub{font-size:16px}.label{font-size:18px;font-weight:700}.value{font-size:15px}</style>',
              '<rect width="100%" height="100%" fill="white"/>',
@@ -145,10 +182,10 @@ def plot(rq2: list[dict[str, object]], rq4: list[dict[str, object]]) -> None:
         x = 42 + i * 215
         parts += [f'<rect x="{x}" y="88" width="16" height="16" fill="{color}"/>',
                   f'<text x="{x+23}" y="101" class="sub">{label}</text>']
-    scale = 36
+    scale = 17
     base_y = 445
     for panel, row in enumerate(rows):
-        x0 = 105 + panel * 650
+        x0 = 70 + panel * 565
         values = [float(row["vh_off_policy_mean"]), float(row["vh_off_fixed_mcts_mean"]),
                   float(row["vh_off_pw70_mean"]), float(row["vh_on_policy_mean"]),
                   float(row["vh_on_fixed_mcts_mean"]), float(row["vh_on_pw70_mean"])]
@@ -162,7 +199,7 @@ def plot(rq2: list[dict[str, object]], rq4: list[dict[str, object]]) -> None:
         parts += [
             f'<line x1="{divider_x}" y1="122" x2="{divider_x}" y2="{base_y}" stroke="#657080" stroke-width="2" stroke-dasharray="7 7"/>',
         ]
-        name = "FO Counters" if row["domain"] == "fo_counters" else "Rover"
+        name = {"fo_counters": "FO Counters", "rover": "Rover", "mprime": "MPrime"}[row["domain"]]
         off = next(item for item in rq2 if item["domain"] == row["domain"] and item["cutoff"] == "6h")
         cross = next(item for item in rq4 if item["domain"] == row["domain"] and item["cutoff"] == "6h" and
                      item["estimand"] == "VH-on PW70 - parallel VH-off policy")
@@ -173,7 +210,7 @@ def plot(rq2: list[dict[str, object]], rq4: list[dict[str, object]]) -> None:
                   f'<text x="{x0+220}" y="508" class="sub" text-anchor="middle">RQ2 off PW−policy: {float(off["pw70_minus_policy"]):+.1f} [{float(off["ci95_low"]):+.1f}, {float(off["ci95_high"]):+.1f}], Holm p={float(off["holm_p"]):.3g}</text>',
                   f'<text x="{x0+220}" y="537" class="sub" text-anchor="middle">RQ4 on PW−policy: {float(row["effect"]):+.1f} [{float(row["ci95_low"]):+.1f}, {float(row["ci95_high"]):+.1f}], Holm p={float(row["holm_p"]):.3g}</text>',
                   f'<text x="{x0+220}" y="566" class="sub" text-anchor="middle">Cross-cell: {float(cross["effect"]):+.1f}; interaction: {float(interaction["effect"]):+.1f} [{float(interaction["ci95_low"]):+.1f}, {float(interaction["ci95_high"]):+.1f}]</text>']
-    parts += ['<text x="680" y="620" class="sub" text-anchor="middle">Holm correction is within each cutoff/estimand across the two evaluated domains.</text>']
+    parts += ['<text x="890" y="620" class="sub" text-anchor="middle">Holm correction is within each cutoff/estimand across the three confirmed domains.</text>']
     parts += ['</svg>']
     (OUT / "rq2_rq4_pw70_final.svg").write_text("".join(parts), encoding="utf-8")
 
