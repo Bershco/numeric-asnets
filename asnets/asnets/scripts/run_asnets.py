@@ -465,6 +465,14 @@ parser.add_argument(
     default=0.5,
     help='Multiplicative learning-rate reduction for each rollback retry.')
 parser.add_argument(
+    '--policy-anchor-trust-restore-rng-seed',
+    type=int,
+    default=None,
+    help=(
+        'Diagnostic-only base seed for exact dropout/RNG restoration across '
+        'trust-region retries. Every retry must reproduce the same raw '
+        'gradient hash or training aborts.'))
+parser.add_argument(
     '--frozen-replay-batch-dir',
     default=None,
     help=(
@@ -1122,6 +1130,8 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
                 args.policy_anchor_trust_max_retries),
             policy_anchor_trust_lr_factor=(
                 args.policy_anchor_trust_lr_factor),
+            policy_anchor_trust_restore_rng_seed=(
+                args.policy_anchor_trust_restore_rng_seed),
             frozen_replay_batch_dir=args.frozen_replay_batch_dir,
             main_road_fraction=0.75,
             grad_clip_norm=5.0,
@@ -1561,6 +1571,14 @@ def main():
                 'mode so rollback is the only coefficient controller')
     if args.policy_anchor_trust_max_retries < 0:
         parser.error('--policy-anchor-trust-max-retries cannot be negative')
+    if args.policy_anchor_trust_restore_rng_seed is not None:
+        if args.policy_anchor_trust_restore_rng_seed < 0:
+            parser.error(
+                '--policy-anchor-trust-restore-rng-seed cannot be negative')
+        if not all(value is not None for value in trust_limits):
+            parser.error(
+                '--policy-anchor-trust-restore-rng-seed requires '
+                'trust-region rollback limits')
     if (
             not np.isfinite(args.policy_anchor_trust_lr_factor)
             or not 0 < args.policy_anchor_trust_lr_factor < 1

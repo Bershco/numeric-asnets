@@ -1,4 +1,4 @@
-# Validation-led RQ report — 15 September 2026
+# Validation-led RQ report — 16 September 2026
 
 This is the primary thesis view. Terminal-led campaigns are excluded. Fixed-search 30-minute and two-hour figures are deterministic cutoffs of the same six-hour runs, not separate reruns. Block Grouping and Counters use narrow fixed search (5 retained children, 20 simulations); Drone, FO Counters and Rover use normal fixed search (20 children, 70 simulations). Counts are solved test instances; Counters has 59 instances and the other domains have 20.
 
@@ -25,10 +25,10 @@ These stable-domain cells are reported separately from the primary five-domain m
 | Domain | n | Stage-1 all 10 | Stage-2 all 10 | Held-out 8: S1 → S2 | Held-out Δ [95% CI]; raw/Holm p | All-10 Δ [95% CI] | All-10 raw/Holm p | Conclusion |
 |---|---|---|---|---|---|---|---|---|
 | Delivery | 10 (8 held-out + 2 tuning) | 19.8 | 19.6 | 19.75 → 19.5 | -0.25 [-1.32, 0.82]; p=1/1 | -0.2 [-1.01, 0.61] | 1 / 1 | Preserved on average |
-| TPP | 10 (8 held-out + 2 tuning) | 20 | 18.9 | 20 → 18.62 | -1.38 [-4.63, 1.88]; p=1/1 | -1.1 [-3.59, 1.39] | 1 / 1 | TPP/off: nine seeds=20/20; seed 1972442430=9/20 |
+| TPP | 10 (8 held-out + 2 tuning) | 20 | 18.9 | 20 → 18.62 | -1.38 [-4.63, 1.88]; p=1/1 | -1.1 [-3.59, 1.39] | 1 / 1 | TPP/off: nine seeds=20/20; seed 1972442430=9/20. A selected-pair one-epoch rollback/LR-backtracking guard prevented the analogous first-update collapse (20/20), but is not yet a population-level replacement result. |
 | Zenotravel | 10 (8 held-out + 2 tuning) | 20 | 20 | 20 → 20 | 0 [0, 0]; p=1/1 | 0 [0, 0] | 1 / 1 | Preserved on average |
 
-**Extension conclusion:** Delivery and Zenotravel are preserved. TPP is preserved in nine of ten VH-off seeds, but one predeclared held-out seed collapses to 9/20; that outlier is a real seed-specific failure and is not hidden by the 18.9 mean.
+**Extension conclusion:** Delivery and Zenotravel are preserved. TPP is preserved in nine of ten VH-off seeds, but one predeclared held-out seed collapses to 9/20; that outlier is a real seed-specific failure and is not hidden by the 18.9 mean. A deliberately selected causal screen has now shown that a rollback/learning-rate-backtracking guard can prevent the corresponding first-update collapse in that outlier while retaining 20/20 on one stable control. This is strong mechanism evidence for the selected pair, not a new ten-seed Stage-2 estimate.
 
 ![RQ1 paired Stage-2 effect](rq1_stage2_training_vh_off.png)
 
@@ -112,7 +112,7 @@ The direct column answers whether VH-on Stage 2 improves its own VH-on Stage-1 p
 | TPP | 20 → 19.5 | -0.5 [-1.63, 0.63]; p=1/1 | -1.1 | 0.6 [-2.25, 3.45]; p=1/1 | Exploratory post-hoc interaction; separate 3-domain family |
 | Zenotravel | 20 → 19.9 | -0.1 [-0.33, 0.13]; p=1/1 | 0 | -0.1 [-0.33, 0.13]; p=1/1 | Exploratory post-hoc interaction; separate 3-domain family |
 
-**Extension conclusion:** The stable domains do not supply evidence that the value head improves refinement. Their near-ceiling scores primarily test preservation; TPP/off's single catastrophic seed is investigated separately as an optimization-path failure.
+**Extension conclusion:** The stable domains do not supply evidence that the value head improves refinement. Their near-ceiling scores primarily test preservation. The historical TPP/off 9/20 outlier remains part of the primary RQ3 evidence; a deliberately selected one-epoch rollback/LR-backtracking screen restored that seed to 20/20 and preserved a stable control at 20/20. This is prevention evidence for the selected pair, not a revised primary score or a population-level fix.
 
 ![RQ3 raw means and interaction](rq3_raw_means_and_interaction.png)
 
@@ -208,12 +208,21 @@ Direct VH-on PW70 versus the corresponding VH-on fixed-search arm:
 
 ## Results still required
 
-1. **MPrime Stage 2:** all twenty clean lineages started from the final Phase-B-A Stage-1 checkpoints: ten VH-off with anchor 30 and ten VH-on with anchor 10. At the 18:57 IDT snapshot one lineage was terminal at epoch 99 and nineteen were running, with latest immutable epochs 42-98/99. Epoch 99 is the final checkpoint after 100 zero-indexed epochs. Live controller `21345695` overlaps policy-curve evaluation safely: 300 immutable checkpoints discovered, 46 submitted, 24 complete and 22 active. Live rows are curve-only; selected/final roles remain gated on scientific training completion. Matched fixed/PW evaluations remain downstream; MPrime enters RQ1/RQ3 and Stage-2 RQ2/RQ4 only after those endpoints complete.
-2. **Counters tie-break:** five original tasks remain live. A ledger audit found that explicit six-hour timeouts had been printed but not persisted, so recovery `21308619[4,6,14]` was repeating already classified timeouts and was cancelled without deleting evidence. Reconciliation proved tasks 4, 6, 14, 16 and 17 complete. Only three identities are genuinely unclassified: one in task 7 and two in task 19. Exact low-priority recovery `21347260[7,19]` runs only those identities with one worker, two CPUs, 120 GiB, a six-hour scientific cap per instance and a 14-hour allocation for the two-instance arm. Corrected controller `21347597` waits for the strict array and exact recovery, reconciles explicit 21,600-second timeout events, requires 59 unique terminal identities in every action-ID arm, and then traces only the exact policy-success/action-ID-failure union under action-ID and policy-prior with complete root vectors. The targeted causal pilot remains action-ID 0/3, Q 0/3 and policy-prior 3/3, all VAL-valid; its VH-on 0/3 arm is not a positive control because that policy solved none of the three targets. The broader visit-margin calibration is held until this exact-tie confirmation and trace complete.
-3. **Block Grouping tie-break transfer:** both same-build four-target arms completed 0/4. Every outcome was an ordinary 10,000-action failure, not a timeout. Policy-prior tie-breaking therefore did not transfer to this selected seed, and the fixed-search branch will not be expanded from this negative screen.
-4. **MPrime Stage-1 fixed search:** all 20 canonical evaluations are complete and now extend RQ2/RQ4. VH-off scores are 13.0 / 14.7 / 15.7 at 30m / 2h / 6h versus policy 16.3; VH-on scores are 13.3 / 15.1 / 16.0 versus policy 15.7.
-5. **MPrime Stage-1 PW70:** complete for all twenty identities. VH-off is 15.7 / 17.6 / 17.7 and VH-on is 15.5 / 17.9 / 18.5 at 30m / 2h / 6h. It now appears in RQ2/RQ4 above.
-6. **Block Grouping PW70 trace:** all four exact policy-success/historical-PW-timeout traces completed and timed out again. Three first divergences had a unique maximum-visit winner; the fourth had a three-way maximum tie but the policy action was not among it. The predeclared tie-transfer gate is negative: arbitrary action-ID tie-breaking is not the demonstrated cause of these PW losses.
-7. **TPP first-update causal chain:** the complete crossover is bad checkpoint × stable replay = 3/20 and stable checkpoint × bad replay = 20/20, versus diagonal 10/20 and 20/20. Starting-checkpoint susceptibility is necessary in this frozen pair; replay identity changes severity. The obsolete coefficient-doubling attempt failed because Adam-normalized proposals did not shrink. Corrected fixed-anchor/LR-backtracking treatment completed at 20/20 for both the catastrophic seed and stable control; the bad seed triggered 11 backtracks and the stable control 4. This prevents the selected collapse without damaging the control, but is a two-seed mechanism screen outside the primary RQ family; retries resample dropout, so it is not an exact deterministic learning-rate-rescaling experiment.
+The statistical tables above are frozen to completed scientific evidence. Live
+operational counts are maintained only in
+[`../status_latest.md`](../status_latest.md) so this report does not embed a
+second stale scheduler snapshot.
+
+1. **MPrime Stage 2:** final validation-led training, learning curves, endpoint
+   selection, and the approved matched fixed/PW evaluations remain incomplete.
+   MPrime enters RQ1/RQ3 and Stage-2 RQ2/RQ4 only after those endpoints finish.
+2. **Counters tie-break:** the strict ten-seed same-build result remains frozen
+   until every identity is terminal. The dependency-gated trace then reruns
+   only policy-success/action-ID-failure identities with complete root vectors.
+   The standardized visit-margin/prominence branch remains held.
+3. **TPP causal closure:** the selected-pair guard prevented the historical
+   first-update collapse, but exact-RNG closure is still needed to distinguish
+   rollback/learning-rate scaling from dropout resampling. No 100-epoch guard
+   campaign is part of the primary RQs.
 
 Canonical evidence files: [`rq_primary_validation_led.csv`](rq_primary_validation_led.csv), [`rq2_raw_means_validation_led.csv`](rq2_raw_means_validation_led.csv), [`rq3_raw_means_validation_led.csv`](rq3_raw_means_validation_led.csv), [`rq4_raw_means_validation_led.csv`](rq4_raw_means_validation_led.csv), [`rq2_pw70_branch_latest.csv`](rq2_pw70_branch_latest.csv), and [`rq4_pw70_branch_latest.csv`](rq4_pw70_branch_latest.csv). Their row-level job/log routes are indexed in [`../result_csv_provenance_index_latest.csv`](../result_csv_provenance_index_latest.csv).

@@ -195,6 +195,35 @@ The first option is four small jobs. The second is sixteen jobs when reusing
 the completed selected pair as historical evidence, or twenty jobs for a
 strict uniform rerun. These remain documented next steps and are not submitted.
 
+### One guarded epoch versus an all-epochs training method
+
+The completed treatment guarded all 60 optimizer updates of the **first
+Stage-2 epoch**. It did not turn the guard off after the first backtrack inside
+that epoch. If adopted as a general training method, the same rule would
+normally remain active for every optimizer update in every later epoch.
+
+One guarded epoch is the right narrow diagnostic here because the historical
+damage was already visible at the first saved Stage-2 checkpoint. It is cheap,
+directly targets the observed failure, and avoids changing 99 later epochs
+before the mechanism is understood. Its limitation is that it cannot prevent
+a destructive update in a later epoch and does not show the final policy from
+a complete guarded Stage-2 run.
+
+An all-epochs guard gives continuous protection and one consistent policy-
+displacement bound. Its costs and risks are repeated proposal/rollback work,
+longer training, possible rejection of useful large updates, a substantially
+changed optimization trajectory, and the need to retrain and reevaluate every
+Stage-2 domain before adopting it as the primary method. It is therefore not
+adopted from this selected-pair screen.
+
+The immediate exact-RNG closure is smaller and does not run 100 epochs. It
+restores the stochastic RNG state on a rejected proposal and verifies the
+gradient digest before accepting a learning-rate-only retry. This separates
+rollback/backtracking from lucky dropout resampling for the same selected
+pair. A later other-eight-seed one-epoch screen would estimate guard activation
+and non-regression; without matched unguarded same-build arms it would not be a
+population treatment-effect experiment.
+
 ## Reproduction
 
 Deploy the reviewed commit to a new isolated cluster checkout and copy the five

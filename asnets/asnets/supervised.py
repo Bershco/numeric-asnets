@@ -36,6 +36,11 @@ from asnets.utils.tf_utils import cross_entropy, mean_squared_error, empty_feed_
 from asnets.models import PropNetwork, PropNetworkWeights
 from asnets.policy_anchor import PolicyAnchorKLController
 from asnets.policy_anchor_trust_region import PolicyAnchorTrustRegion
+from asnets.replay_rng import (
+    ReplayRNGSnapshot,
+    gradient_sha256,
+    replay_step_seed,
+)
 from asnets.validation_state import (
     ValidationState,
     cumulative_epoch_offset,
@@ -480,6 +485,7 @@ class SupervisedTrainer(BaseTrainer):
                  policy_anchor_trust_p99_kl_limit=None,
                  policy_anchor_trust_max_retries=2,
                  policy_anchor_trust_lr_factor=0.5,
+                 policy_anchor_trust_restore_rng_seed=None,
                  frozen_replay_batch_dir=None,
                  main_road_fraction=0.75,
                  tree_policy_weight=0.5,
@@ -538,6 +544,22 @@ class SupervisedTrainer(BaseTrainer):
             )
         else:
             self._policy_anchor_trust_region = None
+        self._policy_anchor_trust_restore_rng_seed = (
+            int(policy_anchor_trust_restore_rng_seed)
+            if policy_anchor_trust_restore_rng_seed is not None else None
+        )
+        if (
+                self._policy_anchor_trust_restore_rng_seed is not None
+                and self._policy_anchor_trust_region is None
+        ):
+            raise ValueError(
+                "Exact retry RNG restoration requires trust-region rollback")
+        if (
+                self._policy_anchor_trust_restore_rng_seed is not None
+                and self._policy_anchor_trust_restore_rng_seed < 0
+        ):
+            raise ValueError(
+                "Exact retry RNG restoration seed must be non-negative")
         self.main_road_fraction = main_road_fraction
         self.tree_policy_weight = tree_policy_weight
         self.grad_clip_norm = grad_clip_norm
@@ -616,6 +638,12 @@ class SupervisedTrainer(BaseTrainer):
                     "[POLICY ANCHOR TRUST REGION] enabled "
                     f"{self._policy_anchor_trust_region.to_dict()}"
                 )
+                if self._policy_anchor_trust_restore_rng_seed is not None:
+                    print(
+                        "[POLICY ANCHOR TRUST REGION] exact retry RNG "
+                        "restoration enabled; "
+                        f"base_seed={self._policy_anchor_trust_restore_rng_seed}"
+                    )
         self._init_tf()
         if resume_from is not None and not resume_from.endswith(".pkl"):
             opt_path = os.path.join(resume_from, "optimizer.joblib")
@@ -1430,11 +1458,22 @@ class SupervisedTrainer(BaseTrainer):
         trust_attempts = []
         trust_decision = None
         update_applied = True
+        trust_rng_snapshot = None
+        expected_gradient_sha256 = None
         if self._policy_anchor_trust_region is not None:
             trust_snapshot = self._snapshot_replay_state(params)
             trust_pre_policies = self._deterministic_current_policies(
                 sampled_batches)
             base_learning_rate = self._optimizer_learning_rate()
+            if self._policy_anchor_trust_restore_rng_seed is not None:
+                trust_rng_snapshot = ReplayRNGSnapshot.capture(
+                    tf,
+                    [problem.network for problem, _batch in sampled_batches],
+                    replay_step_seed(
+                        self._policy_anchor_trust_restore_rng_seed,
+                        self._replay_optimizer_step,
+                    ),
+                )
         else:
             base_learning_rate = None
 
@@ -1576,6 +1615,16 @@ class SupervisedTrainer(BaseTrainer):
                 tf.zeros_like(param) if grad is None else grad
                 for param, grad in zip(params, raw_grads)
             ]
+            attempt_gradient_sha256 = gradient_sha256(grads)
+            if trust_rng_snapshot is not None:
+                if expected_gradient_sha256 is None:
+                    expected_gradient_sha256 = attempt_gradient_sha256
+                elif attempt_gradient_sha256 != expected_gradient_sha256:
+                    raise RuntimeError(
+                        "Exact retry RNG restoration did not reproduce the "
+                        "same raw stochastic gradient: "
+                        f"expected {expected_gradient_sha256}, got "
+                        f"{attempt_gradient_sha256}")
             for grad in grads:
                 tf.debugging.assert_all_finite(
                     grad, "Non-finite gradient detected during replay training")
@@ -1606,10 +1655,17 @@ class SupervisedTrainer(BaseTrainer):
                 "mean_kl": trust_decision.mean_kl,
                 "p99_kl": trust_decision.p99_kl,
                 "excessive": trust_decision.excessive,
+                "raw_gradient_sha256": attempt_gradient_sha256,
+                "exact_rng_retry": trust_rng_snapshot is not None,
+                "tensorflow_rng_generators": (
+                    trust_rng_snapshot.tensorflow_generator_count
+                    if trust_rng_snapshot is not None else None),
             })
             if not trust_decision.excessive:
                 break
             self._restore_replay_state(params, trust_snapshot)
+            if trust_rng_snapshot is not None:
+                trust_rng_snapshot.restore(tf)
             if int(self.optimizer.iterations.numpy()) \
                     != trust_attempts[0]["optimizer_iteration_before"]:
                 raise RuntimeError(
@@ -1738,6 +1794,13 @@ class SupervisedTrainer(BaseTrainer):
                     if self._policy_anchor_trust_region is not None else None),
                 "trust_region_attempts": trust_attempts,
                 "trust_region_retries": retry_number,
+                "trust_region_exact_rng_base_seed": (
+                    self._policy_anchor_trust_restore_rng_seed),
+                "trust_region_exact_rng_step_seed": (
+                    trust_rng_snapshot.step_seed
+                    if trust_rng_snapshot is not None else None),
+                "trust_region_exact_gradient_sha256": (
+                    expected_gradient_sha256),
                 "update_applied": update_applied,
                 "base_learning_rate": base_learning_rate,
                 "applied_learning_rate": (

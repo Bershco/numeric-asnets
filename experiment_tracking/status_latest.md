@@ -1,24 +1,28 @@
 # Current experiment status
 
-Updated: 2026-09-15T18:57:00+03:00
+Updated: 2026-09-16T00:40:00+03:00
 
-This is the canonical changing status page. Dated files are historical
-snapshots. Primary RQ tables and figures are in
+This is the canonical changing status page. Dated manifests and ledgers are
+immutable snapshots. Primary validation-led RQ tables and figures are in
 `experiment_tracking/advisor_followup_20260910/rq_report_validation_led_20260912.md`.
+Terminal-led campaigns remain provenance-only and are excluded from the
+primary RQ report.
 
 ## Live workload
 
-| Experiment | State | Jobs | CPU | RAM |
-|---|---|---:|---:|---:|
-| MPrime final validation-led Stage 2 | 19 running, 1 terminal | 19 allocated | 114 | 912 GiB |
-| MPrime live policy curves | 22 running, 24 terminal | 22 allocated | 220 | 440 GiB |
-| Counters strict policy-prior confirmation | 5 original tasks running | 5 | 30 | 600 GiB |
-| Counters exact unclassified-instance recovery | 2 running tasks covering 3 identities | 2 | 4 | 240 GiB |
-| Counters full-root trace controller | dependency-pending | 1 | 0 allocated | 0 allocated |
+| Experiment | State | Allocated jobs | CPU | RAM | Expected / hard remainder |
+|---|---|---:|---:|---:|---|
+| MPrime final validation-led Stage 2 | 14/20 terminal; 6 running | 6 | 36 | 288 GiB | about 0.5-6 h / about 58 h |
+| MPrime policy curves | 202 completed attempts, 31 running, 27 failed attempts | 31 | 310 | 620 GiB | each job <=4 h |
+| MPrime policy controllers | primary and failure-aware retry controllers running | 2 | 4 | 4 GiB | exit after complete submission/retry reconciliation |
+| Counters strict tie-break confirmation | 16/20 terminal; 4 running | 4 | 24 | 480 GiB | <=12.6 h hard |
+| Counters exact identity recovery | tasks 7 and 19 running; task 9 repaired and running | 3 | 6 | 360 GiB | 0-14 h for tasks 7/19; <=20 h task 9 |
+| Counters full-root trace controller | dependency-pending, job 21362904 | 0 | 0 | 0 GiB | starts only after exact classification |
 
-The running total is 49 allocated tasks, 370 scheduler-allocated CPUs and
-2,194 GiB. The trace controller is pending on dependencies and consumes no
-allocation.
+The allocated snapshot is 46 jobs, 380 CPUs and 1,752 GiB. The Counters trace
+controller is pending on dependencies and consumes no allocation. MPrime
+policy retry jobs and primary jobs share the same scientific identity ledger;
+attempt counts must not be mistaken for unique checkpoints.
 
 ## Current scientific endpoints
 
@@ -28,58 +32,54 @@ allocation.
 - MPrime Stage-1 fixed MCTS and PW70 are complete and already appear in RQ2 and
   RQ4. PW70 is 15.7/17.6/17.7 VH-off and 15.5/17.9/18.5 VH-on at
   30m/2h/6h.
-- All twenty final MPrime Stage-2 lineages started from the adopted Stage-1
-  checkpoints. At this snapshot one is terminal at epoch 99 and nineteen are
-  running, with latest immutable saved epochs spanning 42-98. Their original
-  72-hour allocations have approximately 63.5-64.4 hours of scheduler time
-  remaining, but observed rates indicate roughly less than one to twelve hours
-  of scientific work. The walltime was deliberately conservative and is not a
-  completion estimate.
-- Live policy-curve controller `21345695` overlaps policy evaluation with
-  training. It found 300 immutable checkpoints and had submitted 46 unique
-  jobs: 24 terminal plus 22 active at the snapshot. Live checkpoints
-  are labelled learning-curve-only; selected/final roles and all downstream
-  fixed/PW MCTS remain gated on terminal lineage evidence.
-- The targeted Counters causal pilot remains action-ID 0/3, Q 0/3 and
-  policy-prior 3/3 for three VH-off policy-success instances. The matched VH-on
-  arm was not a positive control because its policy solved 0/3.
-- The strict Counters confirmation has five original tasks still running. A
-  ledger audit proved that the old recovery array was repeating explicit
-  six-hour timeouts because those outcomes were present in stdout but absent
-  from JSONL; it was cancelled without deleting evidence. Reconciliation left
-  only three genuinely unclassified identities. Exact replacement
-  `21347260[7,19]` is running those identities only: one in task 7 and two in
-  task 19, one worker per task, six hours per instance and a 14-hour allocation
-  for the two-instance arm. Corrected controller `21347597` waits for the
-  original array and exact recovery, then traces only the policy-success and
-  same-build action-ID-failure union with complete root vectors.
-- Seed 1510771779 is fully joined: policy solved 10, action-ID 18 and
-  policy-prior 17. Both MCTS rules retained all ten policy successes; the sole
-  action-ID-only success (`fz_instance_19.pddl`) was a policy failure, so this
-  is not a policy-preservation regression under policy-prior.
-- The four Block Grouping PW70 mechanism traces all timed out. Three first
-  divergences had unique visit winners and the fourth maximum tie excluded the
-  policy action. The cached Q/U decomposition shows the representative unique
-  winners were Q/exploitation-dominated while U favored the policy child; this
-  does not support a broad exploration-coefficient sweep.
-- The TPP crossover is complete: bad checkpoint x bad replay 10/20, bad x
-  stable 3/20, stable x bad 20/20, stable x stable 20/20. The obsolete
-  coefficient-doubling treatment failed operationally. Corrected compute smoke
-  `21318360` and both fixed-anchor/LR-backtracking treatments `21318362[0-1]`
-  completed. Endpoint jobs `21318364[0-1]` also completed at 20/20 for both
-  arms. The selected catastrophic seed therefore improved from its historical
-  first-Stage-2 10/20 to 20/20, while the stable control remained 20/20.
-  This is a positive selected-pair prevention screen, not a population estimate.
-  The corrected treatment changed both the KL measurement (deterministic current
-  policy, excluding dropout disagreement) and the optimizer behavior (full
-  weights-and-Adam rollback plus learning-rate backtracking). Retry steps still
-  resampled dropout, so the result does not isolate backtracking or exact
-  learning-rate scaling as the sole causal mechanism.
+- Final MPrime Stage-2 training has 14 complete lineages and six live lineages.
+  The live latest checkpoints are epochs 70-95; observed lineage rates imply
+  roughly 0.5-6 hours of scientific work, while the conservative scheduler
+  allocations retain about 58 hours.
+- MPrime live policy materialization remains active. The 00:32 archive holds
+  407 ready rows, 240 primary submissions and 20 retry attempts. The primary
+  controller continues discovering and submitting immutable checkpoints. A
+  separate failure-aware controller retries only failed identities. Eighteen
+  initial and later affected jobs failed before inference with POSIX semaphore
+  ENOSPC on `ise-cpu128-03`; both primary and retry submission paths now exclude
+  only that node. The two failures observed after the repair were also jobs
+  that had already landed on that node; their replacements use the exclusion.
+- Policy-curve rows remain learning-curve-only until their lineage terminates.
+  Endpoint selection and the approved 20 fixed-MCTS plus 20 PW70 Stage-2 jobs
+  remain gated on terminal checkpoint selection.
+- The targeted Counters pilot remains valid: on three VH-off instances that
+  the same policies solve, action-ID and Q tie-breaking solved 0/3 while
+  policy-prior tie-breaking solved 3/3. The unrelated VH-on behavior arm is not
+  used as evidence because its policies did not solve those instances.
+- A full strict Counters audit found explicit 21,600-second timeouts printed in
+  stdout but absent from JSONL. Reconciliation now treats those as terminal and
+  avoids repeating them. Tasks 7 and 19 contain three genuinely interrupted
+  identities. A later OOM in task 9 exposed three more genuinely unclassified
+  identities (45, 48 and 52), so an exact task-9 recovery was added. Its first
+  setup attempts are retained as failed provenance; corrected job `21362903`
+  runs only those three identities and excludes `ise-cpu-intl-25`, where the
+  native evaluator reproduced exit -4 twice.
+- `21362904` is the only live Counters full-root controller. It waits for the
+  original strict array plus both exact recovery groups, requires 59 terminal
+  identities for every action-ID seed, and then traces only the final
+  policy-success/action-ID-failure union under both rules. The standardized
+  visit-margin/prominence branch remains held until that exact-tie evidence is
+  complete.
+- The TPP frozen-replay crossover is complete: bad checkpoint x bad replay
+  10/20, bad x stable replay 3/20, stable x bad replay 20/20, and stable x
+  stable replay 20/20. A selected-pair one-epoch rollback/LR-backtracking guard
+  then restored the catastrophic seed to 20/20 while preserving the stable
+  control at 20/20. This proves preventability for the selected pair, not a
+  population-level replacement for the primary 9/20 Stage-2 result. Exact-RNG
+  causal closure is being implemented separately; no 100-epoch guard campaign
+  has been adopted.
 
 ## Canonical sources
 
-- Scheduler rows: `experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260915_1857.csv`
+- Scheduler snapshot: `experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260916_0040.csv`
+- MPrime ready rows: `experiment_tracking/mprime_final_stage2_validation_20260915/live_policy_ready_20260916_0032.csv`
+- MPrime primary ledger: `experiment_tracking/mprime_final_stage2_validation_20260915/live_policy_submissions_20260916_0032.tsv`
+- MPrime retry ledger: `experiment_tracking/mprime_final_stage2_validation_20260915/live_policy_retry_submissions_20260916_0032.tsv`
 - Experiment registry: `experiment_tracking/experiment_registry.csv`
 - RQ report: `experiment_tracking/advisor_followup_20260910/rq_report_validation_led_20260912.md`
-- PUCT feasibility audit: `experiment_tracking/mcts_puct_balance_feasibility_20260915.md`
 - Provenance index: `experiment_tracking/result_csv_provenance_index_latest.csv`

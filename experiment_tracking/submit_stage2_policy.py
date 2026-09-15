@@ -14,7 +14,9 @@ from pathlib import Path
 
 
 ROOT = Path("/home/hersco/training_new_domains")
-SUBMITTER = ROOT / "submit_training.sh"
+# A campaign may select a private wrapper (for example, one carrying a narrow
+# Slurm node exclusion) without changing the shared cluster submitter.
+SUBMITTER = Path(os.environ.get("STAGE2_POLICY_SUBMITTER", ROOT / "submit_training.sh"))
 DOMAINS = {"delivery", "tpp", "zenotravel", "mprime"}
 JOB_RE = re.compile(r"\[OK \] job=\s*(\d+)")
 LEDGER_FIELDS = [

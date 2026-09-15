@@ -15,28 +15,39 @@ All twenty lineages are retrained in one uniform current-code campaign. Two hist
 
 ## Live overlap and policy-curve materialization
 
-At the 15 September 2026 18:57 IDT audit, one of training jobs
-`21303717`-`21303736` was terminal at epoch 99 and the other nineteen were
-running with latest immutable checkpoints spanning epochs 42-98. Epoch 99 is
-the final checkpoint after 100 zero-indexed Stage-2 epochs. A safe live
-scanner/controller was deployed so policy-only curve
-evaluation overlaps the remaining training instead of waiting for all twenty
-lineages:
+At the 16 September 2026 00:32 IDT audit, fourteen of training jobs
+`21303717`-`21303736` were terminal at epoch 99 and six were running with
+latest immutable checkpoints at epochs 70-95. Epoch 99 is the final checkpoint
+after 100 zero-indexed Stage-2 epochs. A safe live scanner/controller overlaps
+policy-only curve evaluation with the remaining training:
 
-- controller `21345695`, one task, two CPUs and 2 GiB;
-- at most 24 policy jobs active simultaneously, each 10 CPUs, 20 GiB and a
-  four-hour hard limit;
-- 300 immutable checkpoints discovered, 46 submitted, 24 complete and 22
-  active at the audit;
+- primary controller `21362560`, one task, two CPUs and 2 GiB;
+- failure-aware retry controller `21362500`, one task, two CPUs and 2 GiB;
+- at most 24 primary and 36 retry policy jobs active simultaneously; each uses
+  10 CPUs, 20 GiB and a four-hour hard limit;
+- 407 immutable checkpoint rows discovered, 240 primary submissions and 20
+  retry attempts in the dated 00:32 local archive;
+- 202 policy attempts were complete, 31 running and 27 failed at the scheduler
+  aggregation; attempts are not unique scientific identities;
 - every live row is `learning_curve` only; validation-selected and final roles
   are withheld until the corresponding training lineage is scientifically
   complete through epoch 99;
 - every manifest row carries the source training job, epoch, exact checkpoint
   path and SHA-256 hash, and the shared submission ledger prevents duplicates.
 
-Current counts and direct remote/local provenance routes are frozen in
-`live_policy_progress_20260915_1857.csv`. The files carrying `1810` in their
-names are immutable earlier manifest/ledger snapshots, not the latest counts.
+The failure-aware path was added after policy evaluations landed on
+`ise-cpu128-03` and failed before inference because the node could not create
+POSIX semaphores (`ENOSPC`). Both submission paths now exclude only that node.
+The two post-repair failures inspected at this audit were jobs already placed
+on the same node before the exclusion was effective; their replacements use
+the private excluded-node wrapper. No partial policy score is reused after a
+pre-inference failure.
+
+Current direct local provenance is frozen in
+`live_policy_ready_20260916_0032.csv`,
+`live_policy_submissions_20260916_0032.tsv`, and
+`live_policy_retry_submissions_20260916_0032.tsv`. Earlier dated files remain
+immutable historical snapshots.
 
 The controller exits only after all twenty lineages are complete and every
 materialized policy row has been submitted. Final MCTS and PW manifests must be

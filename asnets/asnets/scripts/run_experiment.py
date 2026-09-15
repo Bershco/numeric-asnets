@@ -645,6 +645,15 @@ parser.add_argument(
     help='Multiplicative learning-rate reduction for each rollback retry.'
 )
 parser.add_argument(
+    '--policy-anchor-trust-restore-rng-seed',
+    type=int,
+    default=None,
+    help=(
+        'Diagnostic-only base seed for exact dropout/RNG restoration across '
+        'trust-region retries. Retries abort unless the raw gradient hash is '
+        'identical.')
+)
+parser.add_argument(
     '--frozen-replay-batch-dir',
     default=None,
     help=(
@@ -811,6 +820,8 @@ def main():
                    args.policy_anchor_trust_max_retries),
                policy_anchor_trust_lr_factor=(
                    args.policy_anchor_trust_lr_factor),
+               policy_anchor_trust_restore_rng_seed=(
+                   args.policy_anchor_trust_restore_rng_seed),
                frozen_replay_batch_dir=args.frozen_replay_batch_dir,
                serial_test=args.serial_test,
                no_eval=args.no_eval,
@@ -889,6 +900,7 @@ def main_inner(*,
                policy_anchor_trust_p99_kl_limit=None,
                policy_anchor_trust_max_retries=2,
                policy_anchor_trust_lr_factor=0.5,
+               policy_anchor_trust_restore_rng_seed=None,
                frozen_replay_batch_dir=None,
                serial_test=None,
                no_eval=None,
@@ -1034,6 +1046,11 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend([
                 '--policy-anchor-trust-lr-factor',
                 str(policy_anchor_trust_lr_factor),
+            ])
+        if policy_anchor_trust_restore_rng_seed is not None:
+            train_flags.extend([
+                '--policy-anchor-trust-restore-rng-seed',
+                str(policy_anchor_trust_restore_rng_seed),
             ])
         if frozen_replay_batch_dir is not None:
             train_flags.extend([

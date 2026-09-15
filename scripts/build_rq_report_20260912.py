@@ -290,7 +290,7 @@ for domain in pw_domains:
         " / ".join(fixed_effects), " / ".join(fixed_pvalues),
     ])
 
-text = f"""# Validation-led RQ report — 15 September 2026
+text = f"""# Validation-led RQ report — 16 September 2026
 
 This is the primary thesis view. Terminal-led campaigns are excluded. Fixed-search 30-minute and two-hour figures are deterministic cutoffs of the same six-hour runs, not separate reruns. Block Grouping and Counters use narrow fixed search (5 retained children, 20 simulations); Drone, FO Counters and Rover use normal fixed search (20 children, 70 simulations). Counts are solved test instances; Counters has 59 instances and the other domains have 20.
 
@@ -421,6 +421,18 @@ Direct VH-on PW70 versus the corresponding VH-on fixed-search arm:
 5. **MPrime Stage-1 PW70:** complete for all twenty identities. VH-off is 15.7 / 17.6 / 17.7 and VH-on is 15.5 / 17.9 / 18.5 at 30m / 2h / 6h. It now appears in RQ2/RQ4 above.
 6. **Block Grouping PW70 trace:** all four exact policy-success/historical-PW-timeout traces completed and timed out again. Three first divergences had a unique maximum-visit winner; the fourth had a three-way maximum tie but the policy action was not among it. The predeclared tie-transfer gate is negative: arbitrary action-ID tie-breaking is not the demonstrated cause of these PW losses.
 7. **TPP first-update causal chain:** the complete crossover is bad checkpoint × stable replay = 3/20 and stable checkpoint × bad replay = 20/20, versus diagonal 10/20 and 20/20. Starting-checkpoint susceptibility is necessary in this frozen pair; replay identity changes severity. The obsolete coefficient-doubling attempt failed because Adam-normalized proposals did not shrink. Corrected fixed-anchor/LR-backtracking treatment completed at 20/20 for both the catastrophic seed and stable control; the bad seed triggered 11 backtracks and the stable control 4. This prevents the selected collapse without damaging the control, but is a two-seed mechanism screen outside the primary RQ family; retries resample dropout, so it is not an exact deterministic learning-rate-rescaling experiment.
+
+Canonical evidence files: [`rq_primary_validation_led.csv`](rq_primary_validation_led.csv), [`rq2_raw_means_validation_led.csv`](rq2_raw_means_validation_led.csv), [`rq3_raw_means_validation_led.csv`](rq3_raw_means_validation_led.csv), [`rq4_raw_means_validation_led.csv`](rq4_raw_means_validation_led.csv), [`rq2_pw70_branch_latest.csv`](rq2_pw70_branch_latest.csv), and [`rq4_pw70_branch_latest.csv`](rq4_pw70_branch_latest.csv). Their row-level job/log routes are indexed in [`../result_csv_provenance_index_latest.csv`](../result_csv_provenance_index_latest.csv).
+"""
+
+# Keep volatile scheduler state out of the reproducible numerical report.  The
+# canonical live status file is refreshed independently from Slurm.
+text = text.split("## Results still required", 1)[0] + """## Live execution status
+
+The numerical tables above are frozen until a complete new matched family is
+available.  Current training, evaluation, recovery and controller state is
+maintained in [`../status_latest.md`](../status_latest.md), so rebuilding this
+report cannot resurrect an obsolete scheduler snapshot.
 
 Canonical evidence files: [`rq_primary_validation_led.csv`](rq_primary_validation_led.csv), [`rq2_raw_means_validation_led.csv`](rq2_raw_means_validation_led.csv), [`rq3_raw_means_validation_led.csv`](rq3_raw_means_validation_led.csv), [`rq4_raw_means_validation_led.csv`](rq4_raw_means_validation_led.csv), [`rq2_pw70_branch_latest.csv`](rq2_pw70_branch_latest.csv), and [`rq4_pw70_branch_latest.csv`](rq4_pw70_branch_latest.csv). Their row-level job/log routes are indexed in [`../result_csv_provenance_index_latest.csv`](../result_csv_provenance_index_latest.csv).
 """

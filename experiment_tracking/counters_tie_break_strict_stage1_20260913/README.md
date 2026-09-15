@@ -81,8 +81,10 @@ traces before a test-set comparison.
 The exact mechanism follow-up is implemented. The original controller
 `21319149` was cancelled and superseded after the timeout-ledger defect below
 was found.
-Corrected controller `21347597` waits for strict array `21233925` and exact
-recovery `21347260`, then
+The first corrected controller `21347597` was superseded after a later OOM in
+strict task 9 exposed additional unclassified identities. Current controller
+`21362904` waits for strict array `21233925`, recovery `21347260`, and exact
+task-9 recovery `21362903`, then
 fails closed unless all ten action-ID ledgers contain exactly one terminal
 record for every evaluator identity 1-59 and each parsed policy score matches
 the frozen manifest. Inclusion is exactly `policy success AND same-build
@@ -112,7 +114,7 @@ resources and paths are recorded in `full_trace_submission_20260915.csv`; the
 controller will additionally freeze the actual inputs in
 `deployed_inputs.sha256` beside its scheduler output.
 
-## 15 September 18:41 correction: timeout evidence and exact recovery
+## 15-16 September correction: timeout evidence and exact recovery
 
 The first recovery design was not actually exact. The rolling evaluator wrote
 success and ordinary 10,000-action outcomes to JSONL but printed six-hour hard
@@ -125,13 +127,26 @@ and reconciled using only explicit
 `[EVAL INSTANCE] timeout ... limit=21600.0s` events. No absence or Slurm walltime
 was interpreted as a scientific timeout. This proved that tasks 4, 6 and 14
 were already scientifically complete. The same reconciliation completed tasks
-16 and 17. Only three identities remained genuinely unclassified: task 7 has
-one crashed identity and task 19 has two.
+16 and 17. At that snapshot only three identities remained genuinely
+unclassified: task 7 had one crashed identity and task 19 had two. A later
+task-9 OOM occurred after the snapshot. Reconciliation over its new terminal
+log proved 56/59 terminal identities; evaluator identities 45, 48 and 52 were
+genuinely unclassified.
 
-Exact replacement `21347260[7,19]` therefore runs only those three identities,
+Exact replacement `21347260[7,19]` runs only the original three identities,
 with one worker per task, two CPUs, 120 GiB, a six-hour per-instance cap and a
-14-hour walltime. Corrected controller `21347597` depends on both the original
-strict array and `21347260`. Before building the trace manifest it reconciles
+14-hour walltime. Exact task-9 replacement `21362903[9]` runs only identities
+45, 48 and 52 with one worker, two CPUs, 120 GiB, the original six-hour
+per-instance cap and a 20-hour walltime (`3 * 6h` plus two hours overhead).
+Interrupted MCTS trees cannot resume within an instance: durable terminal
+identities are skipped, while each interrupted identity restarts with its full
+scientific six-hour cap. Pre-scientific setup failures and two native exit-4
+attempts are preserved as provenance. Both native failures were on
+`ise-cpu-intl-25`, which the current recovery excludes without excluding its
+wider node family.
+
+Current controller `21362904` depends on the original strict array and both
+exact recovery groups. Before building the trace manifest it reconciles
 all ten action-ID logs, requires exactly 59 unique terminal identities per seed,
 allows only success, ordinary-unsolved and explicit hard-timeout statuses, and
 then emits only `policy success AND action-ID failure` identities under the two

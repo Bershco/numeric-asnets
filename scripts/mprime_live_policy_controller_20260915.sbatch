@@ -13,6 +13,7 @@ CHECKOUT=/home/hersco/bershco-nu-asnets/numeric-asnets-mprime-policy-live-202609
 PYTHON=/home/hersco/bershco-nu-asnets/numeric-asnets/venv-asnets/bin/python
 READY="$CAMPAIGN/ready_manifest.csv"
 LEDGER="$CAMPAIGN/submissions.tsv"
+export STAGE2_POLICY_SUBMITTER="$CAMPAIGN/submit_training_mprime_policy_wrapper_20260916.sh"
 
 mkdir -p "$CAMPAIGN"
 while true; do

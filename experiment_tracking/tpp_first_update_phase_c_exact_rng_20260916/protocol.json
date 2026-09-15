@@ -1,0 +1,40 @@
+{
+  "campaign": "TPP-FIRST-UPDATE-PHASE-C-EXACT-RNG",
+  "frozen_at": "2026-09-16",
+  "question": "Did rollback and learning-rate backtracking prevent the selected collapse when every retry uses the exact same stochastic gradient?",
+  "scope": {
+    "selected_pair_only": true,
+    "training_arms": 2,
+    "endpoint_evaluations": 2,
+    "scientific_jobs": 4,
+    "epochs_per_training_arm": 1,
+    "optimizer_steps_per_arm": 60,
+    "new_mcts_target_generation": false,
+    "population_screen": false,
+    "hundred_epoch_training": false
+  },
+  "arms": [
+    {"role": "catastrophic_outlier", "seed": 1972442430},
+    {"role": "stable_control", "seed": 2082152039}
+  ],
+  "frozen_inputs": {
+    "start_checkpoints": "identical to completed Phase C",
+    "replay_batches": "identical 60-step Phase-A frozen schedules",
+    "thresholds": "identical stable-control-calibrated Phase-C limits",
+    "anchor_coefficient": 3.0,
+    "base_learning_rate": 0.0003,
+    "learning_rate_factor": 0.5,
+    "maximum_retries": 2,
+    "exact_rng_base_seed": 314159
+  },
+  "exactness_contract": {
+    "restore": ["Python RNG", "NumPy RNG", "TensorFlow global RNG", "Keras dropout generator states"],
+    "legacy_tensorflow_rng": "reset the same step-specific TensorFlow seed",
+    "verification": "all retry attempts for a step must have one identical raw-gradient SHA-256 or the job aborts"
+  },
+  "decision": {
+    "bad_20_control_20": "exact-gradient rollback/backtracking prevents the selected collapse without harming the control",
+    "bad_below_20": "the earlier repair depended partly on dropout resampling or the new fixed stochastic realization",
+    "control_below_20": "the treatment is not a clean non-regression result under exact-gradient retries"
+  }
+}

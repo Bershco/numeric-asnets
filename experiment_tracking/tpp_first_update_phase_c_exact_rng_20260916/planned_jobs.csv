@@ -1,0 +1,4 @@
+role,tasks,cpus_per_task,memory_gib_per_task,time_limit,scientific,dependency,output
+smoke,1,2,12,00:30:00,false,,/home/hersco/training_new_domains/2026-09-16/tpp_first_update_phase_c_exact_rng/smoke_%j.txt
+one_epoch_guarded_training,2,6,48,02:00:00,true,afterok:smoke,/home/hersco/training_new_domains/2026-09-16/tpp_first_update_phase_c_exact_rng/train_%A_%a.txt
+endpoint_policy_probe,2,5,20,02:00:00,true,afterok:training,/home/hersco/training_new_domains/2026-09-16/tpp_first_update_phase_c_exact_rng/endpoint_%A_%a.txt

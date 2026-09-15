@@ -10,6 +10,7 @@ from unittest import mock
 
 from experiment_tracking import materialize_live_stage2_policy as materialize
 from experiment_tracking import submit_stage2_policy as submitter
+from experiment_tracking import retry_failed_stage2_policy as retry
 
 
 class LiveMaterializerTests(unittest.TestCase):
@@ -132,6 +133,59 @@ class SubmissionDedupeTests(unittest.TestCase):
             ), mock.patch.object(submitter.subprocess, "check_output", return_value=""):
                 submitter.main(); submitter.main()
             self.assertEqual(calls, [True, False, True])
+
+
+class FailedPolicyRetryTests(unittest.TestCase):
+    def test_only_failed_latest_attempt_is_retried_and_provenance_is_preserved(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint = root / "checkpoint"; checkpoint.mkdir()
+            manifest = root / "ready.csv"
+            primary = root / "primary.tsv"
+            retry_ledger = root / "retry.tsv"
+            manifest_fields = [
+                "manifest_id", "task_type", "domain", "value_head", "seed", "status",
+                "source_training_job_id", "snapshot_epoch", "source_checkpoint_ref", "teacher",
+            ]
+            with manifest.open("w", newline="", encoding="utf-8") as stream:
+                writer = csv.DictWriter(stream, fieldnames=manifest_fields); writer.writeheader()
+                for identity in ("failed", "complete"):
+                    writer.writerow({
+                        "manifest_id": identity, "task_type": "policy_eval", "domain": "mprime",
+                        "value_head": "off", "seed": "7", "status": "ready",
+                        "source_training_job_id": "123", "snapshot_epoch": "5",
+                        "source_checkpoint_ref": str(checkpoint), "teacher": "hmrp-ha-gbfs",
+                    })
+            with primary.open("w", newline="", encoding="utf-8") as stream:
+                fields = submitter.LEDGER_FIELDS
+                writer = csv.DictWriter(stream, fieldnames=fields, delimiter="\t"); writer.writeheader()
+                for identity, job in (("failed", "100"), ("complete", "101")):
+                    writer.writerow({
+                        "manifest_id": identity, "task_type": "policy_eval", "domain": "mprime",
+                        "value_head": "off", "seed": "7", "source_training_job_id": "123",
+                        "snapshot_epoch": "5", "slurm_job_id": job, "submitted_at": "now",
+                        "source_checkpoint": str(checkpoint),
+                    })
+            argv = [
+                "retry_failed_stage2_policy.py", "--manifest", str(manifest),
+                "--primary-ledger", str(primary), "--retry-ledger", str(retry_ledger),
+                "--suffix-prefix", "RETRY", "--output-prefix", "retry",
+            ]
+            with mock.patch.object(sys, "argv", argv), mock.patch.object(
+                retry, "states", return_value={"100": "FAILED", "101": "COMPLETED"}
+            ), mock.patch.object(retry, "submit", return_value="200") as submit_call:
+                retry.main()
+            submit_call.assert_called_once()
+            rows = submitter.read(retry_ledger, "\t")
+            self.assertEqual(rows[0]["manifest_id"], "failed")
+            self.assertEqual(rows[0]["previous_slurm_job_id"], "100")
+            self.assertEqual(rows[0]["slurm_job_id"], "200")
+
+            with mock.patch.object(sys, "argv", argv), mock.patch.object(
+                retry, "states", return_value={"200": "RUNNING", "101": "COMPLETED"}
+            ), mock.patch.object(retry, "submit") as second_submit:
+                retry.main()
+            second_submit.assert_not_called()
 
 
 if __name__ == "__main__":

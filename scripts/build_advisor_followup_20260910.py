@@ -574,7 +574,7 @@ def plot_rq2_raw(rows: list[dict[str, object]]) -> None:
     width, height = 1750, 760
     parts = _raw_plot_header(
         "RQ2 raw coverage — VH-off policy versus MCTS at both stages",
-        "Stage 2 uses validation-led checkpoints. BG/Counters use narrow 5/20; other cells use normal 20/70. MPrime Stage 1 is final; Stage 2 awaits valid retraining.",
+        "Stage 2 uses validation-led checkpoints. BG/Counters use narrow 5/20; other cells use normal 20/70. MPrime Stage 1 is final; its final Stage-2 training/evaluation is in progress and is withheld here.",
         width, height,
     )
     colors = {"Policy": "#e68632", "30m": "#9ecae1", "2h": "#4292c6", "6h": "#08519c"}
@@ -662,7 +662,7 @@ def plot_rq4_raw(rq2_rows: list[dict[str, object]], rq4_rows: list[dict[str, obj
     width, height = 1750, 760
     parts = _raw_plot_header(
         "RQ4 raw policy and six-hour MCTS coverage by value-head mode",
-        "Stage 2 uses validation-led checkpoints. BG/Counters use narrow 5/20; other cells use normal 20/70. MPrime Stage 1 is final; Stage 2 awaits valid retraining.",
+        "Stage 2 uses validation-led checkpoints. BG/Counters use narrow 5/20; other cells use normal 20/70. MPrime Stage 1 is final; its final Stage-2 training/evaluation is in progress and is withheld here.",
         width, height,
     )
     effect_map = {(str(row["stage"]), str(row["domain"])): row for row in effects if row["rq"] == "RQ4" and row["cutoff"] == "6h" and str(row["estimand"]).startswith("VH interaction")}
