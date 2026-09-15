@@ -1,5 +1,7 @@
 snapshot_time_idt,experiment,running,pending,jobs,requested_cpus,requested_memory_gib,job_ids,row_level_provenance
-2026-09-15T14:39:55+03:00,MPrime final validation-led Stage2,20,0,20,120,960.0,21303717-21303736,experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260915_1439.csv
-2026-09-15T14:39:55+03:00,Counters Stage1 strict tie-break confirmation,8,0,8,48,960.0,"21233925_[0-1,7,9-11,17,19]",experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260915_1439.csv
-2026-09-15T14:39:55+03:00,Counters exact OOM recovery,3,0,3,18,600.0,"21308619_[4,6,14]",experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260915_1439.csv
-2026-09-15T14:39:55+03:00,Counters full-root failure trace controller,0,1,1,0,0.0,21319149,experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260915_1439.csv
+2026-09-16T01:16:00+03:00,MPrime final validation-led Stage2,3,0,3,18,144.0,21303720;21303721;21303731,experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260916_0116.csv
+2026-09-16T01:16:00+03:00,MPrime live policy evaluations,30,0,30,300,600.0,noncontiguous; see current ledgers,experiment_tracking/mprime_final_stage2_validation_20260915/live_policy_submissions_20260916_0112.tsv;experiment_tracking/mprime_final_stage2_validation_20260915/live_policy_retry_submissions_20260916_0112.tsv
+2026-09-16T01:16:00+03:00,MPrime policy controllers,2,0,2,4,4.0,21362560;21362500,experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260916_0116.csv
+2026-09-16T01:16:00+03:00,Counters Stage1 strict tie-break confirmation,4,0,4,24,480.0,"21233925_[0,1,10,11]",experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260916_0116.csv
+2026-09-16T01:16:00+03:00,Counters exact identity recovery,3,0,3,6,360.0,"21347260_[7,19];21362903_9",experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260916_0116.csv
+2026-09-16T01:16:00+03:00,Counters full-root failure trace controller,0,1,1,0,0.0,21362904,experiment_tracking/counters_tie_break_strict_stage1_20260913/full_trace_submission_20260915.csv
