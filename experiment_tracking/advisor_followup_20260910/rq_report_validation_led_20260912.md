@@ -25,10 +25,10 @@ These stable-domain cells are reported separately from the primary five-domain m
 | Domain | n | Stage-1 all 10 | Stage-2 all 10 | Held-out 8: S1 → S2 | Held-out Δ [95% CI]; raw/Holm p | All-10 Δ [95% CI] | All-10 raw/Holm p | Conclusion |
 |---|---|---|---|---|---|---|---|---|
 | Delivery | 10 (8 held-out + 2 tuning) | 19.8 | 19.6 | 19.75 → 19.5 | -0.25 [-1.32, 0.82]; p=1/1 | -0.2 [-1.01, 0.61] | 1 / 1 | Preserved on average |
-| TPP | 10 (8 held-out + 2 tuning) | 20 | 18.9 | 20 → 18.62 | -1.38 [-4.63, 1.88]; p=1/1 | -1.1 [-3.59, 1.39] | 1 / 1 | TPP/off: nine seeds=20/20; seed 1972442430=9/20. A selected-pair one-epoch rollback/LR-backtracking guard prevented the analogous first-update collapse (20/20), but is not yet a population-level replacement result. |
+| TPP | 10 (8 held-out + 2 tuning) | 20 | 18.9 | 20 → 18.62 | -1.38 [-4.63, 1.88]; p=1/1 | -1.1 [-3.59, 1.39] | 1 / 1 | TPP/off: nine seeds=20/20; seed 1972442430=9/20. A fresh selected-pair one-epoch rollback/LR-backtracking rerun yielded 20/20 for the bad seed and stable control, apparently preventing the analogous collapse; retries resampled dropout, so exact-RNG closure remains required and this is not a population-level replacement result. |
 | Zenotravel | 10 (8 held-out + 2 tuning) | 20 | 20 | 20 → 20 | 0 [0, 0]; p=1/1 | 0 [0, 0] | 1 / 1 | Preserved on average |
 
-**Extension conclusion:** Delivery and Zenotravel are preserved. TPP is preserved in nine of ten VH-off seeds, but one predeclared held-out seed collapses to 9/20; that outlier is a real seed-specific failure and is not hidden by the 18.9 mean. A deliberately selected causal screen has now shown that a rollback/learning-rate-backtracking guard can prevent the corresponding first-update collapse in that outlier while retaining 20/20 on one stable control. This is strong mechanism evidence for the selected pair, not a new ten-seed Stage-2 estimate.
+**Extension conclusion:** Delivery and Zenotravel are preserved. TPP is preserved in nine of ten VH-off seeds, but one predeclared held-out seed collapses to 9/20; that outlier is a real seed-specific failure and is not hidden by the 18.9 mean. A deliberately selected fresh rerun reached 20/20 for the bad seed and one stable control under rollback/learning-rate backtracking, apparently preventing the analogous first-update collapse. Because rejected retries resampled dropout, this is encouraging selected-pair prevention evidence awaiting exact-RNG closure, not a new ten-seed Stage-2 estimate.
 
 ![RQ1 paired Stage-2 effect](rq1_stage2_training_vh_off.png)
 
@@ -112,7 +112,7 @@ The direct column answers whether VH-on Stage 2 improves its own VH-on Stage-1 p
 | TPP | 20 → 19.5 | -0.5 [-1.63, 0.63]; p=1/1 | -1.1 | 0.6 [-2.25, 3.45]; p=1/1 | Exploratory post-hoc interaction; separate 3-domain family |
 | Zenotravel | 20 → 19.9 | -0.1 [-0.33, 0.13]; p=1/1 | 0 | -0.1 [-0.33, 0.13]; p=1/1 | Exploratory post-hoc interaction; separate 3-domain family |
 
-**Extension conclusion:** The stable domains do not supply evidence that the value head improves refinement. Their near-ceiling scores primarily test preservation. The historical TPP/off 9/20 outlier remains part of the primary RQ3 evidence; a deliberately selected one-epoch rollback/LR-backtracking screen restored that seed to 20/20 and preserved a stable control at 20/20. This is prevention evidence for the selected pair, not a revised primary score or a population-level fix.
+**Extension conclusion:** The stable domains do not supply evidence that the value head improves refinement. Their near-ceiling scores primarily test preservation. The historical TPP/off 9/20 outlier remains part of the primary RQ3 evidence; a deliberately selected fresh one-epoch rollback/LR-backtracking rerun yielded 20/20 for the bad seed and 20/20 for a stable control, apparently preventing the analogous collapse. Because rejected retries resampled dropout, this remains selected-pair evidence awaiting exact-RNG closure—not a revised primary score or a population-level fix.
 
 ![RQ3 raw means and interaction](rq3_raw_means_and_interaction.png)
 

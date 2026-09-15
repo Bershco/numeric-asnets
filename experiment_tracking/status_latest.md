@@ -76,10 +76,12 @@ attempt counts must not be mistaken for unique checkpoints.
   complete.
 - The TPP frozen-replay crossover is complete: bad checkpoint x bad replay
   10/20, bad x stable replay 3/20, stable x bad replay 20/20, and stable x
-  stable replay 20/20. A selected-pair one-epoch rollback/LR-backtracking guard
-  then restored the catastrophic seed to 20/20 while preserving the stable
-  control at 20/20. This proves preventability for the selected pair, not a
-  population-level replacement for the primary 9/20 Stage-2 result. Exact-RNG
+  stable replay 20/20. A fresh selected-pair one-epoch rollback/LR-backtracking
+  rerun then yielded 20/20 for the bad seed and 20/20 for the stable control,
+  apparently preventing the analogous collapse. Because rejected retries
+  resampled dropout, this is encouraging selected-pair prevention evidence—not
+  yet causal isolation of the guard or a population-level replacement for the
+  primary 9/20 Stage-2 result. Exact-RNG
   causal closure is locally implemented, tested and independently reviewed,
   but cluster deployment awaits explicit authorization to push reviewed commit
   `fccaa89e` to the GitHub branch used by the isolated checkout. No 100-epoch
