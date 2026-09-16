@@ -1,72 +1,67 @@
 # Current experiment status
 
-Updated: 2026-09-16T17:44:17+03:00 (live scheduler and evidence refresh)
+Updated: 2026-09-16T20:34:05+03:00 (live scheduler snapshot plus immediate retry verification)
 
 Primary RQ evidence is validation-led only. Terminal-led campaigns remain
 provenance archives and are excluded from primary tables and plots.
 
 ## Live workload
 
-| Experiment | State | Running / pending | CPU / RAM | Expected / hard bound |
+| Experiment | State | Running / pending / complete | Concurrent CPU / RAM | Expected / hard bound |
 |---|---|---:|---:|---|
-| MPrime Phase-B-A checkpoint evaluations | 18 complete; 227 original tasks plus exact task-100 retry `21412365_100` running | 228 / 0 | 684 requested CPU, 912 allocated / 4,560 GiB | first completions took about 16–22 m; 8 h per-task hard limit |
-| MPrime finalizer / downstream | `21412366` waits for original array termination and successful retry; `21412367` waits for finalizer | 0 / 2 | 1 CPU / 2 GiB each | 30 m each hard limit |
-| Counters strict policy-prior confirmation | original task `21233925_1` running | 1 / 0 | 6 CPU / 120 GiB | 39 h 15 m hard remainder; scientific completion also needs reconciliation |
-| Counters task-9 exact recovery | `21362903_9` running | 1 / 0 | 2 CPU / 120 GiB | 2 h 59 m hard remainder |
-| Counters full-root trace controller | `21362904` dependency-pending | 0 / 1 | 1 CPU / 2 GiB when active | starts only after all action-ID ledgers reconcile to 59/59 |
+| MPrime Phase-B-A validation rescore | 419/420 exact checkpoint evaluations durable; retry `21414946_100` running | 1 / 0 / 419 | 4 CPU / 20 GiB | normal rescores 16--29 m; retry 8 h hard limit |
+| MPrime finalizer and downstream | `21412366` waits for the retry; `21412367` waits for finalization | 0 / 2 / 0 | 1 CPU / 2 GiB each when active | 30 m controller limits; downstream submits only exact missing policy endpoints, fixed 20/70 and PW70 |
+| TPP KL multi-RNG | all 12 one-epoch trainings complete; endpoints 2 complete, 7 running, 3 exact environment-independent retries pending | 7 / 3 / 2 endpoints | currently 42 CPU / 140 GiB; retry maximum 15 CPU / 60 GiB | endpoint 2 h hard limit; observed completed endpoints about 6--7 m |
+| Imperfect-domain KL screen v2 | exact historical-module replacement training active; endpoints dependency-pending | 20 / 20 / 0 | training 120 CPU / 2,400 GiB; endpoints later 100 CPU / 400 GiB | one epoch only; 12 h/2 h hard limits, not expected runtimes |
+| Missing true-legacy Counters epoch-0 policy | exact historical checkpoint evaluation running | 1 / 0 / 0 | 5 requested CPU / 20 GiB | 2 h hard limit |
 
 ## Scientific status
 
-- **MPrime acceleration:** the old lineage-level arrays `21390404` and
-  `21392547`, old finalizer/downstream `21392548`/`21392549`, and obsolete
-  policy watcher `21362500` were cancelled without deleting their evidence.
-  Exactly 174/420 identity-valid summary+receipt pairs were preserved. The 246
-  missing lineage/epoch identities were frozen into a checksum-pinned manifest
-  and submitted one per task. The 246-task cap requests 4,920 GiB, leaving
-  about 964 GiB under the 6-TiB envelope at the submission snapshot.
-- The new MPrime finalizer refuses anything other than 21 exact epoch results
-  per lineage, exactly 30 binary VAL rows per result, and a matching completion
-  identity containing checkpoint, validator and evaluator hashes. It depends
-  only on the replacement fine array; the downstream controller depends only
-  on that finalizer. The downstream path reuses exact existing policy/search
-  evidence. If a newly selected endpoint lacks policy evidence, it submits only
-  that exact endpoint once into a date-frozen recovery root and then retries;
-  it fails closed if evidence remains absent, before any search release.
-- Original array task `21411413_100` suffered an early native code -4 exit on
-  `ise-cpu-intl-01`. Exact retry `21412365_100` reruns only that frozen identity
-  on `ise-cpu128-06`; no completed checkpoint is repeated. A transient
-  user-environment retrieval hold was released without changing its manifest.
-  Replacement
-  finalizer `21412366` waits for every original task to terminate and the retry
-  to succeed. Old pending finalizer/controller `21411414`/`21411415` were
-  cancelled before execution and replaced by `21412366`/`21412367`.
-- **Counters recovery:** “three identities” means evaluator IDs 45, 48 and 52
-  for the action-ID arm of seed 2082152039, not three seeds or three full jobs.
-  They were the only task-9 cases without durable terminal classification after
-  stdout/ledger reconciliation. The job reruns only those cases with the
-  original six-hour per-instance budget. The separate policy-prior task-19
-  recovery already ran and awaits final ledger reconciliation.
-- The Counters targeted causal pilot remains: on three VH-off policy-success
-  instances, action-ID/Q solved 0/3 and policy-prior solved 3/3. The ten-seed
-  strict campaign remains incomplete, so primary Counters RQ values are frozen.
-- **TPP Phase D is complete:** under the same frozen replay and RNG-314159
-  schedule, legacy dropout-current KL scores 11/20 on catastrophic seed
-  1972442430 while deterministic-current KL scores 20/20; stable seed
-  2082152039 scores 20/20 under both semantics. This is selected-pair causal
-  evidence that the legacy KL semantics create the loss under this stream, not
-  a population estimate and not a replacement for the historical 9/20 primary
-  endpoint.
-- **Historical anchor-gradient availability:** all 100 validation-led Stage-2
-  logs for Block Grouping, Drone, FO Counters, Rover and Counters exist, but
-  zero contains `policy_gradient_l2`, `weighted_anchor_gradient_l2`, or
-  `policy_anchor_gradient_cosine`. This means severity is not retrospectively
-  measurable—not that zero lineages were affected. Aggregate KL/loss/total
-  gradient is not a valid substitute, so no broad retraining decision follows.
+- **MPrime:** this is validation rescoring, not policy inference. Twenty
+  lineages x twenty-one saved epochs are scored on the frozen thirty-instance
+  Phase-B-A validator. When the final score arrives, the fail-closed finalizer
+  chooses maximum Phase-B-A coverage with earliest-epoch tie-break. The
+  downstream controller joins exact checkpoint hashes to existing policy
+  evidence, evaluates only genuinely missing selected endpoints, and builds
+  matched fixed 20/70 and PW70 campaigns. No MPrime RQ row changes before that
+  chain finishes.
+- **TPP KL semantics:** the completed selected-pair result isolates a specific
+  implementation mismatch: the legacy current-policy side of the anchor KL
+  used dropout while the Stage-1 anchor was deterministic. Under RNG 314159,
+  legacy scored 11/20 and deterministic-current scored 20/20 on the selected
+  catastrophic seed; the stable control stayed 20/20. The live multi-RNG
+  screen adds three optimizer-step RNG schedules, reuses the completed fourth,
+  and tests repeatability without a guard or 100-epoch retraining.
+- **Imperfect-domain KL semantics:** historical logs contain no decomposed
+  anchor-gradient evidence, so a prospective screen is necessary. It runs two
+  deliberately selected VH-off lineages in each of Block Grouping, Drone, FO
+  Counters, Rover and Counters under same-build legacy versus deterministic-
+  current KL for one epoch, then evaluates all endpoints. The first convenience-
+  module attempt `21415079`/`21415080` was cancelled after Drone/Rover correctly
+  failed on input-dimension mismatch. Only exact historical-module v2
+  `21415209`/`21415210` is scientific evidence. Endpoint differences are
+  descriptive unless all sixty replay batches, targets and pre-treatment
+  gradients match across each treatment pair.
+- **Advisor follow-up designs:** the methods/configuration inventory,
+  outcome-stratified MCTS-policy divergence audit and gated value-head quality
+  experiment are documented locally. No broad divergence or value-greedy jobs
+  were submitted. The divergence audit starts with existing traces; value-head
+  work starts with offline calibration/ranking before any greedy-value policy.
+
+## RQ impact
+
+There is no new primary RQ result at this snapshot. MPrime final checkpoint
+selection and downstream policy/fixed/PW evaluation are still live. The TPP
+and imperfect-domain KL experiments are implementation/mechanism diagnostics,
+not replacements for historical primary rows.
 
 ## Canonical sources
 
 - Live scheduler snapshot: `experiment_tracking/live_experiment_status_latest.csv`
 - MPrime rescore: `experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/README.md`
-- Anchor-gradient audit: `experiment_tracking/advisor_followup_20260910/stage2_anchor_gradient_availability_20260916.csv`
-- Primary RQ report: `experiment_tracking/advisor_followup_20260910/rq_report_validation_led_20260912.md`
+- TPP multi-RNG: `experiment_tracking/tpp_kl_multirng_susceptibility_20260916/`
+- Imperfect-domain KL screen: `experiment_tracking/imperfect_domains_kl_semantics_screen_20260916/`
+- Methods inventory: `docs/thesis_methods_configuration_inventory_20260916.md`
+- Divergence audit: `experiment_tracking/mcts_policy_divergence_cause_audit/README.md`
+- Value-head audit: `experiment_tracking/value_head_quality_audit/README.md`
 - Experiment registry: `experiment_tracking/experiment_registry.csv`

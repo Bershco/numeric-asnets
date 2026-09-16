@@ -47,10 +47,13 @@ Slurm route:
   6-TiB user envelope at submission;
 - original task `21411413_100` failed after 1m51s on `ise-cpu-intl-01` when its
   native evaluator exited with code -4 before producing a score. Exact retry
-  `21412365_100` reruns only that frozen manifest identity and excludes that
-  node plus the already excluded `ise-cpu128-03`;
+  `21412365_100` repeatedly entered an environment-retrieval hold before the
+  evaluator started. It was superseded without scientific output by
+  environment-independent exact retry `21414946_100`, which reruns only that
+  frozen manifest identity using `--export=NIL` and excludes the failed node
+  families;
 - replacement finalizer `21412366` waits for `afterany:21411413` and
-  `afterok:21412365`. It still refuses any missing identity, mismatched receipt,
+  `afterok:21414946`. It still refuses any missing identity, mismatched receipt,
   non-binary VAL row, or anything other than twenty-one results per lineage;
 - replacement downstream controller `21412367` depends only on
   `afterok:21412366`. Pending jobs `21411414` and `21411415` were cancelled
@@ -79,10 +82,11 @@ policy evidence may be recovered. Fixed/PW search manifests must be rebuilt
 from `phase_b_a_selected_endpoints.csv`; the old ready-manifest analysis roles
 must never be used for final endpoint selection.
 
-Live snapshot 2026-09-16 17:36 IDT: 174/420 checkpoint evaluations were
-identity-valid at the replacement freeze. Smoke `21411412_0` completed and
-released the array. Of the 246 missing identities, 245 original tasks plus the
-one exact task-100 retry are running concurrently. The finalizer and downstream
-controller are dependency-pending. Historical service time averages about 29
-minutes per checkpoint, but the parallel makespan is determined by the slowest
-task; the hard scientific bound is eight hours per fine task once allocated.
+Live snapshot 2026-09-16 20:20 IDT: 419/420 checkpoint evaluations are
+identity-valid. Exact task-100 retry `21414946_100` is running; finalizer
+`21412366` depends on it and downstream controller `21412367` depends on the
+finalizer. The downstream controller reuses exact checkpoint-hash policy
+evidence, submits only genuinely missing selected endpoints, and then builds
+both fixed 20/70 and PW70 manifests from the newly selected checkpoints. The
+retry has an eight-hour scheduler hard bound; normal completed rescores took
+roughly 16--29 minutes.

@@ -16,6 +16,18 @@ timestamp is stored in `cluster_workload_latest.csv`. Machine-readable companion
 `mprime_validation_phase_b_progress_latest.csv`, and
 `stage2_policy_mcts_comparison_by_branch_latest.csv`.
 
+Advisor-requested method and mechanism inventories are canonicalized in:
+
+- `../docs/thesis_methods_configuration_inventory_20260916.md`: what was
+  tried, the intuition, empirical result and missing evidence for each method;
+- `mcts_policy_divergence_cause_audit/README.md`: outcome-stratified
+  first-divergence causal analysis and the bounded trace design;
+- `value_head_quality_audit/README.md`: offline value calibration/ranking and
+  the gated value-greedy inference diagnostic;
+- `tpp_kl_multirng_susceptibility_20260916/` and
+  `imperfect_domains_kl_semantics_screen_20260916/`: the live KL-semantics
+  confirmations and their exact job/log provenance.
+
 All-cutoff Stage-1 seed rows and inference are in
 `stage1_policy_mcts_seed_cutoffs_latest.csv` and
 `stage1_policy_mcts_all_cutoff_statistics_latest.csv`. The completed PW70

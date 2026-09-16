@@ -1,0 +1,13 @@
+array_index,rng_base_seed,seed_role,seed,treatment
+0,271828,catastrophic_outlier,1972442430,legacy_dropout_current
+1,271828,catastrophic_outlier,1972442430,deterministic_current
+2,271828,stable_control,2082152039,legacy_dropout_current
+3,271828,stable_control,2082152039,deterministic_current
+4,1618033,catastrophic_outlier,1972442430,legacy_dropout_current
+5,1618033,catastrophic_outlier,1972442430,deterministic_current
+6,1618033,stable_control,2082152039,legacy_dropout_current
+7,1618033,stable_control,2082152039,deterministic_current
+8,20260916,catastrophic_outlier,1972442430,legacy_dropout_current
+9,20260916,catastrophic_outlier,1972442430,deterministic_current
+10,20260916,stable_control,2082152039,legacy_dropout_current
+11,20260916,stable_control,2082152039,deterministic_current

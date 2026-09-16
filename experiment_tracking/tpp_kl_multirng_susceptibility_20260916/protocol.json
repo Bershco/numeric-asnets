@@ -1,0 +1,25 @@
+{
+  "experiment_id": "TPP-KL-MULTIRNG",
+  "frozen_at": "2026-09-16",
+  "question": "Does deterministic-current anchor KL repeatedly protect the selected catastrophic TPP seed relative to legacy dropout-current KL across predeclared optimizer-step RNG schedules?",
+  "seeds": {
+    "catastrophic_outlier": 1972442430,
+    "stable_control": 2082152039
+  },
+  "optimizer_step_rng_base_seeds": [314159, 271828, 1618033, 20260916],
+  "treatments": ["legacy_dropout_current", "deterministic_current"],
+  "epochs": 1,
+  "optimizer_steps": 60,
+  "anchor_coefficient": 3.0,
+  "learning_rate": 0.0003,
+  "rollback": false,
+  "replay": "exact Phase-A frozen 60-batch schedule for each seed",
+  "reuse": "all four RNG-314159 seed-by-treatment identities",
+  "new_scope": {
+    "training_tasks": 12,
+    "endpoint_policy_tasks": 12
+  },
+  "primary_estimand": "within-seed paired endpoint coverage: deterministic_current minus legacy_dropout_current across four RNG schedules",
+  "guardrail": "stable-control deterministic_current must not regress relative to legacy_dropout_current",
+  "interpretation_limit": "selected-pair susceptibility screen, not a population estimate"
+}
