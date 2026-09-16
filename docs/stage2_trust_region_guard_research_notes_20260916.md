@@ -29,11 +29,19 @@ uses a matched active versus inactive comparison for both seeds:
 
 All four endpoints scored 20/20. The catastrophic arm used eight active-guard
 retries but also scored 20/20 with the inactive guard and zero retries. The
-stable control likewise scored 20/20 in both arms. Therefore the frozen RNG
-stream avoided the collapse by itself and this matched experiment establishes
-no causal guard effect. The earlier practical repair remains evidence that the
-collapse was preventable, but not that rollback/LR backtracking caused the
-repair.
+stable control likewise scored 20/20 in both arms. This establishes no guard
+advantage *within the deterministic-current-KL/fixed-RNG treatment*. A later
+audit found that both arms also changed the historical anchor KL from a
+training/dropout current-policy forward to a deterministic current-policy
+forward. The experiment therefore cannot attribute the rescue to the RNG
+stream alone.
+
+Phase D now holds RNG, checkpoint and frozen replay fixed while restoring the
+historical dropout-current KL. At the historical first update the weighted
+anchor-gradient norm was 3.32865 and aligned with the replay gradient
+(cosine +0.831); deterministic-current KL reduced that anchor gradient to
+approximately 1.57e-7. Phase D determines whether this KL correction, rather
+than the RNG stream, prevented the collapse.
 
 ## Related methods
 
@@ -108,8 +116,8 @@ Risks:
 
 ## Decision gate result
 
-The inactive catastrophic arm remained 20/20, exactly as the negative gate
-anticipated. The twelve-job broader pilot is therefore held and was not
-submitted. Before cross-domain testing, redesign the causal screen around a
-small predeclared panel of frozen stochastic streams or another non-test-based
-way to produce both susceptible and stable update conditions.
+The inactive catastrophic arm remained 20/20, but it was not a matched
+historical baseline because KL-forward semantics also changed. The twelve-job
+broader pilot is therefore held. Phase D first compares legacy and
+deterministic KL under the same exact RNG stream; a multi-RNG susceptibility
+panel is needed only if the matched legacy arm also remains healthy.

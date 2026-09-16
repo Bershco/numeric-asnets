@@ -18,6 +18,7 @@ PHASE_C=/home/hersco/training_new_domains/2026-09-16/tpp_first_update_phase_c_ex
 CHECKSUMS=/home/hersco/training_new_domains/2026-09-14/tpp_first_update_phase_b_crossover/frozen_schedule_checksums.csv
 FIXED_RNG_BASE_SEED=314159
 test "$(git -C "$REPO" rev-parse HEAD)" = "$CODE_COMMIT"
+test -e "$REPO/asnets/asnets/ops/_asnet_ops_impl.so"
 
 python3 "${ROOT}/freeze_tpp_phase_a_batch_checksums.py" \
   --verify --manifest "$CHECKSUMS"

@@ -1,7 +1,9 @@
 snapshot_time_idt,experiment,job_id,job_name,state,tasks,cpus,memory_gib,elapsed,time_limit,reason_or_node,priority,array_job_id,scheduler_source
-2026-09-16T13:16:00+03:00,MPrime Phase-B-A Stage2 rescore,"21390404_[0,12-19];21392547_[1-11]",MPRIME_S2_PBA,RUNNING,20,80,400.0,01:13:21-01:27:56,1-00:00:00,multiple,,"21390404;21392547",squeue://hersco/21390404;21392547
-2026-09-16T13:16:00+03:00,MPrime Phase-B-A finalizer and downstream,"21392548;21392549","MPRIME_S2_PBA_FIN;MPRIME_S2_DOWNSTREAM",DEPENDENCY_PENDING,2,0,0.0,00:00:00,00:30:00,Dependency,,"21392548;21392549",squeue://hersco/21392548;21392549
-2026-09-16T13:16:00+03:00,MPrime policy retry controller,21362500,MPRIME_S2_POL_RETRY,RUNNING,1,2,2.0,12:51:55,3-00:00:00,ise-cpu-intl-22,,21362500,squeue://hersco/21362500
-2026-09-16T13:16:00+03:00,Counters Stage1 strict tie-break confirmation,21233925_1,COUNTERS_TIE_STRICT,RUNNING,1,6,120.0,1-04:11:31,3-00:00:00,ise-cpu128-14,1,21233925,squeue://hersco/21233925
-2026-09-16T13:16:00+03:00,Counters exact task9 identity recovery,21362903_9,COUNTERS_TIE_EXACT3,RUNNING,1,2,120.0,12:27:12,20:00:00,ise-cpu-intl-18,1,21362903,squeue://hersco/21362903
-2026-09-16T13:16:00+03:00,Counters full-root failure trace controller,21362904,COUNTERS_TRACE_CTL,DEPENDENCY_PENDING,1,0,0.0,00:00:00,00:30:00,Dependency,1,21362904,squeue://hersco/21362904
+2026-09-16T15:24:00+03:00,MPrime Phase-B-A Stage2 rescore,"21390404_[0,12-19];21392547_[1-11]",MPRIME_S2_PBA,RUNNING,20,80,400.0,03:26:00-03:41:00,1-00:00:00,multiple,,"21390404;21392547",squeue://hersco/21390404;21392547
+2026-09-16T15:24:00+03:00,MPrime Phase-B-A finalizer and downstream,"21392548;21392549","MPRIME_S2_PBA_FIN;MPRIME_S2_DOWNSTREAM",DEPENDENCY_PENDING,2,0,0.0,00:00:00,00:30:00,Dependency,,"21392548;21392549",squeue://hersco/21392548;21392549
+2026-09-16T15:24:00+03:00,MPrime obsolete policy retry watcher,21362500,MPRIME_S2_POL_RETRY,RUNNING,1,2,2.0,15:05:00,3-00:00:00,ise-cpu-intl-22,,21362500,squeue://hersco/21362500
+2026-09-16T15:24:00+03:00,Counters Stage1 strict tie-break confirmation,21233925_1,COUNTERS_TIE_STRICT,RUNNING,1,6,120.0,1-06:24:00,3-00:00:00,ise-cpu128-14,1,21233925,squeue://hersco/21233925
+2026-09-16T15:24:00+03:00,Counters exact task9 identity recovery,21362903_9,COUNTERS_TIE_EXACT3,RUNNING,1,2,120.0,14:40:00,20:00:00,ise-cpu-intl-18,1,21362903,squeue://hersco/21362903
+2026-09-16T15:24:00+03:00,Counters full-root failure trace controller,21362904,COUNTERS_TRACE_CTL,DEPENDENCY_PENDING,1,0,0.0,00:00:00,00:30:00,Dependency,1,21362904,squeue://hersco/21362904
+2026-09-16T15:24:00+03:00,TPP Phase-D repaired legacy-KL fixed-RNG training,21408668,tpp_first_update_phase_d_legacy_exact_rng_train,RUNNING,2,12,96.0,00:01:00,02:00:00,ise-cpu256-28,,21408668,squeue://hersco/21408668
+2026-09-16T15:24:00+03:00,TPP Phase-D repaired endpoint evaluation,21408691,tpp_first_update_phase_d_legacy_exact_rng_endpoint,DEPENDENCY_PENDING,2,0,0.0,00:00:00,02:00:00,Dependency,,21408691,squeue://hersco/21408691

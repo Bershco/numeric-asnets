@@ -23,6 +23,8 @@ apptainer exec \
     cd '$REPO/asnets'
     source '$PRODUCTION_REPO/venv-asnets/bin/activate'
     export PYTHONPATH='$REPO/asnets':'$REPO':\${PYTHONPATH:-}
+    test -e '$REPO/asnets/asnets/ops/_asnet_ops_impl.so'
+    python -c 'import asnets.ops.asnet_ops'
     ./run_experiment --help | grep -q -- '--policy-anchor-fixed-step-rng-seed'
     python -m unittest \
       tests.test_replay_rng \

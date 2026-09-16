@@ -1,0 +1,11 @@
+seed,policy_score,action_id_classified,action_id_success,policy_prior_classified,policy_prior_success,scientific_state,source
+534933607,59,31,20,35,19,recovery_evidence_not_yet_reconciled_into_source_ledger,/home/hersco/training_new_domains/2026-09-13/counters_tie_break_strict_stage1
+923500475,59,28,28,29,28,original_tasks_still_running_for_both_rules,/home/hersco/training_new_domains/2026-09-13/counters_tie_break_strict_stage1
+1073581256,59,59,59,59,59,complete_pair,/home/hersco/training_new_domains/2026-09-13/counters_tie_break_strict_stage1
+1239739722,17,59,17,59,17,complete_pair,/home/hersco/training_new_domains/2026-09-13/counters_tie_break_strict_stage1
+1472491096,38,59,38,59,38,complete_pair,/home/hersco/training_new_domains/2026-09-13/counters_tie_break_strict_stage1
+1510771779,10,59,18,59,17,complete_pair_policy_prior_loses_only_policy_failure_instance,/home/hersco/training_new_domains/2026-09-13/counters_tie_break_strict_stage1
+1963100312,17,59,22,59,22,complete_pair,/home/hersco/training_new_domains/2026-09-13/counters_tie_break_strict_stage1
+1972442430,12,58,14,59,14,one_action_id_identity_pending_post_terminal_reconciliation,/home/hersco/training_new_domains/2026-09-13/counters_tie_break_strict_stage1
+2011206605,19,59,20,59,20,complete_pair,/home/hersco/training_new_domains/2026-09-13/counters_tie_break_strict_stage1
+2082152039,35,56,19,57,19,exact_three_identity_recovery_21362903_9_running,/home/hersco/training_new_domains/2026-09-13/counters_tie_break_strict_stage1
