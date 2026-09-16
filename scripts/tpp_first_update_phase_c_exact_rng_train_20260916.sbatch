@@ -3,8 +3,8 @@
 #SBATCH --time=02:00:00
 #SBATCH --mem=48G
 #SBATCH --cpus-per-task=6
-#SBATCH --array=0-1
-#SBATCH --exclude=ise-cpu-intl-[01,09-11,13,27]
+#SBATCH --array=0-3
+#SBATCH --exclude=ise-cpu128-03,ise-cpu-intl-[01,09-11,13,27]
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-16/tpp_first_update_phase_c_exact_rng/train_%A_%a.txt
 
 set -euo pipefail
@@ -31,16 +31,36 @@ PY
 
 case "${SLURM_ARRAY_TASK_ID}" in
   0)
-    ARM=catastrophic_outlier
+    ARM=catastrophic_outlier_active
+    TREATMENT=active_guard
     SEED=1972442430
     SOURCE='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.tpp-experiments_numeric.architecture_2.tpp-2026-08-25T06:58:34.413651/P[domain,pfile1,pfile2,pfile4]-S[0.003,50,enhsp-hadd-gbfs]-MO[]-T[518400]-04911972-72aea46/snapshots/snapshot_15_1.000'
     FROZEN_BATCHES="${PHASE_A}/catastrophic_outlier_1972442430/first_update_audit.jsonl.batches"
     ;;
   1)
-    ARM=stable_control
+    ARM=stable_control_active
+    TREATMENT=active_guard
     SEED=2082152039
     SOURCE='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.tpp-experiments_numeric.architecture_2.tpp-2026-08-25T06:23:43.293616/P[domain,pfile1,pfile2,pfile4]-S[0.003,50,enhsp-hadd-gbfs]-MO[]-T[518400]-04911937-faf7d6/snapshots/snapshot_5_0.667'
     FROZEN_BATCHES="${PHASE_A}/stable_control_2082152039/first_update_audit.jsonl.batches"
+    ;;
+  2)
+    ARM=catastrophic_outlier_inactive
+    TREATMENT=inactive_guard
+    SEED=1972442430
+    SOURCE='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.tpp-experiments_numeric.architecture_2.tpp-2026-08-25T06:58:34.413651/P[domain,pfile1,pfile2,pfile4]-S[0.003,50,enhsp-hadd-gbfs]-MO[]-T[518400]-04911972-72aea46/snapshots/snapshot_15_1.000'
+    FROZEN_BATCHES="${PHASE_A}/catastrophic_outlier_1972442430/first_update_audit.jsonl.batches"
+    MEAN_KL_LIMIT=1000000
+    P99_KL_LIMIT=1000000
+    ;;
+  3)
+    ARM=stable_control_inactive
+    TREATMENT=inactive_guard
+    SEED=2082152039
+    SOURCE='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.tpp-experiments_numeric.architecture_2.tpp-2026-08-25T06:23:43.293616/P[domain,pfile1,pfile2,pfile4]-S[0.003,50,enhsp-hadd-gbfs]-MO[]-T[518400]-04911937-faf7d6/snapshots/snapshot_5_0.667'
+    FROZEN_BATCHES="${PHASE_A}/stable_control_2082152039/first_update_audit.jsonl.batches"
+    MEAN_KL_LIMIT=1000000
+    P99_KL_LIMIT=1000000
     ;;
   *) exit 2 ;;
 esac
@@ -52,7 +72,7 @@ export ASN_FIRST_UPDATE_AUDIT_PATH="${OUT}/first_update_audit.jsonl"
 export ASN_FIRST_UPDATE_WEIGHT_DIR="${OUT}/optimizer_step_weights"
 
 echo "[TPP-EXACT-RNG] commit=$(git -C "$REPO" rev-parse HEAD)"
-echo "[TPP-EXACT-RNG] arm=$ARM seed=$SEED exact_rng_base_seed=$EXACT_RNG_BASE_SEED"
+echo "[TPP-EXACT-RNG] arm=$ARM treatment=$TREATMENT seed=$SEED exact_rng_base_seed=$EXACT_RNG_BASE_SEED"
 
 apptainer exec \
   --bind /home/hersco:/home/hersco \
@@ -90,11 +110,12 @@ ENDPOINT=$(find "$SNAPSHOT_DIR" -maxdepth 1 -type d -name 'snapshot_0_*' | sort 
 test -f "${ENDPOINT}/weights.joblib"
 printf '%s\n' "$ENDPOINT" > "${OUT}/endpoint_path.txt"
 
-python3 - "$ASN_FIRST_UPDATE_AUDIT_PATH" "$FROZEN_BATCHES" "$ARM" <<'PY'
+python3 - "$ASN_FIRST_UPDATE_AUDIT_PATH" "$FROZEN_BATCHES" "$TREATMENT" "$SEED" <<'PY'
 import json, pathlib, sys
 audit = pathlib.Path(sys.argv[1])
 source = pathlib.Path(sys.argv[2]).resolve()
-arm = sys.argv[3]
+treatment = sys.argv[3]
+seed = int(sys.argv[4])
 rows = [json.loads(line) for line in audit.read_text().splitlines() if line.strip()]
 steps = [row for row in rows if row.get("record_type") == "optimizer_step"]
 ends = [row for row in rows if row.get("record_type") == "frozen_replay_complete"]
@@ -111,7 +132,9 @@ for step_index, step in enumerate(steps):
     assert all(attempt["coefficient"] == 3.0 for attempt in attempts)
     assert pathlib.Path(step["source_frozen_batch_file"]).parent.resolve() == source
     retry_steps += int(len(attempts) > 1)
-if arm == "catastrophic_outlier":
+if treatment == "active_guard" and seed == 1972442430:
     assert retry_steps > 0, "Catastrophic arm never exercised exact-RNG retry"
+if treatment == "inactive_guard":
+    assert retry_steps == 0, "Inactive guard unexpectedly retried an update"
 print(f"[TPP-EXACT-RNG] verified 60 steps; retry_steps={retry_steps}")
 PY

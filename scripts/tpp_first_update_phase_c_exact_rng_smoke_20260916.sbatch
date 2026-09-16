@@ -3,7 +3,7 @@
 #SBATCH --time=00:30:00
 #SBATCH --mem=12G
 #SBATCH --cpus-per-task=2
-#SBATCH --exclude=ise-cpu-intl-[01,09-11,13,27]
+#SBATCH --exclude=ise-cpu128-03,ise-cpu-intl-[01,09-11,13,27]
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-16/tpp_first_update_phase_c_exact_rng/smoke_%j.txt
 
 set -euo pipefail
@@ -31,6 +31,8 @@ apptainer exec \
     cd '$REPO/asnets'
     source '$PRODUCTION_REPO/venv-asnets/bin/activate'
     export PYTHONPATH='$REPO/asnets':'$REPO':\${PYTHONPATH:-}
+    test -e '$REPO/asnets/asnets/ops/_asnet_ops_impl.so'
+    python -c 'import asnets.ops.asnet_ops'
     python -m py_compile \
       asnets/replay_rng.py asnets/policy_anchor_trust_region.py \
       asnets/frozen_replay.py asnets/supervised.py \

@@ -63,7 +63,7 @@ def main() -> None:
         print(f"DRY RUN: smoke={SMOKE}")
         print(f"DRY RUN: training={TRAIN} dependency=afterok:<smoke>")
         print(f"DRY RUN: endpoint={ENDPOINT} dependency=afterok:<training>")
-        print("DRY RUN: scientific tasks=4 (2 one-epoch + 2 endpoints)")
+        print("DRY RUN: scientific tasks=8 (4 one-epoch + 4 endpoints)")
         return
     ROOT.mkdir(parents=True, exist_ok=True)
     commit = subprocess.check_output(
@@ -78,14 +78,14 @@ def main() -> None:
     training_job = submit(
         TRAIN, checkout, commit, f"--dependency=afterok:{smoke_job}")
     append_ledger(
-        f"{submitted_at}\ttraining\t{training_job}\t2\tafterok:{smoke_job}\t{TRAIN}\t{checkout}\t{commit}\n")
+        f"{submitted_at}\ttraining\t{training_job}\t4\tafterok:{smoke_job}\t{TRAIN}\t{checkout}\t{commit}\n")
     endpoint_job = submit(
         ENDPOINT, checkout, commit, f"--dependency=afterok:{training_job}")
     append_ledger(
-        f"{submitted_at}\tendpoint\t{endpoint_job}\t2\tafterok:{training_job}\t{ENDPOINT}\t{checkout}\t{commit}\n")
+        f"{submitted_at}\tendpoint\t{endpoint_job}\t4\tafterok:{training_job}\t{ENDPOINT}\t{checkout}\t{commit}\n")
     print(
         f"smoke={smoke_job} training={training_job} endpoint={endpoint_job} "
-        f"scientific_tasks=4 commit={commit}")
+        f"scientific_tasks=8 commit={commit}")
 
 
 if __name__ == "__main__":

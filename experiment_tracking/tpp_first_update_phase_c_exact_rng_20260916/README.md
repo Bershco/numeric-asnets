@@ -9,18 +9,24 @@ result therefore proved that the practical guard prevented this selected
 collapse, but did not isolate rollback/learning-rate reduction from a lucky
 new dropout realization.
 
-This campaign closes only that causal gap.  It is not a new Stage-2 method,
-population screen, or 100-epoch retraining campaign.
+This campaign closes only that causal gap. It adds a matched inactive-guard
+control under the identical fixed RNG schedule, so a good active-guard result
+cannot be credited merely to a lucky replacement dropout stream. It is not a
+new Stage-2 method, population screen, or 100-epoch retraining campaign.
 
 ## Design
 
-The experiment repeats exactly two one-epoch guarded treatments and two
-dependent endpoint evaluations:
+The experiment runs four one-epoch treatments and four dependent endpoint
+evaluations. Each seed is evaluated with an active guard and an inactive
+instrumented guard. The inactive arm uses the same code and deterministic RNG
+schedule, but frozen limits of `1e6` make rejection impossible in practice.
 
-| Arm | Seed | Frozen start | Frozen replay | Historical first S2 |
-|---|---:|---|---|---:|
-| Catastrophic outlier | 1972442430 | Same Phase-C Stage-1 checkpoint | Same 60 batches | 10/20 |
-| Stable control | 2082152039 | Same Phase-C Stage-1 checkpoint | Same 60 batches | 20/20 |
+| Arm | Seed | Treatment | Frozen start | Frozen replay | Historical first S2 |
+|---|---:|---|---|---|---:|
+| Catastrophic outlier | 1972442430 | Active guard | Same Phase-C Stage-1 checkpoint | Same 60 batches | 10/20 |
+| Stable control | 2082152039 | Active guard | Same Phase-C Stage-1 checkpoint | Same 60 batches | 20/20 |
+| Catastrophic outlier | 1972442430 | Inactive guard | Same Phase-C Stage-1 checkpoint | Same 60 batches | 10/20 |
+| Stable control | 2082152039 | Inactive guard | Same Phase-C Stage-1 checkpoint | Same 60 batches | 20/20 |
 
 The coefficient (`3`), deterministic guard statistic, stable-control limits,
 learning rate (`0.0003`), backtracking factor (`0.5`), two-retry maximum, and
@@ -39,11 +45,11 @@ identical raw-gradient hash before either scientific arm can release.
 
 ## Scope and resources
 
-- Scientific work: four tasks total—two one-epoch training arms and two
+- Scientific work: eight tasks total—four one-epoch training arms and four
   endpoint evaluations.
 - Preflight smoke: one small non-scientific job.
-- Training maximum concurrency: 12 CPUs / 96 GiB for at most two hours.
-- Endpoint maximum concurrency: 10 CPUs / 40 GiB for at most two hours.
+- Training maximum concurrency: 24 CPUs / 192 GiB for at most two hours.
+- Endpoint maximum concurrency: 20 CPUs / 80 GiB for at most two hours.
 - No new MCTS targets, Stage-1 training, 100-epoch training, or eight-seed
   population screen.
 - Every job asserts that its checkout still resolves to the commit recorded by
@@ -52,18 +58,20 @@ identical raw-gradient hash before either scientific arm can release.
 
 ## Interpretation gate
 
-- `20/20` bad and `20/20` control: exact-gradient rollback/backtracking
-  prevents the selected collapse without harming the selected control.
-- Bad below `20/20`: the former repair depended partly on dropout resampling
-  or on the newly fixed stochastic realization.
-- Control below `20/20`: the exact-gradient treatment is not a clean
-  non-regression result.
+- Active bad exceeds inactive bad, while active and inactive controls match:
+  selected-pair causal evidence that rollback/backtracking prevents the
+  collapse without harming the control.
+- Active and inactive bad both score `20/20`: the fixed stochastic stream
+  avoids the collapse, so no guard effect is established.
+- Active bad scores below inactive bad: the treatment is harmful here.
+- Active control scores below inactive control: the treatment fails the
+  selected-control non-regression gate.
 
 Even a positive result remains selected-pair mechanism evidence; it does not
 estimate how often the guard helps across seeds or domains.
-The fixed step seeds deliberately define a fresh dropout sequence, so the new
-endpoint is evidence about exact retry reproducibility under that frozen
-realization—not a bit-for-bit replay of the earlier resampling-enabled run.
+The fixed step seeds deliberately define a fresh dropout sequence, so this is
+not a bit-for-bit replay of the earlier resampling-enabled run. The matched
+inactive arm isolates the effect of activating rollback within that sequence.
 
 ## Provenance
 

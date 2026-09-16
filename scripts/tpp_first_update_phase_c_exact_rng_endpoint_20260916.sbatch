@@ -3,8 +3,8 @@
 #SBATCH --time=02:00:00
 #SBATCH --mem=20G
 #SBATCH --cpus-per-task=5
-#SBATCH --array=0-1
-#SBATCH --exclude=ise-cpu-intl-[01,09-11,13,27]
+#SBATCH --array=0-3
+#SBATCH --exclude=ise-cpu128-03,ise-cpu-intl-[01,09-11,13,27]
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-16/tpp_first_update_phase_c_exact_rng/endpoint_%A_%a.txt
 
 set -euo pipefail
@@ -18,12 +18,22 @@ test "$(git -C "$REPO" rev-parse HEAD)" = "$CODE_COMMIT"
 
 case "${SLURM_ARRAY_TASK_ID}" in
   0)
-    ARM=catastrophic_outlier
+    ARM=catastrophic_outlier_active
     SEED=1972442430
     PROBE_INPUT="${PHASE_A}/catastrophic_outlier_1972442430/stage1_probe"
     ;;
   1)
-    ARM=stable_control
+    ARM=stable_control_active
+    SEED=2082152039
+    PROBE_INPUT="${PHASE_A}/stable_control_2082152039/stage1_probe"
+    ;;
+  2)
+    ARM=catastrophic_outlier_inactive
+    SEED=1972442430
+    PROBE_INPUT="${PHASE_A}/catastrophic_outlier_1972442430/stage1_probe"
+    ;;
+  3)
+    ARM=stable_control_inactive
     SEED=2082152039
     PROBE_INPUT="${PHASE_A}/stable_control_2082152039/stage1_probe"
     ;;

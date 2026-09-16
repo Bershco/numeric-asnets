@@ -1,12 +1,12 @@
 {
   "campaign": "TPP-FIRST-UPDATE-PHASE-C-EXACT-RNG",
   "frozen_at": "2026-09-16",
-  "question": "Did rollback and learning-rate backtracking prevent the selected collapse when every retry uses the exact same stochastic gradient?",
+  "question": "Does active rollback and per-update learning-rate backtracking prevent the selected collapse relative to an inactive guard under the identical deterministic RNG schedule?",
   "scope": {
     "selected_pair_only": true,
-    "training_arms": 2,
-    "endpoint_evaluations": 2,
-    "scientific_jobs": 4,
+    "training_arms": 4,
+    "endpoint_evaluations": 4,
+    "scientific_jobs": 8,
     "epochs_per_training_arm": 1,
     "optimizer_steps_per_arm": 60,
     "new_mcts_target_generation": false,
@@ -14,13 +14,16 @@
     "hundred_epoch_training": false
   },
   "arms": [
-    {"role": "catastrophic_outlier", "seed": 1972442430},
-    {"role": "stable_control", "seed": 2082152039}
+    {"role": "catastrophic_outlier", "seed": 1972442430, "treatment": "active_guard"},
+    {"role": "stable_control", "seed": 2082152039, "treatment": "active_guard"},
+    {"role": "catastrophic_outlier", "seed": 1972442430, "treatment": "inactive_guard"},
+    {"role": "stable_control", "seed": 2082152039, "treatment": "inactive_guard"}
   ],
   "frozen_inputs": {
     "start_checkpoints": "identical to completed Phase C",
     "replay_batches": "identical 60-step Phase-A frozen schedules",
-    "thresholds": "identical stable-control-calibrated Phase-C limits",
+    "active_thresholds": "identical stable-control-calibrated Phase-C limits",
+    "inactive_thresholds": "1e6 mean and p99 limits; same instrumented code and RNG schedule, with no rejection expected",
     "anchor_coefficient": 3.0,
     "base_learning_rate": 0.0003,
     "learning_rate_factor": 0.5,
@@ -33,8 +36,9 @@
     "verification": "all retry attempts for a step must have one identical raw-gradient SHA-256 or the job aborts"
   },
   "decision": {
-    "bad_20_control_20": "exact-gradient rollback/backtracking prevents the selected collapse without harming the control",
-    "bad_below_20": "the earlier repair depended partly on dropout resampling or the new fixed stochastic realization",
-    "control_below_20": "the treatment is not a clean non-regression result under exact-gradient retries"
+    "active_bad_exceeds_inactive_bad_and_active_control_matches_inactive_control": "selected-pair causal evidence that rollback/backtracking prevents the collapse without harming the control",
+    "active_and_inactive_bad_both_20": "the fixed stochastic stream itself avoids the collapse; no guard effect is established",
+    "active_bad_below_inactive_bad": "the treatment is harmful for the selected outlier",
+    "active_control_below_inactive_control": "the treatment fails the selected-control non-regression gate"
   }
 }
