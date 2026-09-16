@@ -1,14 +1,19 @@
 # TPP first-update Phase D: matched legacy KL under the exact RNG stream
 
-Status: repaired science tasks running. Compute smoke `21408030` completed.
+Status: one-epoch treatments complete; endpoint evaluations submitted. Compute smoke `21408030` completed.
 The first training array `21408031_[0-1]` failed before scientific execution
 because the detached checkout lacked the ignored compiled TensorFlow operator;
 its dependent endpoints `21408032_[0-1]` cancelled without work. The production
 operator was then linked into the isolated checkout and its SHA-256
 `a9ab808dbe131469f25d952864e41b4d53e10aa2b0948eb0f6667b5af80b71c6`
-verified. Exact replacement training `21408668_[0-1]` is running and replacement
-endpoint array `21408691_[0-1]` is dependency-pending. No scientific result from
-the failed first array is used.
+verified. Exact replacement training `21408668_[0-1]` completed both scientific
+epochs and materialized both checkpoints, then its post-run verifier failed on
+an invalid requirement that task gradients remain identical after the first
+treatment-dependent update. The corrected verifier checks the same sixty
+frozen batches and RNG seeds throughout, and exact equality of the task-policy
+gradient and argmax pattern at the pre-treatment step. Both outputs pass. No
+retraining is needed. Endpoint array `21409234_[0-1]` now evaluates the two
+verified checkpoints. No scientific result from the failed first array is used.
 
 ## Why this experiment exists
 

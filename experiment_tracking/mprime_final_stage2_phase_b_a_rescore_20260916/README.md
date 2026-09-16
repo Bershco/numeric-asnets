@@ -52,7 +52,7 @@ policy evidence may be recovered. Fixed/PW search manifests must be rebuilt
 from `phase_b_a_selected_endpoints.csv`; the old ready-manifest analysis roles
 must never be used for final endpoint selection.
 
-Live snapshot 2026-09-16 15:24 IDT: 128/420 checkpoint evaluations have
+Live snapshot 2026-09-16 15:35 IDT: 132/420 checkpoint evaluations have
 durable `.done.json` and `.val.csv` pairs. Twenty workers are active. The
 observed aggregate rate since 13:16 is about 41 evaluations/hour, implying an
 approximately seven-hour remaining estimate if the rate persists; the

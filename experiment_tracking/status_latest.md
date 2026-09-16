@@ -1,6 +1,6 @@
 # Current experiment status
 
-Updated: 2026-09-16T15:24:00+03:00 (focused reconciliation)
+Updated: 2026-09-16T15:40:00+03:00 (focused reconciliation)
 
 Primary RQ evidence is validation-led only. Terminal-led campaigns remain
 provenance archives and are excluded from primary tables and plots.
@@ -9,12 +9,12 @@ provenance archives and are excluded from primary tables and plots.
 
 | Experiment | State | Allocated / pending | CPU / RAM when allocated | Expected / hard remainder |
 |---|---|---:|---:|---|
-| MPrime Phase-B-A Stage-2 endpoint rescore | 128/420 evaluations durable; 9 original tasks plus exact recovery `21392547_[1-11]` running; finalizer `21392548` and downstream `21392549` dependency-pending | 20 / 2 | 80 CPU / 400 GiB | about 7 h at the observed aggregate rate; running-task hard remainder about 20 h 35 m |
+| MPrime Phase-B-A Stage-2 endpoint rescore | 132/420 evaluations durable; 9 original tasks plus exact recovery `21392547_[1-11]` running; finalizer `21392548` and downstream `21392549` dependency-pending | 20 / 2 | 80 CPU / 400 GiB | about 7 h at the observed aggregate rate; running-task hard remainder about 20 h 25 m |
 | MPrime policy retry watcher | all 420 checkpoint-policy identities have already been submitted and no child remains active/retryable; `21362500` is an infinite five-minute watcher, not scientific compute | 1 / 0 | 2 CPU / 2 GiB | operationally obsolete; cancellation requires explicit approval |
 | Counters strict policy-prior confirmation | 19/20 original Slurm tasks terminal, but scheduler-terminal is not equivalent to 59/59 scientific completion; original task 1 remains running | 1 / 0 | 6 CPU / 120 GiB | running-task hard remainder about 41 h 35 m |
 | Counters task-9 exact recovery | exact three-identity recovery; source ledgers remain 56/59 action-ID and 57/59 policy-prior until reconciliation | 1 / 0 | 2 CPU / 120 GiB | hard remainder about 5 h 21 m |
 | Counters full-root trace controller | dependency-pending | 0 / 1 | 0 | starts only after every action-ID ledger reconciles to 59/59 |
-| TPP Phase-D KL/RNG isolation | smoke `21408030` passed; first science array failed pre-scientifically from a missing ignored native operator; checksum-verified link repaired; replacements `21408668_[0-1]` running and endpoints `21408691_[0-1]` dependency-pending | 2 / 2 | 12 CPU / 96 GiB now; endpoints 10 CPU / 40 GiB | training hard remainder under 2 h; endpoints then under 2 h |
+| TPP Phase-D KL/RNG isolation | smoke passed; the repaired one-epoch treatments completed and passed the corrected frozen-batch/RNG/pre-treatment audit; endpoint array `21409234_[0-1]` submitted | 0 / 2 | endpoints up to 10 CPU / 40 GiB | endpoint hard bound 2 h |
 
 ## Scientific status
 

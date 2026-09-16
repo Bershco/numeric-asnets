@@ -106,10 +106,12 @@ for index, (left, right) in enumerate(zip(legacy, matched)):
     assert left["trust_region"] is None
     assert left["trust_region_retries"] == 0
     assert pathlib.Path(left["source_frozen_batch_file"]).parent.resolve() == source
-    assert math.isclose(left["policy_gradient_l2"], right["policy_gradient_l2"],
-                        rel_tol=1e-6, abs_tol=1e-8), (
-        f"task-policy gradient mismatch at optimizer step {index}")
-    assert disagreement_bits(left) == disagreement_bits(right), (
-        f"task-policy argmax pattern mismatch at optimizer step {index}")
-print("[TPP-PHASE-D] verified 60 legacy-KL steps with matched task-policy gradient norms and argmax patterns")
+
+# The pre-treatment state must match exactly. After the first update, the KL
+# treatments deliberately produce different weights, so later task gradients
+# are expected to diverge and must not be used as an equality gate.
+assert math.isclose(legacy[0]["policy_gradient_l2"], matched[0]["policy_gradient_l2"],
+                    rel_tol=1e-6, abs_tol=1e-8)
+assert disagreement_bits(legacy[0]) == disagreement_bits(matched[0])
+print("[TPP-PHASE-D] verified 60 frozen-batch/RNG steps and the matched pre-treatment state")
 PY

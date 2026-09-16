@@ -1,7 +1,7 @@
 snapshot_time_idt,experiment,running,pending,jobs,requested_cpus,requested_memory_gib,job_ids,row_level_provenance
-2026-09-16T15:24:00+03:00,MPrime Phase-B-A Stage2 rescore and downstream chain,20,2,22,80,400.0,"21390404_[0,12-19];21392547_[1-11];21392548;21392549",experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/README.md
+2026-09-16T15:40:00+03:00,MPrime Phase-B-A Stage2 rescore and downstream chain,20,2,22,80,400.0,"21390404_[0,12-19];21392547_[1-11];21392548;21392549",experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/README.md
 2026-09-16T15:24:00+03:00,MPrime obsolete policy retry watcher,1,0,1,2,2.0,21362500,squeue://hersco/21362500
 2026-09-16T15:24:00+03:00,Counters Stage1 strict tie-break confirmation,1,0,1,6,120.0,21233925_1,experiment_tracking/counters_tie_break_strict_stage1_20260913/progress_20260916_1513.csv
 2026-09-16T15:24:00+03:00,Counters exact task9 identity recovery,1,0,1,2,120.0,21362903_9,experiment_tracking/counters_tie_break_strict_stage1_20260913/progress_20260916_1513.csv
 2026-09-16T15:24:00+03:00,Counters full-root failure trace controller,0,1,1,0,0.0,21362904,experiment_tracking/counters_tie_break_strict_stage1_20260913/full_trace_submission_20260915.csv
-2026-09-16T15:24:00+03:00,TPP Phase-D repaired matched legacy-KL fixed-RNG isolation,2,2,4,12,96.0,"21408668_[0-1];21408691_[0-1]",experiment_tracking/tpp_first_update_phase_d_legacy_exact_rng_20260916/submissions.tsv
+2026-09-16T15:40:00+03:00,TPP Phase-D verified endpoint evaluation,0,2,2,0,0.0,"21409234_[0-1]",experiment_tracking/tpp_first_update_phase_d_legacy_exact_rng_20260916/submissions.tsv
