@@ -9,10 +9,11 @@ result therefore proved that the practical guard prevented this selected
 collapse, but did not isolate rollback/learning-rate reduction from a lucky
 new dropout realization.
 
-This campaign closes only that causal gap. It adds a matched inactive-guard
-control under the identical fixed RNG schedule, so a good active-guard result
-cannot be credited merely to a lucky replacement dropout stream. It is not a
-new Stage-2 method, population screen, or 100-epoch retraining campaign.
+This campaign attempted to close that causal gap. It added an inactive-guard
+arm under the identical fixed RNG schedule. A later audit found that this arm
+also changed the anchor-KL current-policy forward from the historical
+training/dropout mode to deterministic mode. It is therefore matched to the
+active guard, but it is not a matched reproduction of the historical baseline.
 
 ## Design
 
@@ -61,8 +62,9 @@ identical raw-gradient hash before either scientific arm can release.
 - Active bad exceeds inactive bad, while active and inactive controls match:
   selected-pair causal evidence that rollback/backtracking prevents the
   collapse without harming the control.
-- Active and inactive bad both score `20/20`: the fixed stochastic stream
-  avoids the collapse, so no guard effect is established.
+- Active and inactive bad both score `20/20`: no guard effect is established
+  inside this altered deterministic-KL/fixed-RNG treatment. Attribution to RNG
+  alone is forbidden because KL-forward semantics also changed.
 - Active bad scores below inactive bad: the treatment is harmful here.
 - Active control scores below inactive control: the treatment fails the
   selected-control non-regression gate.
@@ -100,14 +102,15 @@ Compute smoke `21394945`, training array `21394946_[0-3]` and endpoint array
 
 Canonical row-level evidence is in `results_final_20260916.csv`.
 
-This matches the predeclared second interpretation gate: the fixed stochastic
-stream itself avoided the collapse. The active guard did not outperform its
-inactive exact-RNG match, so this experiment establishes **no causal guard
-effect**. It also shows why the earlier selected-pair 20/20 repair cannot be
-attributed uniquely to rollback or learning-rate backtracking.
+The active guard did not outperform its inactive exact-RNG match, so this
+experiment establishes **no causal guard effect within the Phase-C treatment**.
+It does not show that the fixed RNG stream alone avoided the collapse. The
+inactive arm also enabled deterministic-current KL. At the first update this
+reduced the weighted anchor-gradient norm from 3.32865 in the historical
+legacy-KL reproduction to approximately 1.57e-7. Phase D therefore compares
+legacy/dropout-current KL against deterministic-current KL under the identical
+RNG-314159 schedule and frozen replay batches.
 
 The broader twelve-job, two-domain, three-arm pilot remains held. Submitting it
-under the present gate would be scientifically unjustified; a redesigned test
-must first expose more than one frozen stochastic stream or otherwise create a
-setting in which active and inactive arms differ without selecting streams by
-test outcome.
+under the present gate would be scientifically unjustified. Phase D must first
+separate KL-forward semantics from stochastic-stream susceptibility.

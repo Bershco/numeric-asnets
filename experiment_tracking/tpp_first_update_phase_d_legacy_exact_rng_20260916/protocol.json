@@ -1,0 +1,38 @@
+{
+  "campaign": "TPP-FIRST-UPDATE-PHASE-D-LEGACY-EXACT-RNG",
+  "frozen_at": "2026-09-16",
+  "question": "Under the exact Phase-C RNG stream, does historical dropout-current anchor KL reproduce the catastrophic first-update failure that deterministic-current KL avoided?",
+  "reuse": {
+    "deterministic_current_fixed_rng_bad": "Phase-C exact-RNG inactive arm 21394946_2 / endpoint 21394948_2, 20/20",
+    "deterministic_current_fixed_rng_stable": "Phase-C exact-RNG inactive arm 21394946_3 / endpoint 21394948_3, 20/20"
+  },
+  "new_scope": {
+    "training_tasks": 2,
+    "endpoint_tasks": 2,
+    "epochs_per_task": 1,
+    "optimizer_steps_per_task": 60,
+    "hundred_epoch_training": false,
+    "new_target_generation": false
+  },
+  "frozen_parameters": {
+    "anchor_coefficient": 3.0,
+    "learning_rate": 0.0003,
+    "fixed_rng_base_seed": 314159,
+    "anchor_current_forward": "training/dropout",
+    "rollback": false,
+    "frozen_replay": "the exact Phase-A 60-batch schedule for each lineage"
+  },
+  "fail_closed_checks": [
+    "source checkpoint weight SHA-256 matches manifest",
+    "all 60 frozen replay batches match the frozen checksum manifest",
+    "all 60 optimizer steps use the predeclared step seed",
+    "task-policy gradient L2 matches Phase C within relative tolerance 1e-6 and absolute tolerance 1e-8",
+    "complete target-versus-policy argmax disagreement bit sequence matches Phase C",
+    "no trust-region retries occur"
+  ],
+  "decision": {
+    "legacy_bad_collapses_and_control_stays_good": "deterministic-current KL is the demonstrated rescue mechanism under RNG 314159",
+    "legacy_bad_stays_good": "RNG-stream susceptibility is sufficient; a small predeclared multi-RNG screen is required",
+    "stable_control_regresses": "treatment comparison fails the non-regression control"
+  }
+}

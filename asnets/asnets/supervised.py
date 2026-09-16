@@ -486,6 +486,7 @@ class SupervisedTrainer(BaseTrainer):
                  policy_anchor_trust_max_retries=2,
                  policy_anchor_trust_lr_factor=0.5,
                  policy_anchor_trust_restore_rng_seed=None,
+                 policy_anchor_fixed_step_rng_seed=None,
                  frozen_replay_batch_dir=None,
                  main_road_fraction=0.75,
                  tree_policy_weight=0.5,
@@ -560,6 +561,23 @@ class SupervisedTrainer(BaseTrainer):
         ):
             raise ValueError(
                 "Exact retry RNG restoration seed must be non-negative")
+        self._policy_anchor_fixed_step_rng_seed = (
+            int(policy_anchor_fixed_step_rng_seed)
+            if policy_anchor_fixed_step_rng_seed is not None else None
+        )
+        if (
+                self._policy_anchor_fixed_step_rng_seed is not None
+                and self._policy_anchor_fixed_step_rng_seed < 0
+        ):
+            raise ValueError(
+                "Fixed replay-step RNG seed must be non-negative")
+        if (
+                self._policy_anchor_fixed_step_rng_seed is not None
+                and self._policy_anchor_trust_restore_rng_seed is not None
+        ):
+            raise ValueError(
+                "Use either fixed replay-step RNG or trust-region retry RNG, "
+                "not both")
         self.main_road_fraction = main_road_fraction
         self.tree_policy_weight = tree_policy_weight
         self.grad_clip_norm = grad_clip_norm
@@ -644,6 +662,11 @@ class SupervisedTrainer(BaseTrainer):
                         "restoration enabled; "
                         f"base_seed={self._policy_anchor_trust_restore_rng_seed}"
                     )
+            if self._policy_anchor_fixed_step_rng_seed is not None:
+                print(
+                    "[POLICY ANCHOR] fixed replay-step RNG enabled; "
+                    f"base_seed={self._policy_anchor_fixed_step_rng_seed}"
+                )
         self._init_tf()
         if resume_from is not None and not resume_from.endswith(".pkl"):
             opt_path = os.path.join(resume_from, "optimizer.joblib")
@@ -1154,6 +1177,8 @@ class SupervisedTrainer(BaseTrainer):
                 "policy_anchor_trust_region": (
                     self._policy_anchor_trust_region.to_dict()
                     if self._policy_anchor_trust_region is not None else None),
+                "policy_anchor_fixed_step_rng_seed":
+                    self._policy_anchor_fixed_step_rng_seed,
                 "trust_region_retries": int(
                     train_stats.get("trust_region_retries", 0)),
                 "accepted_updates": int(
@@ -1459,7 +1484,17 @@ class SupervisedTrainer(BaseTrainer):
         trust_decision = None
         update_applied = True
         trust_rng_snapshot = None
+        fixed_step_rng_snapshot = None
         expected_gradient_sha256 = None
+        if self._policy_anchor_fixed_step_rng_seed is not None:
+            fixed_step_rng_snapshot = ReplayRNGSnapshot.capture(
+                tf,
+                [problem.network for problem, _batch in sampled_batches],
+                replay_step_seed(
+                    self._policy_anchor_fixed_step_rng_seed,
+                    self._replay_optimizer_step,
+                ),
+            )
         if self._policy_anchor_trust_region is not None:
             trust_snapshot = self._snapshot_replay_state(params)
             trust_pre_policies = self._deterministic_current_policies(
@@ -1801,6 +1836,11 @@ class SupervisedTrainer(BaseTrainer):
                     if trust_rng_snapshot is not None else None),
                 "trust_region_exact_gradient_sha256": (
                     expected_gradient_sha256),
+                "fixed_step_rng_base_seed": (
+                    self._policy_anchor_fixed_step_rng_seed),
+                "fixed_step_rng_step_seed": (
+                    fixed_step_rng_snapshot.step_seed
+                    if fixed_step_rng_snapshot is not None else None),
                 "update_applied": update_applied,
                 "base_learning_rate": base_learning_rate,
                 "applied_learning_rate": (

@@ -473,6 +473,15 @@ parser.add_argument(
         'trust-region retries. Every retry must reproduce the same raw '
         'gradient hash or training aborts.'))
 parser.add_argument(
+    '--policy-anchor-fixed-step-rng-seed',
+    type=int,
+    default=None,
+    help=(
+        'Diagnostic-only base seed that resets the replay/dropout RNG once '
+        'before every optimizer step without enabling rollback. This permits '
+        'matched stochastic-stream comparisons of legacy and deterministic '
+        'anchor-KL forwards.'))
+parser.add_argument(
     '--frozen-replay-batch-dir',
     default=None,
     help=(
@@ -1132,6 +1141,8 @@ def main_supervised_no_rpyc(args, unique_prefix, snapshot_dir, scratch_dir):
                 args.policy_anchor_trust_lr_factor),
             policy_anchor_trust_restore_rng_seed=(
                 args.policy_anchor_trust_restore_rng_seed),
+            policy_anchor_fixed_step_rng_seed=(
+                args.policy_anchor_fixed_step_rng_seed),
             frozen_replay_batch_dir=args.frozen_replay_batch_dir,
             main_road_fraction=0.75,
             grad_clip_norm=5.0,
@@ -1579,6 +1590,14 @@ def main():
             parser.error(
                 '--policy-anchor-trust-restore-rng-seed requires '
                 'trust-region rollback limits')
+    if args.policy_anchor_fixed_step_rng_seed is not None:
+        if args.policy_anchor_fixed_step_rng_seed < 0:
+            parser.error(
+                '--policy-anchor-fixed-step-rng-seed cannot be negative')
+        if args.policy_anchor_trust_restore_rng_seed is not None:
+            parser.error(
+                '--policy-anchor-fixed-step-rng-seed cannot be combined with '
+                '--policy-anchor-trust-restore-rng-seed')
     if (
             not np.isfinite(args.policy_anchor_trust_lr_factor)
             or not 0 < args.policy_anchor_trust_lr_factor < 1

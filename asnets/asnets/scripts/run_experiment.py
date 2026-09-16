@@ -654,6 +654,14 @@ parser.add_argument(
         'identical.')
 )
 parser.add_argument(
+    '--policy-anchor-fixed-step-rng-seed',
+    type=int,
+    default=None,
+    help=(
+        'Diagnostic-only base seed that resets replay/dropout RNG once per '
+        'optimizer step without enabling rollback.')
+)
+parser.add_argument(
     '--frozen-replay-batch-dir',
     default=None,
     help=(
@@ -822,6 +830,8 @@ def main():
                    args.policy_anchor_trust_lr_factor),
                policy_anchor_trust_restore_rng_seed=(
                    args.policy_anchor_trust_restore_rng_seed),
+               policy_anchor_fixed_step_rng_seed=(
+                   args.policy_anchor_fixed_step_rng_seed),
                frozen_replay_batch_dir=args.frozen_replay_batch_dir,
                serial_test=args.serial_test,
                no_eval=args.no_eval,
@@ -901,6 +911,7 @@ def main_inner(*,
                policy_anchor_trust_max_retries=2,
                policy_anchor_trust_lr_factor=0.5,
                policy_anchor_trust_restore_rng_seed=None,
+               policy_anchor_fixed_step_rng_seed=None,
                frozen_replay_batch_dir=None,
                serial_test=None,
                no_eval=None,
@@ -1051,6 +1062,11 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend([
                 '--policy-anchor-trust-restore-rng-seed',
                 str(policy_anchor_trust_restore_rng_seed),
+            ])
+        if policy_anchor_fixed_step_rng_seed is not None:
+            train_flags.extend([
+                '--policy-anchor-fixed-step-rng-seed',
+                str(policy_anchor_fixed_step_rng_seed),
             ])
         if frozen_replay_batch_dir is not None:
             train_flags.extend([

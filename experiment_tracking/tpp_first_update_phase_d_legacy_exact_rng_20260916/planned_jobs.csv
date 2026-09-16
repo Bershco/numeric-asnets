@@ -1,0 +1,4 @@
+role,task_count,cpus_per_task,memory_gib_per_task,walltime_hours,dependency,status
+compute_smoke,1,2,8,0.5,,planned
+one_epoch_legacy_exact_rng,2,6,48,2,afterok_compute_smoke,planned
+endpoint_policy_evaluation,2,5,20,2,afterok_training,planned
