@@ -24,15 +24,19 @@ Safety/provenance gates:
 Slurm route:
 
 - failed filename-only preflight `21390248` (no evaluation occurred);
-- repaired compute preflight `21390403`;
+- repaired compute preflight `21390403`, completed successfully;
 - dependency-gated main array `21390404_[0-19]`, 3 CPUs and 20 GiB per task,
   twenty-four-hour hard limit;
-- dependency-gated finalizer `21390429`, 1 CPU and 2 GiB.
-- fail-closed downstream controller `21390981`, dependency-gated on the
-  finalizer. It joins selected checkpoint hashes to existing policy logs,
-  submits no duplicate endpoint evaluation, audits the quarantined epoch-0
-  searches for exact hash/configuration reuse, and submits only missing final
-  fixed/PW identities.
+- tasks 1--11 of that array failed before scientific scoring on
+  `ise-cpu128-03` because node-local semaphore creation returned ENOSPC;
+- exact recovery array `21392547_[1-11]`, with only that node excluded;
+- replacement finalizer `21392548`, 1 CPU and 2 GiB, waiting `afterany` on the
+  original array and `afterok` on the recovery;
+- replacement downstream controller `21392549`, dependency-gated on the new
+  finalizer. Obsolete pending jobs `21390429` and `21390981` were cancelled.
+  The controller joins selected checkpoint hashes to existing policy logs,
+  submits no duplicate endpoint evaluation, and submits only missing final
+  fixed/PW identities. Premature provisional aggregates are not inputs.
 
 After finalization, existing policy logs are reused by exact training-job,
 epoch and checkpoint-hash identity. Only selected endpoints without valid

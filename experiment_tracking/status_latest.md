@@ -1,6 +1,6 @@
 # Current experiment status
 
-Updated: 2026-09-16T11:28:41+03:00
+Updated: 2026-09-16T12:22:46+03:00 (focused reconciliation)
 
 Primary RQ evidence is validation-led only. Terminal-led campaigns remain
 provenance archives and are excluded from primary tables and plots.
@@ -9,13 +9,13 @@ provenance archives and are excluded from primary tables and plots.
 
 | Experiment | State | Allocated / pending | CPU / RAM when allocated | Expected / hard remainder |
 |---|---|---:|---:|---|
-| MPrime Phase-B-A Stage-2 endpoint rescore | repaired preflight `21390403` running; array `21390404`, finalizer `21390429`, and downstream controller `21390981` dependency-pending | 1 / 22 | preflight 4 CPU / 20 GiB; main 60 CPU / 400 GiB | preflight <=1 h 35 m hard; main <=24 h after it passes |
-| MPrime unresolved checkpoint policy curves | 2/17 terminal; 15 exact identities running | 15 / 0 | 30 CPU / 300 GiB | <=7 h 12 m hard |
-| Premature MPrime epoch-0 fixed/PW array | 40 tasks running; scientifically quarantined; explicit cancellation approval requested | 40 / 0 | 240 CPU / 4,800 GiB | do not treat completion as final RQ evidence |
+| MPrime Phase-B-A Stage-2 endpoint rescore | preflight complete; 9 original tasks plus exact recovery `21392547_[1-11]` running; finalizer `21392548` and downstream `21392549` pending | 20 / 2 | 80 CPU / 400 GiB | <=24 h hard per running task; downstream then <=1 h total |
+| MPrime unresolved checkpoint policy curves | 11/17 terminal; five running and one completing | 6 / 0 | up to 12 CPU / 120 GiB | <=6 h 26 m hard |
 | MPrime policy retry controller | allocated reconciliation controller | 1 / 0 | 2 CPU / 2 GiB | <=61 h hard |
-| Counters strict policy-prior confirmation | 17/20 terminal; three original tasks running | 3 / 0 | 18 CPU / 360 GiB | two <=1 h 47 m hard; last <=45 h 31 m hard |
+| Counters strict policy-prior confirmation | 18/20 terminal; tasks 0 and 1 running | 2 / 0 | 12 CPU / 240 GiB | task 0 <=45 m hard; requeued task 1 <=44 h 45 m hard |
 | Counters task-9 exact recovery | first recovered identity terminal; second active; third remains | 1 / 0 | 2 CPU / 120 GiB | <=9 h 15 m hard |
 | Counters full-root trace controller | dependency-pending | 0 / 1 | 0 | starts only after every action-ID ledger reconciles to 59/59 |
+| TPP exact-RNG guard closure | compute smoke `21394945` passed; all four active/inactive one-epoch arms running; four endpoints dependency-pending | 4 / 4 | training 24 CPU / 192 GiB; endpoints max 20 CPU / 80 GiB | <=1 h 53 m training hard, then <=2 h endpoints |
 
 ## Scientific status
 
@@ -32,9 +32,9 @@ provenance archives and are excluded from primary tables and plots.
   selects endpoints, existing logs are reused and only a truly selected missing
   identity is rerun.
 - Premature MPrime search array `21388436` mislabeled old-validator epoch-0
-  endpoints as Phase-B-A. At 11:07 it had 222/800 durable classifications. Its
-  outputs are quarantined. After independent selection, exact checkpoint-hash
-  and configuration matches may be reused; all other rows stay excluded.
+  endpoints as Phase-B-A and was cancelled. Its provisional aggregate table
+  was deleted. Raw logs are not RQ inputs; only an exact selected
+  checkpoint-hash/configuration identity may be reused after selection.
 - The Counters targeted causal pilot remains: on three VH-off policy-success
   instances, action-ID/Q solved 0/3 and policy-prior solved 3/3. The unrelated
   VH-on arm is no longer presented as a failure because its policies solved 0/3.
@@ -48,13 +48,14 @@ provenance archives and are excluded from primary tables and plots.
   post-terminal without rerunning it.
 - TPP selected-pair rollback/LR backtracking prevented the analogous first-update
   collapse (20/20 bad seed; 20/20 stable control), but dropout was resampled.
-  Four exact-RNG closure jobs remain the minimum causal wrap-up. A broader
-  all-updates guard pilot stays held until that treatment is frozen.
+  The exact-RNG closure now compares active and inactive guards for both seeds
+  under identical stochastic schedules: four one-epoch jobs and four endpoints.
+  A broader three-arm, two-domain pilot stays held until this treatment is frozen.
 
 ## Canonical sources
 
 - Live scheduler snapshot: `experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260916_1128.csv`
 - MPrime rescore manifest: `experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/manifest.csv`
-- Quarantined search provenance: `experiment_tracking/mprime_final_stage2_search_20260916/README.md`
+- Cancelled premature-search provenance: `experiment_tracking/mprime_final_stage2_search_20260916/README.md`
 - Primary RQ report: `experiment_tracking/advisor_followup_20260910/rq_report_validation_led_20260912.md`
 - Experiment registry: `experiment_tracking/experiment_registry.csv`

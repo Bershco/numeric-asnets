@@ -1,8 +1,8 @@
 snapshot_time_idt,experiment,running,pending,jobs,requested_cpus,requested_memory_gib,job_ids,row_level_provenance
-2026-09-16T11:28:41+03:00,MPrime Phase-B-A Stage2 rescore and downstream chain,1,22,23,4,20.0,"21390403;21390404_[0-19];21390429;21390981",experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/submissions.tsv
-2026-09-16T11:28:41+03:00,MPrime unresolved checkpoint policy curves,15,0,17,30,300.0,21389264-21389280,experiment_tracking/mprime_final_stage2_validation_20260915/
-2026-09-16T11:28:41+03:00,MPrime premature epoch0 fixed and PW70 quarantined,40,0,40,240,4800.0,21388436_[0-39],experiment_tracking/mprime_final_stage2_search_20260916/README.md
-2026-09-16T11:28:41+03:00,MPrime policy retry controller,1,0,1,2,2.0,21362500,squeue://hersco/21362500
-2026-09-16T11:28:41+03:00,Counters Stage1 strict tie-break confirmation,3,0,3,18,360.0,"21233925_[0,1,11]",experiment_tracking/counters_tie_break_strict_stage1_20260913/
-2026-09-16T11:28:41+03:00,Counters exact task9 identity recovery,1,0,1,2,120.0,21362903_9,experiment_tracking/counters_tie_break_strict_stage1_20260913/
-2026-09-16T11:28:41+03:00,Counters full-root failure trace controller,0,1,1,0,0.0,21362904,experiment_tracking/counters_tie_break_strict_stage1_20260913/full_trace_submission_20260915.csv
+2026-09-16T12:13:19+03:00,MPrime Phase-B-A Stage2 rescore and downstream chain,20,2,22,80,400.0,"21390404_[0,12-19];21392547_[1-11];21392548;21392549",experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/README.md
+2026-09-16T12:13:19+03:00,MPrime unresolved checkpoint policy curves,6,0,6,12,120.0,"21389265-21389268;21389270;21389274",experiment_tracking/mprime_final_stage2_validation_20260915/
+2026-09-16T12:13:19+03:00,MPrime policy retry controller,1,0,1,2,2.0,21362500,squeue://hersco/21362500
+2026-09-16T12:13:19+03:00,Counters Stage1 strict tie-break confirmation,2,0,2,12,240.0,"21233925_[0,1]",experiment_tracking/counters_tie_break_strict_stage1_20260913/
+2026-09-16T12:13:19+03:00,Counters exact task9 identity recovery,1,0,1,2,120.0,21362903_9,experiment_tracking/counters_tie_break_strict_stage1_20260913/
+2026-09-16T12:13:19+03:00,Counters full-root failure trace controller,0,1,1,0,0.0,21362904,experiment_tracking/counters_tie_break_strict_stage1_20260913/full_trace_submission_20260915.csv
+2026-09-16T12:22:46+03:00,TPP exact-RNG active-vs-inactive guard closure,4,4,8,24,192.0,"21394946_[0-3];21394948_[0-3]",experiment_tracking/tpp_first_update_phase_c_exact_rng_20260916/submissions.tsv

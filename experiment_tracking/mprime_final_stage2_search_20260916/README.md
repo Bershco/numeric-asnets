@@ -13,9 +13,11 @@ Phase-B-A Stage-2 endpoint rescore. It contains exactly forty identities:
 All forty tasks were submitted as Slurm array `21388436` on 16 September 2026.
 The provenance audit then found that `checkpoint_selection=phase_b_replicate_a`
 and `selected_validation_score=30` had been assigned without a Phase-B-A
-rescore. The array is scientifically quarantined and explicit approval has
-been requested to cancel it. Its outputs must not enter RQ1-RQ4 merely because
-they complete.
+rescore. The array was cancelled at 11:48 IDT after 1:11:16. Its provisional
+aggregate table has been deleted and none of its reported means enters
+RQ1-RQ4. Raw logs remain only as immutable execution provenance. After the
+independent selector finishes, an individual raw result may be reused only if
+checkpoint hash and every search parameter exactly match a final identity.
 Each task requests six CPUs, 120 GiB and a 72-hour allocation, with three
 rolling workers, a six-hour per-instance limit and a 10,000-action limit.
 The fixed and PW arms share width 20, 70 simulations, PUCT 0.1 and estimator
@@ -27,10 +29,8 @@ identity to its Slurm array task. `source_ready_manifest_20260916_1024.csv` and
 The local runner verifies the declared code revision and checkpoint hash before
 evaluation and writes one durable completion ledger per identity.
 
-At the 11:07 IDT snapshot all forty tasks were still running and 222/800
-classifications were durable. Evidence is preserved. After the independent
+At the 11:07 IDT snapshot all forty tasks were running and 222/800
+classifications were durable. The array is now cancelled. After the independent
 Phase-B-A selector is frozen, a row is reusable only when its checkpoint hash
 and full fixed/PW configuration match the true selected endpoint exactly.
-Nonmatching rows remain invalid for the final Stage-2 RQs.
-The corresponding provisional policy-pair table is retained explicitly as
-`quarantined_old_validator_policy_pairs.csv`; it is not a canonical RQ input.
+Nonmatching rows are dropped. No provisional score table is retained.
