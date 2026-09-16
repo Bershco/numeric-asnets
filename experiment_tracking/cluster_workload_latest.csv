@@ -1,8 +1,7 @@
 snapshot_time_idt,experiment,job_id,job_name,state,tasks,cpus,memory_gib,elapsed,time_limit,reason_or_node,priority,array_job_id,scheduler_source
-2026-09-16T15:40:00+03:00,MPrime Phase-B-A Stage2 rescore,"21390404_[0,12-19];21392547_[1-11]",MPRIME_S2_PBA,RUNNING,20,80,400.0,03:42:00-03:57:00,1-00:00:00,multiple,,"21390404;21392547",squeue://hersco/21390404;21392547
-2026-09-16T15:24:00+03:00,MPrime Phase-B-A finalizer and downstream,"21392548;21392549","MPRIME_S2_PBA_FIN;MPRIME_S2_DOWNSTREAM",DEPENDENCY_PENDING,2,0,0.0,00:00:00,00:30:00,Dependency,,"21392548;21392549",squeue://hersco/21392548;21392549
-2026-09-16T15:24:00+03:00,MPrime obsolete policy retry watcher,21362500,MPRIME_S2_POL_RETRY,RUNNING,1,2,2.0,15:05:00,3-00:00:00,ise-cpu-intl-22,,21362500,squeue://hersco/21362500
-2026-09-16T15:24:00+03:00,Counters Stage1 strict tie-break confirmation,21233925_1,COUNTERS_TIE_STRICT,RUNNING,1,6,120.0,1-06:24:00,3-00:00:00,ise-cpu128-14,1,21233925,squeue://hersco/21233925
-2026-09-16T15:24:00+03:00,Counters exact task9 identity recovery,21362903_9,COUNTERS_TIE_EXACT3,RUNNING,1,2,120.0,14:40:00,20:00:00,ise-cpu-intl-18,1,21362903,squeue://hersco/21362903
-2026-09-16T15:24:00+03:00,Counters full-root failure trace controller,21362904,COUNTERS_TRACE_CTL,DEPENDENCY_PENDING,1,0,0.0,00:00:00,00:30:00,Dependency,1,21362904,squeue://hersco/21362904
-2026-09-16T15:40:00+03:00,TPP Phase-D verified endpoint evaluation,21409234,tpp_first_update_phase_d_legacy_exact_rng_endpoint,SUBMITTED,2,0,0.0,00:00:00,02:00:00,scheduler-state-pending-refresh,,21409234,squeue://hersco/21409234
+2026-09-16T17:44:17+03:00,MPrime Phase-B-A original checkpoint array,21411413,MPRIME_S2_PBA_FINE,RUNNING_PARTIAL,227,908,4540.0,00:23:10,08:00:00,"227 running;18 complete;task100 failed natively and has exact retry",,21411413,squeue://hersco/21411413
+2026-09-16T17:44:17+03:00,MPrime Phase-B-A exact task100 recovery,21412365_100,MPRIME_S2_PBA_FINE,RUNNING,1,4,20.0,00:00:06,08:00:00,ise-cpu128-06,,21412365,squeue://hersco/21412365
+2026-09-16T17:44:17+03:00,MPrime Phase-B-A replacement finalizer and downstream,"21412366;21412367","MPRIME_S2_PBA_FIN;MPRIME_S2_DOWNSTREAM",DEPENDENCY_PENDING,2,2,4.0,00:00:00,00:30:00,"afterany:21411413 and afterok:21412365; afterok:21412366",,"21412366;21412367",squeue://hersco/21412366;21412367
+2026-09-16T17:44:17+03:00,Counters Stage1 strict tie-break confirmation,21233925_1,COUNTERS_TIE_STRICT,RUNNING,1,6,120.0,1-08:45:25,3-00:00:00,ise-cpu128-14,1,21233925,squeue://hersco/21233925
+2026-09-16T17:44:17+03:00,Counters task9 exact three-identity recovery,21362903_9,COUNTERS_TIE_EXACT3,RUNNING,1,2,120.0,17:01:06,20:00:00,ise-cpu-intl-18,1,21362903,squeue://hersco/21362903
+2026-09-16T17:44:17+03:00,Counters full-root failure trace controller,21362904,COUNTERS_TRACE_CTL,DEPENDENCY_PENDING,1,1,2.0,00:00:00,00:30:00,Dependency,1,21362904,squeue://hersco/21362904

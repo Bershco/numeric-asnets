@@ -1,0 +1,8 @@
+snapshot_time_idt,experiment,job_id,job_name,state,tasks,cpus,memory_gib,elapsed,time_limit,reason_or_node,priority,array_job_id,scheduler_source
+2026-09-16T01:12:00+03:00,MPrime final validation-led Stage2,21303717-21303736,MPRIME_FINAL_S2,RUNNING_PLUS_17_TERMINAL,3,18,144.0,13:56:11-14:45:44,3-00:00:00,multiple,117,21303717-21303736,sacct://hersco/21303717-21303736
+2026-09-16T01:12:00+03:00,MPrime live policy evaluations,"noncontiguous; see primary and retry ledgers",MPFINALV_S2POL,RUNNING_PLUS_TERMINAL_AND_FAILED_ATTEMPTS,36,360,720.0,00:00:00-01:30:00,04:00:00,multiple,117,,sacct://hersco/2026-09-15
+2026-09-16T01:12:00+03:00,MPrime policy controllers,"21362560;21362500","MPRIME_S2_POLICY_CTL;MPRIME_S2_POL_RETRY",RUNNING,2,4,4.0,00:45:00-00:50:00,3-00:00:00,multiple,117,,squeue://hersco/21362560;21362500
+2026-09-16T01:12:00+03:00,Counters Stage1 strict tie-break confirmation,"21233925_[0,1,10,11]",COUNTERS_TIE_STRICT,RUNNING,4,24,480.0,16:11:27-2-12:10:44,3-00:00:00,multiple,1,21233925,squeue://hersco/21233925
+2026-09-16T01:12:00+03:00,Counters exact recovery tasks7and19,"21347260_[7,19]",COUNTERS_TIE_EXACT2,RUNNING,2,4,240.0,05:47:46-06:26:15,14:00:00,multiple,1,21347260,squeue://hersco/21347260
+2026-09-16T01:12:00+03:00,Counters exact task9 recovery,21362903_9,COUNTERS_TIE_EXACT3,RUNNING,1,2,120.0,00:27:08,20:00:00,ise-cpu-intl-18,1,21362903,squeue://hersco/21362903
+2026-09-16T01:12:00+03:00,Counters full-root failure trace controller,21362904,COUNTERS_TRACE_CTL,PENDING,1,0,0.0,00:00:00,00:30:00,Dependency,1,21362904,squeue://hersco/21362904

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import re
 from pathlib import Path
 
@@ -19,8 +20,8 @@ def read(path: Path) -> list[dict[str, str]]:
 
 def score(path: Path) -> int:
     rows = read(path)
-    if len(rows) > 30:
-        raise RuntimeError(f"too many VAL rows in {path}")
+    if len(rows) != 30 or any(row.get("val_valid") not in {"0", "1"} for row in rows):
+        raise RuntimeError(f"expected exactly 30 binary VAL rows in {path}")
     return sum(int(row["val_valid"]) for row in rows)
 
 
@@ -47,6 +48,18 @@ def main() -> None:
             if not match:
                 continue
             epoch, value = int(match.group(1)), score(summary)
+            source = by_identity[(lineage["value_head"], lineage["seed"], str(epoch))]
+            done = summary.with_name(summary.name.replace(".val.csv", ".done.json"))
+            expected_identity = {
+                "checkpoint": source["source_checkpoint_ref"],
+                "checkpoint_sha256": source["source_checkpoint_sha256"],
+                "training_job_id": source["source_training_job_id"],
+                "validation_manifest_sha256": lineage["validation_manifest_sha256"],
+                "validation_module_sha256": lineage["validation_module_sha256"],
+                "code_commit": "ef274cd23605de815800656c97b360ee7ff584b8",
+            }
+            if not done.is_file() or json.loads(done.read_text(encoding="utf-8")) != expected_identity:
+                raise RuntimeError(f"{lineage['manifest_id']} epoch {epoch}: missing/mismatched done identity")
             curve.append((epoch, value, summary))
             all_rows.append({
                 "manifest_id": lineage["manifest_id"], "value_head": lineage["value_head"],

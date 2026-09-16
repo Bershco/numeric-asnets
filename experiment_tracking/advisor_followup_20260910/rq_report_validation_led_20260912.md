@@ -28,7 +28,7 @@ These stable-domain cells are reported separately from the primary five-domain m
 | TPP | 10 (8 held-out + 2 tuning) | 20 | 18.9 | 20 → 18.62 | -1.38 [-4.63, 1.88]; p=1/1 | -1.1 [-3.59, 1.39] | 1 / 1 | TPP/off: nine seeds=20/20; seed 1972442430=9/20 |
 | Zenotravel | 10 (8 held-out + 2 tuning) | 20 | 20 | 20 → 20 | 0 [0, 0]; p=1/1 | 0 [0, 0] | 1 / 1 | Preserved on average |
 
-**Extension conclusion:** Delivery and Zenotravel are preserved. TPP is preserved in nine of ten VH-off seeds, but one predeclared held-out seed collapses to 9/20; that outlier is a real seed-specific failure and is not hidden by the 18.9 mean.
+**Extension conclusion:** Delivery and Zenotravel are preserved. TPP is preserved in nine of ten VH-off seeds, but one predeclared held-out seed collapses to 9/20; that outlier is a real seed-specific failure and is not hidden by the 18.9 mean. A separate selected-pair mechanism audit now shows that, under one frozen replay/RNG stream, historical dropout-current KL yields 11/20 on that seed while deterministic-current KL yields 20/20; the stable seed remains 20/20 under both. This explains a mechanism for the selected failure but does not change the primary ten-seed estimate.
 
 ![RQ1 paired Stage-2 effect](rq1_stage2_training_vh_off.png)
 
@@ -112,7 +112,7 @@ The direct column answers whether VH-on Stage 2 improves its own VH-on Stage-1 p
 | TPP | 20 → 19.5 | -0.5 [-1.63, 0.63]; p=1/1 | -1.1 | 0.6 [-2.25, 3.45]; p=1/1 | Exploratory post-hoc interaction; separate 3-domain family |
 | Zenotravel | 20 → 19.9 | -0.1 [-0.33, 0.13]; p=1/1 | 0 | -0.1 [-0.33, 0.13]; p=1/1 | Exploratory post-hoc interaction; separate 3-domain family |
 
-**Extension conclusion:** The stable domains do not supply evidence that the value head improves refinement. Their near-ceiling scores primarily test preservation; TPP/off's single catastrophic seed is investigated separately as an optimization-path failure.
+**Extension conclusion:** The stable domains do not supply evidence that the value head improves refinement. Their near-ceiling scores primarily test preservation. For TPP/off's single catastrophic seed, a selected-pair fixed-replay/RNG audit traces the reproduced loss to legacy dropout-current KL semantics relative to deterministic-current KL; this mechanism result does not alter the RQ3 population estimate.
 
 ![RQ3 raw means and interaction](rq3_raw_means_and_interaction.png)
 

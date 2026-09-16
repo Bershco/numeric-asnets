@@ -33,19 +33,23 @@ This historical mistake does not invalidate the twenty trained networks:
 validation was not part of the optimization loss and did not alter their
 weights. It did, however, make the inline endpoint choices unusable and forced
 one independent evaluation of all 420 saved checkpoints. The corrected
-Phase-B-A rescore evaluates those checkpoints as twenty lineage tasks. Its
-preflight is job `21390403`; original tasks `21390404_[0,12-19]` and exact
-ENOSPC recovery `21392547_[1-11]` feed replacement finalizer `21392548` and
-downstream controller `21392549`. MPrime Stage-2 policy values remain withheld
-from RQ1/RQ3 until that finalizer freezes the true endpoints.
+Phase-B-A rescore originally evaluated those checkpoints as twenty lineage
+tasks. That route (`21390404`, `21392547`, `21392548`, `21392549`) was later
+cancelled after preserving 174 exact completed identities. The canonical
+accelerated route is smoke `21411412`, 246-key array `21411413`, finalizer
+`21411414`, and downstream controller `21411415`; see
+`../mprime_final_stage2_phase_b_a_rescore_20260916/parallel_replacement_20260916_164528.tsv`.
+MPrime Stage-2 policy values remain withheld from RQ1/RQ3 until the new
+finalizer freezes the true endpoints.
 
-Of the 420 checkpoints, 403 already have valid test-policy logs. Seventeen
-non-selected-under-the-old-validator curve points repeatedly failed before
-inference and are being recovered exactly with one worker, two CPUs, 20 GiB
-and an eight-hour hard limit under jobs `21389264`-`21389280`. After Phase-B-A
-selection, every selected endpoint reuses an existing valid policy log when
-available; only a selected identity still missing valid policy evidence may be
-recovered.
+Of the 420 checkpoints, 403 had valid test-policy logs in the historical curve
+audit. The seventeen non-selected-under-the-old-validator gaps had terminal
+recovery attempts under jobs `21389264`-`21389280`; no policy-evaluation job is
+currently active. After Phase-B-A selection, every selected endpoint reuses an
+existing valid policy log when available. Downstream controller `21411415`
+submits only a selected identity still missing valid policy evidence, once,
+into a date-frozen recovery root and then fails closed if evidence remains
+absent.
 
 Every manifest row carries the source training job, epoch, exact checkpoint
 path and SHA-256 hash. Primary/retry ledgers and the dedicated recovery ledger

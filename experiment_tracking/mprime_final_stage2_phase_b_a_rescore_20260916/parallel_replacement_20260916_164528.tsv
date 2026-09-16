@@ -1,0 +1,8 @@
+submitted_at_idt	missing_manifest	missing_manifest_sha256	valid_reused	missing_submitted	max_parallel	job_role	job_id	dependency	tasks	cpus_per_task	memory_per_task_gib	walltime	state_at_20260916_1720
+2026-09-16T16:45:28+03:00	missing_checkpoint_manifest_20260916_164528.csv	f2732949116b14625707966f46c29e91e9ca6782f9f754957d60554d46f55d42	174	246	246	smoke	21411412_0		1	4	20	08:00:00	RUNNING
+2026-09-16T16:45:28+03:00	missing_checkpoint_manifest_20260916_164528.csv	f2732949116b14625707966f46c29e91e9ca6782f9f754957d60554d46f55d42	174	246	246	fine_array	21411413_[0-245%246]	afterok:21411412	246	3	20	08:00:00	DEPENDENCY_PENDING
+2026-09-16T16:45:28+03:00	missing_checkpoint_manifest_20260916_164528.csv	f2732949116b14625707966f46c29e91e9ca6782f9f754957d60554d46f55d42	174	246	246	finalizer	21411414	afterok:21411413	1	1	2	00:30:00	DEPENDENCY_PENDING
+2026-09-16T16:45:28+03:00	missing_checkpoint_manifest_20260916_164528.csv	f2732949116b14625707966f46c29e91e9ca6782f9f754957d60554d46f55d42	174	246	246	downstream_controller	21411415	afterok:21411414	1	1	2	00:30:00	DEPENDENCY_PENDING
+
+# Replaced/cancelled writers and controllers: 21390404, 21392547, 21392548, 21392549, 21362500.
+# Their existing exact identity-valid evidence is retained and represented by valid_reused=174.

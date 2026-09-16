@@ -1,6 +1,10 @@
 # TPP first-update Phase D: matched legacy KL under the exact RNG stream
 
-Status: one-epoch treatments complete; endpoint evaluations submitted. Compute smoke `21408030` completed.
+Status at 2026-09-16 17:20 IDT: complete. The matched legacy-KL endpoint
+scores are 11/20 for catastrophic seed 1972442430 and 20/20 for stable seed
+2082152039. The corresponding Phase-C deterministic-current-KL inactive arms
+both scored 20/20 under the same frozen RNG schedule. Compute smoke `21408030`
+completed.
 The first training array `21408031_[0-1]` failed before scientific execution
 because the detached checkout lacked the ignored compiled TensorFlow operator;
 its dependent endpoints `21408032_[0-1]` cancelled without work. The production
@@ -38,3 +42,28 @@ Both jobs reuse the exact 60 frozen replay batches, source checkpoints, learning
 - The stable control checks that the treatment does not manufacture a failure in an already stable lineage.
 
 No 100-epoch training is part of this diagnostic. The broader TPP/Drone guard campaign remains held until a matched inactive condition reproduces or explains the failure.
+
+## Final result and conclusion
+
+| Seed role | Legacy/dropout-current KL | Deterministic-current KL | Matched change |
+|---|---:|---:|---:|
+| Catastrophic seed 1972442430 | 11/20 | 20/20 | +9 plans |
+| Stable control 2082152039 | 20/20 | 20/20 | 0 plans |
+
+Under the frozen replay batches and identical RNG-314159 optimizer-step
+schedule, changing the anchor KL from the historical dropout-current forward
+to a deterministic-current forward prevents the selected catastrophic seed's
+large first-update loss while preserving the stable seed. This directly rules
+out the earlier explanation that the fixed stochastic stream alone made the
+bad seed score 20/20.
+
+The historical selected Stage-2 result remains 9/20 and the original
+first-checkpoint reproduction remains 10/20. Phase D is a deliberately
+selected two-seed causal isolation, not a population-effect estimate; no CI or
+significance test is appropriate. The next defensible generalization is a
+small predeclared multi-RNG susceptibility screen comparing the two KL
+semantics. It is not a justification to replace the primary RQ1 result or to
+retrain every domain immediately.
+
+Machine-readable endpoints and exact log paths are in
+`results_final_20260916.csv`.

@@ -1,0 +1,20 @@
+{
+  "decomposition_available": 0,
+  "decomposition_unavailable": 100,
+  "interpretation": "Aggregate KL/loss/total gradient is intentionally not used as a proxy.",
+  "lineages": 100,
+  "logs_found": 100,
+  "mprime_extension": {
+    "decomposition_available": 0,
+    "lineages": 20,
+    "logs_found": 20,
+    "scope": "Final MPrime validation-led Stage-2 lineages; reported separately"
+  },
+  "remote_check": "Literal-path remote grep verified 100 logs and zero occurrences of any required marker.",
+  "required_markers": [
+    "policy_gradient_l2",
+    "weighted_anchor_gradient_l2",
+    "policy_anchor_gradient_cosine"
+  ],
+  "scope": "MAIN-VAL Stage-2: five imperfect domains x two VH modes x ten seeds"
+}

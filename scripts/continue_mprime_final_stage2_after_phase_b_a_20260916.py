@@ -6,8 +6,10 @@ from __future__ import annotations
 import argparse
 import csv
 import re
+import shlex
 import shutil
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -76,6 +78,14 @@ def main() -> None:
     parser.add_argument("--runner-source", type=Path, required=True)
     parser.add_argument("--sbatch", type=Path, required=True)
     parser.add_argument("--code-commit", required=True)
+    parser.add_argument(
+        "--policy-submit-script", type=Path,
+        default=Path("/home/hersco/bershco-nu-asnets/numeric-asnets-mprime-policy-live-20260915/experiment_tracking/submit_stage2_policy.py"),
+    )
+    parser.add_argument(
+        "--policy-submitter", type=Path,
+        default=Path("/home/hersco/training_new_domains/2026-09-15/mprime_final_stage2_policy/submit_training_mprime_policy_wrapper_20260916.sh"),
+    )
     args = parser.parse_args()
 
     selected, old = read(args.selected), read(args.old_manifest)
@@ -87,7 +97,7 @@ def main() -> None:
         epoch = int(endpoint["snapshot_epoch"])
         policy = policy_evidence(args.policy_root, endpoint["source_training_job_id"], epoch)
         if policy is None:
-            missing_policy.append(f"{endpoint['value_head']}/{endpoint['seed']}/e{epoch}")
+            missing_policy.append(endpoint)
             continue
         for method in ("fixed", "pw70"):
             template = dict(templates[(endpoint["value_head"], endpoint["seed"], method)])
@@ -118,7 +128,58 @@ def main() -> None:
                 template["status"] = "reused_exact_hash_config"
             rows.append(template)
     if missing_policy:
-        raise RuntimeError("selected endpoints lack valid policy evidence: " + ", ".join(missing_policy))
+        recovery_manifest = args.campaign / "selected_policy_recovery_manifest.csv"
+        recovery_ledger = args.campaign / "selected_policy_recovery_submissions.tsv"
+        recovery_prefix = "mprime_final_stage2_selected_policy_recovery"
+        recovery_root = (
+            Path("/home/hersco/training_new_domains")
+            / datetime.now().astimezone().date().isoformat()
+            / f"{recovery_prefix}_mprime"
+        )
+        recovery_rows = []
+        for endpoint in missing_policy:
+            epoch = int(endpoint["snapshot_epoch"])
+            recovery_rows.append({
+                "manifest_id": f"mprime-final-s2-{endpoint['value_head']}-{endpoint['seed']}-policy-e{epoch:04d}-pba-selected-recovery",
+                "task_type": "policy_eval", "domain": "mprime",
+                "value_head": endpoint["value_head"], "seed": endpoint["seed"],
+                "stage": "stage2", "status": "ready", "teacher": "hmrp-ha-gbfs",
+                "source_checkpoint_ref": endpoint["source_checkpoint_ref"],
+                "source_checkpoint_sha256": endpoint["source_checkpoint_sha256"],
+                "source_training_job_id": endpoint["source_training_job_id"],
+                "snapshot_epoch": str(epoch),
+                "analysis_roles": "mprime_final_validation_stage2_phase_b_a_selected_policy",
+                "training_state": "COMPLETED", "training_log": endpoint["training_log"],
+            })
+        args.campaign.mkdir(parents=True, exist_ok=True)
+        write(recovery_manifest, recovery_rows)
+        if recovery_ledger.exists():
+            names = ", ".join(f"{r['value_head']}/{r['seed']}/e{r['snapshot_epoch']}" for r in recovery_rows)
+            raise RuntimeError("selected policy recovery completed but evidence is still absent: " + names)
+        environment = dict(**__import__("os").environ)
+        environment["STAGE2_POLICY_SUBMITTER"] = str(args.policy_submitter)
+        subprocess.run([
+            sys.executable, str(args.policy_submit_script),
+            "--manifest", str(recovery_manifest), "--ledger", str(recovery_ledger),
+            "--suffix-prefix", "MPFINALV_S2SEL", "--output-prefix", recovery_prefix,
+            "--queue-cap", "1999", "--max-per-cycle", str(len(recovery_rows)),
+            "--max-active", str(len(recovery_rows)), "--one-cycle",
+        ], env=environment, check=True)
+        submitted = read(recovery_ledger, "\t")
+        job_ids = [row["slurm_job_id"] for row in submitted]
+        if len(job_ids) != len(recovery_rows):
+            raise RuntimeError("selected-policy recovery ledger is incomplete")
+        continuation = subprocess.run([
+            "sbatch", "--parsable", "--dependency=afterany:" + ":".join(job_ids),
+            "--job-name=MPRIME_S2_DOWNSTREAM_R", "--cpus-per-task=1", "--mem=2G",
+            "--time=00:30:00", f"--output={args.campaign}/downstream_recovery_%j.log",
+            "--wrap=" + shlex.join([
+                sys.executable, str(Path(__file__).resolve()), *sys.argv[1:],
+                "--policy-root", str(recovery_root),
+            ]),
+        ], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+        print(f"selected_policy_recovery={len(job_ids)} continuation={continuation.stdout.strip()}")
+        return
     if len(rows) != 40:
         raise RuntimeError("failed to build forty final search identities")
     args.campaign.mkdir(parents=True, exist_ok=True)
