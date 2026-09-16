@@ -58,6 +58,16 @@ This directory is the canonical index for thesis experiments. Reports should
 read these files instead of repeatedly rediscovering completed results from the
 cluster filesystem.
 
+Before every Codex cluster or experiment-status task, load both canonical
+operational instructions:
+
+- `cluster_access_and_ssh.md` for the Windows profile, SSH alias, VPN diagnosis
+  and bounded retry procedure;
+- `../docs/codex_cluster_workflow_efficiency.md` for batched preflight,
+  mutation, verification, asynchronous dependency handling and polling scope.
+
+Neither document replaces the other.
+
 The current advisor-facing snapshot is
 `advisor_audit_20260830/current_status.md`, with the machine-readable equivalent
 in `advisor_audit_20260830/experiment_status.csv`. Cluster access must use the

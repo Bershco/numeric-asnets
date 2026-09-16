@@ -1,5 +1,10 @@
 # Cluster access and SSH
 
+For every Codex cluster or experiment-status task, also read
+`../docs/codex_cluster_workflow_efficiency.md`. This file governs connection,
+profile, VPN and retry behavior; the efficiency document governs batching,
+asynchronous Slurm execution and status-report cadence.
+
 Use only the `uni-cluster` SSH profile from `C:\Users\roeeh\.ssh\config`.
 
 - Windows account: `roee-mobile-pc\roeeh`

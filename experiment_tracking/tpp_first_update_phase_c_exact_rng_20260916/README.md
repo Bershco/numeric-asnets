@@ -81,14 +81,33 @@ inactive arm isolates the effect of activating rollback within that sequence.
 - RNG capture and gradient verification: `asnets/asnets/replay_rng.py` and
   `asnets/asnets/supervised.py`.
 - Focused tests: `asnets/tests/test_replay_rng.py`.
+- Literature basis and broader-pilot decision:
+  `../../docs/stage2_trust_region_guard_research_notes_20260916.md`.
 - Slurm scripts:
   `scripts/tpp_first_update_phase_c_exact_rng_{smoke,train,endpoint}_20260916.sbatch`.
 - Safe idempotent submitter:
   `scripts/submit_tpp_first_update_phase_c_exact_rng_20260916.py`.
 
-## Status
+## Completed result
 
-Implementation and local tests are complete. Deployment must use a new
-isolated checkout and a new remote output directory; the completed Phase-C
-artifacts remain untouched. Submission is intentionally performed by the main
-task after reviewing the exact commit and deployment bundle.
+Compute smoke `21394945`, training array `21394946_[0-3]` and endpoint array
+`21394948_[0-3]` all completed. The fail-closed gradient-hash checks passed.
+
+| Seed role | Active guard | Inactive guard | Active retries | Inactive retries |
+|---|---:|---:|---:|---:|
+| Catastrophic outlier `1972442430` | 20/20 | 20/20 | 8 | 0 |
+| Stable control `2082152039` | 20/20 | 20/20 | 4 | 0 |
+
+Canonical row-level evidence is in `results_final_20260916.csv`.
+
+This matches the predeclared second interpretation gate: the fixed stochastic
+stream itself avoided the collapse. The active guard did not outperform its
+inactive exact-RNG match, so this experiment establishes **no causal guard
+effect**. It also shows why the earlier selected-pair 20/20 repair cannot be
+attributed uniquely to rollback or learning-rate backtracking.
+
+The broader twelve-job, two-domain, three-arm pilot remains held. Submitting it
+under the present gate would be scientifically unjustified; a redesigned test
+must first expose more than one frozen stochastic stream or otherwise create a
+setting in which active and inactive arms differ without selecting streams by
+test outcome.

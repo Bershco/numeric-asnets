@@ -15,7 +15,7 @@ The lower learning rate is a per-update backtracking device. The configured
 base learning rate is restored for the next optimizer step; it is not a
 persistent global learning-rate decay.
 
-## Current causal closure
+## Completed exact-RNG causal closure
 
 The first practical screen kept the catastrophic and stable TPP seeds at
 20/20, but rejected retries resampled dropout. The exact-RNG closure therefore
@@ -27,8 +27,13 @@ uses a matched active versus inactive comparison for both seeds:
 - inactive instrumented guard with limits of 1e6, which should never reject;
 - four one-epoch training jobs and four dependent policy endpoints.
 
-This distinguishes a guard effect from a lucky replacement dropout stream.
-It is selected-pair causal evidence, not an estimate of population efficacy.
+All four endpoints scored 20/20. The catastrophic arm used eight active-guard
+retries but also scored 20/20 with the inactive guard and zero retries. The
+stable control likewise scored 20/20 in both arms. Therefore the frozen RNG
+stream avoided the collapse by itself and this matched experiment establishes
+no causal guard effect. The earlier practical repair remains evidence that the
+collapse was preventable, but not that rollback/LR backtracking caused the
+repair.
 
 ## Related methods
 
@@ -101,9 +106,10 @@ Risks:
   repeated proposals;
 - adoption would require full-domain policy and MCTS reevaluation.
 
-## Decision gate
+## Decision gate result
 
-Do not submit the 12-job broader pilot until the exact-RNG active/inactive
-closure is complete. If the inactive catastrophic arm also remains 20/20, the
-new RNG stream—not guard activation—explains the repair, and the treatment
-must be redesigned before cross-domain testing.
+The inactive catastrophic arm remained 20/20, exactly as the negative gate
+anticipated. The twelve-job broader pilot is therefore held and was not
+submitted. Before cross-domain testing, redesign the causal screen around a
+small predeclared panel of frozen stochastic streams or another non-test-based
+way to produce both susceptible and stable update conditions.

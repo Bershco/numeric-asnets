@@ -1,9 +1,17 @@
 # Final MPrime Stage-2 Phase-B-A endpoint rescore
 
 The twenty final Stage-2 training lineages are valid and complete, but their
-ordinary internal validation set saturated. The earlier endpoint materializer
-therefore selected epoch 0 from the wrong selector and must not define the final
-MPrime Stage-2 RQs.
+ordinary internal validation set saturated. It is now a legacy,
+non-authoritative provenance field only. **Phase-B-A is the sole canonical
+MPrime validation set** for selecting checkpoints and reporting validation
+results. The earlier endpoint materializer selected epoch 0 from the wrong
+selector and is excluded from all final MPrime RQs, tables and plots.
+
+The validator error affected selection, not optimization: validation scores
+were not used in the Stage-2 loss and did not change network weights. Therefore
+the defensible repair is to rescore every saved checkpoint once, not retrain
+twenty lineages. Future MPrime training must evaluate Phase-B-A inline so this
+420-evaluation bridge is never needed again.
 
 This repair evaluates all 420 saved checkpoints (twenty lineages x twenty-one
 epochs: 0, 5, ..., 95, 99) on the frozen thirty-instance Phase-B replicate A.

@@ -23,12 +23,21 @@ lineages). Of those, 403 had valid policy logs and seventeen non-selected curve
 points had repeatedly failed before inference with native runtime errors.
 
 The training log's ordinary internal validator saturated and selected epoch 0
-for every lineage. Those selections are not the adopted Phase-B-A validator
-and are therefore not primary endpoints. A corrected, independent Phase-B-A
-rescore now evaluates all 420 saved checkpoints as twenty lineage tasks. Its
-preflight is job `21390403`, main array `21390404_[0-19]`, and finalizer
-`21390429`. MPrime Stage-2 policy values remain withheld from RQ1/RQ3 until
-that finalizer freezes the true endpoints.
+for every lineage. That validator is now classified as **legacy,
+non-authoritative provenance only**. Phase-B-A is the sole canonical MPrime
+validator for checkpoint selection, reported validation scores, endpoint
+materialization, RQ inputs, tables and plots. Future MPrime training must use
+Phase-B-A inline; no result pipeline may consume the ordinary-validator fields.
+
+This historical mistake does not invalidate the twenty trained networks:
+validation was not part of the optimization loss and did not alter their
+weights. It did, however, make the inline endpoint choices unusable and forced
+one independent evaluation of all 420 saved checkpoints. The corrected
+Phase-B-A rescore evaluates those checkpoints as twenty lineage tasks. Its
+preflight is job `21390403`; original tasks `21390404_[0,12-19]` and exact
+ENOSPC recovery `21392547_[1-11]` feed replacement finalizer `21392548` and
+downstream controller `21392549`. MPrime Stage-2 policy values remain withheld
+from RQ1/RQ3 until that finalizer freezes the true endpoints.
 
 Of the 420 checkpoints, 403 already have valid test-policy logs. Seventeen
 non-selected-under-the-old-validator curve points repeatedly failed before
@@ -50,8 +59,10 @@ on the same node before the exclusion was effective; their replacements use
 the private excluded-node wrapper. No partial policy score is reused after a
 pre-inference failure.
 
-The 01:34 files remain immutable historical snapshots. The premature search
-manifest under `../mprime_final_stage2_search_20260916/` used the saturated
-internal-validator epoch-0 roles and is quarantined. Its outputs may be reused
-only if the independently frozen Phase-B-A endpoint has the exact same
-checkpoint hash and full search configuration.
+The 01:34 files remain immutable historical provenance and are explicitly
+noncanonical. The premature search manifest under
+`../mprime_final_stage2_search_20260916/` used saturated-validator epoch-0
+roles and has been dropped from the canonical analysis. Its aggregate table
+was deleted and its jobs were cancelled. A raw evaluation may be reused only
+if Phase-B-A independently selects the exact same checkpoint hash and its full
+search configuration also matches; otherwise it is excluded.
