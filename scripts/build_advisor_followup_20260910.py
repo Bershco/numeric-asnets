@@ -19,8 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 TRACK = ROOT / "experiment_tracking"
 OUT = TRACK / "advisor_followup_20260910"
 OUT.mkdir(parents=True, exist_ok=True)
-DOMAINS = ["block_grouping", "drone", "fo_counters", "rover", "counters"]
-MCTS_DOMAINS = [*DOMAINS, "mprime"]
+DOMAINS = ["block_grouping", "drone", "fo_counters", "rover", "counters", "mprime"]
+MCTS_DOMAINS = list(DOMAINS)
 LABELS = {
     "block_grouping": "Block Grouping",
     "drone": "Drone",
@@ -165,6 +165,10 @@ def build_rq_rows() -> list[dict[str, object]]:
         on = [row for row in policy if row["domain"] == domain and row["value_head"] == "on"]
         off = sorted(off, key=lambda row: row["seed"])
         on = sorted(on, key=lambda row: row["seed"])
+        if not off and not on:
+            continue
+        if len(off) != 10 or len(on) != 10:
+            raise RuntimeError(f"{domain}: expected ten paired policy seeds per VH mode")
         output.append(result_row(
             rq="RQ1", stage="Stage 2", estimand="VH-off: Stage 2 policy - Stage 1 policy",
             domain=domain, cutoff="endpoint",
@@ -542,6 +546,8 @@ def build_raw_mean_rows(rq_rows: list[dict[str, object]]) -> tuple[list[dict[str
     rq3: list[dict[str, object]] = []
     effects = {(str(row["domain"]), str(row["estimand"])): row for row in rq_rows if row["rq"] == "RQ3"}
     for domain in DOMAINS:
+        if not any(row["domain"] == domain for row in policy):
+            continue
         item: dict[str, object] = {"rq": "RQ3", "domain": domain, "capacity": CAPACITY[domain]}
         for vh in ("off", "on"):
             group = [row for row in policy if row["domain"] == domain and row["value_head"] == vh]
@@ -574,7 +580,7 @@ def plot_rq2_raw(rows: list[dict[str, object]]) -> None:
     width, height = 1750, 760
     parts = _raw_plot_header(
         "RQ2 raw coverage — VH-off policy versus MCTS at both stages",
-        "Stage 2 uses validation-led checkpoints. BG/Counters use narrow 5/20; other cells use normal 20/70. MPrime Stage 1 is final; its final Stage-2 training/evaluation is in progress and is withheld here.",
+        "Stage 2 uses validation-led checkpoints. BG/Counters use narrow 5/20; other cells use normal 20/70. MPrime Stage-2 training is complete, but its Phase-B-A endpoint rescore is live, so no Stage-2 MPrime bar is plotted.",
         width, height,
     )
     colors = {"Policy": "#e68632", "30m": "#9ecae1", "2h": "#4292c6", "6h": "#08519c"}
@@ -662,7 +668,7 @@ def plot_rq4_raw(rq2_rows: list[dict[str, object]], rq4_rows: list[dict[str, obj
     width, height = 1750, 760
     parts = _raw_plot_header(
         "RQ4 raw policy and six-hour MCTS coverage by value-head mode",
-        "Stage 2 uses validation-led checkpoints. BG/Counters use narrow 5/20; other cells use normal 20/70. MPrime Stage 1 is final; its final Stage-2 training/evaluation is in progress and is withheld here.",
+        "Stage 2 uses validation-led checkpoints. BG/Counters use narrow 5/20; other cells use normal 20/70. MPrime Stage-2 training is complete; its Phase-B-A endpoint rescore is live and all Stage-2 MPrime search bars are withheld.",
         width, height,
     )
     effect_map = {(str(row["stage"]), str(row["domain"])): row for row in effects if row["rq"] == "RQ4" and row["cutoff"] == "6h" and str(row["estimand"]).startswith("VH interaction")}
@@ -711,7 +717,7 @@ def plot_rq4_raw(rq2_rows: list[dict[str, object]], rq4_rows: list[dict[str, obj
     parts += [
         '<line x1="630" y1="699" x2="670" y2="699" stroke="#4c78a8" stroke-width="3"/><text x="680" y="703" class="sub">VH-off</text>',
         '<line x1="800" y1="699" x2="840" y2="699" stroke="#d95f02" stroke-width="3"/><text x="850" y="703" class="sub">VH-on</text>',
-        '<text x="28" y="738" class="sub">Open marker: policy. Filled marker: exact six-hour MCTS mean. Stage 1 includes final MPrime; Stage 2 remains the five completed validation-led domains.</text>',
+        '<text x="28" y="738" class="sub">Open marker: policy. Filled marker: exact six-hour MCTS mean. MPrime Stage-2 remains absent until the Phase-B-A endpoint rescore completes.</text>',
         '</svg>',
     ]
     (OUT / "rq4_raw_means_6h_by_stage.svg").write_text("".join(parts), encoding="utf-8")

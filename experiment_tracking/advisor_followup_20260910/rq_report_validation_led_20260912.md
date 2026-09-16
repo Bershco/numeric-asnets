@@ -4,7 +4,7 @@ This is the primary thesis view. Terminal-led campaigns are excluded. Fixed-sear
 
 Effects are seed-paired mean differences; confidence intervals are paired t-intervals; raw p-values are two-sided exact sign-flip tests; Holm correction is applied separately within each RQ × stage × cutoff × estimand family. Stage-1 fixed-search families now include six domains with final MPrime results; Stage 2 contains the five completed validation-led domains. PW uses separate families and is never pooled with fixed search. **Bold entries are Holm-significant at .05; raw-only significance is not bolded.**
 
-MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator and the complete anchor rescore froze coefficient 30 for VH-off and 10 for VH-on. A final identity audit found that mixing two older candidate lineages with eighteen current-build lineages would create avoidable build heterogeneity, so all twenty clean validation-led Stage-2 lineages were launched uniformly. This is separate from the completed Stage-1 fixed-MCTS and PW70 evidence, which is already included in RQ2/RQ4.
+All twenty clean MPrime Stage-2 training lineages are complete, but their 420 checkpoints are being rescored on the frozen Phase-B-A validator. MPrime therefore remains absent from RQ1/RQ3 and the Stage-2 portions of RQ2/RQ4 until that independent selector freezes the endpoints. Its completed Stage-1 fixed/PW results remain valid.
 
 ## RQ1 — Does Stage-2 training improve policy coverage without a value head?
 
@@ -25,10 +25,10 @@ These stable-domain cells are reported separately from the primary five-domain m
 | Domain | n | Stage-1 all 10 | Stage-2 all 10 | Held-out 8: S1 → S2 | Held-out Δ [95% CI]; raw/Holm p | All-10 Δ [95% CI] | All-10 raw/Holm p | Conclusion |
 |---|---|---|---|---|---|---|---|---|
 | Delivery | 10 (8 held-out + 2 tuning) | 19.8 | 19.6 | 19.75 → 19.5 | -0.25 [-1.32, 0.82]; p=1/1 | -0.2 [-1.01, 0.61] | 1 / 1 | Preserved on average |
-| TPP | 10 (8 held-out + 2 tuning) | 20 | 18.9 | 20 → 18.62 | -1.38 [-4.63, 1.88]; p=1/1 | -1.1 [-3.59, 1.39] | 1 / 1 | TPP/off: nine seeds=20/20; seed 1972442430=9/20. A fresh selected-pair one-epoch rollback/LR-backtracking rerun yielded 20/20 for the bad seed and stable control, apparently preventing the analogous collapse; retries resampled dropout, so exact-RNG closure remains required and this is not a population-level replacement result. |
+| TPP | 10 (8 held-out + 2 tuning) | 20 | 18.9 | 20 → 18.62 | -1.38 [-4.63, 1.88]; p=1/1 | -1.1 [-3.59, 1.39] | 1 / 1 | TPP/off: nine seeds=20/20; seed 1972442430=9/20 |
 | Zenotravel | 10 (8 held-out + 2 tuning) | 20 | 20 | 20 → 20 | 0 [0, 0]; p=1/1 | 0 [0, 0] | 1 / 1 | Preserved on average |
 
-**Extension conclusion:** Delivery and Zenotravel are preserved. TPP is preserved in nine of ten VH-off seeds, but one predeclared held-out seed collapses to 9/20; that outlier is a real seed-specific failure and is not hidden by the 18.9 mean. A deliberately selected fresh rerun reached 20/20 for the bad seed and one stable control under rollback/learning-rate backtracking, apparently preventing the analogous first-update collapse. Because rejected retries resampled dropout, this is encouraging selected-pair prevention evidence awaiting exact-RNG closure, not a new ten-seed Stage-2 estimate.
+**Extension conclusion:** Delivery and Zenotravel are preserved. TPP is preserved in nine of ten VH-off seeds, but one predeclared held-out seed collapses to 9/20; that outlier is a real seed-specific failure and is not hidden by the 18.9 mean.
 
 ![RQ1 paired Stage-2 effect](rq1_stage2_training_vh_off.png)
 
@@ -112,7 +112,7 @@ The direct column answers whether VH-on Stage 2 improves its own VH-on Stage-1 p
 | TPP | 20 → 19.5 | -0.5 [-1.63, 0.63]; p=1/1 | -1.1 | 0.6 [-2.25, 3.45]; p=1/1 | Exploratory post-hoc interaction; separate 3-domain family |
 | Zenotravel | 20 → 19.9 | -0.1 [-0.33, 0.13]; p=1/1 | 0 | -0.1 [-0.33, 0.13]; p=1/1 | Exploratory post-hoc interaction; separate 3-domain family |
 
-**Extension conclusion:** The stable domains do not supply evidence that the value head improves refinement. Their near-ceiling scores primarily test preservation. The historical TPP/off 9/20 outlier remains part of the primary RQ3 evidence; a deliberately selected fresh one-epoch rollback/LR-backtracking rerun yielded 20/20 for the bad seed and 20/20 for a stable control, apparently preventing the analogous collapse. Because rejected retries resampled dropout, this remains selected-pair evidence awaiting exact-RNG closure—not a revised primary score or a population-level fix.
+**Extension conclusion:** The stable domains do not supply evidence that the value head improves refinement. Their near-ceiling scores primarily test preservation; TPP/off's single catastrophic seed is investigated separately as an optimization-path failure.
 
 ![RQ3 raw means and interaction](rq3_raw_means_and_interaction.png)
 
@@ -206,23 +206,11 @@ Direct VH-on PW70 versus the corresponding VH-on fixed-search arm:
 
 **Conclusion:** PW preserves the distinction seen with fixed search: FO Counters and MPrime have strong search gains, while Rover shows parity-scale, non-significant effects. MPrime VH-on PW reaches 18.5/20 at six hours, but its VH-on-versus-VH-off benefit interaction is not significant. PW therefore strengthens RQ2 more than RQ4.
 
-## Results still required
+## Live execution status
 
-The statistical tables above are frozen to completed scientific evidence. Live
-operational counts are maintained only in
-[`../status_latest.md`](../status_latest.md) so this report does not embed a
-second stale scheduler snapshot.
-
-1. **MPrime Stage 2:** final validation-led training, learning curves, endpoint
-   selection, and the approved matched fixed/PW evaluations remain incomplete.
-   MPrime enters RQ1/RQ3 and Stage-2 RQ2/RQ4 only after those endpoints finish.
-2. **Counters tie-break:** the strict ten-seed same-build result remains frozen
-   until every identity is terminal. The dependency-gated trace then reruns
-   only policy-success/action-ID-failure identities with complete root vectors.
-   The standardized visit-margin/prominence branch remains held.
-3. **TPP causal closure:** the selected-pair guard prevented the historical
-   first-update collapse, but exact-RNG closure is still needed to distinguish
-   rollback/learning-rate scaling from dropout resampling. No 100-epoch guard
-   campaign is part of the primary RQs.
+The numerical tables above are frozen until a complete new matched family is
+available.  Current training, evaluation, recovery and controller state is
+maintained in [`../status_latest.md`](../status_latest.md), so rebuilding this
+report cannot resurrect an obsolete scheduler snapshot.
 
 Canonical evidence files: [`rq_primary_validation_led.csv`](rq_primary_validation_led.csv), [`rq2_raw_means_validation_led.csv`](rq2_raw_means_validation_led.csv), [`rq3_raw_means_validation_led.csv`](rq3_raw_means_validation_led.csv), [`rq4_raw_means_validation_led.csv`](rq4_raw_means_validation_led.csv), [`rq2_pw70_branch_latest.csv`](rq2_pw70_branch_latest.csv), and [`rq4_pw70_branch_latest.csv`](rq4_pw70_branch_latest.csv). Their row-level job/log routes are indexed in [`../result_csv_provenance_index_latest.csv`](../result_csv_provenance_index_latest.csv).

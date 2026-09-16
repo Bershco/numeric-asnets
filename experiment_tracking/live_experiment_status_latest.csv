@@ -1,7 +1,8 @@
 snapshot_time_idt,experiment,running,pending,jobs,requested_cpus,requested_memory_gib,job_ids,row_level_provenance
-2026-09-16T01:37:30+03:00,MPrime final validation-led Stage2,1,0,1,6,48.0,21303720,experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260916_0137.csv
-2026-09-16T01:37:30+03:00,MPrime live policy evaluations,30,0,30,300,600.0,"noncontiguous; see current ledgers",experiment_tracking/mprime_final_stage2_validation_20260915/live_policy_submissions_20260916_0134.tsv;experiment_tracking/mprime_final_stage2_validation_20260915/live_policy_retry_submissions_20260916_0134.tsv
-2026-09-16T01:37:30+03:00,MPrime policy controllers,2,0,2,4,4.0,"21362560;21362500",experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260916_0137.csv
-2026-09-16T01:37:30+03:00,Counters Stage1 strict tie-break confirmation,4,0,4,24,480.0,"21233925_[0,1,10,11]",experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260916_0137.csv
-2026-09-16T01:37:30+03:00,Counters exact identity recovery,2,0,2,4,240.0,"21347260_19;21362903_9",experiment_tracking/advisor_followup_20260910/live_workload_targeted_20260916_0137.csv
-2026-09-16T01:37:30+03:00,Counters full-root failure trace controller,0,1,1,0,0.0,21362904,experiment_tracking/counters_tie_break_strict_stage1_20260913/full_trace_submission_20260915.csv
+2026-09-16T11:28:41+03:00,MPrime Phase-B-A Stage2 rescore and downstream chain,1,22,23,4,20.0,"21390403;21390404_[0-19];21390429;21390981",experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/submissions.tsv
+2026-09-16T11:28:41+03:00,MPrime unresolved checkpoint policy curves,15,0,17,30,300.0,21389264-21389280,experiment_tracking/mprime_final_stage2_validation_20260915/
+2026-09-16T11:28:41+03:00,MPrime premature epoch0 fixed and PW70 quarantined,40,0,40,240,4800.0,21388436_[0-39],experiment_tracking/mprime_final_stage2_search_20260916/README.md
+2026-09-16T11:28:41+03:00,MPrime policy retry controller,1,0,1,2,2.0,21362500,squeue://hersco/21362500
+2026-09-16T11:28:41+03:00,Counters Stage1 strict tie-break confirmation,3,0,3,18,360.0,"21233925_[0,1,11]",experiment_tracking/counters_tie_break_strict_stage1_20260913/
+2026-09-16T11:28:41+03:00,Counters exact task9 identity recovery,1,0,1,2,120.0,21362903_9,experiment_tracking/counters_tie_break_strict_stage1_20260913/
+2026-09-16T11:28:41+03:00,Counters full-root failure trace controller,0,1,1,0,0.0,21362904,experiment_tracking/counters_tie_break_strict_stage1_20260913/full_trace_submission_20260915.csv

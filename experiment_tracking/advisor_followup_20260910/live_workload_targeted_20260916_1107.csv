@@ -1,0 +1,11 @@
+snapshot_time_idt,experiment,job_id,job_name,state,tasks,cpus,memory_gib,elapsed,time_limit,reason_or_node,array_job_id,scheduler_source
+2026-09-16T11:07:37+03:00,MPrime Phase-B-A rescore preflight,21390403_0,MPRIME_S2_PBA,RUNNING,1,4,20.0,00:04:57,02:00:00,ise-cpu-intl-02,21390403,squeue://hersco/21390403
+2026-09-16T11:07:37+03:00,MPrime Phase-B-A rescore main,21390404_[0-19],MPRIME_S2_PBA,DEPENDENCY_PENDING,20,60,400.0,00:00:00,1-00:00:00,Dependency,21390404,squeue://hersco/21390404
+2026-09-16T11:07:37+03:00,MPrime Phase-B-A finalizer,21390429,MPRIME_S2_PBA_FIN,DEPENDENCY_PENDING,1,1,2.0,00:00:00,00:30:00,Dependency,21390429,squeue://hersco/21390429
+2026-09-16T11:07:37+03:00,MPrime Phase-B-A downstream controller,21390981,MPRIME_S2_DOWNSTREAM,DEPENDENCY_PENDING,1,1,2.0,00:00:00,00:30:00,Dependency,21390981,squeue://hersco/21390981
+2026-09-16T11:07:37+03:00,MPrime unresolved checkpoint policy curves,21389264-21389280,MPFINALV_S2POL_1W,RUNNING,17,34,340.0,00:27:50,08:00:00,multiple,,squeue://hersco/21389264-21389280
+2026-09-16T11:07:37+03:00,MPrime premature epoch0 fixed and PW70 quarantined,21388436_[0-39],MPRIME_FINAL_S2_SEARCH,RUNNING,40,240,4800.0,00:30:27,3-00:00:00,multiple,21388436,squeue://hersco/21388436
+2026-09-16T11:07:37+03:00,MPrime policy retry controller,21362500,MPRIME_S2_POL_RETRY,RUNNING,1,2,2.0,10:49:10,3-00:00:00,ise-cpu-intl-22,,squeue://hersco/21362500
+2026-09-16T11:07:37+03:00,Counters Stage1 strict tie-break confirmation,"21233925_[0,1,11]",COUNTERS_TIE_STRICT,RUNNING,3,18,360.0,1-02:08:46--2-22:08:03,3-00:00:00,multiple,21233925,squeue://hersco/21233925
+2026-09-16T11:07:37+03:00,Counters exact task9 identity recovery,21362903_9,COUNTERS_TIE_EXACT3,RUNNING,1,2,120.0,10:24:27,20:00:00,ise-cpu-intl-18,21362903,squeue://hersco/21362903_9
+2026-09-16T11:07:37+03:00,Counters full-root trace controller,21362904,COUNTERS_TRACE_CTL,DEPENDENCY_PENDING,1,0,0.0,00:00:00,00:30:00,Dependency,21362904,squeue://hersco/21362904

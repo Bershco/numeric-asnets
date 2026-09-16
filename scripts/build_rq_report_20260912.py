@@ -29,7 +29,7 @@ DOMAIN_LABEL = {
     "mprime": "MPrime",
 }
 DOMAIN_ORDER = list(DOMAIN_LABEL)
-POLICY_DOMAIN_ORDER = [domain for domain in DOMAIN_ORDER if domain != "mprime"]
+POLICY_DOMAIN_ORDER = list(DOMAIN_ORDER)
 CUTOFF_ORDER = {"30m": 0, "2h": 1, "6h": 2, "endpoint": 0}
 
 
@@ -113,6 +113,8 @@ rq3i_map = {r["domain"]: r for r in rq3_inter}
 
 rq1_rows = []
 for domain in POLICY_DOMAIN_ORDER:
+    if domain not in rq1_map:
+        continue
     r = rq1_map[domain]
     rq1_rows.append([
         DOMAIN_LABEL[domain], number(r["baseline_mean"]), number(r["comparison_mean"]),
@@ -142,6 +144,8 @@ for stage in ("Stage 1", "Stage 2"):
 
 rq3_rows = []
 for domain in POLICY_DOMAIN_ORDER:
+    if domain not in rq3d_map or domain not in rq3i_map:
+        continue
     d, i = rq3d_map[domain], rq3i_map[domain]
     rq3_rows.append([
         DOMAIN_LABEL[domain], f"{number(d['baseline_mean'])} → {number(d['comparison_mean'])}",
@@ -296,7 +300,7 @@ This is the primary thesis view. Terminal-led campaigns are excluded. Fixed-sear
 
 Effects are seed-paired mean differences; confidence intervals are paired t-intervals; raw p-values are two-sided exact sign-flip tests; Holm correction is applied separately within each RQ × stage × cutoff × estimand family. Stage-1 fixed-search families now include six domains with final MPrime results; Stage 2 contains the five completed validation-led domains. PW uses separate families and is never pooled with fixed search. **Bold entries are Holm-significant at .05; raw-only significance is not bolded.**
 
-MPrime is not yet admitted to RQ1/RQ3: Phase C selected Phase-B replicate A as the validator and the complete anchor rescore froze coefficient 30 for VH-off and 10 for VH-on. A final identity audit found that mixing two older candidate lineages with eighteen current-build lineages would create avoidable build heterogeneity, so all twenty clean validation-led Stage-2 lineages are now running. This is separate from the completed Stage-1 fixed-MCTS and PW70 evidence, which is already included in RQ2/RQ4.
+All twenty clean MPrime Stage-2 training lineages are complete, but their 420 checkpoints are being rescored on the frozen Phase-B-A validator. MPrime therefore remains absent from RQ1/RQ3 and the Stage-2 portions of RQ2/RQ4 until that independent selector freezes the endpoints. Its completed Stage-1 fixed/PW results remain valid.
 
 ## RQ1 — Does Stage-2 training improve policy coverage without a value head?
 
@@ -414,7 +418,7 @@ Direct VH-on PW70 versus the corresponding VH-on fixed-search arm:
 
 ## Results still required
 
-1. **MPrime Stage 2:** all twenty clean lineages are running from the final Phase-B-A Stage-1 checkpoints: ten VH-off with anchor 30 and ten VH-on with anchor 10. At the 14:39 IDT snapshot every job had saved checkpoints and the current range was epoch 22-60/100. Policy curves/endpoints and matched fixed/PW evaluations remain downstream; MPrime enters RQ1/RQ3 and Stage-2 RQ2/RQ4 only after those complete.
+1. **MPrime Stage 2:** all twenty clean lineages completed from the final Phase-B-A Stage-1 checkpoints: ten VH-off with anchor 30 and ten VH-on with anchor 10. The ordinary training validator saturated and cannot select the final endpoints. A twenty-lineage/420-checkpoint Phase-B-A rescore is live; MPrime enters RQ1/RQ3 and Stage-2 RQ2/RQ4 only after that independent selection and matched endpoint evaluation.
 2. **Counters tie-break:** nine original strict-confirmation tasks completed, eight are running and three ended OOM. Recovery array `21308619[4,6,14]` requests 200 GiB per task and reuses the exact original durable ledgers; it therefore runs only the remaining 49 unclassified identities rather than repeating 177. Dependency controller `21319149` is now queued and will fail closed unless all action-ID ledgers reach exactly 59 terminal identities; it then traces only the exact policy-success/action-ID-failure union under action-ID and policy-prior with complete root vectors. The targeted causal pilot remains action-ID 0/3, Q 0/3 and policy-prior 3/3, all VAL-valid; its VH-on 0/3 arm is not a positive control because that policy solved none of the three targets.
 3. **Block Grouping tie-break transfer:** both same-build four-target arms completed 0/4. Every outcome was an ordinary 10,000-action failure, not a timeout. Policy-prior tie-breaking therefore did not transfer to this selected seed, and the fixed-search branch will not be expanded from this negative screen.
 4. **MPrime Stage-1 fixed search:** all 20 canonical evaluations are complete and now extend RQ2/RQ4. VH-off scores are 13.0 / 14.7 / 15.7 at 30m / 2h / 6h versus policy 16.3; VH-on scores are 13.3 / 15.1 / 16.0 versus policy 15.7.

@@ -1,0 +1,6 @@
+role	slurm_job_id	state_at_20260916_1107	dependency	cpus_per_task	memory	walltime	scientific_scope
+failed_preflight	21390248	FAILED		3	20G	02:00:00	filename error before evaluation; retained as provenance
+repaired_preflight	21390403	RUNNING		4	20G	02:00:00	one checkpoint from task 0 on frozen Phase-B-A
+main_array	21390404_[0-19]	DEPENDENCY_PENDING	afterok:21390403	3	20G	1-00:00:00	twenty lineages x twenty-one checkpoints
+finalizer	21390429	DEPENDENCY_PENDING	afterok:21390404	1	2G	00:30:00	freeze max-score earliest-epoch endpoints
+downstream_controller	21390981	DEPENDENCY_PENDING	afterok:21390429	1	2G	00:30:00	reuse exact hashes and submit only missing policy/fixed/PW identities

@@ -13,27 +13,34 @@ All twenty lineages are retrained in one uniform current-code campaign. Two hist
 
 `manifest.csv` freezes every source checkpoint and its selector provenance. `submissions.tsv` is copied back from the cluster after submission and provides the Slurm job route for every lineage.
 
-## Live overlap and policy-curve materialization
+## Completed training and policy-curve materialization
 
-At the 16 September 2026 01:37 IDT audit, nineteen of the twenty training jobs
-`21303717`-`21303736` were terminal at epoch 99 and only `21303720` was running,
-at snapshot 78. Epoch 99 is the final checkpoint
-after 100 zero-indexed Stage-2 epochs. A safe live scanner/controller overlaps
-policy-only curve evaluation with the remaining training:
+At the 16 September 2026 10:48 IDT audit, all twenty training jobs
+`21303717`-`21303736` were terminal through epoch 99. Epoch 99 is the final
+checkpoint after 100 zero-indexed Stage-2 epochs. The final immutable ready
+manifest contains 420 unique policy checkpoints (21 checkpoints x 20
+lineages). Of those, 403 had valid policy logs and seventeen non-selected curve
+points had repeatedly failed before inference with native runtime errors.
 
-- primary controller `21362560`, one task, two CPUs and 2 GiB;
-- failure-aware retry controller `21362500`, one task, two CPUs and 2 GiB;
-- at most 24 primary and 36 retry policy jobs active simultaneously; each uses
-  10 CPUs, 20 GiB and a four-hour hard limit;
-- 414 immutable checkpoint rows discovered, 269 primary submissions and 40
-  retry attempts in the dated 01:34 local archive;
-- the subsequent scheduler count reconciles those 309 attempts exactly: 237
-  complete, 30 running and 42 failed; attempts are not unique scientific identities;
-- every live row is `learning_curve` only; validation-selected and final roles
-  are withheld until the corresponding training lineage is scientifically
-  complete through epoch 99;
-- every manifest row carries the source training job, epoch, exact checkpoint
-  path and SHA-256 hash, and the shared submission ledger prevents duplicates.
+The training log's ordinary internal validator saturated and selected epoch 0
+for every lineage. Those selections are not the adopted Phase-B-A validator
+and are therefore not primary endpoints. A corrected, independent Phase-B-A
+rescore now evaluates all 420 saved checkpoints as twenty lineage tasks. Its
+preflight is job `21390403`, main array `21390404_[0-19]`, and finalizer
+`21390429`. MPrime Stage-2 policy values remain withheld from RQ1/RQ3 until
+that finalizer freezes the true endpoints.
+
+Of the 420 checkpoints, 403 already have valid test-policy logs. Seventeen
+non-selected-under-the-old-validator curve points repeatedly failed before
+inference and are being recovered exactly with one worker, two CPUs, 20 GiB
+and an eight-hour hard limit under jobs `21389264`-`21389280`. After Phase-B-A
+selection, every selected endpoint reuses an existing valid policy log when
+available; only a selected identity still missing valid policy evidence may be
+recovered.
+
+Every manifest row carries the source training job, epoch, exact checkpoint
+path and SHA-256 hash. Primary/retry ledgers and the dedicated recovery ledger
+map every attempt back to the same immutable scientific identity.
 
 The failure-aware path was added after policy evaluations landed on
 `ise-cpu128-03` and failed before inference because the node could not create
@@ -43,13 +50,8 @@ on the same node before the exclusion was effective; their replacements use
 the private excluded-node wrapper. No partial policy score is reused after a
 pre-inference failure.
 
-Current direct local provenance is frozen in
-`live_policy_ready_20260916_0134.csv`,
-`live_policy_submissions_20260916_0134.tsv`, and
-`live_policy_retry_submissions_20260916_0134.tsv`. Earlier dated files remain
-immutable historical snapshots.
-
-The controller exits only after all twenty lineages are complete and every
-materialized policy row has been submitted. Final MCTS and PW manifests must be
-built from the resulting validation-selected endpoints; no historical MCTS
-identity may be reused unless its checkpoint hash and full configuration match.
+The 01:34 files remain immutable historical snapshots. The premature search
+manifest under `../mprime_final_stage2_search_20260916/` used the saturated
+internal-validator epoch-0 roles and is quarantined. Its outputs may be reused
+only if the independently frozen Phase-B-A endpoint has the exact same
+checkpoint hash and full search configuration.
