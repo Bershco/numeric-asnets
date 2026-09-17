@@ -68,6 +68,13 @@ The completed paired endpoint effects are heterogeneous:
 | Counters / 534933607 | 6/59 | 35/59 | +29 |
 | Counters / 2082152039 | 59/59 | 38/59 | -21 |
 
+The `seed` labels in this compact screen are optimizer/replay RNG schedules,
+not ten independent primary network lineages.  Block Grouping, Drone, FO
+Counters and Rover each use one source checkpoint under two RNG schedules;
+Counters uses two distinct source checkpoints.  The screen therefore proves a
+mechanism and exposes susceptibility, but it is not a two-network-per-domain
+population sample.
+
 The causal mechanism is clear but the performance direction is not uniform.
 At identical starting weights the deterministic-current anchor gradient is
 approximately zero, while legacy dropout-current produces a substantial
@@ -79,3 +86,43 @@ is not yet justified. No primary RQ changes from this selected two-seed screen.
 Row-level endpoints and log pointers are in
 `partial_endpoint_results_20260917_1528.csv`; gradient evidence is in
 `first_step_gradient_results_20260917_1528.csv`.
+
+At 16:26 IDT the exact held task was released.  It started as component job
+`21433102` on `ise-cpu-intl-12` and failed before test inference with native
+exit code -4 after 87 seconds.  This is operational failure, not a policy
+score.  The failed log is preserved.  Exact replacement array `21434122_[0]`
+uses the same checkpoint, evaluator and 5-CPU/20-GiB/two-hour request, writes a
+new output file, and excludes the failed node in addition to the campaign's
+existing exclusions.  It was running on `ise-cpu-intl-19` at 16:32 IDT.
+
+## Frozen next decision gate
+
+Do **not** jump directly from this selected-checkpoint screen to a five-domain,
+100-epoch replacement campaign.  The next defensible step is a primary-lineage
+one-epoch susceptibility screen:
+
+1. use each domain's ten validation-selected Stage-1 VH-off checkpoints;
+2. capture one exact 60-batch replay schedule per lineage;
+3. compare legacy and deterministic-current KL on that identical checkpoint,
+   replay, targets and optimizer RNG;
+4. evaluate both one-epoch endpoints with policy inference; and
+5. estimate how often and how severely immediate coverage changes across
+   independent network lineages.
+
+Exact provenance currently supports reuse of the two Counters primary
+lineages.  The older single checkpoints used for Block Grouping, Drone, FO
+Counters and Rover have not been proven hash-identical to current MAIN-VAL
+primary lineages and therefore are mechanism evidence only.  A uniform
+ten-lineage screen therefore needs 48 additional primary checkpoint lineages,
+96 one-epoch treatments and 96 endpoints, not “eight more seeds” from every
+current row.  At the existing requests this is at most 576 CPU / 11,520 GiB if all treatments
+were admitted simultaneously, so it must be scheduler-limited to the available
+6-TiB envelope and coexist safely with MPrime.
+
+One epoch answers prevalence of the initial-update effect; it cannot answer
+final 100-epoch performance.  After that screen, choose one stable/cheap domain
+and one high-effect or high-variance domain for matched ten-lineage, 100-epoch
+legacy-versus-deterministic training, complete policy curves and endpoints,
+then matched fixed/PW search only if policy evidence makes it relevant.  This
+separates the semantic correction question from the much more expensive
+decision to replace the primary training method.

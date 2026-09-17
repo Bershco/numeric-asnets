@@ -179,3 +179,19 @@ If all seven unresolved slots consume their full six-hour caps, the present
 three finish around 15:00, the next three around 21:00, and the final slot
 around 03:00 IDT on 18 September. Earlier success or action-limit termination
 can finish the task sooner. No duplicate Counters work was submitted.
+
+## 17 September 16:23 exact timeout reconciliation
+
+A six-hour timeout **is** a proper terminal failure/classification.  The prior
+phrase “30 timeout text matches remain unreconciled” referred to raw recursive
+text matches, which can overcount headers, requeues or concatenated attempts;
+it did not mean that scientific timeouts were being discarded.
+
+For the currently running task-1 attempt, exact event parsing found 26 explicit
+`[EVAL INSTANCE] timeout` records for 26 unique evaluator identities.  The
+durable JSONL contains 28 other unique identities and the two sets have zero
+overlap.  Therefore 54/59 instances are scientifically terminal: 28 durable
+records plus 26 proper timeout failures.  Three workers are processing the
+next wave and two identities have not yet started.  Controller `21362904`
+performs this same unique-identity reconciliation before its 59/59 gate; no
+explicit timeout will be rerun merely because the historical JSONL omitted it.

@@ -50,3 +50,18 @@ significance claim is made until every matched seed is terminal. Exact identity,
 checkpoint, policy-job and log provenance is in
 `phase_b_a_manifest_20260917.csv`; live counts and completion globs are in
 `live_progress_20260917_1533.csv`.
+
+At 16:32 IDT, 437/800 classifications were durable and 38/40 tasks remained
+running (two were scheduler-complete):
+
+| Method | VH | Classified | 30m / 2h / 6h successes | Mean lower bound |
+|---|---|---:|---:|---:|
+| Fixed | off | 90/200 | 77 / 85 / 90 | >=7.7 / >=8.5 / >=9.0 |
+| Fixed | on | 75/200 | 67 / 71 / 75 | >=6.7 / >=7.1 / >=7.5 |
+| PW70 | off | 148/200 | 130 / 146 / 148 | >=13.0 / >=14.6 / >=14.8 |
+| PW70 | on | 124/200 | 109 / 122 / 124 | >=10.9 / >=12.2 / >=12.4 |
+
+The array currently requests 228 CPU and 4,560 GiB.  The lower bounds still
+cannot support paired confidence intervals or exact tests; no RQ2/RQ4 row is
+updated until all matched identities terminate.  The machine-readable snapshot
+is `live_progress_20260917_1632.csv`.

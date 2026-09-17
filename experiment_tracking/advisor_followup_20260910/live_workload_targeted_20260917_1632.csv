@@ -1,0 +1,6 @@
+snapshot_time_idt,campaign,job_id,state,running_tasks,complete_tasks,pending_tasks,allocated_cpu,allocated_mem_gib,scientific_progress,next_gate
+2026-09-17T16:32:00+03:00,MPrime final Stage2 fixed and PW70,21429177,RUNNING,38,2,0,228,4560,437/800 instances durably classified,finish matched fixed/PW cells then compute paired RQ2/RQ4 inference
+2026-09-17T16:32:00+03:00,Counters strict tie-break final Action-ID arm,21233925_1,RUNNING,1,19,0,6,120,54/59 unique terminal identities in remaining arm,reach 59/59 then controller builds exact wanted-instance trace array
+2026-09-17T16:32:00+03:00,Counters exact trace controller,21362904,DEPENDENCY_PENDING,0,0,1,0,0,waits for strict 59/59 reconciliation,may request up to 24 CPU and 1440 GiB after release
+2026-09-17T16:32:00+03:00,Block Grouping missing crossover endpoint,21434122_0,RUNNING,1,0,0,6,20,exact replacement started after pre-inference native failure,complete final 20th crossover endpoint
+2026-09-17T16:32:00+03:00,TOTAL CURRENTLY ALLOCATED,,RUNNING,40,21,1,240,4700,approximately 1444 GiB below 6-TiB envelope,reserve slack for Counters trace controller and MPrime tail
