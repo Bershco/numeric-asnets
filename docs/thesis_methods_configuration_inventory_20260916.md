@@ -124,6 +124,13 @@ MCTS inventory above.
 | Deterministic-current anchor KL | Keep replay training stochastic but compare deterministic current and Stage-1 anchor policies. | The catastrophic TPP seed is stochastically susceptible to legacy dropout-current KL, while deterministic-current KL protected it across all four tested optimizer RNG schedules. A frozen-replay crossover in the imperfect domains is dependency-submitted to isolate KL semantics from replay differences. | Selected-seed mechanism result; broader causal screen live. |
 | MPrime validation redesign | Replace a saturated validator with harder frozen alternatives. | Phase B removed saturation; Phase C did not improve selector quality enough; Phase-B-A is final. | Methodological contribution. |
 
+Until an explicit adoption decision is made, the primary RQs continue to
+describe the historical implemented Stage-2 method, including dropout-current
+KL. Corrected deterministic-current work is a causal/method-development branch.
+If it is adopted as the new primary method, the affected primary Stage-2 cells
+must be rerun consistently; old and corrected semantics must not be mixed
+inside one claimed method family.
+
 ## Historical prototypes and evidence gaps
 
 The early MCTS implementation used policy rollouts from leaves. Commit
@@ -139,6 +146,12 @@ Other real code options lacking current matched evidence are not dismissed as
 mere artifacts. They encode genuine hypotheses that were considered for
 improving training or inference, and therefore form a ranked re-evaluation
 portfolio:
+
+The priority order uses four declared criteria: closeness to the primary
+thesis/MCTS claim; ability to isolate one factor with matched evidence;
+expected information per submitted job; and whether the method depends on a
+prerequisite such as the value-head quality audit. It is a work-order ranking,
+not a claim that lower-ranked ideas are scientifically invalid.
 
 | Hypothesis family | Concrete arms | Scientific question | Priority / evidence plan |
 |---|---|---|---|

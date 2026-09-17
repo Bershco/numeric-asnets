@@ -46,7 +46,36 @@ predeclared corrected-KL campaign (first TPP matched seeds, then all primary
 cells needed for a uniform corrected-method RQ). We must not selectively mix
 legacy and corrected semantics inside one primary comparison.
 
-At the 17 September 2026 13:17 IDT snapshot, seventeen of twenty one-epoch
-treatments were scheduler-complete and three Rover treatments were running.
-The pair verifier and twenty endpoints remain dependency-gated, so training-log
-validation scores are operational diagnostics only, not the declared result.
+At the 17 September 2026 15:28 IDT snapshot, all twenty one-epoch treatments
+were scheduler-complete and verifier `21430552` had certified all ten pairs:
+the ordered 60 replay hashes, step-0 policy gradient and step-0 target-argmax
+bits matched within every pair. Nineteen of twenty declared test endpoints were
+complete. The remaining Block Grouping legacy endpoint, array task 0, is held
+after Slurm failed to retrieve the user environment; it has not begun inference.
+
+The completed paired endpoint effects are heterogeneous:
+
+| Domain / seed | Legacy | Deterministic-current | Change |
+|---|---:|---:|---:|
+| Block Grouping / 42 | pending | 15/20 | pending |
+| Block Grouping / 2026 | 13/20 | 15/20 | +2 |
+| Drone / 2026 | 5/20 | 5/20 | 0 |
+| Drone / 42 | 6/20 | 4/20 | -2 |
+| FO Counters / 2026 | 6/20 | 3/20 | -3 |
+| FO Counters / 42 | 7/20 | 4/20 | -3 |
+| Rover / 42 | 4/20 | 4/20 | 0 |
+| Rover / 2026 | 4/20 | 4/20 | 0 |
+| Counters / 534933607 | 6/59 | 35/59 | +29 |
+| Counters / 2082152039 | 59/59 | 38/59 | -21 |
+
+The causal mechanism is clear but the performance direction is not uniform.
+At identical starting weights the deterministic-current anchor gradient is
+approximately zero, while legacy dropout-current produces a substantial
+artificial anchor gradient in every domain. Removing that gradient can help,
+hurt or leave one-epoch policy coverage unchanged depending on the lineage.
+Across the nine complete pairs the median coverage change is zero; the extreme
+opposite Counters effects show that a blanket corrected-KL retraining decision
+is not yet justified. No primary RQ changes from this selected two-seed screen.
+Row-level endpoints and log pointers are in
+`partial_endpoint_results_20260917_1528.csv`; gradient evidence is in
+`first_step_gradient_results_20260917_1528.csv`.

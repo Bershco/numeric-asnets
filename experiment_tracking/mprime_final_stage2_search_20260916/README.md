@@ -36,17 +36,17 @@ identity to its Slurm array task. `source_ready_manifest_20260916_1024.csv` and
 The local runner verifies the declared code revision and checkpoint hash before
 evaluation and writes one durable completion ledger per identity.
 
-At 13:08 IDT, 332/800 classifications were durable:
+At 15:33 IDT, 422/800 classifications were durable:
 
 | Method | VH | Classified | 30m / 2h / 6h successes | Mean lower bound |
 |---|---|---:|---:|---:|
-| Fixed | off | 64/200 | 58 / 64 / 64 | >=5.8 / >=6.4 / >=6.4 |
-| Fixed | on | 56/200 | 53 / 56 / 56 | >=5.3 / >=5.6 / >=5.6 |
-| PW70 | off | 121/200 | 108 / 121 / 121 | >=10.8 / >=12.1 / >=12.1 |
-| PW70 | on | 91/200 | 81 / 91 / 91 | >=8.1 / >=9.1 / >=9.1 |
+| Fixed | off | 83/200 | 71 / 78 / 83 | >=7.1 / >=7.8 / >=8.3 |
+| Fixed | on | 67/200 | 60 / 64 / 67 | >=6.0 / >=6.4 / >=6.7 |
+| PW70 | off | 148/200 | 130 / 146 / 148 | >=13.0 / >=14.6 / >=14.8 |
+| PW70 | on | 124/200 | 109 / 122 / 124 | >=10.9 / >=12.2 / >=12.4 |
 
 These are live lower bounds, not final paired results; no confidence interval or
 significance claim is made until every matched seed is terminal. Exact identity,
 checkpoint, policy-job and log provenance is in
 `phase_b_a_manifest_20260917.csv`; live counts and completion globs are in
-`live_progress_20260917_1308.csv`.
+`live_progress_20260917_1533.csv`.
