@@ -93,9 +93,9 @@ A two-seed rollout-versus-current-leaf screen on two domains is defensible as
 class B. If it is promising and used in a general conclusion, expand the chosen
 two-arm comparison to ten matched seeds: 40 tasks total for two domains × ten
 seeds × two methods. A neutral/futile pilot may stop at two seeds under a
-predeclared gate and remain explicitly exploratory. Not every historical code
-switch requires a ten-seed rerun; only advisor-prioritized methods that support
-an actual thesis claim do.
+predeclared gate and remain explicitly exploratory. Whether that evidence
+level is acceptable for explaining a dropped direction is an explicit advisor
+decision to obtain before submission; it is not silently assumed.
 
 ## Auxiliary training and selection methodology
 
@@ -135,14 +135,32 @@ was better. A thesis-grade comparison would hold checkpoint, width,
 simulations, PUCT and wall budget fixed and report coverage plus leaf-evaluation
 runtime.
 
-Other real code options lacking current matched evidence are: one-hot MCTS
-targets (`8f69cc4b`), skipping failed search episodes, HER, goal-path
-reconstruction, extra-tree-state/visit-power sampling, repeated optimization
-from one exploration, heuristic bootstrapping, estimator decay (`779357ae`),
-raw-value minimization (`84b2d60a`), policy sampling, epsilon/temperature and
-duplicate penalties, corruption tests, removed PUCT variants (`0c5f6734`), and
-parallel node generation. These belong in historical design or future work,
-not the results chapter.
+Other real code options lacking current matched evidence are not dismissed as
+mere artifacts. They encode genuine hypotheses that were considered for
+improving training or inference, and therefore form a ranked re-evaluation
+portfolio:
+
+| Hypothesis family | Concrete arms | Scientific question | Priority / evidence plan |
+|---|---|---|---|
+| Leaf evaluation | rollout; learned-only; ENHSP-only; learned/ENHSP blend | Which leaf signal provides the best coverage/runtime trade-off? | Highest priority. Two domains x two seeds as a frozen exploratory screen; expand a promising main-claim arm to ten seeds. |
+| Target construction | visit distribution; one-hot MCTS argmax (`8f69cc4b`) | Does preserving visit uncertainty help refinement more than a hard target? | High priority after leaf evaluation; matched frozen replay can isolate the loss. |
+| Trajectory action policy | argmax; visit-proportional/policy sampling; epsilon/temperature schedules | Does stochastic action selection improve state coverage without destroying executable trajectories? | High priority, but freeze sampling schedules and RNG streams before comparison. |
+| Replay augmentation | HER; goal-path reconstruction; extra tree states; visit-power sampling | Does relabeling or broader replay support improve learning from expensive searches? | Medium priority because it changes the data distribution and needs validity checks. |
+| Estimator schedule | fixed blend; estimator decay (`779357ae`); heuristic bootstrapping; raw-value minimization (`84b2d60a`) | Should reliance on the external estimator decrease as the network learns? | Medium priority, preferably after the value-head quality audit. |
+| Episode/reuse policy | skip/include failed searches; repeated optimization from one exploration | Are expensive failed or reused searches informative or biasing? | Lower-cost ablation once a primary training treatment is frozen. |
+| Search safeguards/prototypes | duplicate penalties; corruption tests; removed PUCT variants (`0c5f6734`); parallel node generation | Do these repair a demonstrated mechanism or only add complexity? | Run only when tied to a concrete failure mode or runtime claim. |
+
+These are separate from the MCTS inference families: fixed expansion,
+progressive widening, and the leaf-evaluation family. The reason to revisit
+them is the scientific hypothesis, not simply that code once existed. The
+canonical prioritization, task counts and gates are in
+`experiment_tracking/method_re_evaluation_roadmap_20260917.csv`.
+
+For all re-evaluations, use the staged evidence rule: current-code compatibility
+smoke; predeclared two-domain x two-seed matched screen; ten-seed expansion only
+for a promising arm intended to support a broad outcome claim. A clearly
+negative exploratory screen remains legitimate evidence for why a direction
+was dropped, provided its stopping gate was frozen in advance.
 
 ## Held designs
 
@@ -153,6 +171,9 @@ not the results chapter.
 - Original-paper stopping replication: compatibility experiment, not run.
 - PUCT / estimator factorial: needed before claiming current `c=.1` and blend
   `.5` are optimal.
+- Post-hoc PUCT sensitivity remains a documented next step if advisors request
+  robustness evidence. It must be described as descriptive test sensitivity,
+  not validation tuning or proof of a test-distribution optimum.
 - Fully guarded Stage 2: gate behind the KL-semantics susceptibility result.
 - Fresh hard-30-minute jobs: unnecessary when complete six-hour logs permit
   exact deterministic post-hoc recensoring; needed only for censored timing or

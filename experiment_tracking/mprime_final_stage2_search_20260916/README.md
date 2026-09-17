@@ -24,23 +24,29 @@ rolling workers, a six-hour per-instance limit and a 10,000-action limit.
 The fixed and PW arms share width 20, 70 simulations, PUCT 0.1 and estimator
 mixture 0.5. PW additionally uses Kmin 3, c 0.6 and alpha 0.5.
 
+These Stage-2 networks were trained with the historical **dropout-current KL**
+semantics. Their exact training commands contain the constant anchor
+coefficient but not `--policy-anchor-kl-deterministic-current`. Accordingly,
+the MPrime RQ1/RQ3 extension is evidence for the historical implemented
+Stage-2 pipeline, not evidence for a corrected deterministic-current pipeline.
+
 `manifest.csv` is the scientific identity table. `submissions.tsv` maps every
 identity to its Slurm array task. `source_ready_manifest_20260916_1024.csv` and
 `selected_policy_scores_20260916_1024.txt` freeze the upstream policy evidence.
 The local runner verifies the declared code revision and checkpoint hash before
 evaluation and writes one durable completion ledger per identity.
 
-At 11:51 IDT, 234/800 classifications were durable:
+At 13:08 IDT, 332/800 classifications were durable:
 
 | Method | VH | Classified | 30m / 2h / 6h successes | Mean lower bound |
 |---|---|---:|---:|---:|
-| Fixed | off | 53/200 | 52 / 53 / 53 | >=5.2 / >=5.3 / >=5.3 |
-| Fixed | on | 51/200 | 50 / 51 / 51 | >=5.0 / >=5.1 / >=5.1 |
-| PW70 | off | 69/200 | 67 / 69 / 69 | >=6.7 / >=6.9 / >=6.9 |
-| PW70 | on | 61/200 | 60 / 61 / 61 | >=6.0 / >=6.1 / >=6.1 |
+| Fixed | off | 64/200 | 58 / 64 / 64 | >=5.8 / >=6.4 / >=6.4 |
+| Fixed | on | 56/200 | 53 / 56 / 56 | >=5.3 / >=5.6 / >=5.6 |
+| PW70 | off | 121/200 | 108 / 121 / 121 | >=10.8 / >=12.1 / >=12.1 |
+| PW70 | on | 91/200 | 81 / 91 / 91 | >=8.1 / >=9.1 / >=9.1 |
 
 These are live lower bounds, not final paired results; no confidence interval or
 significance claim is made until every matched seed is terminal. Exact identity,
 checkpoint, policy-job and log provenance is in
 `phase_b_a_manifest_20260917.csv`; live counts and completion globs are in
-`live_progress_20260917_1151.csv`.
+`live_progress_20260917_1308.csv`.
