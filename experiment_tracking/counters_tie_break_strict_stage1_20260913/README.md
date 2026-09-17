@@ -162,3 +162,20 @@ the 59/59 gate, so the identity will not be rerun. Task 19 also printed an
 explicit timeout for its first of two missing identities and is evaluating the
 second. Task 9 is evaluating the first of three exact identities. No RQ2 score
 changes until all ten matched pairs and the reconciliation gate are complete.
+
+## 17 September 11:51 IDT deep worker check
+
+The sole visible strict task is not a stale Slurm allocation. Queue identity
+`21233925_1` maps to requeued component job `21234831`, the Stage-1 VH-off seed
+`923500475` Action-ID narrow 5/20 arm on `ise-cpu128-14`. It was requeued after
+a node failure. The current worker attempt has launched 27 evaluator slots,
+printed 24 explicit six-hour timeout markers, and is actively processing three
+slots launched around 09:01 IDT; four slots remain after that wave. The durable
+JSONL still contains 28 successes because this historical runner persists
+successes but only prints timeouts. Controller `21362904` performs the terminal
+stdout reconciliation, so `28/59` must not be reported as classified progress.
+
+If all seven unresolved slots consume their full six-hour caps, the present
+three finish around 15:00, the next three around 21:00, and the final slot
+around 03:00 IDT on 18 September. Earlier success or action-limit termination
+can finish the task sooner. No duplicate Counters work was submitted.

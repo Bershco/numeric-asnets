@@ -41,25 +41,26 @@ identities and outputs are unchanged; no completed endpoint is repeated.
 The held task 4 subsequently completed and is reused.  Tasks 0 and 1 were
 replaced without changing their scientific identities by exact endpoint jobs
 `21428592_0` and `21428592_1` (scheduler display may expose their component
-job IDs as `21428594` and `21428592`).  Both were running at the 2026-09-17
-10:35 IDT snapshot.
+job IDs as `21428594` and `21428592`). Both completed on 17 September 2026.
 
 ## Current endpoint evidence
 
 | RNG | Catastrophic legacy | Catastrophic deterministic | Stable legacy | Stable deterministic |
 |---:|---:|---:|---:|---:|
 | 314159 | 11/20 | 20/20 | 20/20 | 20/20 |
-| 271828 | running | 20/20 | 20/20 | 20/20 |
+| 271828 | 10/20 | 20/20 | 20/20 | 20/20 |
 | 1618033 | 20/20 | 20/20 | 20/20 | 20/20 |
 | 20260916 | 19/20 | 20/20 | 20/20 | 20/20 |
 
 Deterministic-current KL preserves 20/20 in all four catastrophic-seed
-schedules and every stable control.  Legacy KL shows stochastic catastrophic-
-seed damage ranging from none to severe while leaving the stable control at
-20/20.  This is strong selected-seed susceptibility evidence, but the fourth
-legacy endpoint must finish before the predeclared screen is final.  It is a
-mechanism experiment, not a population estimate or replacement for the
-historical 9/20 primary endpoint.
+schedules and every stable control. Legacy KL produces 11, 10, 20 and 19/20
+on the selected catastrophic seed (mean 15/20) while leaving the stable
+control at 20/20. The predeclared screen is complete. Its defensible
+conclusion is: **the catastrophic seed is stochastically susceptible to the
+legacy dropout-current KL implementation, while deterministic-current KL
+robustly protects it across the four tested optimizer RNG schedules.** This is
+a selected-seed mechanism result, not a population estimate or replacement
+for the historical 9/20 primary endpoint.
 
 ## Decision rule
 

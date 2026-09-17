@@ -1,0 +1,5 @@
+snapshot_time_idt,method,value_head,classified,total,success_30m_lower_bound,success_2h_lower_bound,success_6h_lower_bound,mean_30m_lower_bound,mean_2h_lower_bound,mean_6h_lower_bound,array_job_id,remote_completion_glob,identity_manifest
+2026-09-17T11:51:25+03:00,fixed,off,53,200,52,53,53,5.2,5.3,5.3,21429177,/home/hersco/training_new_domains/2026-09-16/mprime_final_stage2_search_phase_b_a/fixed/off/*/completion/*.jsonl,phase_b_a_manifest_20260917.csv
+2026-09-17T11:51:25+03:00,fixed,on,51,200,50,51,51,5.0,5.1,5.1,21429177,/home/hersco/training_new_domains/2026-09-16/mprime_final_stage2_search_phase_b_a/fixed/on/*/completion/*.jsonl,phase_b_a_manifest_20260917.csv
+2026-09-17T11:51:25+03:00,pw70,off,69,200,67,69,69,6.7,6.9,6.9,21429177,/home/hersco/training_new_domains/2026-09-16/mprime_final_stage2_search_phase_b_a/pw70/off/*/completion/*.jsonl,phase_b_a_manifest_20260917.csv
+2026-09-17T11:51:25+03:00,pw70,on,61,200,60,61,61,6.0,6.1,6.1,21429177,/home/hersco/training_new_domains/2026-09-16/mprime_final_stage2_search_phase_b_a/pw70/on/*/completion/*.jsonl,phase_b_a_manifest_20260917.csv

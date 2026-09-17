@@ -1,9 +1,7 @@
-snapshot_time_idt,experiment,running,pending,completed,tasks,allocated_cpus,allocated_memory_gib,job_ids,row_level_provenance
-2026-09-17T10:51:56+03:00,MPrime Phase-B-A checkpoint rescore,0,0,420,420,0,0.0,21428590,experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/README.md
-2026-09-17T10:51:56+03:00,MPrime selected policy endpoints,7,0,13,20,70,140.0,21428604-21428611,/home/hersco/training_new_domains/2026-09-16/mprime_final_stage2_search_phase_b_a/selected_policy_recovery_manifest.csv
-2026-09-17T10:51:56+03:00,MPrime fixed20/70 and PW70 handoff,0,1,0,41,0,0.0,21428612,experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/README.md
-2026-09-17T10:51:56+03:00,TPP KL multi-RNG training,0,0,16,16,0,0.0,21415031;reused RNG314159,experiment_tracking/tpp_kl_multirng_susceptibility_20260916/manifest.csv
-2026-09-17T10:53:00+03:00,TPP KL multi-RNG endpoint evaluation,1,0,15,16,6,20.0,21428592_0,experiment_tracking/tpp_kl_multirng_susceptibility_20260916/endpoint_results_snapshot_20260917.csv
-2026-09-17T10:51:56+03:00,Imperfect-domain KL one-epoch screen,0,0,20,20,0,0.0,21415209,experiment_tracking/imperfect_domains_kl_semantics_screen_20260916/README.md
-2026-09-17T10:51:56+03:00,Imperfect-domain KL endpoint evaluation,0,0,20,20,0,0.0,21415210;21428593,experiment_tracking/imperfect_domains_kl_semantics_screen_20260916/endpoint_results_20260917.csv
-2026-09-17T10:51:56+03:00,Counters strict tie-break unchanged,1,1,19,20,6,120.0,21233925_1;21362904,experiment_tracking/counters_tie_break_strict_20260914/README.md
+snapshot_time_idt,experiment,running,pending,completed,tasks,allocated_cpus,allocated_memory_gib,job_ids,row_level_provenance,scientific_status
+2026-09-17T11:51:25+03:00,MPrime final Stage2 policy endpoints,0,0,20,20,0,0.0,21428604-21428611,experiment_tracking/mprime_final_stage2_search_20260916/phase_b_a_manifest_20260917.csv,complete means off16.5 on16.7
+2026-09-17T11:51:25+03:00,MPrime final Stage2 fixed and PW70,40,0,0,40,240,4800.0,21429177,experiment_tracking/mprime_final_stage2_search_20260916/live_progress_20260917_1151.csv,234/800 classified live lower bounds only
+2026-09-17T11:51:25+03:00,TPP KL multi-RNG endpoint evaluation,0,0,16,16,0,0.0,21428592;21415032;reused,experiment_tracking/tpp_kl_multirng_susceptibility_20260916/results_final.csv,complete selected-seed susceptibility result
+2026-09-17T11:51:25+03:00,Imperfect-domain frozen-replay KL training,10,10,0,20,60,1200.0,21430551,experiment_tracking/imperfect_kl_frozen_replay_crossover_20260917/manifest.csv,checksum-frozen causal crossover active
+2026-09-17T11:51:25+03:00,Imperfect-domain frozen-replay verifier and endpoints,0,21,0,21,0,0.0,21430552;21430553,experiment_tracking/imperfect_kl_frozen_replay_crossover_20260917/submissions.tsv,dependency gated behind training
+2026-09-17T11:51:25+03:00,Counters strict tie-break and trace follow-up,1,1,19,21,6,120.0,21233925_1;21362904,experiment_tracking/counters_tie_break_strict_stage1_20260913/README.md,twenty scientific tasks plus one dependent controller; final original arm genuinely progressing

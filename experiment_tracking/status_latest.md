@@ -1,53 +1,62 @@
 # Current experiment status
 
-Updated: 2026-09-17T10:53:00+03:00 (live scheduler/accounting snapshot)
+Updated: 2026-09-17T11:51:25+03:00 (live scheduler plus completion-ledger snapshot)
 
 Primary RQ evidence is validation-led only. Terminal-led campaigns remain
 provenance archives and are excluded from primary tables and plots.
 
 ## Live workload
 
-| Experiment | State | Running / pending / complete | Allocated CPU / RAM | Expected / hard bound |
-|---|---|---:|---:|---|
-| MPrime selected policy endpoints | seven exact VH-on endpoints running; twelve selected endpoints reused and one recovery complete | 7 / 0 / 13 | 70 CPU / 140 GiB | policy jobs have 4 h hard limits; downstream normally releases after all eight classify |
-| MPrime fixed/PW handoff | controller `21428612` dependency-pending | 0 / 1 / 0 | 0 allocated now; controller requests 1 CPU / 2 GiB when released | validates policy evidence, then submits 20 fixed 20/70 and 20 PW70 identities |
-| TPP KL multi-RNG | final legacy catastrophic-seed endpoint running; fifteen endpoints complete | 1 / 0 / 15 | 6 CPU / 20 GiB | 2 h hard limit; matched deterministic endpoint completed 20/20 in 23m06 |
-| Counters strict tie-break (unchanged) | one original task still running | 1 / 1 controller / 19 scheduler-terminal tasks | 6 CPU / 120 GiB | 72 h task hard limit; no new scientific result reported here |
+| Experiment | State and scientific progress | Allocated / requested resources | Expected completion |
+|---|---|---:|---|
+| MPrime final Stage-2 fixed/PW | all 40 tasks running; 234/800 instances durably classified | 240 CPU / 4,800 GiB | first 40 minutes contain mostly easy instances; defensible expectation is roughly 18–30 h, with later six-hour failures able to extend it |
+| Imperfect-domain frozen-replay KL crossover | tasks 0–9 running; tasks 10–19 resource-pending; verifier and endpoints dependency-pending | 60 CPU / 1,200 GiB allocated now; full training array requests 120 CPU / 2,400 GiB | prior non-frozen one-epoch jobs took <=2h03; running half should normally finish within about 2 h, then the second half, verifier and short endpoints follow |
+| Counters strict tie-break | requeued component `21234831`, Stage-1 VH-off seed 923500475, Action-ID narrow 5/20; three instances active and four not yet started | 6 CPU / 120 GiB | about 03:00 IDT conservatively if all seven consume their full six-hour limits; earlier terminal outcomes pull this forward |
 
-**Total currently allocated:** 82 CPU / 280 GiB. Dependency-pending controllers
-allocate no resources. Excluding the unchanged Counters task, newly relevant
-active work uses 76 CPU / 160 GiB.
+**Allocated total:** 306 CPU / 6,120 GiB. This fills almost the entire 6-TiB
+envelope without exceeding it. The remaining ten crossover tasks are pending
+for memory; Slurm decides when they replace released work.
 
-## Newly completed work
+## Newly completed results
 
-- **MPrime Phase-B-A rescore:** 420/420 checkpoint evaluations complete.
-  Corrected finalizer `21428590` froze twenty endpoints. Controller `21428591`
-  found twelve exact matching policy results and submitted only eight missing
-  VH-on endpoints (`21428604`--`21428611`). Job `21428610` is already complete
-  at 20/20; seven remain live. Fixed and PW are not running yet;
-  controller `21428612` is correctly waiting on those eight.
-- **Imperfect-domain KL screen:** 20/20 one-epoch training jobs and 20/20
-  endpoint jobs complete. Deterministic-current KL removes the artificial
-  step-zero anchor gradient throughout the screen. Endpoint comparisons are
-  descriptive, not causal, because prospective treatment arms did not share
-  an identical frozen replay schedule. A frozen-replay crossover is the
-  required next diagnostic before any 100-epoch retraining.
-- **Historical Counters epoch-0 comparator:** complete at 4/59.
+- **MPrime policy endpoints:** all twenty Phase-B-A-selected Stage-2 policy
+  endpoints are complete. Twelve exact-hash results were reused and only eight
+  missing VH-on endpoints were run; those eight took 7–41 minutes. The means
+  are VH-off 16.5/20 and VH-on 16.7/20.
+- **MPrime live search lower bounds:** fixed off >=5.2/5.3/5.3, fixed on
+  >=5.0/5.1/5.1, PW70 off >=6.7/6.9/6.9 and PW70 on >=6.0/6.1/6.1 at
+  30m/2h/6h. These are 234 early classifications, not final paired estimates.
+- **TPP KL multi-RNG:** complete. The catastrophic seed scores 11, 10, 20 and
+  19/20 under legacy dropout-current KL, versus 20/20 in all four
+  deterministic-current arms. The stable control is 20/20 under both semantics
+  throughout. The seed is stochastically susceptible to the legacy KL
+  implementation; deterministic-current KL protects it across the tested RNGs.
+- **Frozen-replay crossover submitted:** `21430551` training -> `21430552`
+  integrity verifier -> `21430553` endpoints. Ten source checkpoints and all
+  600 replay files were checksum-frozen before submission.
 
 ## RQ impact
 
-No primary RQ row changes at this snapshot. MPrime can enter RQ1/RQ3 only once
-the eight selected policy endpoints finish, and RQ2/RQ4 only after the matched
-fixed 20/70 and PW70 campaigns finish. TPP and the imperfect-domain KL screen
-are implementation/mechanism diagnostics rather than replacements for the
-historical primary rows.
+MPrime now adds completed policy-only evidence:
+
+- RQ1/VH-off: 16.3 -> 16.5, +0.2 plans, 95% CI [-1.90, 2.30], raw exact
+  p=.9297, Holm p=1.0. No reliable Stage-2 policy improvement.
+- RQ3/VH-on direct: 15.7 -> 16.7, +1.0 [-.58, 2.58], raw p=.2539,
+  Holm p=1.0.
+- RQ3 interaction against VH-off: +0.8 [-1.63, 3.23], raw p=.5137,
+  Holm p=1.0. The positive mean does not establish a value-head training
+  benefit.
+
+RQ2/RQ4 do not change yet. The MPrime fixed/PW completion records are live
+lower bounds and must not receive CIs or significance tests before all matched
+cells finish.
 
 ## Canonical sources
 
-- Live scheduler snapshot: `experiment_tracking/live_experiment_status_latest.csv`
-- MPrime rescore: `experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/README.md`
-- TPP multi-RNG: `experiment_tracking/tpp_kl_multirng_susceptibility_20260916/`
-- Imperfect-domain KL screen: `experiment_tracking/imperfect_domains_kl_semantics_screen_20260916/`
-- Methods inventory: `docs/thesis_methods_configuration_inventory_20260916.md`
-- Divergence audit: `experiment_tracking/mcts_policy_divergence_cause_audit/README.md`
-- Value-head audit: `experiment_tracking/value_head_quality_audit/README.md`
+- `experiment_tracking/cluster_workload_latest.csv`
+- `experiment_tracking/live_experiment_status_latest.csv`
+- `experiment_tracking/mprime_final_stage2_search_20260916/`
+- `experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/mprime_policy_rq_extension_20260917.csv`
+- `experiment_tracking/tpp_kl_multirng_susceptibility_20260916/`
+- `experiment_tracking/imperfect_kl_frozen_replay_crossover_20260917/`
+- `docs/thesis_methods_configuration_inventory_20260916.md`

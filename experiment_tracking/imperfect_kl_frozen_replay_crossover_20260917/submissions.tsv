@@ -1,0 +1,4 @@
+submitted_at_utc	role	job_id	tasks	dependency	cpus_per_task	memory_gib_per_task	walltime	script	output_root
+2026-09-17T08:45:00Z	training_array	21430551	20		6	120	04:00:00	train.sbatch	/home/hersco/training_new_domains/2026-09-17/imperfect_kl_frozen_replay_crossover
+2026-09-17T08:45:00Z	pair_verifier	21430552	1	afterok:21430551	1	4	00:30:00	verify.sbatch	/home/hersco/training_new_domains/2026-09-17/imperfect_kl_frozen_replay_crossover
+2026-09-17T08:45:00Z	endpoint_array	21430553	20	afterok:21430552	5	20	02:00:00	endpoint.sbatch	/home/hersco/training_new_domains/2026-09-17/imperfect_kl_frozen_replay_crossover
