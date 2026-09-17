@@ -11,6 +11,7 @@ from pathlib import Path
 
 
 EPOCH = re.compile(r"epoch_(\d+)_phase_b_a\.val\.csv$")
+FINAL_SCORE = re.compile(r"\[EVAL FINAL\].*?success=(\d+)(?:\.0+)?/30(?:\.0+)?")
 
 
 def read(path: Path) -> list[dict[str, str]]:
@@ -20,9 +21,14 @@ def read(path: Path) -> list[dict[str, str]]:
 
 def score(path: Path) -> int:
     rows = read(path)
-    if len(rows) != 30 or any(row.get("val_valid") not in {"0", "1"} for row in rows):
-        raise RuntimeError(f"expected exactly 30 binary VAL rows in {path}")
-    return sum(int(row["val_valid"]) for row in rows)
+    log = path.with_name(path.name.replace(".val.csv", ".log"))
+    scores = FINAL_SCORE.findall(log.read_text(errors="replace"))
+    if len(scores) != 1:
+        raise RuntimeError(f"expected one terminal 30-instance score in {log}")
+    value = int(scores[0])
+    if len(rows) != value or any(row.get("val_valid") != "1" for row in rows):
+        raise RuntimeError(f"VAL rows do not match terminal score {value}/30 in {path}")
+    return value
 
 
 def main() -> None:

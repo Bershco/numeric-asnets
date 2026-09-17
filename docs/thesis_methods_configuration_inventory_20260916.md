@@ -4,39 +4,76 @@ This is the canonical inventory for explaining what was tried, why it was
 tried, what happened, and whether the evidence is strong enough for the main
 thesis narrative. “Implemented” never means “empirically supported.”
 
-## Main methods
+## MCTS configurations and methods
 
-| Method | Intuition | Evidence | Thesis status |
-|---|---|---|---|
-| Stage-1 ENHSP imitation | Start from planner demonstrations rather than learn planning from scratch. | The validation-selected Stage-1 policy is the baseline for every primary RQ. | Main method. |
-| Validation-selected checkpoints | Select a deployable model without test-set knowledge. | Primary reporting is validation-led only. MPrime required Phase B/C because the original validator saturated. | Main method; disclose MPrime correction. |
-| Stage-2 MCTS-target refinement | Train on search visit distributions to improve beyond imitation. | No general Holm-significant policy-only gain; outcomes are domain-specific and one TPP seed collapsed. | Main mixed/negative result. |
-| Constant Stage-1 KL anchor | Discourage destructive drift during Stage 2. | TPP revealed that the historical current-policy KL forward had dropout active. Under one frozen replay/RNG stream, legacy semantics scored 11/20 and deterministic-current semantics 20/20; stable control stayed 20/20. | Main implementation finding; multi-RNG confirmation live. |
-| Fixed MCTS, normal 20/70 | Search beyond greedy policy with broad policy-guided branching. | Strong FO Counters and Drone/VH-on gains, smaller Rover gains, near-neutral MPrime fixed search, negative/variable Counters behavior. | Main inference method. |
-| Fixed MCTS, narrow 5/20 | Make expensive Block Grouping/Counters search computationally possible. | Block Grouping needs long budgets to approach policy; Counters can underperform policy. | Main domain-specific compromise, not universal default. |
-| Value-head on/off factorial | Test whether learned state value helps training or search. | No reliable general Stage-2 training benefit; strong MCTS interaction in Drone, weak/neutral elsewhere. | Main RQ3/RQ4 design. |
+This is the advisor-requested methods inventory. It is deliberately organized
+around the MCTS design axes rather than around the entire training pipeline.
+
+| Axis | Configuration | Intuition | Evidence and result | Thesis readiness |
+|---|---|---|---|---|
+| Leaf evaluation | Historical policy rollout | Estimate a leaf by continuing with the learned policy. | Present in early git history; replaced by value-based leaf evaluation. No controlled matched coverage/runtime comparison survives. | Describe as tried architecture only unless rerun. |
+| Leaf evaluation | Learned value / ENHSP blend (`use_estimator=.5`) | Combine learned generalization with an external planning estimate. | This is the current mainline MCTS estimator used by the fixed and PW campaigns. Its end-to-end coverage is well measured, but its two components have not been factorially isolated. | Main method; do not claim `.5` is optimal. |
+| Leaf evaluation | Learned value only / ENHSP only | Isolate what the value head itself contributes at the leaf. | Code support exists; no canonical matched result table. | High-priority small ablation if the thesis needs a component claim. |
+| Expansion | Fixed top-20 / 70 simulations | Retain broad policy support and allow search evidence to develop. | Strong FO Counters and Drone/VH-on gains, smaller Rover gains, variable/negative Counters behavior. | Thesis-ready primary method. |
+| Expansion | Narrow top-5 / 20 simulations | Keep Block Grouping and Counters computationally feasible. | Block Grouping approaches policy only at long budgets; Counters can remain below policy. | Thesis-ready domain-specific compromise. |
+| Expansion | PW70 (`Kmin=3`, `c=.6`, `alpha=.5`, `Kmax=20`) | Start narrow and add actions only as root evidence accumulates. | Strong FO Counters and MPrime evidence, approximate Rover parity, weaker Drone/BG/Counters evidence. | Thesis-ready domain-dependent result. |
+| Expansion | PW20 | Match the historical narrow 5/20 budget. | Isolated Counters recoveries; not consistently better. | Screening result; keep separate from PW70. |
+| Expansion | Drone PW `Kmin=2` / `Kmin=3` | Test the coverage–tree-size trade-off. | `Kmin=2` cut trees/runtime substantially but lost coverage; `Kmin=3` recovered to 9.5/20 versus policy 7.0 and fixed 10.5. | Thesis-ready sensitivity result. |
+| Tree selection | PUCT, exploration constant `.1` | Balance prior-guided exploration and accumulated Q. | Used consistently in the main campaigns; no matched sensitivity grid proves `.1` optimal. | Main declared setting, not an optimization claim. |
+| Root action selection | Maximum visits, action-index tie | Historical deterministic selection rule. | Selected Counters failures exposed arbitrary index dependence. | Baseline behavior. |
+| Root action selection | Q tie-break | Let learned/search value resolve equal visits. | 0/3 on the selected Counters causal pilot. | Negative selected-case result. |
+| Root action selection | Policy-prior tie-break | Preserve the learned preference when visit/Q evidence is unresolved. | Recovered 3/3 selected Counters policy successes; strict confirmation remains required. | Promising diagnostic, not yet a primary replacement. |
+| Safety | SAFE-1 terminal protection | Refuse a known terminal non-goal commitment. | Repaired 2/4 selected Drone failures. | Useful incomplete repair. |
+| State identity | SAFE-CONTEXT | Distinguish identical physical states with different action histories. | Explained a real aliasing mechanism but reduced coverage and increased memory. | Thesis-ready negative result. |
+| Search horizon | Remaining-horizon enforcement | Prevent search below the remaining executable budget. | Nonbinding in audited runs; no observed coverage change. | Negative/non-result. |
+| Execution budget | 30m / 2h / 6h recensoring | Show when expensive search gains appear. | Exact post-hoc cutoffs are available from complete six-hour per-instance logs. | Thesis-ready reporting dimension. |
 
 The normal fixed-search simulation rule is
 `clip(10 + 3 * retained_children, 10, 200)`: 20 retained children therefore
 imply 70 simulations. The narrow 5/20 setup is an explicit historical override
 for expensive domains; the formula would otherwise yield 25.
 
-## Search refinements and diagnostics
+### Evidence still worth generating
 
-| Configuration | Intuition | Result | Status |
+The most defensible missing MCTS-method evidence is:
+
+1. **Rollout versus current leaf evaluation.** Freeze checkpoint, instances,
+   top-K, simulations, PUCT and wall budget. A minimum screen is rollout versus
+   the current `.5` blend on Drone and FO Counters, two seeds each: eight
+   evaluation tasks. A full four-arm screen (rollout, learned-only, ENHSP-only,
+   `.5` blend) is sixteen tasks. Report coverage, leaf-evaluation time, total
+   runtime and generated nodes.
+2. **Estimator-component ablation.** If the thesis claims that the learned
+   value is useful inside MCTS, compare learned-only, ENHSP-only and the `.5`
+   blend after the separate value-head quality audit. Do not run this merely to
+   defend a default.
+3. **PUCT sensitivity.** Only needed if claiming `.1` is preferable, rather
+   than declaring it as the frozen setting. A small validation-only grid should
+   precede any test evaluation.
+
+These are proposals, not submitted work. The fixed/PW, SAFE-1, context,
+horizon and selected tie-break results already have enough evidence to discuss
+what succeeded, failed, and why.
+
+## Auxiliary training and selection methodology
+
+| Method | Intuition | Evidence | Thesis status |
 |---|---|---|---|
-| PW70 (`Kmin=3`, `c=.6`, `alpha=.5`, `Kmax=20`) | Expand few actions initially and widen only when visits justify it. | Strong FO Counters and MPrime results; Rover approximate parity; weaker Drone, Block Grouping and Counters results. | Successful but domain-dependent. |
-| PW20 | Match the narrow 5/20 compute budget. | Isolated Counters recoveries, no consistent universal benefit. | Screening evidence; never pool with PW70. |
-| Drone PW `Kmin=2` | Aggressively reduce branching and tree size. | Very large node/runtime savings but significant coverage loss versus fixed top-20. | Negative coverage / positive efficiency result. |
-| Drone PW `Kmin=3` | Give PW a broader initial policy-supported base. | 9.5/20 versus policy 7.0 and fixed 10.5; better runtime tail but still lost fixed successes. | Partial repair. |
-| SAFE-1 terminal protection | Avoid committing to a known terminal non-goal child. | Repaired 2/4 selected Drone failures. | Useful, incomplete diagnostic. |
-| Policy-prior root tie-break | Use learned prior instead of action-array order when visits tie and Q is uninformative. | Selected Counters VH-off: action ID 0/3, Q 0/3, policy prior 3/3. | Promising causal pilot; strict confirmation still gates any primary change. |
-| Q tie-break | Resolve equal visits using Q. | 0/3 in the same selected Counters pilot. | Rejected selected-case alternative. |
-| SAFE-CONTEXT | Separate identical physical states with different action-history inputs. | Reduced coverage and increased memory; rejected. | Negative result. |
-| Remaining-horizon enforcement | Prevent search deeper than executable remaining horizon. | Nonbinding in completed audits; no coverage change. | Negative/non-result. |
-| CPU determinism audit | Test whether hardware numerical differences explain historical discrepancies. | Checksums changed across CPU families, but audited actions and outcomes did not. | Methodological assurance. |
+| Stage-1 ENHSP imitation | Retain the supervised planner-imitation procedure used to train the original Numeric ASNets. | The validation-selected Stage-1 policy is the baseline for every primary RQ. | Original-paper baseline, not a newly introduced thesis method. |
+| Validation-selected checkpoints | Select a deployable model without test-set knowledge. | Primary reporting is validation-led only. MPrime required Phase B/C because the original validator saturated. | Main method; disclose MPrime correction. |
+| Stage-2 MCTS-target refinement | Train on search visit distributions to improve beyond imitation. | No general Holm-significant policy-only gain; outcomes are domain-specific and one TPP seed collapsed. | Main mixed/negative result. |
+| Constant Stage-1 KL anchor | Discourage destructive drift during Stage 2. | TPP revealed that the historical current-policy KL forward had dropout active. Under one frozen replay/RNG stream, legacy semantics scored 11/20 and deterministic-current semantics 20/20; stable control stayed 20/20. | Main implementation finding; multi-RNG confirmation live. |
+| Value-head on/off factorial | Test whether learned state value helps training or search. | No reliable general Stage-2 training benefit; strong MCTS interaction in Drone, weak/neutral elsewhere. | Main RQ3/RQ4 design. |
 
-## Training safeguards
+## Supporting methodological assurance
+
+The CPU-determinism audit observed checksum differences across CPU families,
+but the audited actions and outcomes were unchanged.  This supports treating
+the reported search outcomes as method evidence rather than hardware-family
+artifacts.  All MCTS refinements and their results are listed once in the main
+MCTS inventory above.
+
+## Auxiliary training safeguards
 
 | Configuration | Intuition | Result | Status |
 |---|---|---|---|

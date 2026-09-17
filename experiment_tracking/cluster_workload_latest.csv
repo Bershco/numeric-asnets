@@ -1,8 +1,6 @@
 snapshot_time_idt,experiment,job_id,job_name,state,tasks,cpus,memory_gib,elapsed,time_limit,reason_or_node,array_job_id,scheduler_source
-2026-09-16T20:34:05+03:00,MPrime Phase-B-A exact final retry,21414946_100,MPRIME_S2_PBA_FINE,RUNNING,1,4,20.0,~00:35:00,08:00:00,ise-cpu128-02,21414946,squeue://hersco/21414946
-2026-09-16T20:34:05+03:00,MPrime finalizer and downstream,"21412366;21412367","MPRIME_S2_PBA_FIN;MPRIME_S2_DOWNSTREAM",DEPENDENCY_PENDING,2,2,4.0,00:00:00,00:30:00,"afterok:21414946;afterok:21412366","21412366;21412367",squeue://hersco/21412366;21412367
-2026-09-16T20:34:05+03:00,TPP KL multi-RNG endpoint original,21415032,tpp_kl_multirng_endpoint_20260916.sbatch,RUNNING_PARTIAL,7,42,140.0,~00:09:00,02:00:00,"7 running;2 complete;3 pre-inference holds replaced",21415032,squeue://hersco/21415032
-2026-09-16T20:34:05+03:00,TPP KL multi-RNG endpoint exact retry,21415252,tpp_kl_multirng_endpoint_20260916.sbatch,PENDING,3,15,60.0,00:00:00,02:00:00,eligible,21415252,squeue://hersco/21415252
-2026-09-16T20:34:05+03:00,Imperfect-domain KL exact-architecture training,21415209,imperfect_kl_semantics_train_20260916.sbatch,RUNNING,20,120,2400.0,~00:03:00,12:00:00,"20 tasks allocated",21415209,squeue://hersco/21415209
-2026-09-16T20:34:05+03:00,Imperfect-domain KL endpoint evaluation,21415210,imperfect_kl_semantics_endpoint_20260916.sbatch,DEPENDENCY_PENDING,20,100,400.0,00:00:00,02:00:00,afterok:21415209,21415210,squeue://hersco/21415210
-2026-09-16T20:34:05+03:00,Missing historical Counters epoch0 policy,21415211,imperfect_true_legacy_counters_epoch0_20260916.sbatch,RUNNING,1,5,20.0,~00:03:00,02:00:00,ise-cpu-intl-22,21415211,squeue://hersco/21415211
+2026-09-17T10:51:56+03:00,MPrime selected policy endpoint recovery,21428604-21428609;21428611,Ev_mprime_*_MPFINALV_S2SEL,RUNNING,7,70,140.0,00:22:11,04:00:00,allocated,21428604-21428611,squeue://hersco/21428604-21428611
+2026-09-17T10:51:56+03:00,MPrime downstream fixed/PW controller,21428612,MPRIME_S2_DOWNSTREAM_R,DEPENDENCY_PENDING,1,0,0.0,00:00:00,00:30:00,afterany eight policy jobs,21428612,squeue://hersco/21428612
+2026-09-17T10:53:00+03:00,TPP KL multi-RNG final legacy endpoint,21428592_0,tpp_kl_multirng_endpoint_20260916.sbatch,RUNNING,1,6,20.0,~00:24:00,02:00:00,allocated,21428592,squeue://hersco/21428592
+2026-09-17T10:51:56+03:00,Counters strict tie-break unchanged task,21233925_1,COUNTERS_TIE_STRICT,RUNNING,1,6,120.0,2-01:53:05,3-00:00:00,ise-cpu128-14,21233925,squeue://hersco/21233925
+2026-09-17T10:51:56+03:00,Counters strict trace controller,21362904,COUNTERS_TRACE_CTL,DEPENDENCY_PENDING,1,0,0.0,00:00:00,00:30:00,afterany strict array,21362904,squeue://hersco/21362904

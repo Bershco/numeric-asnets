@@ -32,6 +32,29 @@ depending on labels. Avoid Block Grouping initially because successor
 generation is expensive and Counters because extremely long trajectories can
 dominate. Add MPrime after endpoints freeze.
 
+### V1 execution plan and resources
+
+1. Freeze two seeds, exact Stage-1/Stage-2 checkpoint hashes and a state-source
+   mixture per domain before inspecting value scores.  Include policy-reached,
+   planner-reached and limited off-policy states so the audit is not restricted
+   to trajectories that the policy already survives.
+2. Materialize a checksumed state manifest and cache successor identities once.
+   Cache each label family separately; never turn a timeout from one labeler
+   into a numeric target from another.
+3. Run the twelve checkpoint tasks, then aggregate at the lineage/domain level.
+   State-level observations within a trajectory are not treated as independent
+   seeds.
+4. Accept the V1 gate only if sibling ordering, top-child regret and dead-end
+   discrimination are reproducible across both seeds in at least two domains.
+   Global correlation alone is insufficient.
+
+Maximum simultaneous request: 48 CPU and 480 GiB–1.44 TiB, depending on the
+domain-specific memory preflight.  With full concurrency the cluster hard
+bound is 8–12 hours after manifests and label caches are ready.  Preparation,
+implementation and smoke testing are estimated at one development day.  Every
+aggregate CSV must include the checkpoint, state-manifest and raw label-log
+paths.
+
 ## Phase V2: raw-value-greedy inference
 
 Only proceed if V1 shows useful sibling ranking. At each external step:
@@ -48,6 +71,26 @@ is feasible because batched successor generation and network inference already
 exist; implementation plus tests is estimated at one to two development days.
 The validation screen would add 12 evaluation tasks at roughly 2 CPU / 120 GiB
 each.
+
+### V2 execution plan and resources
+
+Implement the new inference mode behind an explicit flag, leaving policy and
+MCTS behavior unchanged.  Unit-test batching, goal/terminal precedence,
+numeric minimization/maximization sign, successor/action identity and stable
+ties.  Smoke-test one short instance before releasing the twelve validation
+tasks.
+
+Development plus tests is estimated at one to two working days.  The first
+screen requests at most 24 CPU / 1.44 TiB concurrently and uses a 6–12 hour
+task bound after a short runtime preflight.  It is followed by policy-argmax
+and value-greedy comparisons on the same checkpoints and instances; no MCTS
+run is needed to answer the narrow diagnostic.
+
+V2 is normally gated by V1.  The gate may be deliberately overridden only by
+freezing that decision before viewing V2 test outcomes and labelling the run
+as an exploratory inference diagnostic.  Skipping a failed V1 gate cannot be
+used to claim that the value head is calibrated; at most it can reveal a
+surprising trajectory-level behavior worth investigating.
 
 ## Interpretation limits
 

@@ -52,17 +52,18 @@ Slurm route:
   environment-independent exact retry `21414946_100`, which reruns only that
   frozen manifest identity using `--export=NIL` and excludes the failed node
   families;
-- replacement finalizer `21412366` waits for `afterany:21411413` and
-  `afterok:21414946`. It still refuses any missing identity, mismatched receipt,
-  non-binary VAL row, or anything other than twenty-one results per lineage;
-- replacement downstream controller `21412367` depends only on
-  `afterok:21412366`. Pending jobs `21411414` and `21411415` were cancelled
-  before execution because their original `afterok:21411413` path could never
-  release after task 100 failed.
+- superseded finalizer `21412366` was released after `21414946`, then failed on
+  the incorrect assumption that every VAL summary must contain thirty data
+  rows.  Its downstream `21412367` was cancelled and produced no scientific
+  work.  Corrected finalization is recorded below;
+- pending jobs `21411414` and `21411415` were cancelled before execution
+  because their original `afterok:21411413` path could never release after
+  task 100 failed.
 
-The replaced arrays/controllers `21390404`, `21392547`, `21392548` and
-`21392549`, plus obsolete infinite policy watcher `21362500`, were cancelled.
-Their evidence/logs were retained. The downstream controller joins selected
+The replaced arrays/controllers `21390404`, `21392547`, `21392548`,
+`21392549`, `21412366` and `21412367`, plus obsolete infinite policy watcher
+`21362500`, were cancelled or failed and superseded. Their evidence/logs were
+retained. The canonical downstream controller joins selected
 checkpoint hashes to existing policy logs and exact search identities. If a
 selected endpoint lacks valid policy evidence, it submits only that exact
 endpoint into a dedicated date-frozen recovery root, records a recovery
@@ -82,11 +83,35 @@ policy evidence may be recovered. Fixed/PW search manifests must be rebuilt
 from `phase_b_a_selected_endpoints.csv`; the old ready-manifest analysis roles
 must never be used for final endpoint selection.
 
-Live snapshot 2026-09-16 20:20 IDT: 419/420 checkpoint evaluations are
-identity-valid. Exact task-100 retry `21414946_100` is running; finalizer
-`21412366` depends on it and downstream controller `21412367` depends on the
-finalizer. The downstream controller reuses exact checkpoint-hash policy
-evidence, submits only genuinely missing selected endpoints, and then builds
-both fixed 20/70 and PW70 manifests from the newly selected checkpoints. The
-retry has an eight-hour scheduler hard bound; normal completed rescores took
-roughly 16--29 minutes.
+## Finalization correction and live handoff
+
+All 420 checkpoint evaluations are complete.  A Phase-B-A VAL summary CSV has
+one row per successful, VAL-valid plan rather than one row per validation
+problem; the authoritative coverage is the unique terminal
+`[EVAL FINAL] success=X/30` record.  The superseded finalizer incorrectly
+required thirty CSV rows and failed despite valid evidence.  A diagnostic
+missing-manifest produced under that false assumption is retained only as an
+invalid operational artifact and is excluded from scientific provenance.
+
+The corrected completion gate requires exactly one terminal `X/30` record,
+exactly `X` VAL-valid CSV rows, the expected receipt/checkpoint identity and
+the complete epoch set.  Corrected finalizer `21428590` and first downstream
+controller `21428591` completed on 2026-09-17.  Twenty Phase-B-A-selected
+endpoints are frozen in `phase_b_a_selected_endpoints.csv`.
+
+Local immutable copies for rapid analysis are
+`phase_b_a_selected_endpoints_20260917.csv` and
+`selected_policy_recovery_manifest_20260917.csv`; both retain the remote
+checkpoint and log paths used by the controller.
+
+Exact-hash reconciliation found twelve already evaluated selected policy
+endpoints and eight genuinely missing VH-on endpoints.  Jobs
+`21428604`--`21428611` evaluate only those eight (selected epochs 10, 40, 30,
+5, 15, 20, 99 and 10).  Controller `21428612` depends on all eight with
+`afterany`, validates their outputs, then materializes the matched fixed 20/70
+and PW70 search manifests.  At the 2026-09-17 10:35 IDT snapshot the eight
+policy jobs were running; fixed and PW search were not yet running.
+
+No validation score, completed policy endpoint or search identity is blindly
+duplicated.  The corrected scripts interpret the actual successes-only VAL
+format and fail closed on any remaining missing endpoint.

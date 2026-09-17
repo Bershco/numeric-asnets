@@ -15,7 +15,7 @@ from pathlib import Path
 
 
 WORKER_FAILURE = re.compile(r"Worker (?:died without result|crashed)|CRASH_EXIT|AttributeError.*(?:send|put)")
-FINAL_SCORE = re.compile(r"\[EVAL FINAL\].*?success=\d+(?:\.\d+)?/30(?:\.0)?")
+FINAL_SCORE = re.compile(r"\[EVAL FINAL\].*?success=(\d+)(?:\.0+)?/30(?:\.0+)?")
 
 
 def read(path: Path) -> list[dict[str, str]]:
@@ -31,8 +31,16 @@ def complete(done: Path, summary: Path, identity: dict[str, str]) -> bool:
     if not done.is_file() or not summary.is_file() or summary.stat().st_size == 0:
         return False
     try:
-        return json.loads(done.read_text(encoding="utf-8")) == identity
-    except (OSError, json.JSONDecodeError):
+        rows = read(summary)
+        log = summary.with_name(summary.name.replace(".val.csv", ".log"))
+        scores = FINAL_SCORE.findall(log.read_text(errors="replace"))
+        return (
+            json.loads(done.read_text(encoding="utf-8")) == identity
+            and len(scores) == 1
+            and len(rows) == int(scores[0])
+            and all(row.get("val_valid") == "1" for row in rows)
+        )
+    except (OSError, json.JSONDecodeError, csv.Error):
         return False
 
 
@@ -102,7 +110,8 @@ def main() -> None:
     with log.open("w", encoding="utf-8") as stream:
         result = subprocess.run(command, cwd=args.repo / "asnets", stdout=stream, stderr=subprocess.STDOUT, text=True)
     content = log.read_text(errors="replace")
-    if result.returncode or WORKER_FAILURE.search(content) or not FINAL_SCORE.search(content):
+    scores = FINAL_SCORE.findall(content)
+    if result.returncode or WORKER_FAILURE.search(content) or len(scores) != 1:
         raise RuntimeError(f"incomplete Phase-B-A result {row['manifest_id']} epoch={epoch} rc={result.returncode}")
     subprocess.run([
         sys.executable, str(args.repo / "asnets/tools/validate_eval_log_with_summary.py"),
@@ -111,6 +120,9 @@ def main() -> None:
     ], cwd=args.repo / "asnets", check=True)
     if not summary.is_file() or summary.stat().st_size == 0:
         raise RuntimeError(f"missing validation summary: {summary}")
+    summary_rows = read(summary)
+    if len(summary_rows) != int(scores[0]) or any(row.get("val_valid") != "1" for row in summary_rows):
+        raise RuntimeError(f"VAL summary does not match terminal score: {summary}")
     temporary = done.with_suffix(".tmp")
     temporary.write_text(json.dumps(identity, sort_keys=True), encoding="utf-8")
     os.replace(temporary, done)

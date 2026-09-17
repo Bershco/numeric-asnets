@@ -1,8 +1,9 @@
-snapshot_time_idt,experiment,running,pending,completed,tasks,requested_cpus,requested_memory_gib,job_ids,row_level_provenance
-2026-09-16T20:34:05+03:00,MPrime Phase-B-A validation rescore,1,0,419,420,4,20.0,21414946_100,experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/README.md
-2026-09-16T20:34:05+03:00,MPrime finalizer and downstream controller,0,2,0,2,2,4.0,"21412366;21412367",experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/README.md
-2026-09-16T20:34:05+03:00,TPP KL multi-RNG training,0,0,12,12,0,0.0,21415031,experiment_tracking/tpp_kl_multirng_susceptibility_20260916/submissions.tsv
-2026-09-16T20:34:05+03:00,TPP KL multi-RNG endpoint evaluation,7,3,2,12,50,200.0,"21415032;21415252",experiment_tracking/tpp_kl_multirng_susceptibility_20260916/manifest.csv
-2026-09-16T20:34:05+03:00,Imperfect-domain KL exact-architecture training,20,0,0,20,120,2400.0,21415209,experiment_tracking/imperfect_domains_kl_semantics_screen_20260916/submissions.tsv
-2026-09-16T20:34:05+03:00,Imperfect-domain KL endpoint evaluation,0,20,0,20,100,400.0,21415210,experiment_tracking/imperfect_domains_kl_semantics_screen_20260916/submissions.tsv
-2026-09-16T20:34:05+03:00,Imperfect-domain missing historical Counters epoch0 policy,1,0,0,1,5,20.0,21415211,experiment_tracking/imperfect_domains_kl_semantics_screen_20260916/submissions.tsv
+snapshot_time_idt,experiment,running,pending,completed,tasks,allocated_cpus,allocated_memory_gib,job_ids,row_level_provenance
+2026-09-17T10:51:56+03:00,MPrime Phase-B-A checkpoint rescore,0,0,420,420,0,0.0,21428590,experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/README.md
+2026-09-17T10:51:56+03:00,MPrime selected policy endpoints,7,0,13,20,70,140.0,21428604-21428611,/home/hersco/training_new_domains/2026-09-16/mprime_final_stage2_search_phase_b_a/selected_policy_recovery_manifest.csv
+2026-09-17T10:51:56+03:00,MPrime fixed20/70 and PW70 handoff,0,1,0,41,0,0.0,21428612,experiment_tracking/mprime_final_stage2_phase_b_a_rescore_20260916/README.md
+2026-09-17T10:51:56+03:00,TPP KL multi-RNG training,0,0,16,16,0,0.0,21415031;reused RNG314159,experiment_tracking/tpp_kl_multirng_susceptibility_20260916/manifest.csv
+2026-09-17T10:53:00+03:00,TPP KL multi-RNG endpoint evaluation,1,0,15,16,6,20.0,21428592_0,experiment_tracking/tpp_kl_multirng_susceptibility_20260916/endpoint_results_snapshot_20260917.csv
+2026-09-17T10:51:56+03:00,Imperfect-domain KL one-epoch screen,0,0,20,20,0,0.0,21415209,experiment_tracking/imperfect_domains_kl_semantics_screen_20260916/README.md
+2026-09-17T10:51:56+03:00,Imperfect-domain KL endpoint evaluation,0,0,20,20,0,0.0,21415210;21428593,experiment_tracking/imperfect_domains_kl_semantics_screen_20260916/endpoint_results_20260917.csv
+2026-09-17T10:51:56+03:00,Counters strict tie-break unchanged,1,1,19,20,6,120.0,21233925_1;21362904,experiment_tracking/counters_tie_break_strict_20260914/README.md

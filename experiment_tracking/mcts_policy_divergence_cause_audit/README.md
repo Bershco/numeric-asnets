@@ -49,8 +49,31 @@ optional sparse landmarks, not full debug output at every external action.
 
 ## Minimal workload
 
-First join existing rich Counters and Block Grouping traces locally: zero new
-jobs. Missing strata then need at most one task per domain/VH cell, using the
+### Stage 0 — existing-evidence join (zero cluster jobs)
+
+First join existing policy trajectories, fixed-search ledgers, PW ledgers and
+the rich Counters/Block-Grouping root traces by exact checkpoint hash, seed and
+instance.  Produce one row per first divergence and assign it to one of the
+four outcome strata above.  This prevents a new campaign from repeating roots
+that already have complete N/Q/U/prior evidence.
+
+Expected local analysis time: roughly half a working day once every referenced
+log is present locally.  The deliverable is a frozen missing-strata manifest,
+not a scientific conclusion inferred from whichever traces happened to be
+easy to locate.
+
+### Stage 1 — compact recorder and preflight
+
+Add one compact record at the first policy/search divergence plus optional
+sparse time landmarks.  Unit-test entropy/Jensen–Shannon calculations, action
+identity, expansion membership, N/Q/U/prior decomposition and override flags.
+Smoke-test one already understood Counters root.  Estimated implementation and
+preflight time: one development day; no primary test job is released unless
+the recorded action and visits reproduce that known root.
+
+### Stage 2 — fill only genuinely missing strata
+
+Missing strata then need at most one task per domain/VH cell, using the
 declared search configuration and at most one frozen instance per stratum.
 
 - Five current imperfect domains: at most 10 tasks.
@@ -59,12 +82,32 @@ declared search configuration and at most one frozen instance per stratum.
   per-instance cap, approximately 26-hour allocation.
 - Maximum six-domain concurrency: 24 CPU / 1.44 TiB.
 
+If all tasks run concurrently, the scheduler hard bound is about 26 hours;
+most tasks should finish earlier when the selected instance classifies before
+six hours.  The manifest must record policy and search job/log provenance for
+every selected instance.
+
 Do not duplicate the campaign for PW. Add PW traces only where fixed-search
 evidence cannot explain an important result: initially FO Counters and MPrime,
 both VH modes, at most four additional tasks.
+
+### Stage 3 — causal intervention, gated
+
+Only after Stage 2 identifies a repeated mechanism should a treatment be
+tested: for example policy-prior tie-breaking for unresolved visit ties,
+changing expansion/widening for policy actions that were never expanded, or a
+PUCT/exploitation sensitivity check when Q rather than U repeatedly causes the
+first harmful divergence.  Calibrate and freeze every threshold on validation
+traces, then evaluate the unchanged rule on test.  Do not select a treatment
+from test failures themselves.
 
 Report by outcome stratum and domain with seed/domain-clustered bootstrap
 intervals. Any new action-selection rule must be calibrated and frozen on
 validation traces before test evaluation. The policy-failure/search-success
 stratum is mandatory so a policy-preserving rule does not erase genuine search
 wins.
+
+The maximum initial new workload is therefore 10 fixed-search tasks for the
+five current imperfect domains, or 12 after MPrime is available.  Optional PW
+diagnostics add at most four tasks.  No such tasks are submitted until the
+Stage-0 join produces the exact missing-strata manifest.

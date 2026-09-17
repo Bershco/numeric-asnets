@@ -38,6 +38,29 @@ inference by Slurm user-environment retrieval. They were replaced exactly by
 environment-independent array `21415252_[0,1,4]`. The original scientific
 identities and outputs are unchanged; no completed endpoint is repeated.
 
+The held task 4 subsequently completed and is reused.  Tasks 0 and 1 were
+replaced without changing their scientific identities by exact endpoint jobs
+`21428592_0` and `21428592_1` (scheduler display may expose their component
+job IDs as `21428594` and `21428592`).  Both were running at the 2026-09-17
+10:35 IDT snapshot.
+
+## Current endpoint evidence
+
+| RNG | Catastrophic legacy | Catastrophic deterministic | Stable legacy | Stable deterministic |
+|---:|---:|---:|---:|---:|
+| 314159 | 11/20 | 20/20 | 20/20 | 20/20 |
+| 271828 | running | 20/20 | 20/20 | 20/20 |
+| 1618033 | 20/20 | 20/20 | 20/20 | 20/20 |
+| 20260916 | 19/20 | 20/20 | 20/20 | 20/20 |
+
+Deterministic-current KL preserves 20/20 in all four catastrophic-seed
+schedules and every stable control.  Legacy KL shows stochastic catastrophic-
+seed damage ranging from none to severe while leaving the stable control at
+20/20.  This is strong selected-seed susceptibility evidence, but the fourth
+legacy endpoint must finish before the predeclared screen is final.  It is a
+mechanism experiment, not a population estimate or replacement for the
+historical 9/20 primary endpoint.
+
 ## Decision rule
 
 Report the paired endpoint difference `deterministic - legacy` separately for

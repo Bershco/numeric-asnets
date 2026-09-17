@@ -7,7 +7,11 @@ import argparse
 import csv
 import hashlib
 import json
+import re
 from pathlib import Path
+
+
+FINAL_SCORE = re.compile(r"\[EVAL FINAL\].*?success=(\d+)(?:\.0+)?/30(?:\.0+)?")
 
 
 def read(path: Path) -> list[dict[str, str]]:
@@ -23,8 +27,16 @@ def complete(done: Path, summary: Path, identity: dict[str, str]) -> bool:
     if not done.is_file() or not summary.is_file() or summary.stat().st_size == 0:
         return False
     try:
-        return json.loads(done.read_text(encoding="utf-8")) == identity
-    except (OSError, json.JSONDecodeError):
+        rows = read(summary)
+        log = summary.with_name(summary.name.replace(".val.csv", ".log"))
+        scores = FINAL_SCORE.findall(log.read_text(errors="replace"))
+        return (
+            json.loads(done.read_text(encoding="utf-8")) == identity
+            and len(scores) == 1
+            and len(rows) == int(scores[0])
+            and all(row.get("val_valid") == "1" for row in rows)
+        )
+    except (OSError, json.JSONDecodeError, csv.Error):
         return False
 
 

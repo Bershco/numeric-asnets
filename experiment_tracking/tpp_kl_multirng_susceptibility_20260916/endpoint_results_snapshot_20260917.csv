@@ -1,0 +1,9 @@
+rng_base_seed,seed_role,seed,legacy_score,deterministic_score,total,legacy_training_job,deterministic_training_job,legacy_endpoint_job,deterministic_endpoint_job,status,provenance
+314159,catastrophic_outlier,1972442430,11,20,20,21408668_0,21394946_2,21409234_0,21394948_2,complete,experiment_tracking/tpp_first_update_phase_d_legacy_exact_rng_20260916/results_final_20260916.csv
+314159,stable_control,2082152039,20,20,20,21408668_1,21394946_3,21409234_1,21394948_3,complete,experiment_tracking/tpp_first_update_phase_d_legacy_exact_rng_20260916/results_final_20260916.csv
+271828,catastrophic_outlier,1972442430,,20,20,21415031_0,21415031_1,21428592_0,21428592_1,legacy_running_deterministic_complete,/home/hersco/training_new_domains/2026-09-16/tpp_kl_multirng_susceptibility/endpoint_21428592_1.txt
+271828,stable_control,2082152039,20,20,20,21415031_2,21415031_3,21415032_2,21415032_3,complete,/home/hersco/training_new_domains/2026-09-16/tpp_kl_multirng_susceptibility
+1618033,catastrophic_outlier,1972442430,20,20,20,21415031_4,21415031_5,21415252_4,21415032_5,complete,/home/hersco/training_new_domains/2026-09-16/tpp_kl_multirng_susceptibility
+1618033,stable_control,2082152039,20,20,20,21415031_6,21415031_7,21415032_6,21415032_7,complete,/home/hersco/training_new_domains/2026-09-16/tpp_kl_multirng_susceptibility
+20260916,catastrophic_outlier,1972442430,19,20,20,21415031_8,21415031_9,21415032_8,21415032_9,complete,/home/hersco/training_new_domains/2026-09-16/tpp_kl_multirng_susceptibility
+20260916,stable_control,2082152039,20,20,20,21415031_10,21415031_11,21415032_10,21415032_11,complete,/home/hersco/training_new_domains/2026-09-16/tpp_kl_multirng_susceptibility

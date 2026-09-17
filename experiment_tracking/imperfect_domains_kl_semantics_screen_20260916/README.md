@@ -62,6 +62,11 @@ The maximum training allocation is 120 CPU / 2.4 TiB, below the declared 6 TiB
 workload ceiling. No 100-epoch retraining or MCTS evaluation is part of this
 screen.
 
+The twelve-hour training value is a scheduler hard bound, not an expected
+runtime.  All twenty one-epoch tasks completed in approximately three minutes
+to two hours and three minutes.  The historical Counters/534933607 epoch-0
+endpoint also completed at 4/59.
+
 ## Submission correction
 
 The first array `21415079` used newer convenience architecture modules. Drone
@@ -82,3 +87,49 @@ Expand only if deterministic-current KL materially changes gradient geometry
 or one-epoch policy coverage in multiple sampled lineages without systematic
 control harm. Otherwise retain the TPP finding as a selected-domain
 implementation sensitivity rather than rerunning primary Stage 2.
+
+## Results and causal limitation
+
+All twenty one-epoch trainings and all twenty endpoint evaluations are now
+complete.  The six held endpoint identities were replaced exactly by
+`21428593_[2,3,8-11]`; no training was repeated.
+
+| Domain / seed | Historical epoch 0 | Same-build legacy | Deterministic current | First-step weighted anchor-gradient norm, legacy / deterministic |
+|---|---:|---:|---:|---:|
+| Block Grouping / 42 | 13/20 | 14/20 | 15/20 | 0.309 / approximately 0 |
+| Block Grouping / 2026 | 14/20 | 13/20 | 15/20 | 0.312831 / approximately 0 |
+| Drone / 2026 | 4/20 | 5/20 | 5/20 | 2.282370 / approximately 0 |
+| Drone / 42 | 4/20 | 6/20 | 4/20 | 3.883 / approximately 0 |
+| FO Counters / 2026 | 10/20 | 6/20 | 6/20 | 1.299 / approximately 0 |
+| FO Counters / 42 | 5/20 | 7/20 | 4/20 | 0.998257 / approximately 0 |
+| Rover / 42 | 4/20 | 4/20 | 4/20 | 9.121 / approximately 0 |
+| Rover / 2026 | 4/20 | 4/20 | 4/20 | 9.921906 / approximately 0 |
+| Counters / 534933607 | 4/59 | 6/59 | 44/59 | 0.667 / approximately 0 |
+| Counters / 2082152039 | 59/59 | 47/59 | 47/59 | 1.126834 / approximately 0 |
+
+The first-step result is structurally consistent across the instrumented
+screen: deterministic-current KL has an essentially zero anchor gradient when
+the current and anchor weights are initially identical, while legacy dropout-
+current KL can inject a large nonzero anchor gradient.  That proves the
+historical semantics changed the optimizer update outside TPP.
+
+However, the prospective treatment pairs did not reuse an identical frozen
+replay schedule.  For example, the large Counters 6/59 versus 44/59 pair has
+different worker ingestion/order and different first replay batches/targets.
+It is therefore a striking descriptive signal, not a causal endpoint effect
+attributable solely to KL semantics.  The proper next experiment is a compact
+frozen-replay crossover: capture one 60-batch schedule per selected lineage,
+replay the identical batches, targets, starting weights and optimizer RNG under
+both KL semantics, and evaluate the two one-epoch endpoints.  No 100-epoch
+training is justified by the present screen alone.
+
+Historical total-gradient information cannot recover the missing anchor
+gradient.  In vector form the applied gradient is the sum of policy, anchor
+and other regularizer gradients; a total norm does not identify any component.
+Subtraction would require identical weights, replay batches, targets, RNG and
+all other gradient vectors, which the old stochastic runs do not provide.
+
+Exact training/endpoint jobs and remote log paths for every score are in
+`endpoint_results_20260917.csv`. Decomposed first-step anchor gradients,
+policy/anchor cosine values, matched optimizer-RNG status and the failed replay-
+identity gate are in `gradient_geometry_20260917.csv`.
