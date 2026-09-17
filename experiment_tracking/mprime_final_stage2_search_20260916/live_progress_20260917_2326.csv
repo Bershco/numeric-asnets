@@ -1,0 +1,5 @@
+snapshot_time_idt,search,vh,durable_successes,total_instances,successes_30m,successes_2h,successes_6h,lower_bound_mean_30m,lower_bound_mean_2h,lower_bound_mean_6h,array_job,running,completed,oom,allocated_cpu,allocated_mem_gib,interpretation
+2026-09-17T23:26:51+03:00,fixed,off,166,200,142,158,166,14.2,15.8,16.6,21429177,8,22,10,48,960,"success-ledger lower bound;terminal failures not yet reconciled"
+2026-09-17T23:26:51+03:00,fixed,on,154,200,125,142,154,12.5,14.2,15.4,21429177,8,22,10,48,960,"success-ledger lower bound;terminal failures not yet reconciled"
+2026-09-17T23:26:51+03:00,pw70,off,179,200,160,177,179,16.0,17.7,17.9,21429177,8,22,10,48,960,"success-ledger lower bound;terminal failures not yet reconciled"
+2026-09-17T23:26:51+03:00,pw70,on,172,200,152,170,172,15.2,17.0,17.2,21429177,8,22,10,48,960,"success-ledger lower bound;terminal failures not yet reconciled"

@@ -1,4 +1,8 @@
-# Imperfect-domain primary-lineage KL crossover
+# PRIMARY-50 KL Semantics Crossover
+
+This is the current uniform experiment: 50 distinct primary Stage-1 networks,
+exactly ten per imperfect domain. It must not be confused with the older
+six-checkpoint mechanism screen.
 
 ## Question
 
@@ -27,6 +31,13 @@ mechanism but cannot estimate prevalence across independent primary networks.
   to match before endpoint evaluation.
 - The two exact primary Counters pairs from the completed frozen crossover are
   reused after checkpoint-hash verification. The other 48 pairs are new.
+
+Only those two Counters pairs are reusable because their source checkpoint
+hashes exactly match two checkpoints in the PRIMARY-50 manifest. The older
+Block Grouping, Drone, FO Counters, and Rover screen used four tuning
+checkpoints whose hashes match none of the corresponding 40 current primary
+checkpoints. Reusing them would substitute different networks, not preserve
+equivalent work.
 
 The legacy capture is also the legacy treatment. This is not an asymmetric
 shortcut: both paths invoke the same replay-update implementation, and the
@@ -72,6 +83,12 @@ object identifiers.
 | Pair verifier | 21434694 | 1 | 2 CPU / 8 GiB / 30m | both treatment arrays |
 | Policy endpoints | 21434695 | 96 | 5 CPU / 20 GiB / 2h | verifier |
 | Statistical finalizer | 21434696 | 1 | 1 CPU / 4 GiB / 30m | all endpoints |
+
+The first chain was interrupted by pre-inference environment-retrieval failures
+on `intl-25`/`intl-28`. Completed scientific outputs remain valid. Exact repair
+jobs `21442612`–`21442617` rerun only missing identities and replace the
+cancelled verifier, endpoint, and finalizer dependencies. All observed failing
+nodes are excluded from the repair jobs.
 
 The finalizer writes source → legacy → deterministic rows, paired 95% CIs,
 exact sign-flip p-values and Holm corrections. Nodes `intl-14` and `intl-15`

@@ -77,8 +77,18 @@ def main() -> int:
     parser.add_argument("--validator", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--code-commit", required=True)
+    parser.add_argument(
+        "--only-instance-number", type=int,
+        help=(
+            "Run exactly one stable ordered test-set position (1-20). "
+            "Used only by exact recovery jobs; the primary campaign omits it."
+        ),
+    )
     parser.add_argument("--print-command", action="store_true")
     args = parser.parse_args()
+
+    if args.only_instance_number is not None and not 1 <= args.only_instance_number <= 20:
+        parser.error("--only-instance-number must be between 1 and 20")
 
     row = load_row(args.manifest, args.index)
     actual_commit = subprocess.check_output(
@@ -117,6 +127,7 @@ def main() -> int:
     log_path = attempts_dir / f"{attempt}.txt"
     val_summary = validation_dir / f"{attempt}.val.csv"
 
+    effective_workers = "1" if args.only_instance_number is not None else row["workers"]
     experiment_args = [
         "./run_experiment", row["architecture_module"], row["domain_module"],
         "--resume-from", row["checkpoint"], "--eval-with-mcts",
@@ -126,9 +137,15 @@ def main() -> int:
         "--eval-completion-file", str(completion),
         "--eval-instance-timeout", row["instance_timeout_seconds"],
         "--eval-max-actions", row["max_external_actions"],
-        "--num-workers", row["workers"], "--jpddl-max-heap", "4g", "--worker-logs",
+        "--num-workers", effective_workers, "--jpddl-max-heap", "4g", "--worker-logs",
         "--random-seed", row["seed"],
     ]
+    if args.only_instance_number is not None:
+        skipped = [
+            str(number) for number in range(1, 21)
+            if number != args.only_instance_number
+        ]
+        experiment_args += ["--skip-instance-numbers", ",".join(skipped)]
     if row["search_method"] == "pw70":
         experiment_args += [
             "--mcts-progressive-widening", "--mcts-pw-min-width", row["pw_min_width"],
@@ -156,6 +173,11 @@ def main() -> int:
         f"[MPRIME FINAL S2 SEARCH] identity={identity} method={row['search_method']} "
         f"vh={row['value_head']} seed={row['seed']} epoch={row['selected_epoch']}"
     )
+    if args.only_instance_number is not None:
+        print(
+            "[MPRIME FINAL S2 SEARCH] exact-recovery "
+            f"instance_number={args.only_instance_number} workers=1"
+        )
     print("[MPRIME FINAL S2 SEARCH] width=20 simulations=70 puct=.1 estimator=.5")
     print(f"[MPRIME FINAL S2 SEARCH] checkpoint={row['checkpoint']} commit={actual_commit}")
     started = dt.datetime.now(dt.timezone.utc).isoformat()

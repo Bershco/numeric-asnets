@@ -1,4 +1,9 @@
-# Imperfect-domain frozen-replay KL crossover
+# OLD mechanism screen — six checkpoints, not PRIMARY-50
+
+This completed exploratory screen is retained for mechanism provenance only.
+The current population-oriented experiment is the separate **PRIMARY-50 KL
+Semantics Crossover** under
+`experiment_tracking/imperfect_kl_primary_lineage_crossover_20260917/`.
 
 This is the causal repair of the first prospective KL-semantics screen.  Ten
 predeclared optimizer/replay schedules across six source checkpoints are
@@ -46,12 +51,11 @@ predeclared corrected-KL campaign (first TPP matched seeds, then all primary
 cells needed for a uniform corrected-method RQ). We must not selectively mix
 legacy and corrected semantics inside one primary comparison.
 
-At the 17 September 2026 15:28 IDT snapshot, all twenty one-epoch treatments
-were scheduler-complete and verifier `21430552` had certified all ten pairs:
+The screen is complete. All twenty one-epoch treatments and all twenty declared
+test endpoints are terminal, and verifier `21430552` certified all ten pairs:
 the ordered 60 replay hashes, step-0 policy gradient and step-0 target-argmax
-bits matched within every pair. Nineteen of twenty declared test endpoints were
-complete. The remaining Block Grouping legacy endpoint, array task 0, is held
-after Slurm failed to retrieve the user environment; it has not begun inference.
+bits matched within every pair. The final Block Grouping legacy replacement
+completed at 15/20 after two pre-inference infrastructure failures.
 
 The completed paired endpoint effects are heterogeneous:
 
@@ -59,11 +63,11 @@ The completed paired endpoint effects are heterogeneous:
 |---|---:|---:|---:|---:|
 | Block Grouping / 42 | 17/20 | 15/20 | 15/20 | 0 |
 | Block Grouping / 2026 | same source as row above | 13/20 | 15/20 | +2 |
-| Drone / 2026 | pending exact evaluation | 5/20 | 5/20 | 0 |
+| Drone / 2026 | 6/20 | 5/20 | 5/20 | 0 |
 | Drone / 42 | same source as row above | 6/20 | 4/20 | -2 |
-| FO Counters / 2026 | pending exact evaluation | 6/20 | 3/20 | -3 |
+| FO Counters / 2026 | 5/20 | 6/20 | 3/20 | -3 |
 | FO Counters / 42 | same source as row above | 7/20 | 4/20 | -3 |
-| Rover / 42 | pending exact evaluation | 4/20 | 4/20 | 0 |
+| Rover / 42 | 4/20 | 4/20 | 4/20 | 0 |
 | Rover / 2026 | same source as row above | 4/20 | 4/20 | 0 |
 | Counters / 534933607 | 59/59 | 6/59 | 35/59 | +29 |
 | Counters / 2082152039 | 35/59 | 59/59 | 38/59 | -21 |
@@ -80,7 +84,7 @@ At identical starting weights the deterministic-current anchor gradient is
 approximately zero, while legacy dropout-current produces a substantial
 artificial anchor gradient in every domain. Removing that gradient can help,
 hurt or leave one-epoch policy coverage unchanged depending on the lineage.
-Across the nine complete optimizer schedules the median coverage change is zero; the extreme
+Across all ten optimizer schedules the median coverage change is zero; the extreme
 opposite Counters effects show that a blanket corrected-KL retraining decision
 is not yet justified. The different Counters starting networks and replay/RNG
 schedules can plausibly produce opposite treatment effects, so this screen does
@@ -122,8 +126,9 @@ ten-lineage screen therefore needs 48 additional primary checkpoint lineages,
 current row. That screen is now submitted as `21434692`–`21434696`, without an
 artificial concurrency throttle: Slurm admits tasks within the 6-TiB running
 limit and leaves excess work pending. Exact source-policy baselines for the
-four older shared checkpoints are `21434691` plus exact retry `21434754`;
-until those finish, their source-score cells remain explicitly pending.
+four older shared checkpoints are complete: Block Grouping 17/20, Drone 6/20,
+FO Counters 5/20 and Rover 4/20. They were supplied by `21434691`, `21434754`,
+and the final exact retry `21442614_1`.
 
 One epoch answers prevalence of the initial-update effect; it cannot answer
 final 100-epoch performance.  After that screen, choose one stable/cheap domain

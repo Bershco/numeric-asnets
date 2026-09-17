@@ -65,3 +65,79 @@ The array currently requests 228 CPU and 4,560 GiB.  The lower bounds still
 cannot support paired confidence intervals or exact tests; no RQ2/RQ4 row is
 updated until all matched identities terminate.  The machine-readable snapshot
 is `live_progress_20260917_1632.csv`.
+
+## Prepared terminal reconciliation and exact recovery
+
+An `afterany` reconciliation/recovery chain is implemented locally but has
+**not been submitted**. It preserves the original forty identities and all
+their evidence. It does not rename, truncate or delete an original ledger,
+attempt log or Slurm log.
+
+The chain is intentionally instance-based rather than scheduler-state-based:
+
+1. `reconcile_mprime_final_stage2_search_20260917.py` reads all forty durable
+   completion JSONLs, every identity attempt log, and matching array Slurm
+   logs.
+2. It emits exactly 800 reconciliation rows and a recovery manifest containing
+   only genuinely unclassified seed-instance identities.
+3. `mprime_final_stage2_search_reconcile_controller_20260917.sbatch` refuses
+   automatic recovery if two terminal sources disagree about an identity.
+4. When the manifest is nonempty, the controller submits an unthrottled exact
+   array. Every task retains the original checkpoint and fixed/PW
+   hyperparameters, skips the other nineteen instances, uses one worker,
+   2 CPUs, 120 GiB, the original six-hour per-instance cap and a seven-hour
+   allocation.
+5. A dependent `afterany` final reconciliation proves that all 800 identities
+   are terminal. It does not loop or silently resubmit a second recovery wave;
+   any surviving gap is emitted for review.
+
+### Terminal evidence policy
+
+- A completion-JSONL `success` or `finished_unsolved` record is terminal.
+  `finished_unsolved` at 10,000 steps is labelled `action_limit`; an earlier
+  completed dead end remains `finished_unsolved`.
+- An exact `[EVAL INSTANCE] timeout` line is terminal only when its instance
+  number/path match the frozen MPrime ordering and its limit is the declared
+  21,600 seconds. Smoke or shortened timeouts are ignored.
+- An exact instance-scoped `crashed` block with a memory-exhaustion marker is
+  retained as an OOM recovery hint, not a scientific classification. That
+  instance remains unclassified and is retried with 200 GiB.
+- A job-level Slurm `OUT_OF_MEMORY`, cgroup kill, exit `-9`, or generic worker
+  death cannot identify which of up to three active instances was complete.
+  Those instances remain unclassified and are eligible for exact recovery.
+- Conflicting terminal outcomes are never resolved by precedence. They stop
+  the controller and require manual scientific review.
+
+This distinction is essential: OOM is operational evidence, not a scientific
+solved/unsolved classification. Generic scheduler OOM cannot even identify
+which of the concurrently active instances was interrupted.
+
+### Submission interface
+
+After the primary array is terminal, deploy the scripts at the declared code
+commit and submit the controller with the original array as an `afterany`
+dependency:
+
+```bash
+CODE_COMMIT=$(git -C /home/hersco/bershco-nu-asnets/numeric-asnets-safe-context rev-parse HEAD)
+sbatch --dependency=afterany:21429177 \
+  --export=ALL,CODE_COMMIT="$CODE_COMMIT" \
+  /home/hersco/bershco-nu-asnets/numeric-asnets-safe-context/scripts/mprime_final_stage2_search_reconcile_controller_20260917.sbatch
+```
+
+The default exact-recovery exclusion list contains only nodes already recorded
+as incompatible by the current campaign family. The dynamic recovery array has
+no artificial concurrency throttle; Slurm admits it under the account resource
+limit. The controller writes versioned snapshots plus
+`reconciliation_latest.csv`, `recovery_manifest_latest.csv`,
+`conflicts_latest.csv`, `summary_latest.json` and `submissions.tsv` under
+`$CAMPAIGN/reconciliation_20260917/`.
+
+Implementation files:
+
+- `scripts/reconcile_mprime_final_stage2_search_20260917.py`
+- `scripts/run_mprime_final_stage2_search_exact_recovery_20260917.py`
+- `scripts/mprime_final_stage2_search_exact_recovery_20260917.sbatch`
+- `scripts/mprime_final_stage2_search_reconcile_controller_20260917.sbatch`
+- optional exact-instance support in
+  `scripts/run_mprime_final_stage2_search_20260916.py`

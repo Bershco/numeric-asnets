@@ -32,6 +32,26 @@ depending on labels. Avoid Block Grouping initially because successor
 generation is expensive and Counters because extremely long trajectories can
 dominate. Add MPrime after endpoints freeze.
 
+### Implemented local preparation (2026-09-17)
+
+`asnets/value_head_audit.py` now provides an opt-in, side-effect-free primitive
+that enumerates every applicable successor, evaluates raw learned values in one
+network batch, and preserves action/successor identity, transition probability,
+and terminal/goal flags. Production training, policy inference, and MCTS do not
+import it. Unit tests cover batching, stochastic-successor identity, invalid
+probability mass, and rejection of VH-off networks.
+
+`v1_manifest_template.csv` freezes task/checkpoint/state-manifest provenance.
+`v1_successor_row_schema.csv` separates raw network outputs from label source,
+status, orientation, comparability, and log provenance. This prevents replay,
+continuation, and ENHSP targets from being silently pooled.
+
+This is preparation, not an executed V1 result. Before submission we still
+must predeclare two VH-on seeds per domain, freeze Stage-1 and validation-led
+Stage-2 checkpoint hashes, materialize the state-source mixture, implement the
+three independent label providers, and run a short memory/runtime preflight.
+No V1 cluster task has been submitted.
+
 ### V1 execution plan and resources
 
 1. Freeze two seeds, exact Stage-1/Stage-2 checkpoint hashes and a state-source

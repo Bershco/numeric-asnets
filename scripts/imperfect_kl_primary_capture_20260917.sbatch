@@ -4,7 +4,7 @@
 #SBATCH --mem=120G
 #SBATCH --cpus-per-task=6
 #SBATCH --array=0-47
-#SBATCH --exclude=ise-cpu128-03,ise-cpu-intl-[01,09-15,27]
+#SBATCH --exclude=ise-cpu128-03,ise-cpu-intl-[01,09-15,25,27-28]
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-17/imperfect_kl_primary_lineage_crossover/capture_%A_%a.txt
 set -euo pipefail
 : "${CHECKOUT:?}"; : "${CODE_COMMIT:?}"

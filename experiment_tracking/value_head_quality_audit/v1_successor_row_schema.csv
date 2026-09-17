@@ -1,0 +1,1 @@
+task_id,domain,seed,stage,checkpoint_role,checkpoint_sha256,state_manifest_sha256,state_id,trajectory_id,state_source,instance,step,action_id,successor_index,transition_probability,successor_terminal,successor_goal,raw_network_value,label_source,label_status,label_value,label_higher_is_better,label_scale_comparable,label_log_path
