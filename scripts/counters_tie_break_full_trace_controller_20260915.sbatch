@@ -10,7 +10,7 @@
 
 set -euo pipefail
 : "${CODE_COMMIT:?CODE_COMMIT is required}"
-repo=/home/hersco/bershco-nu-asnets/numeric-asnets-tie-break
+repo=${COUNTERS_REPO:-/home/hersco/bershco-nu-asnets/numeric-asnets-tie-break}
 tracking="$repo/experiment_tracking/counters_tie_break_strict_stage1_20260913"
 base_manifest="$tracking/manifest.csv"
 trace_manifest="$tracking/full_trace_manifest.csv"

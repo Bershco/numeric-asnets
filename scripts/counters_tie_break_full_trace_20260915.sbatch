@@ -11,7 +11,7 @@
 
 set -euo pipefail
 : "${CODE_COMMIT:?CODE_COMMIT is required}"
-repo=/home/hersco/bershco-nu-asnets/numeric-asnets-tie-break
+repo=${COUNTERS_REPO:-/home/hersco/bershco-nu-asnets/numeric-asnets-tie-break}
 production=/home/hersco/bershco-nu-asnets/numeric-asnets
 manifest="$repo/experiment_tracking/counters_tie_break_strict_stage1_20260913/full_trace_manifest.csv"
 actual_commit=$(git -C "$repo" rev-parse HEAD)

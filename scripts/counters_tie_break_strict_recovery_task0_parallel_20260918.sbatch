@@ -11,7 +11,7 @@
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-18/counters_tie_break_strict_task0_last2/%A_%a.sbatch.out
 
 set -euo pipefail
-repo=/home/hersco/bershco-nu-asnets/numeric-asnets-tie-break
+repo=${COUNTERS_REPO:-/home/hersco/bershco-nu-asnets/numeric-asnets-tie-break}
 root=/home/hersco/training_new_domains/2026-09-18/counters_tie_break_strict_task0_last2
 production=/home/hersco/bershco-nu-asnets/numeric-asnets
 manifest="$repo/experiment_tracking/counters_tie_break_strict_stage1_20260913/manifest.csv"
