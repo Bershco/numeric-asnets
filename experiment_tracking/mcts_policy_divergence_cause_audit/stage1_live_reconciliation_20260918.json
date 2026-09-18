@@ -84,6 +84,58 @@
     "memory_per_task": "120G",
     "time_limit_per_task": "1-02:00:00"
   },
+  "latest_progress": {
+    "observed_at": "2026-09-18T18:07:43+03:00",
+    "terminal_candidate_count": 37,
+    "running_candidate_count": 3,
+    "recovery_result_count": 14,
+    "completed_recovery_indices": [1, 2, 4, 5, 6],
+    "running_recovery_indices": [0, 3],
+    "remaining_identities": [
+      {
+        "source_task_id": "root-trace-block_grouping-on-fixed",
+        "candidate_indices": [2, 3]
+      },
+      {
+        "source_task_id": "root-trace-fo_counters-off-fixed",
+        "candidate_indices": [3]
+      }
+    ],
+    "terminal_outcomes": {
+      "success": 26,
+      "finished_unsolved": 5,
+      "hard_timeout": 6
+    },
+    "first_divergence": {
+      "observed": 28,
+      "not_observed": 9,
+      "final_root_visit_argmax": 21,
+      "final_goal_chase": 7,
+      "policy_action_unexpanded": 0,
+      "root_visit_tie": 4,
+      "root_visit_winner_q_aligned": 16,
+      "root_visit_winner_u_aligned": 0,
+      "root_visit_winner_other": 1
+    },
+    "fixed_search": {
+      "terminal_candidate_count": 31,
+      "first_divergence_mechanisms": {
+        "goal_chase_override": 5,
+        "no_observed_divergence": 8,
+        "root_visit_tie": 4,
+        "root_visit_winner_q_aligned": 13,
+        "root_visit_winner_other": 1
+      }
+    },
+    "fo_progressive_widening": {
+      "terminal_candidate_count": 6,
+      "first_divergence_mechanisms": {
+        "goal_chase_override": 2,
+        "no_observed_divergence": 1,
+        "root_visit_winner_q_aligned": 3
+      }
+    }
+  },
   "cluster_artifacts": {
     "reconciliation_report": "cluster://uni-cluster/home/hersco/training_new_domains/2026-09-18/mcts_policy_divergence_stage1_v2/reconciliation_20260918.json",
     "recovery_manifest": "cluster://uni-cluster/home/hersco/training_new_domains/2026-09-18/mcts_policy_divergence_stage1_v2/recovery_manifest_20260918.json",
@@ -91,5 +143,5 @@
     "smoke_gate": "cluster://uni-cluster/home/hersco/training_new_domains/2026-09-18/mcts_policy_divergence_stage1_recovery/compute_smoke/gate.json",
     "recovery_output_root": "cluster://uni-cluster/home/hersco/training_new_domains/2026-09-18/mcts_policy_divergence_stage1_recovery"
   },
-  "scientific_status": "No Stage-1 mechanism conclusion is frozen yet. Twenty-three candidates have exact terminal classifications; the remaining seventeen exact identities are running. Fixed-search has 18 of 34 terminal candidates and FO-PW has 5 of 6 terminal candidates. Final stratum/mechanism conclusions require terminal reconciliation of job 21453648."
+  "scientific_status": "No final Stage-1 cause is frozen while three candidates remain. Among 37 terminal candidates, all 28 observed first divergences kept the policy action inside the expanded root. Root-visit selection was usually aligned with signed Q (16 cases), never uniquely aligned with U, and only four cases were exact visit ties; seven divergences were final goal-chase overrides. All six FO-PW candidates are terminal: three Q-aligned root winners, two goal-chase overrides, one run with no policy/selected-action divergence, and no unexpanded-policy or visit-tie case. The fixed/PW pair for VH-off FO instance_5 selects the same goal-chase override at step zero, so PW is not the first-divergence cause in that paired search win. These are interim descriptive mechanisms, not causal RQ conclusions."
 }

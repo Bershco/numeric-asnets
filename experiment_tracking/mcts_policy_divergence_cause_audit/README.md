@@ -229,6 +229,51 @@ known root. Consequently Stage 1 is implemented and locally verified, but it
 is not yet compute-node-smoke-complete and the grouped campaign remains
 unsubmitted.
 
+#### Live execution and exact reconciliation — 18 September 2026, 18:05 IDT
+
+This section supersedes the pre-release status paragraph above. Commit
+`a46e0a845dee83767c6bb43c2187cacc2b79e734` passed the compute-node gate in
+Slurm job `21453647`: the recorder-disabled and recorder-enabled traces were
+identical, and the known Counters root reproduced step 0, policy action 52,
+selected action 101, 20 root visits and 19 edge visits. The exact recovery
+array is job `21453648`; it contains only candidates without a preserved or
+exactly reconciled terminal result.
+
+The original 40 candidates currently comprise 37 terminal classifications and
+three running candidates. Six hard timeouts were materialized from exact
+`[EVAL INSTANCE] timeout` markers rather than rerun, one legacy FO-PW success
+was normalized with its complete goal-chase selector input, and all previously
+valid results were preserved. The remaining identities are Block Grouping
+VH-on fixed candidates 2 and 3 and FO Counters VH-off fixed candidate 3. All
+six optional FO-PW candidates are terminal.
+
+Interim first-divergence evidence is descriptive, not yet a final cause:
+
+- 28 of 37 terminal candidates have an observed policy/selected-action
+  divergence; nine have none.
+- Every observed divergence kept the policy action inside the expanded root.
+  The current sample therefore gives no support to policy-action exclusion as
+  the explanation, including under FO progressive widening.
+- Twenty-one divergences end in root-visit argmax and seven in goal chase. Among
+  the root decisions, 16 selected actions are signed-Q argmaxes, four are
+  exact visit ties, one is neither Q- nor U-argmax, and none is uniquely
+  U-aligned. This favors exploitation/value separation over an exploration-
+  bonus account, but does not establish that following Q is beneficial: the
+  mechanisms occur in both helpful and harmful historical strata.
+- FO-PW contributes three Q-aligned root winners, two goal-chase overrides and
+  one run with no observed divergence. The matched VH-off `instance_5` fixed
+  and PW runs both first diverge at step 0 through the same goal-chase action,
+  so PW is not the first-divergence cause of that paired search success.
+- Exact visit ties are currently confined to three both-fail candidates and
+  one both-success candidate. They do not cover the replicated harmful Drone
+  policy-success/search-failure case, so a tie-break-only intervention is not
+  presently broad enough to explain the important outcome asymmetry.
+
+The exact snapshot, manifest hashes, recovery identities, resource requests
+and cluster artifact locations are recorded in
+`stage1_live_reconciliation_20260918.json`. Final mechanism counts and any RQ
+change must wait for the three live candidates and a final outcome/trace join.
+
 ### Stage 2 — fill only genuinely missing strata
 
 Missing strata then need at most one task per domain/VH cell, using the
