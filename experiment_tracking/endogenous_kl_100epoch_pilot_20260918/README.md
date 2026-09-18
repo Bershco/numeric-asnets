@@ -64,3 +64,16 @@ Remote root:
 The finalizer writes `learning_curve_results.csv`, `endpoint99_results.csv`,
 and `domain_summary.csv`, retaining every source checkpoint, task identity,
 training log and endpoint-evaluation log.
+
+## Submission
+
+The reviewed orchestration is commits `0930bb78` and `4a86e13a`. Scientific
+training uses the frozen corrected-KL checkout at full commit
+`c72c9080d2a314e6177b2e5df4079a02ef44e621`.
+
+| Role | Job | Dependency |
+|---|---:|---|
+| compute smoke | 21453459 | none |
+| eight training tasks | 21453460_[0-7] | afterok 21453459 |
+| 168 policy-curve tasks | 21453461_[0-167] | afterok all 21453460 tasks |
+| statistical finalizer | 21453462 | afterok all 21453461 tasks |
