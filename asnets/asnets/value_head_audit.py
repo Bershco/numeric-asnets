@@ -96,10 +96,14 @@ def validate_canonical_state_record(record: Mapping[str, object]) -> None:
             raise ValueError(f"canonical-state record is missing {field}")
 
 
-def restore_canonical_state(record: Mapping[str, object], planner_exts):
+def restore_canonical_state(
+    record: Mapping[str, object], planner_exts, *, canonical_state_cls=None
+):
     """Restore and verify a manifest state against one PlannerExtensions."""
 
-    from .state_reprs import CanonicalState
+    if canonical_state_cls is None:
+        from .state_reprs import CanonicalState
+        canonical_state_cls = CanonicalState
 
     validate_canonical_state_record(record)
     prop_string = ", ".join(str(atom) for atom in record["atoms"])
@@ -109,8 +113,12 @@ def restore_canonical_state(record: Mapping[str, object], planner_exts):
     mdpsim_state = planner_exts.mdpsim_problem.intermediate_state(
         prop_string, flnt_string
     )
-    state = CanonicalState.from_mdpsim(
-        mdpsim_state, planner_exts, is_init_cstate=False
+    # Rebuild physical masks with initial-state generator context, then replace
+    # the generated auxiliary vector below with the exact captured vector.
+    # Passing ``is_init_cstate=False`` without a predecessor/action is invalid
+    # for memory-based generators such as action history.
+    state = canonical_state_cls.from_mdpsim(
+        mdpsim_state, planner_exts, is_init_cstate=True
     )
     state._aux_data = np.asarray(record["aux_data"], dtype=np.float32)
     state._aux_data_interp = list(record["aux_data_interp"])

@@ -17,6 +17,7 @@ from asnets.value_head_audit import (
     enhsp_search_value,
     evaluate_successor_values,
     rows_as_dicts,
+    restore_canonical_state,
     validate_canonical_state_record,
     validate_task_manifest_rows,
 )
@@ -78,6 +79,35 @@ class ValueHeadAuditTest(unittest.TestCase):
         first["aux_data"][0] = 1.0
         with self.assertRaisesRegex(ValueError, "hash mismatch"):
             validate_canonical_state_record(first)
+
+    def test_restore_uses_init_generator_context_before_exact_aux_override(self):
+        source = _SerializableState()
+        record = canonical_state_record(source, instance_name="p0", step=1)
+
+        class _Problem:
+            def intermediate_state(self, props, fluents):
+                self.args = (props, fluents)
+                return object()
+
+        class _Planner:
+            mdpsim_problem = _Problem()
+
+        restored = _SerializableState()
+
+        class _Canonical:
+            call_kwargs = None
+
+            @classmethod
+            def from_mdpsim(cls, *_args, **kwargs):
+                cls.call_kwargs = kwargs
+                return restored
+
+        actual = restore_canonical_state(
+            record, _Planner(), canonical_state_cls=_Canonical
+        )
+        self.assertIs(actual, restored)
+        self.assertTrue(_Canonical.call_kwargs["is_init_cstate"])
+        np.testing.assert_array_equal(actual._aux_data, source.aux_data)
 
     def test_batches_all_applicable_successors_and_preserves_identity(self):
         root = _State([0], mask=[True, False, True])
