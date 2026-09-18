@@ -219,3 +219,14 @@ difficulty, so sibling ranking is more informative. Policy-only states have
 survivorship bias; sample off-policy/planner-reachable states too. A failed
 value-greedy trajectory can reflect compounding distribution shift or
 successor-generation cost as well as poor calibration.
+
+## Repaired execution chain — 18 September 2026, 19:37 IDT
+
+Smoke `21455175` passed after commit `7ebc2c16` restored action-history inputs
+using valid initial-state generator context and then reinstated the exact
+captured auxiliary vector. Capture arrays `21455176`–`21455179` are running
+for Drone, FO Counters, Rover and MPrime. Finalizer `21455180` and post-capture
+controller `21455181` are dependency-pending. If the captures pass, the latter
+automatically launches the measured resource preflight, its checksum gate, the
+16 scientific checkpoint tasks and the scientific finalizer. No further user
+action is required.

@@ -75,8 +75,10 @@ training uses the frozen corrected-KL checkout at full commit
 |---|---:|---|
 | compute smoke | 21453459 | none |
 | eight training tasks | 21453460_[0-7] | afterok 21453459 |
-| 168 policy-curve tasks | 21453461_[0-167] | legacy broad gate; supersede before incremental release |
-| statistical finalizer | 21453462 | legacy broad gate; supersede before incremental release |
+| obsolete broad curve array | 21453461_[0-167] | cancelled; superseded without scientific output |
+| obsolete broad finalizer | 21453462 | cancelled; superseded without scientific output |
+| incremental watcher | 21455207 | active while training continues |
+| first ready policy batch | 21455208 | 60 exact checkpoint identities submitted |
 
 ## Incremental curve and selected-search controller
 
@@ -121,8 +123,9 @@ available, the controller writes `learning_curve_results.csv`,
 `endpoint99_results.csv`, and `domain_summary.csv`; selected MCTS is not held
 behind those non-selected test-policy evaluations.
 
-Deployment must first cancel/supersede the old dependency-pending curve array
-and finalizer so they cannot duplicate the incremental jobs.  The incremental
-watcher can then be submitted with `after:<training-array-job-id>` (release
-after the training array starts, not after it terminates).  No part of this
-replacement chain was submitted during local implementation.
+The obsolete array/finalizer were cancelled before the replacement was
+released.  Watcher `21455207` is canonical; it discovered 60 stable checkpoint
+identities on its first pass and submitted them as array `21455208`.  Later
+passes append only newly stable checkpoints.  Validation-selected fixed 20/70
+and PW70 jobs remain automatically gated on complete training validation
+records plus the eight exact selected-policy results.

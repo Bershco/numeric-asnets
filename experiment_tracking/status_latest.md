@@ -1,6 +1,6 @@
 # Current experiment status
 
-Updated: 2026-09-18T18:05:00+03:00.
+Updated: 2026-09-18T19:39:00+03:00.
 
 Primary RQ evidence is validation-led only. Terminal-led campaigns remain
 provenance archives and are excluded from primary tables and plots.
@@ -10,16 +10,15 @@ provenance archives and are excluded from primary tables and plots.
 | Experiment | State and scientific progress | Allocated resources |
 |---|---|---:|
 | MPrime final Stage-2 fixed/PW70 | **Complete: 800/800 scientific identities**. Final reconciliation contains 677 successes and 123 exact six-hour timeouts, with no action-limit failures, conflicts or unclassified cases. Exact 30m/2h/6h means are fixed/off 14.2/15.8/16.6, fixed/on 12.9/14.6/16.0, PW70/off 16.0/17.7/17.9 and PW70/on 15.2/17.0/17.2. The sixteen last wrappers have scheduler state `FAILED` only because the historical timeout path did not append JSONL after producing valid exact timeout evidence. | Terminal; zero live resources |
-| Counters strict tie-break exact tail | Both duplicate task-1 recoveries finished evaluator slot 44 as an exact six-hour timeout; they are counted once. Their controllers exposed a separate stale task-0 gap: seed `534933607` has exactly evaluator identities 58 and 59 unclassified. Parallel pair `21453481_[0]` -> `21453482` and accidental retry pair `21453491_[0]` -> `21453492` currently target those same two identities and shared ledger. The later pair requires exact-ID cancellation authorization; no result will be double-counted. | Two duplicate recoveries currently allocate 8 CPU / 400 GiB; each is expected within the original six-hour per-instance allowance plus setup, with an 8h allocation |
-| Endogenous 100-epoch KL pilot | Smoke `21453459` passed. Eight same-build Drone/FO-Counters training arms `21453460_[0-7]` are running: two canonical seeds per domain x legacy/deterministic-current KL, each generating its own replay. Policy-curve array `21453461_[0-167]` and finalizer `21453462` are dependency-gated. | 48 CPU / 384 GiB while training; historical estimate 3.4-11.3h per lineage, 18h allocation |
+| Counters strict tie-break exact tail | Canonical recovery `21453481_[0]` is running the last two exact identities; controller `21453482` will reconcile them and release the full-root trace union. Accidental slower duplicates `21453491`/`21453492` were cancelled and are never counted. | 4 CPU / 200 GiB; two parallel six-hour instance allowances |
+| Endogenous 100-epoch KL pilot | Eight same-build Drone/FO-Counters arms `21453460_[0-7]` are running. Obsolete jobs `21453461`/`21453462` were cancelled. Canonical watcher `21455207` discovered 60 stable checkpoints and submitted exact policy array `21455208`; it keeps appending ready checkpoints and will automatically freeze validation-best endpoints and launch eight fixed 20/70 plus eight PW70 evaluations. | Training 48 CPU / 384 GiB; current policy batch 360 CPU / 1.2 TiB; watcher 2 CPU / 2 GiB |
 | MCTS first-divergence audit | Corrected smoke `21453647` passed on commit `a46e0a84`. Reconciliation preserved/materialized 23 outcomes without rerun and submitted exactly 17 recoveries across seven source-task groups. **37/40 candidates are terminal**: 26 successes, five finished-unsolved and six exact timeouts. Three candidates remain (two BG/on fixed and one FO/off fixed). Interim mechanisms among 28 observed divergences are 16 Q-aligned visit winners, four exact visit ties, one other visit winner and seven goal-chase overrides; no policy action was excluded from expansion and none was uniquely exploration-U-aligned. FO-PW is complete at 6/6. | Two remaining grouped tasks allocate 4 CPU / 240 GiB; 26h task limits are conservative sequential-group bounds |
-| Value-head V1 state-quality audit | All 16 checkpoint hashes and the exact search-time `exp(-h)` ENHSP transform are frozen; 17 local tests pass. Smoke `21453653` exposed the missing ignored native operator. Smoke `21453918` then exposed a lossy serializer that omitted MDPSim special fluents; commit `2b86060b` now preserves the complete fluent vector and passes 17/17 tests. Repaired smoke `21454176` is resource-pending. Capture arrays `21454177`-`21454180` and finalizer `21454181` are correctly dependency-gated behind it and will create the paired 60-state manifests. | No V1 allocation while smoke waits. After admission: smoke 4 CPU / 48 GiB; then eight captures request 40 CPU / 656 GiB; finalizer 1 CPU / 8 GiB |
+| Value-head V1 state-quality audit | Repaired smoke `21455175` passed. Capture arrays `21455176`-`21455179` are running for the eight paired domain/seed state manifests. Finalizer `21455180` and post-capture controller `21455181` automatically gate the measured resource preflight and 16 scientific checkpoint tasks. | 48 allocated CPU / 656 GiB during capture; downstream resources remain dependency-pending |
 
-At this snapshot, the eight KL-training tasks allocate 48 CPU / 384 GiB, two
-duplicate Counters recoveries allocate 8 CPU / 400 GiB, divergence recovery
-allocates 4 CPU / 240 GiB, while the repaired V1 smoke is resource-pending:
-60 CPU / 1,024 GiB total. Dependency-pending arrays and controllers allocate nothing
-until their gates release.
+At this snapshot, running work allocates approximately 464 CPU / 2,562 GiB:
+KL training 48/384, ready policy evaluations 360/1,200, the KL watcher 2/2,
+V1 captures 48/656, Counters 4/200 and divergence recovery 2/120.
+Dependency-pending controllers allocate nothing until their gates release.
 
 ## Scientific interpretation
 
