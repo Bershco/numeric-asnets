@@ -1,0 +1,95 @@
+{
+  "schema_version": "mcts-divergence-stage1-live-reconciliation-v1",
+  "recorded_at": "2026-09-18T17:50:36+03:00",
+  "code_commit": "a46e0a845dee83767c6bb43c2187cacc2b79e734",
+  "source_manifest_sha256": "56204d595a70d4b92eabf88970612d36c69506af864c4b56506136f524744659",
+  "recovery_manifest_sha256": "3f692be2c6b392d506011ff55f2fc71b16e0d6d286302b5f095a66e7680e0da4",
+  "source_campaign_jobs": [
+    "21449782",
+    "21449783"
+  ],
+  "source_candidate_count": 40,
+  "reconciliation": {
+    "preserved_valid_results": 16,
+    "materialized_terminal_results": 7,
+    "explicit_hard_timeouts": 6,
+    "materialized_successes": 1,
+    "legacy_records_normalized": 5,
+    "terminal_candidate_count": 23,
+    "recovery_candidate_count": 17,
+    "recovery_task_count": 7
+  },
+  "recovery_identities": [
+    {
+      "source_task_id": "root-trace-block_grouping-on-fixed",
+      "candidate_indices": [1, 2, 3]
+    },
+    {
+      "source_task_id": "root-trace-drone-off-fixed",
+      "candidate_indices": [1, 2, 3]
+    },
+    {
+      "source_task_id": "root-trace-drone-on-fixed",
+      "candidate_indices": [1, 2, 3]
+    },
+    {
+      "source_task_id": "root-trace-fo_counters-off-fixed",
+      "candidate_indices": [1, 2, 3]
+    },
+    {
+      "source_task_id": "root-trace-fo_counters-off-pw",
+      "candidate_indices": [2]
+    },
+    {
+      "source_task_id": "root-trace-fo_counters-on-fixed",
+      "candidate_indices": [1, 2]
+    },
+    {
+      "source_task_id": "root-trace-rover-on-fixed",
+      "candidate_indices": [1, 2]
+    }
+  ],
+  "compute_smoke": {
+    "job_id": "21453647",
+    "state": "COMPLETED",
+    "submitted_at": "2026-09-18T17:47:11+03:00",
+    "started_at": "2026-09-18T17:47:20+03:00",
+    "elapsed": "00:01:46",
+    "exit_code": "0:0",
+    "cpus": 2,
+    "memory": "120G",
+    "time_limit": "00:45:00",
+    "gate_status": "passed",
+    "disabled_mode_invariance": true,
+    "known_root": {
+      "checkpoint_identity": "src20430427_e0000",
+      "instance": "fz_instance_51.pddl",
+      "step": 0,
+      "policy_action": 52,
+      "selected_action": 101,
+      "root_visits": 20,
+      "total_edge_visits": 19
+    }
+  },
+  "recovery_array": {
+    "job_id": "21453648",
+    "array": "0-6%7",
+    "state_at_recording": "RUNNING",
+    "submitted_at": "2026-09-18T17:47:11+03:00",
+    "started_at": "2026-09-18T17:49:22+03:00",
+    "dependency": "afterok:21453647",
+    "tasks": 7,
+    "candidates": 17,
+    "cpus_per_task": 2,
+    "memory_per_task": "120G",
+    "time_limit_per_task": "1-02:00:00"
+  },
+  "cluster_artifacts": {
+    "reconciliation_report": "cluster://uni-cluster/home/hersco/training_new_domains/2026-09-18/mcts_policy_divergence_stage1_v2/reconciliation_20260918.json",
+    "recovery_manifest": "cluster://uni-cluster/home/hersco/training_new_domains/2026-09-18/mcts_policy_divergence_stage1_v2/recovery_manifest_20260918.json",
+    "recovery_freeze": "cluster://uni-cluster/home/hersco/training_new_domains/2026-09-18/mcts_policy_divergence_stage1_v2/recovery_manifest_20260918.freeze.json",
+    "smoke_gate": "cluster://uni-cluster/home/hersco/training_new_domains/2026-09-18/mcts_policy_divergence_stage1_recovery/compute_smoke/gate.json",
+    "recovery_output_root": "cluster://uni-cluster/home/hersco/training_new_domains/2026-09-18/mcts_policy_divergence_stage1_recovery"
+  },
+  "scientific_status": "No Stage-1 mechanism conclusion is frozen yet. Twenty-three candidates have exact terminal classifications; the remaining seventeen exact identities are running. Fixed-search has 18 of 34 terminal candidates and FO-PW has 5 of 6 terminal candidates. Final stratum/mechanism conclusions require terminal reconciliation of job 21453648."
+}
