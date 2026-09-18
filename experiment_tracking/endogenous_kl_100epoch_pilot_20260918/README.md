@@ -75,5 +75,54 @@ training uses the frozen corrected-KL checkout at full commit
 |---|---:|---|
 | compute smoke | 21453459 | none |
 | eight training tasks | 21453460_[0-7] | afterok 21453459 |
-| 168 policy-curve tasks | 21453461_[0-167] | afterok all 21453460 tasks |
-| statistical finalizer | 21453462 | afterok all 21453461 tasks |
+| 168 policy-curve tasks | 21453461_[0-167] | legacy broad gate; supersede before incremental release |
+| statistical finalizer | 21453462 | legacy broad gate; supersede before incremental release |
+
+## Incremental curve and selected-search controller
+
+The original curve array waits for all eight training tasks and its worker also
+requires a terminal `training_complete.json`.  The replacement controller in
+`scripts/endogenous_kl_incremental_controller_20260918.py` instead discovers
+each stable checkpoint while training continues, appends an exact identity to
+`policy_eval_manifest.csv`, freezes its weights SHA-256, and submits only a
+missing curve evaluation.  It never rewrites an existing checkpoint identity.
+The watcher runs every five minutes using one CPU and 2 GiB.
+
+The watcher reuses every valid curve result already present.  Submission
+ledgers prevent duplicate active tasks.  A scheduler-completed task without an
+exact result is a fail-closed condition requiring targeted diagnosis rather
+than broad automatic repetition.
+
+After all eight trainings expose all 168 checkpoints, the same controller:
+
+1. selects each arm's maximum held-out validation score from the per-epoch
+   `[VALIDATION]` records, breaking ties by the
+   earliest epoch;
+2. freezes `selected_endpoints.csv`, including exact checkpoint hashes and
+   the already-computed policy score;
+3. ensures the eight selected policy evaluations are complete without waiting
+   for non-selected curve points;
+4. materializes 16 selected-search identities: eight fixed top-20/70 and eight
+   PW70 (`Kmin=3`, `c=.6`, `alpha=.5`);
+5. submits only missing search identities at six CPU, 120 GiB and 72 hours per
+   identity, with six-hour per-instance limits and durable completion ledgers.
+
+An `afterany` one-cycle controller is chained to each selected-search array.
+It reconciles durable JSONL with exact 21,600-second timeout markers, retains
+every classified instance, and reruns only an identity that still contains
+unclassified instances; the evaluation ledger skips its durable successes.
+When all 16 identities reach 20/20 classifications it writes
+`selected_mcts_summary_6h.csv`.  Thirty-minute and two-hour recensoring remains
+a downstream analysis of the immutable attempt logs; it is not fabricated by
+this submission controller.
+
+The remaining curve points continue concurrently.  When all 168 results are
+available, the controller writes `learning_curve_results.csv`,
+`endpoint99_results.csv`, and `domain_summary.csv`; selected MCTS is not held
+behind those non-selected test-policy evaluations.
+
+Deployment must first cancel/supersede the old dependency-pending curve array
+and finalizer so they cannot duplicate the incremental jobs.  The incremental
+watcher can then be submitted with `after:<training-array-job-id>` (release
+after the training array starts, not after it terminates).  No part of this
+replacement chain was submitted during local implementation.
