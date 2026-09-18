@@ -13,6 +13,7 @@ OUT="$ROOT/state_smoke_${SLURM_JOB_ID}"
 CHECKPOINT='/home/hersco/bershco-nu-asnets/numeric-asnets/asnets/experiment-results/experiments_numeric.domain.drone-experiments_numeric.architecture_2.drone-2026-08-20T18:13:54.901707/P[domain,problem_1_1_4,problem_1_8_1,problem_8_1_...]-S[0.003,50,enhsp-hadd-astar]-MO[]-T[518400]-04905448-3c74d66/snapshots/snapshot_161_0.500'
 mkdir -p "$OUT/captures"
 test "$(sha256sum "$CHECKPOINT/weights.joblib" | awk '{print $1}')" = efa1b6a7b8bad82f1ee52e5ccc49043bda2eff2d3e0c4f028133996850caecb2
+test -e "$REPO/asnets/asnets/ops/_asnet_ops_impl.so"
 
 apptainer exec --bind /home/hersco:/home/hersco --bind /home/hersco/apptainer_fake_passwd:/etc/passwd /home/hersco/Docker/image.sif /bin/bash -lc "
   set -euo pipefail

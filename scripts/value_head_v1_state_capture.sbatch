@@ -9,6 +9,7 @@ set -euo pipefail
 REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-v1
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
 ROOT=/home/hersco/training_new_domains/2026-09-18/value_head_v1
+test -e "$REPO/asnets/asnets/ops/_asnet_ops_impl.so"
 case "$SLURM_ARRAY_TASK_ID" in
   0) SEED=534933607 ;;
   1) SEED=923500475 ;;
