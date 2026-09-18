@@ -32,6 +32,11 @@ DETERMINISM_MARKER = "[MCTS DETERMINISM] "
 RECORDER_SCHEMA = "mcts-first-divergence-v2"
 LEGACY_RECORDER_SCHEMA = "mcts-first-divergence-v1"
 GATE_SCHEMA = "mcts-divergence-stage1-compute-smoke-v1"
+# Every campaign command restricts the evaluation to exactly one TEST_RUNS
+# entry.  The rolling evaluator numbers that sole scheduled worker from one;
+# this is deliberately distinct from the zero-based TEST_RUNS index supplied
+# to --restrict-test-probs.
+RESTRICTED_EVALUATOR_NUMBER = 1
 IDENTITY_RE = re.compile(r"^src(?P<job>\d+)_e(?P<epoch>\d+)$")
 POLICY_JOB_RE = re.compile(r"^(?P<job>\d+)_")
 SNAPSHOT_RE = re.compile(r"(?:^|/)snapshot_(?P<epoch>\d+)(?:_|$)")
@@ -736,8 +741,7 @@ def run_task(args: argparse.Namespace) -> None:
             log=log,
             completion=completion,
             instance_name=candidate["instance"],
-            evaluation_index=instance_index(
-                args.repo, row["domain"], candidate["instance"]),
+            evaluation_index=RESTRICTED_EVALUATOR_NUMBER,
             max_actions=10000,
         )
         if outcome is None:

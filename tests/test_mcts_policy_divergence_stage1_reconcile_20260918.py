@@ -71,14 +71,15 @@ class ReconciliationTests(unittest.TestCase):
             log = Path(directory) / "candidate.txt"
             completion = Path(directory) / "candidate.completed.jsonl"
             log.write_text(
-                "[EVAL INSTANCE] timeout number=8 "
+                "[EVAL INSTANCE] timeout number=1 "
                 "path=../problems/numeric/fo-counters/instances/instance_10.pddl "
                 "limit=21600.0s\n"
                 "[EVAL FINAL] success=0.0/1=0.000\n",
                 encoding="utf-8")
             outcome = runner.terminal_outcome(
                 log=log, completion=completion,
-                instance_name="instance_10.pddl", evaluation_index=8,
+                instance_name="instance_10.pddl",
+                evaluation_index=runner.RESTRICTED_EVALUATOR_NUMBER,
                 max_actions=10000)
         self.assertEqual(outcome["classification"], "hard_timeout")
         self.assertEqual(outcome["evidence"], "eval_instance_timeout_log_marker")
@@ -89,13 +90,14 @@ class ReconciliationTests(unittest.TestCase):
             log = Path(directory) / "candidate.txt"
             completion = Path(directory) / "candidate.completed.jsonl"
             log.write_text(
-                "[EVAL INSTANCE] crashed number=8 path=instance_10.pddl\n"
-                "[EVAL INSTANCE] timeout number=8 path=instance_10.pddl "
+                "[EVAL INSTANCE] crashed number=1 path=instance_10.pddl\n"
+                "[EVAL INSTANCE] timeout number=1 path=instance_10.pddl "
                 "limit=21600.0s\n",
                 encoding="utf-8")
             outcome = runner.terminal_outcome(
                 log=log, completion=completion,
-                instance_name="instance_10.pddl", evaluation_index=8,
+                instance_name="instance_10.pddl",
+                evaluation_index=runner.RESTRICTED_EVALUATOR_NUMBER,
                 max_actions=10000)
         self.assertIsNone(outcome)
 
@@ -104,13 +106,14 @@ class ReconciliationTests(unittest.TestCase):
             log = Path(directory) / "candidate.txt"
             completion = Path(directory) / "candidate.completed.jsonl"
             log.write_text(
-                "[EVAL INSTANCE] completed number=0 "
+                "[EVAL INSTANCE] completed number=1 "
                 "path=instances/instance_2.pddl status=success "
                 "elapsed=12.25s success=True steps=7\n",
                 encoding="utf-8")
             outcome = runner.terminal_outcome(
                 log=log, completion=completion,
-                instance_name="instance_2.pddl", evaluation_index=0,
+                instance_name="instance_2.pddl",
+                evaluation_index=runner.RESTRICTED_EVALUATOR_NUMBER,
                 max_actions=10000)
         self.assertEqual(outcome["classification"], "success")
         self.assertEqual(outcome["evidence"], "eval_instance_completed_log_marker")
@@ -120,13 +123,14 @@ class ReconciliationTests(unittest.TestCase):
             log = Path(directory) / "candidate.txt"
             completion = Path(directory) / "candidate.completed.jsonl"
             log.write_text(
-                "[EVAL INSTANCE] completed number=0 "
+                "[EVAL INSTANCE] completed number=1 "
                 "path=instances/instance_2.pddl status=unsolved "
                 "elapsed=120.0s success=False steps=10000\n",
                 encoding="utf-8")
             outcome = runner.terminal_outcome(
                 log=log, completion=completion,
-                instance_name="instance_2.pddl", evaluation_index=0,
+                instance_name="instance_2.pddl",
+                evaluation_index=runner.RESTRICTED_EVALUATOR_NUMBER,
                 max_actions=10000)
         self.assertEqual(outcome["classification"], "action_limit")
         self.assertEqual(outcome["evidence"], "eval_instance_completed_log_marker")
@@ -138,7 +142,7 @@ class ReconciliationTests(unittest.TestCase):
             log.write_text("[EVAL FINAL] success=0.0/1=0.000\n", encoding="utf-8")
             completion = root / "candidate.completed.jsonl"
             completion.write_text(json.dumps({
-                "instance_number": 0,
+                "instance_number": 1,
                 "instance_path": "instances/instance_2.pddl",
                 "status": "finished_unsolved",
                 "hit_goal": False,
@@ -148,7 +152,8 @@ class ReconciliationTests(unittest.TestCase):
             }) + "\n", encoding="utf-8")
             outcome = runner.terminal_outcome(
                 log=log, completion=completion,
-                instance_name="instance_2.pddl", evaluation_index=0,
+                instance_name="instance_2.pddl",
+                evaluation_index=runner.RESTRICTED_EVALUATOR_NUMBER,
                 max_actions=10000)
         self.assertEqual(outcome["classification"], "action_limit")
 
@@ -170,10 +175,8 @@ class ReconciliationTests(unittest.TestCase):
                     task_dir = artifact_root / row["task_id"]
                     task_dir.mkdir(parents=True, exist_ok=True)
                     if (task_index, candidate_index) == timeout_key:
-                        eval_index = runner.instance_index(
-                            ROOT, row["domain"], candidate["instance"])
                         (task_dir / f"{stem}.txt").write_text(
-                            f"[EVAL INSTANCE] timeout number={eval_index} "
+                            "[EVAL INSTANCE] timeout number=1 "
                             f"path=instances/{candidate['instance']} limit=21600.0s\n"
                             "[EVAL FINAL] success=0.0/1=0.000\n",
                             encoding="utf-8")

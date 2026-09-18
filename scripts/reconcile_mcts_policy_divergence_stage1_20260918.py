@@ -15,9 +15,9 @@ from typing import Any
 
 from run_mcts_policy_divergence_stage1_20260918 import (
     EXPECTED_MANIFEST_SHA256,
+    RESTRICTED_EVALUATOR_NUMBER,
     atomic_json,
     divergence_records,
-    instance_index,
     load_frozen_tasks,
     normalize_record,
     sha256_file,
@@ -126,8 +126,7 @@ def reconcile(
                     log=log,
                     completion=completion,
                     instance_name=candidate["instance"],
-                    evaluation_index=instance_index(
-                        repo, row["domain"], candidate["instance"]),
+                    evaluation_index=RESTRICTED_EVALUATOR_NUMBER,
                     max_actions=10000,
                 )
                 if outcome is None:
