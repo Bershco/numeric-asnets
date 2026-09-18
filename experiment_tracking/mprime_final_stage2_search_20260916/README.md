@@ -141,3 +141,31 @@ Implementation files:
 - `scripts/mprime_final_stage2_search_reconcile_controller_20260917.sbatch`
 - optional exact-instance support in
   `scripts/run_mprime_final_stage2_search_20260916.py`
+
+## Final reconciliation and RQ entry (18 September 2026)
+
+The final reconciliation reached **800/800 scientifically terminal
+seed-instance identities** with no conflicts or unclassified cases: 677
+successes and 123 exact six-hour timeouts. The last 16 fixed-search identities
+all reached their declared six-hour cap. Their recovery wrappers subsequently
+reported `FAILED` because the historical evaluator does not append timeout
+records to JSONL; this is an operational post-classification defect, not
+missing scientific evidence.
+
+Final means at 30 minutes / 2 hours / 6 hours are:
+
+| VH | Policy | Fixed 20/70 | PW70 |
+|---|---:|---:|---:|
+| off | 16.5 | 14.2 / 15.8 / 16.6 | 16.0 / 17.7 / 17.9 |
+| on | 16.7 | 12.9 / 14.6 / 16.0 | 15.2 / 17.0 / 17.2 |
+
+All 21 VH-off and all 28 VH-on PW70 failures at six hours are exact timeouts;
+none is an action-limit or unclassified outcome. PW70 exceeds fixed search in
+both modes at every cutoff. The paired raw fixed-versus-PW exact tests are
+`.0078/.0039/.0078` for VH-off and `.0039/.0039/.0547` for VH-on at
+30m/2h/6h, respectively. Against policy, PW70 is descriptively positive by
+two and six hours but is not raw-significant in either VH mode.
+
+The primary fixed-search RQ2/RQ4 rows and the exploratory PW method comparison
+are frozen in `final_method_comparisons_20260918.csv`; exact seed rows and
+terminal failure causes are in `final_per_seed_results_20260918.csv`.

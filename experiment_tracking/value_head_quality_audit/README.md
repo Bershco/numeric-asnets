@@ -94,6 +94,15 @@ newly materialized hashes plus the two already recorded MPrime Stage-2 hashes).
 The eight shared state manifests remain to be materialized, so submission
 readiness is not yet claimed.
 
+On 18 September 2026, smoke `21453653` correctly exposed that the isolated
+checkout lacked the ignored compiled TensorFlow operator; no scientific work
+ran. The checksum-verified production operator is now linked into the isolated
+checkout. Corrected smoke `21453918` is running. The four two-task capture
+arrays are already dependency-pending as `21453919` (Drone), `21453920`
+(FO Counters), `21453921` (Rover), and `21453922` (MPrime), with finalizer
+`21453923` dependent on all eight captures. Thus no user input remains: the
+paired-state manifests will materialize automatically after the smoke passes.
+
 ### V1 execution plan and resources
 
 1. Re-audit all sixteen saved run logs/configurations for an explicit search

@@ -1,6 +1,6 @@
 # Current experiment status
 
-Updated: 2026-09-18T10:52:00+03:00.
+Updated: 2026-09-18T17:58:00+03:00.
 
 Primary RQ evidence is validation-led only. Terminal-led campaigns remain
 provenance archives and are excluded from primary tables and plots.
@@ -9,41 +9,46 @@ provenance archives and are excluded from primary tables and plots.
 
 | Experiment | State and scientific progress | Allocated resources |
 |---|---|---:|
-| MPrime final Stage-2 fixed/PW70 exact recovery | All 40 original tasks are scheduler-terminal: 25 completed normally and 15 OOM. Scientific reconciliation found 784/800 terminal identities: 677 successes, 107 exact six-hour timeouts and 16 genuinely unclassified fixed-search instances. The first two operational recovery attempts failed safely before inference because they used the pre-fix checkout. Corrected array `21449642_[0-15]` is now verified on commit `e5b44c25` and writes separate recovery ledgers; `21449643` performs the final reconciliation. Current lower bounds are fixed/off >=14.2/15.8/16.6, fixed/on >=12.9/14.6/16.0, PW70/off 16.0/17.7/17.9 and PW70/on 15.2/17.0/17.2 at 30m/2h/6h. | 32 CPU / 1,920 GiB, plus one dependency-pending finalizer |
-| Counters strict tie-break exact tail | The last Action-ID arm reconciles to 58/59 terminal identities: 28 successes and 30 exact six-hour timeouts. Evaluator slot 59 is a terminal timeout; slot 44 alone remains unclassified. Exact recovery `21449257_[1]` is running, followed by full-root trace controller `21449258`. A newer exact duplicate, `21449584_[1]` plus controller `21449585`, targets the same identity and completion ledger; the newer pair should be cancelled after exact-ID authorization to avoid a shared-ledger collision. | 4 CPU / 400 GiB across the original and accidental duplicate; controllers allocate zero while pending |
-| MCTS first-divergence audit | The first smoke correctly rejected a stale step-1 fixture and automatically cancelled its dependents. Comparison against historical log `21178321` proved that step 0 is the actual first divergence. Corrected smoke `21449781` passed on commit `24a7c280`: recorder-disabled/enabled traces match and reproduce step 0, policy 52, search 101, root visits 20 and edge visits 19. Ten fixed grouped tasks `21449782` and two optional FO-Counters PW70 tasks `21449783` are now running. | 24 CPU / 1,440 GiB; 26-hour task hard limits |
+| MPrime final Stage-2 fixed/PW70 | **Complete: 800/800 scientific identities**. Final reconciliation contains 677 successes and 123 exact six-hour timeouts, with no action-limit failures, conflicts or unclassified cases. Exact 30m/2h/6h means are fixed/off 14.2/15.8/16.6, fixed/on 12.9/14.6/16.0, PW70/off 16.0/17.7/17.9 and PW70/on 15.2/17.0/17.2. The sixteen last wrappers have scheduler state `FAILED` only because the historical timeout path did not append JSONL after producing valid exact timeout evidence. | Terminal; zero live resources |
+| Counters strict tie-break exact tail | Both duplicate task-1 recoveries finished evaluator slot 44 as an exact six-hour timeout; they are counted once. Their controllers exposed a separate stale task-0 gap: seed `534933607` has exactly evaluator identities 58 and 59 unclassified. Parallel pair `21453481_[0]` -> `21453482` and accidental retry pair `21453491_[0]` -> `21453492` currently target those same two identities and shared ledger. The later pair requires exact-ID cancellation authorization; no result will be double-counted. | Two duplicate recoveries currently allocate 8 CPU / 400 GiB; each is expected within the original six-hour per-instance allowance plus setup, with an 8h allocation |
+| Endogenous 100-epoch KL pilot | Smoke `21453459` passed. Eight same-build Drone/FO-Counters training arms `21453460_[0-7]` are running: two canonical seeds per domain x legacy/deterministic-current KL, each generating its own replay. Policy-curve array `21453461_[0-167]` and finalizer `21453462` are dependency-gated. | 48 CPU / 384 GiB while training; historical estimate 3.4-11.3h per lineage, 18h allocation |
+| MCTS first-divergence audit | Corrected smoke `21453647` passed on commit `a46e0a84`. Reconciliation preserved/materialized 23 outcomes without rerun and submitted exactly 17 recoveries across seven source-task groups. At least 31/40 candidates are now terminal; FO-PW is complete at 6/6, and nine fixed-search candidates remain active. | Six remaining array tasks allocate 12 CPU / 720 GiB; 26h task limits are conservative sequential-group bounds |
+| Value-head V1 state-quality audit | All 16 checkpoint hashes and the exact search-time `exp(-h)` ENHSP transform are frozen; 17 local tests pass. Smoke `21453653` exposed only a missing ignored native operator in the isolated checkout. That was checksum-linked to production and the corrected smoke `21453918` is running. Eight state-capture tasks `21453919`-`21453922` and finalizer `21453923` are now correctly dependency-gated behind it; they create the only missing artifacts, the paired 60-state manifests. | Smoke 4 CPU / 48 GiB now. After success, eight captures request 40 CPU / 656 GiB; finalizer requests 1 CPU / 8 GiB |
 
-At the snapshot, active work requested 60 CPU / 3,760 GiB, including the
-accidental duplicate Counters recovery. Dependency-pending controllers allocate
-nothing until released.
+At this snapshot, the eight KL-training tasks allocate 48 CPU / 384 GiB, two
+duplicate Counters recoveries allocate 8 CPU / 400 GiB, divergence recovery
+allocates 12 CPU / 720 GiB, and V1 smoke allocates 4 CPU / 48 GiB: 72 CPU /
+1,552 GiB total. Dependency-pending arrays and controllers allocate nothing
+until their gates release.
 
 ## Scientific interpretation
 
-- MPrime policy endpoints remain complete at 16.5/20 VH-off and 16.7/20
-  VH-on. PW70 is already scientifically complete and its descriptive means
-  exceed policy in both modes by two and six hours. Fixed search has eight
-  missing instances per VH mode, so paired CIs, p-values and the RQ2/RQ4
-  update remain frozen until exact recovery finishes.
+- MPrime policy endpoints are 16.5/20 VH-off and 16.7/20 VH-on. Fixed and PW70
+  search are now exact. PW70 exceeds fixed search in both modes at every
+  cutoff; its 49 six-hour failures are all exact timeouts. MPrime now enters
+  the Stage-2 RQ2/RQ4 extension.
 - PRIMARY-50 is complete for all 50 independent primary checkpoints. It is a
   conditional update-effect diagnostic because deterministic-current KL
   replays each checkpoint's own legacy-generated data. The only
   Holm-significant source-to-treatment contrast is FO Counters under legacy
   KL (4.2 to 2.1; Holm p=.00977); deterministic-current attenuates the loss to
   2.7 but no deterministic-minus-legacy contrast is Holm-significant.
-- The Counters primary RQ values remain frozen until instance 44 and the exact
-  full-root trace follow-up complete.
+- The Counters primary RQ values remain frozen until task-0 identities 58/59
+  and the exact full-root trace follow-up complete. This is distinct from the
+  now-terminal task-1 slot 44 recovery.
 - The compact MCTS first-divergence recorder passed its known-root compute
-  smoke. Ten grouped fixed-search tasks and two optional FO-PW tasks are live;
-  they cover 40 frozen candidates without submitting 40 separate jobs.
-  The value-head V1 design now uses identical shared state manifests for each
-  matched Stage-1/Stage-2 pair, but checkpoint hashes and eight state manifests
-  remain deliberately preflight-blocking. Neither is yet a scientific result.
+  smoke. The first grouped run preserved valid records and motivated an exact
+  filtered repair rather than a broad rerun. The value-head V1 design now has
+  all 16 exact checkpoint hashes and the exact search-time ENHSP transform;
+  eight paired shared-state manifests still require new capture because the
+  historical logs do not contain restorable physical+history state payloads.
+  Neither audit is yet a primary-RQ result.
 
 ## RQ impact
 
-No primary RQ value changes at this snapshot. MPrime fixed-search values remain
-explicit lower bounds, and the KL result is a method diagnostic rather than a
-replacement for the historical primary pipeline.
+RQ2 and RQ4 gain exact MPrime Stage-2 fixed/PW rows. RQ1/RQ3 do not change.
+The PRIMARY-50 and endogenous-KL work remain method-development evidence and
+do not replace the historical primary pipeline at this snapshot.
 
 ## Canonical sources
 
