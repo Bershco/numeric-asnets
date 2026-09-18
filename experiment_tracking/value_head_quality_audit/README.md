@@ -147,8 +147,9 @@ paths and hashes.
   schema records orientation and scale comparability explicitly.
 - Resource requests and the 300 s ENHSP / 900 s continuation limits are
   provisional until the four-domain preflight measures tails and peak memory.
-- MPrime expands the pilot from 12 to 16 tasks. Its two Stage-2 hashes are
-  locally frozen; both Stage-1 hashes are still blockers.
+- MPrime expands the pilot from 12 to 16 tasks. Both Stage-1 and both Stage-2
+  payload hashes are frozen; its remaining gate is the same paired-state
+  materialization and measured-resource preflight as the other domains.
 
 ## Phase V2: raw-value-greedy inference
 
