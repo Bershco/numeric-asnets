@@ -202,6 +202,73 @@ class MappingLabelProvider:
         )
 
 
+class ResultCacheLabelProvider:
+    """Serve already-computed per-successor statuses without semantic fallback."""
+
+    def __init__(
+        self,
+        *,
+        label_source: str,
+        results: Mapping[tuple[str, int, int], tuple[str, float | None]],
+        higher_is_better: bool,
+        scale_comparable: bool,
+        label_log_path: str,
+        missing_status: str = "missing",
+    ):
+        self._label_source = label_source
+        self._results = results
+        self._higher_is_better = bool(higher_is_better)
+        self._scale_comparable = bool(scale_comparable)
+        self._label_log_path = label_log_path
+        self._missing_status = missing_status
+
+    def label(self, row: SuccessorValueRow) -> LabelResult:
+        status, value = self._results.get(
+            successor_key(row), (self._missing_status, None)
+        )
+        return validate_label_result(LabelResult(
+            label_source=self._label_source,
+            label_status=status,
+            label_value=value,
+            label_higher_is_better=self._higher_is_better,
+            label_scale_comparable=self._scale_comparable,
+            label_log_path=self._label_log_path,
+        ))
+
+
+class ReplayTargetProvider(ResultCacheLabelProvider):
+    """Exact persisted replay ``z``; absent identities remain explicitly missing."""
+
+    def __init__(self, results, *, label_log_path: str):
+        super().__init__(
+            label_source="replay_target", results=results,
+            higher_is_better=True, scale_comparable=True,
+            label_log_path=label_log_path, missing_status="missing",
+        )
+
+
+class DeterministicContinuationProvider(ResultCacheLabelProvider):
+    """Checkpoint-specific remaining action count with explicit failures."""
+
+    def __init__(self, results, *, label_log_path: str):
+        super().__init__(
+            label_source="deterministic_continuation", results=results,
+            higher_is_better=False, scale_comparable=False,
+            label_log_path=label_log_path, missing_status="error",
+        )
+
+
+class ENHSPRawProvider(ResultCacheLabelProvider):
+    """Independent raw ENHSP heuristic values, never silently transformed."""
+
+    def __init__(self, results, *, label_log_path: str):
+        super().__init__(
+            label_source="enhsp_raw_h", results=results,
+            higher_is_better=False, scale_comparable=False,
+            label_log_path=label_log_path, missing_status="error",
+        )
+
+
 class CallableLabelProvider:
     """Adapter for continuation/planner runners that preserve status.
 

@@ -6,9 +6,12 @@ import numpy as np
 
 from asnets.value_head_audit import (
     CallableLabelProvider,
+    DeterministicContinuationProvider,
+    ENHSPRawProvider,
     ENHSPSearchValueProvider,
     LabelResult,
     MappingLabelProvider,
+    ReplayTargetProvider,
     apply_label_provider,
     canonical_state_record,
     enhsp_search_value,
@@ -137,6 +140,29 @@ class ValueHeadAuditTest(unittest.TestCase):
         self.assertEqual(labelled[0]["label_value"], 0.75)
         self.assertEqual(labelled[1]["label_status"], "missing")
         self.assertIsNone(labelled[1]["label_value"])
+
+    def test_concrete_label_providers_freeze_semantics(self):
+        rows = evaluate_successor_values(
+            state=_State([0], mask=[True]), state_id="s",
+            network=_ValueNetwork(),
+            successor_fn=lambda _state, _action: [(1.0, _State([1]))],
+        )
+        key = ("s", 0, 0)
+        replay = apply_label_provider(
+            rows, ReplayTargetProvider({}, label_log_path="replay.jsonl")
+        )[0]
+        continuation = apply_label_provider(rows, DeterministicContinuationProvider(
+            {key: ("timeout", None)}, label_log_path="continuation.jsonl"
+        ))[0]
+        raw = apply_label_provider(rows, ENHSPRawProvider(
+            {key: ("valid", 3.0)}, label_log_path="enhsp.jsonl"
+        ))[0]
+        self.assertEqual(replay["label_status"], "missing")
+        self.assertTrue(replay["label_scale_comparable"])
+        self.assertEqual(continuation["label_status"], "timeout")
+        self.assertFalse(continuation["label_scale_comparable"])
+        self.assertEqual(raw["label_value"], 3.0)
+        self.assertFalse(raw["label_scale_comparable"])
 
     def test_timeout_cannot_be_encoded_as_numeric_label(self):
         rows = evaluate_successor_values(

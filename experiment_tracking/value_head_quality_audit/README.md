@@ -87,6 +87,16 @@ fabricated numeric label. A strict preflight checks these comparability rules,
 the 16-task factorial, hashes, resources, label families, and the shared
 Stage-1/Stage-2 state-manifest identity.
 
+The post-capture chain is implemented but not scientifically released. Its
+task runner verifies checkpoint, paired-manifest, optional replay-cache, and
+ENHSP-transform hashes before loading a state, then writes the four label
+families as separate status-bearing rows. Eight six-state resource tasks (both
+stages for one frozen seed per domain) must show zero provider errors and at
+least 20% measured memory/runtime headroom. Only a passing checksumed resource
+gate permits the release controller to submit the four domain arrays comprising
+the sixteen scientific tasks. The dependent output finalizer verifies task and
+file completeness but deliberately makes no RQ claim before paired aggregation.
+
 This is still preparation, not an executed V1 scientific result, and no V1
 scientific checkpoint task has been submitted. All sixteen checkpoint payloads
 have now been verified and recorded in `v1_checkpoint_hashes.csv` (fourteen
@@ -109,9 +119,8 @@ automatically after the smoke passes.
 
 ### V1 execution plan and resources
 
-1. Re-audit all sixteen saved run logs/configurations for an explicit search
-   coefficient or minimization override. The frozen deployed default is
-   `exp(-1.0 * h)` in non-minimization mode; any differing run is a hard gate.
+1. Preserve the completed transform audit: all sixteen logs explicitly record
+   coefficient 1.0 and non-minimization mode, matching `exp(-1.0 * h)`.
 2. Materialize the eight checksumed 60-state lineage manifests and cache
    successor identities once. Stage-1 and Stage-2 must reference the same file.
    Cache each label family separately; never turn a timeout from one labeler
