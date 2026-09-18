@@ -49,6 +49,9 @@ def main() -> None:
         print(f"[RECOVERY COMPLETE] task={args.task} terminal=59/59")
         return
     recovery_job = os.environ["SLURM_ARRAY_JOB_ID"]
+    workers = int(os.environ.get("COUNTERS_RECOVERY_WORKERS", "1"))
+    if workers < 1:
+        raise RuntimeError(f"COUNTERS_RECOVERY_WORKERS must be positive: {workers}")
     log = output / f"{recovery_job}_{args.task}_recovery_{row['tie_break']}_{row['seed']}.txt"
     command = [
         "./run_experiment",
@@ -65,7 +68,7 @@ def main() -> None:
         "--eval-completion-file", str(completion),
         "--eval-instance-timeout", "21600",
         "--eval-max-actions", "10000",
-        "--num-workers", "1",
+        "--num-workers", str(workers),
         "--jpddl-max-heap", "4g",
         "--worker-logs",
         "--disable-value-head",
@@ -75,7 +78,8 @@ def main() -> None:
         stream.write(
             "[COUNTERS TIE STRICT RECOVERY] "
             f"source_array={SOURCE_ARRAY_JOB_ID} task={args.task} "
-            f"classified_before={before} rule={row['tie_break']} seed={row['seed']}\n"
+            f"classified_before={before} rule={row['tie_break']} seed={row['seed']} "
+            f"workers={workers}\n"
         )
         stream.flush()
         result = subprocess.run(
