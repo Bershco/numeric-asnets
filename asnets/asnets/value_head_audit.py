@@ -44,10 +44,20 @@ def canonical_state_record(state, **metadata: object) -> dict[str, object]:
     auxiliary vector and its interpretation as well as a network-input witness.
     """
 
-    atoms, fluents = state.to_tup_state()
+    # ``to_tup_state`` deliberately drops MDPSim special fluents because it is
+    # intended for temporary PDDL initial-state replacement.  Exact round-trip
+    # restoration needs the complete fluent vector used by ``to_mdpsim``.
+    atoms = [
+        proposition.unique_ident
+        for proposition, truth in state.props_true if truth
+    ]
+    fluents = [
+        (fluent.unique_ident, float(value))
+        for fluent, value in state.flnt_values
+    ]
     payload: dict[str, object] = {
         "schema": STATE_RECORD_SCHEMA,
-        "atoms": list(atoms),
+        "atoms": atoms,
         "fluents": [[name, float(value)] for name, value in fluents],
         "aux_data": np.asarray(state.aux_data, dtype=np.float32).tolist(),
         "aux_data_interp": list(state._aux_data_interp or ()),

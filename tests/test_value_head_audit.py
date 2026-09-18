@@ -43,10 +43,19 @@ class _ValueNetwork:
 
 class _SerializableState:
     def __init__(self):
+        class _Named:
+            def __init__(self, name):
+                self.unique_ident = name
+
         self.aux_data = np.asarray([0.0, 1.0], dtype=np.float32)
         self._aux_data_interp = ["is_enabled", "action_count"]
         self.is_terminal = False
         self.is_goal = False
+        self.props_true = ((_Named("at rover waypoint0"), True),)
+        self.flnt_values = (
+            (_Named("fuel rover"), 3.5),
+            (_Named("total-cost"), 7.0),
+        )
 
     def to_tup_state(self):
         return (("at rover waypoint0",), (("fuel rover", 3.5),))
@@ -60,6 +69,7 @@ class ValueHeadAuditTest(unittest.TestCase):
         state = _SerializableState()
         first = canonical_state_record(state, instance_name="p0", step=1)
         second = canonical_state_record(state, instance_name="p1", step=9)
+        self.assertEqual(first["fluents"][-1], ["total-cost", 7.0])
         self.assertEqual(first["state_sha256"], second["state_sha256"])
         validate_canonical_state_record(first)
         first["aux_data"][0] = 1.0
