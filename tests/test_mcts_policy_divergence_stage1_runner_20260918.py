@@ -114,6 +114,45 @@ class Stage1RunnerTests(unittest.TestCase):
              "root_visits": 20, "total_edge_visits": 19},
         )
 
+    def test_recovery_manifest_must_be_exact_frozen_subset(self):
+        source_index = 7
+        source_candidates = json.loads(
+            self.rows[source_index]["candidate_runs_json"])
+        payload = {
+            "schema_version": "mcts-divergence-stage1-recovery-v1",
+            "source_manifest_sha256": runner.EXPECTED_MANIFEST_SHA256,
+            "task_count": 1,
+            "candidate_count": 1,
+            "tasks": [{
+                "recovery_index": 0,
+                "source_task_index": source_index,
+                "source_task_id": self.rows[source_index]["task_id"],
+                "candidate_indices": [2],
+                "candidate_runs": [source_candidates[2]],
+                "candidate_count": 1,
+            }],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "recovery.json"
+            freeze = Path(directory) / "recovery.freeze.json"
+            manifest.write_text(json.dumps(payload), encoding="utf-8")
+            freeze.write_text(json.dumps({
+                "recovery_manifest_sha256": runner.sha256_file(manifest),
+                "source_manifest_sha256": runner.EXPECTED_MANIFEST_SHA256,
+                "submitted": False,
+            }), encoding="utf-8")
+            tasks = runner.load_recovery_tasks(manifest, freeze, self.rows)
+            self.assertEqual(tasks[0]["candidate_indices"], [2])
+            payload["tasks"][0]["candidate_runs"][0]["instance"] = "tampered.pddl"
+            manifest.write_text(json.dumps(payload), encoding="utf-8")
+            freeze.write_text(json.dumps({
+                "recovery_manifest_sha256": runner.sha256_file(manifest),
+                "source_manifest_sha256": runner.EXPECTED_MANIFEST_SHA256,
+                "submitted": False,
+            }), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "differs from frozen source"):
+                runner.load_recovery_tasks(manifest, freeze, self.rows)
+
 
 if __name__ == "__main__":
     unittest.main()

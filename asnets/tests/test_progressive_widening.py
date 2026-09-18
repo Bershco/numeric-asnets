@@ -461,6 +461,26 @@ class RootVisitTieBreakTests(unittest.TestCase):
         self.assertTrue(trace[1]["tie_break_applied"])
         self.assertEqual(trace[1]["selected_action"], 1)
 
+    def test_goal_chase_short_circuit_records_full_selector_input(self):
+        root = self._root()
+        root.known_distance_to_goal = 1
+        root.best_goal_child = root.children[2]
+        policy = policies.build_action_policy(
+            "argmax", distance_threshold=np.inf,
+            root_visit_tie_break="action_id",
+            selection_trace_enabled=True)
+        policy.begin_selection_trace()
+
+        selected = policy.select_action(
+            self._mcts(root), np.asarray([0.5, 0.5, 0.0]))
+        trace = policy.consume_selection_trace()
+
+        self.assertEqual(selected, 2)
+        self.assertEqual(len(trace), 1)
+        self.assertEqual(trace[0]["stage"], "goal_chase")
+        self.assertEqual(
+            trace[0]["selector_input_distribution"], [0.5, 0.5, 0.0])
+
 
 class FirstDivergenceRecorderTests(unittest.TestCase):
     @staticmethod
@@ -507,7 +527,8 @@ class FirstDivergenceRecorderTests(unittest.TestCase):
             instance_name="fixture.pddl",
             elapsed_seconds=1.5,
             override_path=[{
-                "stage": "root_visit_argmax", "selected_action": 2}],
+                "stage": "root_visit_argmax", "selected_action": 2,
+                "selector_input_distribution": [0.4, 0.0, 0.6, 0.0]}],
             provenance={"checkpoint_path": "fixture.ckpt", "seed": 7},
         )
 
@@ -532,6 +553,9 @@ class FirstDivergenceRecorderTests(unittest.TestCase):
         self.assertEqual(result["summary"]["signed_q_argmax"], 2)
         self.assertEqual(
             result["selection_depth_histogram"], {"0": 2, "1": 1})
+        self.assertEqual(
+            result["selection"]["selector_input_distribution"],
+            [0.4, 0.0, 0.6, 0.0])
 
     def test_matching_policy_and_search_emits_nothing(self):
         root = make_node(FakeState("same-root"))
@@ -593,7 +617,12 @@ class FirstDivergenceRecorderTests(unittest.TestCase):
             step=fixture["step"],
             instance_name=fixture["instance"],
             elapsed_seconds=None,
-            override_path=[],
+            override_path=[{
+                "stage": "goal_chase", "applied": True,
+                "selected_action": fixture["selected_action"],
+                "selector_input_distribution": (
+                    visit_policy / visit_policy.sum()).tolist(),
+            }],
             provenance={
                 "checkpoint_identity": fixture["checkpoint_identity"],
                 "source_job": fixture["source_job"],

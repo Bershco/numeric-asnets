@@ -13,6 +13,7 @@ import csv
 import hashlib
 import importlib
 import json
+import math
 import os
 import re
 import subprocess
@@ -28,11 +29,23 @@ EXPECTED_MANIFEST_SHA256 = (
 EXPECTED_TASK_COUNTS = {"primary_fixed": 10, "optional_fo_pw": 2}
 RECORDER_MARKER = "[MCTS FIRST DIVERGENCE] "
 DETERMINISM_MARKER = "[MCTS DETERMINISM] "
-RECORDER_SCHEMA = "mcts-first-divergence-v1"
+RECORDER_SCHEMA = "mcts-first-divergence-v2"
+LEGACY_RECORDER_SCHEMA = "mcts-first-divergence-v1"
 GATE_SCHEMA = "mcts-divergence-stage1-compute-smoke-v1"
 IDENTITY_RE = re.compile(r"^src(?P<job>\d+)_e(?P<epoch>\d+)$")
 POLICY_JOB_RE = re.compile(r"^(?P<job>\d+)_")
 SNAPSHOT_RE = re.compile(r"(?:^|/)snapshot_(?P<epoch>\d+)(?:_|$)")
+HARD_TIMEOUT_RE = re.compile(
+    r"\[EVAL INSTANCE\] timeout number=(?P<number>\d+) "
+    r"path=(?P<path>\S+) limit=(?P<limit>[0-9.]+)s"
+)
+COMPLETED_RE = re.compile(
+    r"\[EVAL INSTANCE\] completed number=(?P<number>\d+) "
+    r"path=(?P<path>\S+) status=(?P<status>success|unsolved) "
+    r"elapsed=(?P<elapsed>[0-9.]+)s success=(?P<success>True|False|1\.0|0\.0) "
+    r"steps=(?P<steps>-?\d+)"
+)
+CRASH_RE = re.compile(r"\[EVAL INSTANCE\] (?:crashed|died) number=(?P<number>\d+)")
 
 DOMAIN_MODULES = {
     domain: (
@@ -105,6 +118,58 @@ def load_frozen_tasks(manifest: Path, freeze: Path) -> list[dict[str, str]]:
             f"unexpected frozen task inventory: counts={counts}, candidates={candidate_total}"
         )
     return rows
+
+
+def load_recovery_tasks(
+    recovery_manifest: Path,
+    recovery_freeze: Path,
+    source_rows: list[dict[str, str]],
+) -> list[dict[str, Any]]:
+    metadata = json.loads(recovery_freeze.read_text(encoding="utf-8"))
+    actual_hash = sha256_file(recovery_manifest)
+    if metadata.get("recovery_manifest_sha256") != actual_hash:
+        raise RuntimeError("recovery manifest hash mismatch")
+    if metadata.get("source_manifest_sha256") != EXPECTED_MANIFEST_SHA256:
+        raise RuntimeError("recovery freeze source-manifest hash mismatch")
+    if metadata.get("submitted") is not False:
+        raise RuntimeError("recovery manifest unexpectedly claims submission")
+    payload = json.loads(recovery_manifest.read_text(encoding="utf-8"))
+    if payload.get("schema_version") != "mcts-divergence-stage1-recovery-v1":
+        raise RuntimeError("unsupported recovery manifest schema")
+    if payload.get("source_manifest_sha256") != EXPECTED_MANIFEST_SHA256:
+        raise RuntimeError("recovery manifest source hash mismatch")
+    tasks = payload.get("tasks")
+    if not isinstance(tasks, list) or payload.get("task_count") != len(tasks):
+        raise RuntimeError("recovery task count mismatch")
+    seen = set()
+    candidate_total = 0
+    for recovery_index, task in enumerate(tasks):
+        if task.get("recovery_index") != recovery_index:
+            raise RuntimeError("recovery indices must be contiguous")
+        source_index = int(task["source_task_index"])
+        if not 0 <= source_index < len(source_rows):
+            raise RuntimeError("recovery source task index out of range")
+        source_candidates = json.loads(
+            source_rows[source_index]["candidate_runs_json"])
+        indices = task.get("candidate_indices")
+        candidates = task.get("candidate_runs")
+        if not isinstance(indices, list) or not isinstance(candidates, list):
+            raise RuntimeError("recovery candidates must be explicit lists")
+        if len(indices) != len(candidates) or len(indices) != task["candidate_count"]:
+            raise RuntimeError("recovery candidate count mismatch")
+        for candidate_index, candidate in zip(indices, candidates):
+            key = (source_index, int(candidate_index))
+            if key in seen:
+                raise RuntimeError("duplicate recovery candidate identity")
+            seen.add(key)
+            if not 0 <= int(candidate_index) < len(source_candidates):
+                raise RuntimeError("recovery candidate index out of range")
+            if candidate != source_candidates[int(candidate_index)]:
+                raise RuntimeError("recovery candidate differs from frozen source")
+        candidate_total += len(indices)
+    if payload.get("candidate_count") != candidate_total:
+        raise RuntimeError("recovery manifest total candidate count mismatch")
+    return tasks
 
 
 def _identity(identity: str) -> tuple[str, int]:
@@ -258,9 +323,14 @@ def determinism_records(log: Path) -> list[dict[str, Any]]:
     return records
 
 
-def validate_record(record: dict[str, Any], *, instance_name: str) -> None:
-    if record.get("schema_version") != RECORDER_SCHEMA:
-        raise RuntimeError("unexpected divergence record schema")
+def normalize_record(
+    record: dict[str, Any], *, instance_name: str, allow_legacy: bool = False,
+) -> dict[str, Any]:
+    """Validate one record and add explicit v2 selection evidence if needed."""
+    schema = record.get("schema_version")
+    if schema != RECORDER_SCHEMA and not (
+            allow_legacy and schema == LEGACY_RECORDER_SCHEMA):
+        raise RuntimeError(f"unexpected divergence record schema: {schema}")
     if Path(record.get("instance", "")).name != instance_name:
         raise RuntimeError("divergence record instance mismatch")
     root = record.get("root", {})
@@ -280,10 +350,141 @@ def validate_record(record: dict[str, Any], *, instance_name: str) -> None:
     override_path = record.get("override_path")
     if not isinstance(override_path, list) or not override_path:
         raise RuntimeError("divergence record is missing the selector override path")
-    final = override_path[-1]
-    selector = final.get("selector_input_distribution")
+    selection = record.get("selection")
+    if isinstance(selection, dict):
+        selector = selection.get("selector_input_distribution")
+        source = selection.get("selector_distribution_source")
+        final_stage = selection.get("final_stage")
+        if int(selection.get("selected_action", -1)) != int(
+                record["selected_action"]):
+            raise RuntimeError("selection evidence action mismatch")
+    else:
+        selector = source = final_stage = None
     if not isinstance(selector, list) or len(selector) != act_dim:
-        raise RuntimeError("final selector-input distribution is missing or truncated")
+        selected = int(record["selected_action"])
+        chosen_index = None
+        for index in range(len(override_path) - 1, -1, -1):
+            stage = override_path[index]
+            if int(stage.get("selected_action", -1)) != selected:
+                continue
+            candidate = stage.get("selector_input_distribution")
+            if isinstance(candidate, list) and len(candidate) == act_dim:
+                selector = candidate
+                source = "override_path"
+                final_stage = stage.get("stage")
+                chosen_index = index
+                break
+            if (allow_legacy and stage.get("stage") == "goal_chase"
+                    and stage.get("applied") is True):
+                selector = root["visit_distribution"]
+                source = "visit_distribution_legacy_goal_chase_input"
+                final_stage = "goal_chase"
+                chosen_index = index
+                break
+        if not isinstance(selector, list) or len(selector) != act_dim:
+            raise RuntimeError(
+                "terminating selector-input distribution is missing or truncated")
+        record = json.loads(json.dumps(record))
+        record["selection"] = {
+            "final_stage": final_stage,
+            "override_path_index": chosen_index,
+            "selected_action": selected,
+            "selector_input_distribution": selector,
+            "selector_distribution_source": source,
+        }
+        if schema == LEGACY_RECORDER_SCHEMA:
+            record["normalized_from_schema"] = LEGACY_RECORDER_SCHEMA
+            record["schema_version"] = RECORDER_SCHEMA
+    if any(not isinstance(value, (int, float))
+           or not math.isfinite(float(value)) or float(value) < 0.0
+           for value in selector):
+        raise RuntimeError("terminating selector-input distribution is invalid")
+    if final_stage is None or not source:
+        raise RuntimeError("terminating selector provenance is incomplete")
+    return record
+
+
+def validate_record(record: dict[str, Any], *, instance_name: str) -> None:
+    normalize_record(record, instance_name=instance_name, allow_legacy=False)
+
+
+def terminal_outcome(
+    *,
+    log: Path,
+    completion: Path,
+    instance_name: str,
+    evaluation_index: int,
+    max_actions: int,
+) -> dict[str, Any] | None:
+    """Return a defensible terminal classification, never infer from silence."""
+    if completion.exists():
+        lines = [line for line in completion.read_text(
+            encoding="utf-8").splitlines() if line.strip()]
+        if len(lines) != 1:
+            raise RuntimeError(
+                f"expected one completion record, found {len(lines)}: {completion}")
+        record = json.loads(lines[0], parse_constant=_reject_json_constant)
+        if int(record.get("instance_number", -1)) != evaluation_index:
+            raise RuntimeError("completion record evaluator identity mismatch")
+        if Path(record.get("instance_path", "")).name != instance_name:
+            raise RuntimeError("completion record instance path mismatch")
+        status = record.get("status")
+        if status not in {"success", "finished_unsolved"}:
+            raise RuntimeError(f"unsupported completion status: {status}")
+        if status == "success":
+            classification = "success"
+        elif int(record.get("steps", -1)) >= max_actions:
+            classification = "action_limit"
+        else:
+            classification = "finished_unsolved"
+        return {
+            "classification": classification,
+            "evidence": "completion_jsonl",
+            "completion_record": record,
+        }
+    text = log.read_text(encoding="utf-8", errors="replace")
+    if any(int(match.group("number")) == evaluation_index
+           for match in CRASH_RE.finditer(text)):
+        return None
+    completed = [match for match in COMPLETED_RE.finditer(text)
+                 if int(match.group("number")) == evaluation_index
+                 and Path(match.group("path")).name == instance_name]
+    if len(completed) == 1:
+        marker = completed[0]
+        steps = int(marker.group("steps"))
+        success = marker.group("success") in {"True", "1.0"}
+        if marker.group("status") == "success" and success:
+            classification = "success"
+        elif marker.group("status") == "unsolved" and not success:
+            classification = (
+                "action_limit" if steps >= max_actions else "finished_unsolved")
+        else:
+            return None
+        return {
+            "classification": classification,
+            "evidence": "eval_instance_completed_log_marker",
+            "completion_record": None,
+            "instance_number": evaluation_index,
+            "instance_path": marker.group("path"),
+            "elapsed_seconds": float(marker.group("elapsed")),
+            "steps": steps,
+            "marker": marker.group(0),
+        }
+    matches = [match for match in HARD_TIMEOUT_RE.finditer(text)
+               if int(match.group("number")) == evaluation_index
+               and Path(match.group("path")).name == instance_name]
+    if len(matches) != 1:
+        return None
+    marker = matches[0]
+    return {
+        "classification": "hard_timeout",
+        "evidence": "eval_instance_timeout_log_marker",
+        "completion_record": None,
+        "instance_number": evaluation_index,
+        "instance_path": marker.group("path"),
+        "limit_seconds": float(marker.group("limit")),
+        "marker": marker.group(0),
+    }
 
 
 def atomic_json(path: Path, payload: dict[str, Any]) -> None:
@@ -457,9 +658,19 @@ def run_task(args: argparse.Namespace) -> None:
     if args.execute:
         validate_gate(args.smoke_gate, code_commit=args.code_commit)
     registry_rows = read_csv(args.registry)
-    candidates = json.loads(row["candidate_runs_json"])
+    source_candidates = json.loads(row["candidate_runs_json"])
+    if args.candidate_indices:
+        selected_indices = [int(value) for value in args.candidate_indices.split(",")]
+        if len(selected_indices) != len(set(selected_indices)):
+            raise RuntimeError("candidate indices must be unique")
+        if any(index < 0 or index >= len(source_candidates)
+               for index in selected_indices):
+            raise RuntimeError("candidate index out of range")
+    else:
+        selected_indices = list(range(len(source_candidates)))
+    candidates = [(index, source_candidates[index]) for index in selected_indices]
     rendered = []
-    for candidate_index, candidate in enumerate(candidates):
+    for candidate_index, candidate in candidates:
         checkpoint, registry_row = resolve_checkpoint(
             registry_rows,
             candidate["checkpoint_identity"],
@@ -519,14 +730,22 @@ def run_task(args: argparse.Namespace) -> None:
         if len(records) > 1:
             raise RuntimeError(f"{stem}: emitted multiple first-divergence records")
         if records:
-            validate_record(records[0], instance_name=candidate["instance"])
-        completion_lines = [line for line in completion.read_text(
-            encoding="utf-8").splitlines() if line.strip()]
-        if len(completion_lines) != 1:
+            records[0] = normalize_record(
+                records[0], instance_name=candidate["instance"])
+        outcome = terminal_outcome(
+            log=log,
+            completion=completion,
+            instance_name=candidate["instance"],
+            evaluation_index=instance_index(
+                args.repo, row["domain"], candidate["instance"]),
+            max_actions=10000,
+        )
+        if outcome is None:
             raise RuntimeError(
-                f"{stem}: expected one completion record, found {len(completion_lines)}")
+                f"{stem}: no explicit success, action-limit, finished-unsolved, "
+                "or hard-timeout evidence")
         atomic_json(result_path, {
-            "schema_version": "mcts-divergence-stage1-candidate-result-v1",
+            "schema_version": "mcts-divergence-stage1-candidate-result-v2",
             "task_index": args.task_index,
             "task_id": row["task_id"],
             "candidate_index": candidate_index,
@@ -536,8 +755,8 @@ def run_task(args: argparse.Namespace) -> None:
             "missing_stratum": candidate["missing_stratum"],
             "first_divergence_observed": bool(records),
             "first_divergence": records[0] if records else None,
-            "completion_record": json.loads(
-                completion_lines[0], parse_constant=_reject_json_constant),
+            "outcome": outcome,
+            "completion_record": outcome["completion_record"],
             "log": str(log),
             "completion": str(completion),
             "code_commit": args.code_commit,
@@ -552,6 +771,19 @@ def run_task(args: argparse.Namespace) -> None:
             "release_class": row["release_class"],
             "runs": rendered,
         }, indent=2))
+
+
+def run_recovery(args: argparse.Namespace) -> None:
+    source_rows = load_frozen_tasks(args.manifest, args.freeze)
+    recovery_tasks = load_recovery_tasks(
+        args.recovery_manifest, args.recovery_freeze, source_rows)
+    if not 0 <= args.recovery_index < len(recovery_tasks):
+        raise RuntimeError("recovery index out of range")
+    recovery = recovery_tasks[args.recovery_index]
+    args.task_index = int(recovery["source_task_index"])
+    args.candidate_indices = ",".join(
+        str(value) for value in recovery["candidate_indices"])
+    run_task(args)
 
 
 def common_parser(parser: argparse.ArgumentParser) -> None:
@@ -573,8 +805,20 @@ def main() -> None:
     task.add_argument("--manifest", type=Path, required=True)
     task.add_argument("--freeze", type=Path, required=True)
     task.add_argument("--task-index", type=int, required=True)
+    task.add_argument(
+        "--candidate-indices",
+        help="optional comma-separated exact source-candidate indices")
     task.add_argument("--smoke-gate", type=Path, required=True)
     task.set_defaults(func=run_task)
+    recovery = subparsers.add_parser("run-recovery")
+    common_parser(recovery)
+    recovery.add_argument("--manifest", type=Path, required=True)
+    recovery.add_argument("--freeze", type=Path, required=True)
+    recovery.add_argument("--recovery-manifest", type=Path, required=True)
+    recovery.add_argument("--recovery-freeze", type=Path, required=True)
+    recovery.add_argument("--recovery-index", type=int, required=True)
+    recovery.add_argument("--smoke-gate", type=Path, required=True)
+    recovery.set_defaults(func=run_recovery)
     args = parser.parse_args()
     args.func(args)
 

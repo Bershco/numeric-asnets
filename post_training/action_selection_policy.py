@@ -135,7 +135,10 @@ class SamplePolicy(ActionSelectionPolicy):
 
     def select_action(self, mcts, pi, *, remaining_horizon=None):
         selected = int(np.random.choice(len(pi), p=pi))
-        self._trace_stage("sample", selected_action=selected)
+        self._trace_stage(
+            "sample", selected_action=selected,
+            selector_input_distribution=np.asarray(
+                pi, dtype=np.float64).tolist())
         return selected
 
 
@@ -158,12 +161,16 @@ class VisitProportionalPolicy(ActionSelectionPolicy):
             visits /= s
             selected = int(np.random.choice(act_dim, p=visits))
             self._trace_stage(
-                "visit_proportional", selected_action=selected)
+                "visit_proportional", selected_action=selected,
+                selector_input_distribution=np.asarray(
+                    visits, dtype=np.float64).tolist())
             return selected
 
         selected = int(np.argmax(pi))
         self._trace_stage(
-            "visit_proportional_fallback", selected_action=selected)
+            "visit_proportional_fallback", selected_action=selected,
+            selector_input_distribution=np.asarray(
+                pi, dtype=np.float64).tolist())
         return selected
 
 
@@ -197,6 +204,8 @@ class GoalChaseMixin:
                         "goal_chase",
                         applied=True,
                         selected_action=int(action),
+                        selector_input_distribution=np.asarray(
+                            pi, dtype=np.float64).tolist(),
                         known_distance_to_goal=int(
                             root.known_distance_to_goal),
                         remaining_horizon=remaining_horizon,
@@ -256,7 +265,9 @@ class EpsilonGreedyMixin:
             self._trace_stage(
                 "epsilon_greedy", applied=True,
                 epsilon=float(self.epsilon), random_draw=random_draw,
-                selected_action=selected)
+                selected_action=selected,
+                selector_input_distribution=np.asarray(
+                    pi_norm, dtype=np.float64).tolist())
             return selected
 
         self._trace_stage(

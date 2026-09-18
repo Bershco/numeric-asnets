@@ -18,7 +18,7 @@ import numpy as np
 from post_training.monte_carlo_tree_search import action_history_digest
 
 
-SCHEMA_VERSION = "mcts-first-divergence-v1"
+SCHEMA_VERSION = "mcts-first-divergence-v2"
 
 
 def _normalise(vector: Sequence[float]) -> np.ndarray:
@@ -93,6 +93,50 @@ def _child_state_digest(child) -> str | None:
 def _json_number(value: float) -> float | None:
     value = float(value)
     return value if math.isfinite(value) else None
+
+
+def _selection_evidence(
+        override_path: Sequence[Mapping[str, Any]],
+        *,
+        selected_action: int,
+        visit_policy: np.ndarray,
+) -> dict[str, Any]:
+    """Freeze the exact distribution consumed by the terminating selector.
+
+    A mixin may short-circuit before the base Argmax selector.  New traces put
+    the complete input vector on every terminating stage.  The goal-chase
+    fallback is retained for compatibility with records created before v2:
+    GoalChase is the outermost mixin and therefore receives ``visit_policy``
+    unchanged.
+    """
+    for index in range(len(override_path) - 1, -1, -1):
+        stage = override_path[index]
+        if int(stage.get("selected_action", -1)) != selected_action:
+            continue
+        vector = stage.get("selector_input_distribution")
+        if vector is not None:
+            exact = np.asarray(vector, dtype=np.float64)
+            if exact.shape != visit_policy.shape:
+                raise ValueError("terminating selector input has wrong length")
+            if np.any(~np.isfinite(exact)) or np.any(exact < 0.0):
+                raise ValueError("terminating selector input is invalid")
+            return {
+                "final_stage": stage.get("stage"),
+                "override_path_index": index,
+                "selected_action": selected_action,
+                "selector_input_distribution": exact.tolist(),
+                "selector_distribution_source": "override_path",
+            }
+        if stage.get("stage") == "goal_chase" and stage.get("applied") is True:
+            return {
+                "final_stage": "goal_chase",
+                "override_path_index": index,
+                "selected_action": selected_action,
+                "selector_input_distribution": visit_policy.tolist(),
+                "selector_distribution_source": (
+                    "visit_distribution_legacy_goal_chase_input"),
+            }
+    raise ValueError("selection trace has no terminating selector distribution")
 
 
 def build_first_divergence_record(
@@ -194,6 +238,11 @@ def build_first_divergence_record(
     u_argmax = argmax_nullable(u_values)
     score_argmax = argmax_nullable(scores)
     act_history = action_history_digest(root.state)
+    selection = _selection_evidence(
+        override_path,
+        selected_action=selected_action,
+        visit_policy=visits_distribution,
+    )
     record = {
         "schema_version": SCHEMA_VERSION,
         "provenance": dict(provenance),
@@ -206,6 +255,7 @@ def build_first_divergence_record(
         "selected_action": selected_action,
         "selected_action_name": action_names[selected_action],
         "override_path": [dict(stage) for stage in override_path],
+        "selection": selection,
         "state": {
             "physical_state_digest": _digest_bytes(
                 root.state_key, person=b"asnet-state-key"),
