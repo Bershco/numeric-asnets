@@ -471,6 +471,13 @@ parser.add_argument(
     default=False,
     help='Log raw-policy versus MCTS action decisions during MCTS evaluation.')
 parser.add_argument(
+    '--eval-mcts-first-divergence-record',
+    action='store_true',
+    default=False,
+    help=(
+        'Emit one compact first policy/MCTS divergence record per evaluated '
+        'instance. Requires --eval-with-mcts.'))
+parser.add_argument(
     '--puct-debug',
     action='store_true',
     default=False,
@@ -847,6 +854,8 @@ def main():
                eval_mcts_contextual_nodes=args.eval_mcts_contextual_nodes,
                eval_mcts_context_witness_limit=(
                    args.eval_mcts_context_witness_limit),
+               eval_mcts_first_divergence_record=(
+                   args.eval_mcts_first_divergence_record),
                eval_max_actions=args.eval_max_actions,
                eval_start_wave=args.eval_start_wave,
                eval_scheduling=args.eval_scheduling,
@@ -922,6 +931,7 @@ def main_inner(*,
                eval_mcts_context_diagnostics=False,
                eval_mcts_contextual_nodes=False,
                eval_mcts_context_witness_limit=128,
+               eval_mcts_first_divergence_record=False,
                eval_max_actions=None,
                eval_start_wave=1,
                eval_scheduling='wave',
@@ -1190,6 +1200,12 @@ evaluation = {"off" if no_eval else "on"}
             '--eval-mcts-context-witness-limit',
             str(eval_mcts_context_witness_limit),
         ])
+    if eval_mcts_first_divergence_record:
+        if not eval_with_mcts:
+            raise ValueError(
+                '--eval-mcts-first-divergence-record requires '
+                '--eval-with-mcts')
+        main_test_flags.append('--eval-mcts-first-divergence-record')
     if eval_start_wave != 1:
         main_test_flags.extend(['--eval-start-wave', str(eval_start_wave)])
     main_test_flags.extend(['--eval-scheduling', eval_scheduling])

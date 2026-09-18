@@ -37,6 +37,7 @@ from asnets.utils.py_utils import set_random_seeds, RandomPopContainer,strip_par
 from post_training.enhspwrapper import ENHSPEstimator, EstimatorMode
 from post_training.training_mcts import TrainingMCTS, get_est_v
 from post_training.monte_carlo_tree_search import action_history_digest
+from .mcts_first_divergence import build_first_divergence_record
 
 from enum import Enum, auto
 
@@ -1418,6 +1419,8 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
         worker_tag, instance_name, start_time = init_eval_worker(inp)
         planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
         act_dim = planner_exts.problem_meta.num_acts
+        first_divergence_enabled = bool(getattr(
+            inp.spec, "mcts_first_divergence_record", False))
         action_policy = build_action_policy(
             base_policy=inp.spec.action_policy,
             worker_tag=worker_tag,
@@ -1428,6 +1431,7 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
             duplicate_penalty=inp.spec.action_policy_duplicate_penalty,
             terminal_safe=inp.spec.mcts_terminal_safe_action_selection,
             root_visit_tie_break=inp.spec.mcts_root_visit_tie_break,
+            selection_trace_enabled=first_divergence_enabled,
         )
         wm_local = _rebuild_weight_manager_local(
             planner_exts.problem_meta,
@@ -1472,6 +1476,7 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
         max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
         mcts.initialise_tree(cstate)
         plan = []
+        recorded_first_divergence = False
         for step in range(max_len):
             step_start_time = time.time()
             timed_out = bool(inp.spec.timeout and step_start_time - start_time > inp.spec.timeout)
@@ -1499,11 +1504,63 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
                     mcts=mcts,
                     masked_pi=masked_pi,
                 )
+            if first_divergence_enabled and not recorded_first_divergence:
+                action_policy.begin_selection_trace()
             action_id = action_policy.select_action(
                 mcts=mcts,
                 pi=masked_pi,
                 remaining_horizon=enforced_horizon,
             )
+            if first_divergence_enabled and not recorded_first_divergence:
+                selection_trace = action_policy.consume_selection_trace()
+                divergence_record = build_first_divergence_record(
+                    mcts,
+                    visit_policy=masked_pi,
+                    selected_action=action_id,
+                    step=step,
+                    instance_name=instance_name,
+                    elapsed_seconds=time.time() - start_time,
+                    override_path=selection_trace,
+                    provenance={
+                            "checkpoint_path": getattr(
+                                inp.spec, "checkpoint_path", None),
+                            "epoch": inp.epoch,
+                            "trainer_seed": inp.spec.trainer_seed,
+                            "worker_seed": inp.seed,
+                            "evaluation_index": inp.spec.evaluation_index,
+                            "domain_pddl": inp.spec.pddls[0],
+                            "instance_pddl": inp.spec.pddls[1],
+                            "value_head_enabled": bool(
+                                mcts.network.value_head_enabled),
+                            "minimization": bool(inp.minimization),
+                            "mcts_iterations": int(mcts.iterations),
+                            "mcts_expansion_k": int(mcts.k),
+                            "mcts_exploration_weight": float(
+                                mcts.exploration_weight),
+                            "progressive_widening": bool(
+                                mcts.progressive_widening),
+                            "pw_min_width": int(mcts.pw_min_width),
+                            "pw_c": float(mcts.pw_c),
+                            "pw_alpha": float(mcts.pw_alpha),
+                            "root_visit_tie_break": (
+                                inp.spec.mcts_root_visit_tie_break),
+                            "terminal_safe_action_selection": bool(
+                                inp.spec.mcts_terminal_safe_action_selection),
+                            "enforce_remaining_horizon": bool(
+                                inp.spec.mcts_enforce_remaining_horizon),
+                    },
+                )
+                if divergence_record is not None:
+                    print(
+                        "[MCTS FIRST DIVERGENCE] "
+                        + json.dumps(
+                            divergence_record,
+                            sort_keys=True,
+                            separators=(",", ":"),
+                        ),
+                        flush=True,
+                    )
+                    recorded_first_divergence = True
             mcts.record_selected_policy_rank(action_id)
             if enforced_horizon is not None:
                 mcts.record_goal_feasibility(enforced_horizon)

@@ -594,6 +594,14 @@ parser.add_argument(
     help=('Log raw-network-policy and MCTS action decisions during MCTS '
           'evaluation.'))
 parser.add_argument(
+    '--eval-mcts-first-divergence-record',
+    action='store_true',
+    default=False,
+    help=(
+        'Emit one compact JSON record at the first raw-policy/MCTS action '
+        'divergence in each evaluated instance. This is opt-in and does not '
+        'change search or action selection.'))
+parser.add_argument(
     '--puct-debug',
     action='store_true',
     default=False,
@@ -959,7 +967,7 @@ def select_evaluation_instances(
 
 
 def evaluation_signature(args):
-    payload = json.dumps({
+    payload_fields = {
         'instances': list(enumerate(args.pddls[1:], 1)),
         'checkpoint': args.resume_from,
         'limit_turns': args.limit_turns,
@@ -983,7 +991,15 @@ def evaluation_signature(args):
         'mcts_context_diagnostics': args.eval_mcts_context_diagnostics,
         'mcts_contextual_nodes': args.eval_mcts_contextual_nodes,
         'mcts_context_witness_limit': args.eval_mcts_context_witness_limit,
-    }, separators=(',', ':'), ensure_ascii=False, sort_keys=True)
+    }
+    # Preserve historical signatures byte-for-byte when the observer is off.
+    # When enabled it must be part of the signature so a completion ledger
+    # without trace evidence cannot be reused for a trace campaign.
+    if getattr(args, 'eval_mcts_first_divergence_record', False):
+        payload_fields['mcts_first_divergence_record'] = True
+    payload = json.dumps(
+        payload_fields, separators=(',', ':'), ensure_ascii=False,
+        sort_keys=True)
     return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
 
@@ -1539,6 +1555,10 @@ def main():
     if ((args.eval_mcts_context_diagnostics
          or args.eval_mcts_contextual_nodes) and not args.eval_with_mcts):
         parser.error('MCTS context options require --eval-with-mcts')
+    if (args.eval_mcts_first_divergence_record
+            and not args.eval_with_mcts):
+        parser.error(
+            '--eval-mcts-first-divergence-record requires --eval-with-mcts')
     if args.eval_mcts_context_witness_limit < 0:
         parser.error('--eval-mcts-context-witness-limit cannot be negative')
     if args.mcts_pw_min_width < 1:

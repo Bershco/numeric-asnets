@@ -4,7 +4,15 @@ import unittest
 
 import numpy as np
 
-from asnets.value_head_audit import evaluate_successor_values, rows_as_dicts
+from asnets.value_head_audit import (
+    CallableLabelProvider,
+    LabelResult,
+    MappingLabelProvider,
+    apply_label_provider,
+    evaluate_successor_values,
+    rows_as_dicts,
+    validate_task_manifest_rows,
+)
 
 
 class _State:
@@ -71,6 +79,95 @@ class ValueHeadAuditTest(unittest.TestCase):
                 network=lambda observations, training: np.zeros((len(observations), 1)),
                 successor_fn=lambda _state, _action: [(1.0, _State([1]))],
             )
+
+    def test_mapping_provider_keeps_missing_separate_from_numeric_values(self):
+        rows = evaluate_successor_values(
+            state=_State([0], mask=[True, True]),
+            state_id="s",
+            network=_ValueNetwork(),
+            successor_fn=lambda _state, action: [(1.0, _State([action, 1]))],
+        )
+        provider = MappingLabelProvider(
+            label_source="replay_target",
+            values={("s", 0, 0): 0.75},
+            higher_is_better=True,
+            scale_comparable=True,
+            label_log_path="cache/replay.csv",
+        )
+        labelled = apply_label_provider(rows, provider)
+        self.assertEqual(labelled[0]["label_status"], "valid")
+        self.assertEqual(labelled[0]["label_value"], 0.75)
+        self.assertEqual(labelled[1]["label_status"], "missing")
+        self.assertIsNone(labelled[1]["label_value"])
+
+    def test_timeout_cannot_be_encoded_as_numeric_label(self):
+        rows = evaluate_successor_values(
+            state=_State([0], mask=[True]),
+            state_id="s",
+            network=_ValueNetwork(),
+            successor_fn=lambda _state, _action: [(1.0, _State([1]))],
+        )
+        provider = CallableLabelProvider(
+            lambda _row: LabelResult(
+                label_source="deterministic_continuation",
+                label_status="timeout",
+                label_value=10_000.0,
+                label_higher_is_better=False,
+                label_scale_comparable=False,
+                label_log_path="logs/continuation.txt",
+            )
+        )
+        with self.assertRaisesRegex(ValueError, "must not carry"):
+            apply_label_provider(rows, provider)
+
+    def test_valid_label_requires_finite_value_and_log(self):
+        rows = evaluate_successor_values(
+            state=_State([0], mask=[True]),
+            state_id="s",
+            network=_ValueNetwork(),
+            successor_fn=lambda _state, _action: [(1.0, _State([1]))],
+        )
+        provider = CallableLabelProvider(
+            lambda _row: LabelResult(
+                label_source="enhsp_raw_h",
+                label_status="valid",
+                label_value=float("nan"),
+                label_higher_is_better=False,
+                label_scale_comparable=False,
+                label_log_path="logs/enhsp.txt",
+            )
+        )
+        with self.assertRaisesRegex(ValueError, "finite"):
+            apply_label_provider(rows, provider)
+
+    def test_manifest_preflight_requires_hashes_and_exact_factorial(self):
+        row = {
+            "task_id": "vhv1-drone-1-stage1",
+            "domain": "drone",
+            "seed": "1",
+            "stage": "stage1",
+            "checkpoint_path": "/cluster/checkpoint",
+            "checkpoint_sha256": "a" * 64,
+            "state_manifest_path": "states.jsonl",
+            "state_manifest_sha256": "b" * 64,
+            "source_manifest_sha256": "c" * 64,
+            "state_sources": "common_planner+common_random_legal+stage1_on_policy+stage2_on_policy",
+            "label_sources": "replay_target+deterministic_continuation+enhsp_raw_h",
+            "cpus": "4",
+            "memory_gib": "48",
+            "time_limit_hours": "8",
+        }
+        errors = validate_task_manifest_rows([row], domains=["drone"], seeds=["1"])
+        self.assertIn("missing task identities", "\n".join(errors))
+        stage2 = dict(row, task_id="vhv1-drone-1-stage2", stage="stage2")
+        self.assertEqual(
+            validate_task_manifest_rows([row, stage2], domains=["drone"], seeds=["1"]),
+            [],
+        )
+        bad = dict(stage2, checkpoint_sha256="")
+        self.assertIn("checkpoint_sha256", "\n".join(
+            validate_task_manifest_rows([row, bad], domains=["drone"], seeds=["1"])
+        ))
 
 
 if __name__ == "__main__":

@@ -7,8 +7,11 @@ import numpy as np
 
 class ActionSelectionPolicy:
 
-    def __init__(self, worker_tag="WORKER", **kwargs):
+    def __init__(self, worker_tag="WORKER", selection_trace_enabled=False,
+                 **kwargs):
         self.worker_tag = worker_tag
+        self.selection_trace_enabled = bool(selection_trace_enabled)
+        self._selection_trace = None
         if "epoch" not in kwargs or kwargs["epoch"] is None or kwargs["epoch"] == 0:
             print(f"{self.worker_tag} ACTION POLICY INITIALIZED")
             print(f"{self.worker_tag} policy_class = {self.__class__.__name__}")
@@ -28,6 +31,22 @@ class ActionSelectionPolicy:
             self, mcts, pi: np.ndarray, *, remaining_horizon=None) -> int:
         raise NotImplementedError
 
+    def begin_selection_trace(self):
+        """Begin one opt-in trace without affecting selector semantics."""
+        self._selection_trace = [] if self.selection_trace_enabled else None
+
+    def _trace_stage(self, stage, **details):
+        if self._selection_trace is None:
+            return None
+        entry = {"stage": stage, **details}
+        self._selection_trace.append(entry)
+        return entry
+
+    def consume_selection_trace(self):
+        trace = self._selection_trace
+        self._selection_trace = None
+        return [] if trace is None else trace
+
 
 # ============================================================
 # Base Policies
@@ -46,18 +65,40 @@ class ArgmaxPolicy(ActionSelectionPolicy):
 
     def select_action(self, mcts, pi, *, remaining_horizon=None):
         current = int(np.argmax(pi))
+        if (self.root_visit_tie_break == "action_id"
+                and self._selection_trace is None):
+            return current
+        max_visit_share = float(pi[current])
+        tied_actions = np.flatnonzero(pi == max_visit_share)
+        trace = self._trace_stage(
+            "root_visit_argmax",
+            input_argmax=current,
+            selector_input_distribution=np.asarray(
+                pi, dtype=np.float64).tolist(),
+            max_visit_share=max_visit_share,
+            tied_actions=[int(action) for action in tied_actions],
+            tie_break=self.root_visit_tie_break,
+        )
         if self.root_visit_tie_break == "action_id":
+            if trace is not None:
+                trace["selected_action"] = current
             return current
 
-        max_visit_share = pi[current]
-        tied_actions = np.flatnonzero(pi == max_visit_share)
         if len(tied_actions) <= 1 or max_visit_share <= 0:
+            if trace is not None:
+                trace["selected_action"] = current
+                trace["tie_break_applied"] = False
             return current
 
         root = mcts.curr_tree_root
         if self.root_visit_tie_break == "policy":
             priors = np.asarray(root.act_dist)[tied_actions]
-            return int(tied_actions[int(np.argmax(priors))])
+            selected = int(tied_actions[int(np.argmax(priors))])
+            if trace is not None:
+                trace["tie_break_applied"] = True
+                trace["tie_break_scores"] = [float(value) for value in priors]
+                trace["selected_action"] = selected
+            return selected
 
         q_by_action = {
             int(action): float(child.Q_value)
@@ -65,6 +106,10 @@ class ArgmaxPolicy(ActionSelectionPolicy):
             if child is not None
         }
         if any(int(action) not in q_by_action for action in tied_actions):
+            if trace is not None:
+                trace["selected_action"] = current
+                trace["tie_break_applied"] = False
+                trace["fallback"] = "missing_child_q"
             return current
         sign = getattr(mcts, "sign", None)
         if sign is None:
@@ -76,13 +121,22 @@ class ArgmaxPolicy(ActionSelectionPolicy):
         best = float(np.max(signed_q))
         effectively_best = tied_actions[np.isclose(
             signed_q, best, rtol=0.0, atol=self._Q_TIE_ATOL)]
-        return int(effectively_best[0])
+        selected = int(effectively_best[0])
+        if trace is not None:
+            trace["tie_break_applied"] = True
+            trace["tie_break_scores"] = [float(value) for value in signed_q]
+            trace["effectively_best"] = [
+                int(action) for action in effectively_best]
+            trace["selected_action"] = selected
+        return selected
 
 
 class SamplePolicy(ActionSelectionPolicy):
 
     def select_action(self, mcts, pi, *, remaining_horizon=None):
-        return int(np.random.choice(len(pi), p=pi))
+        selected = int(np.random.choice(len(pi), p=pi))
+        self._trace_stage("sample", selected_action=selected)
+        return selected
 
 
 class VisitProportionalPolicy(ActionSelectionPolicy):
@@ -102,9 +156,15 @@ class VisitProportionalPolicy(ActionSelectionPolicy):
 
         if s > 0:
             visits /= s
-            return int(np.random.choice(act_dim, p=visits))
+            selected = int(np.random.choice(act_dim, p=visits))
+            self._trace_stage(
+                "visit_proportional", selected_action=selected)
+            return selected
 
-        return int(np.argmax(pi))
+        selected = int(np.argmax(pi))
+        self._trace_stage(
+            "visit_proportional_fallback", selected_action=selected)
+        return selected
 
 
 # ============================================================
@@ -133,8 +193,24 @@ class GoalChaseMixin:
         ):
             for action, child in root.children.items():
                 if child is root.best_goal_child:
+                    self._trace_stage(
+                        "goal_chase",
+                        applied=True,
+                        selected_action=int(action),
+                        known_distance_to_goal=int(
+                            root.known_distance_to_goal),
+                        remaining_horizon=remaining_horizon,
+                    )
                     return action
 
+        self._trace_stage(
+            "goal_chase",
+            applied=False,
+            known_distance_to_goal=(
+                None if root.known_distance_to_goal == np.inf
+                else int(root.known_distance_to_goal)),
+            remaining_horizon=remaining_horizon,
+        )
         return super().select_action(
             mcts, pi, remaining_horizon=remaining_horizon)
 
@@ -154,6 +230,10 @@ class TemperatureMixin:
             if s > 0:
                 pi /= s
 
+        self._trace_stage(
+            "temperature", applied=self.temperature != 1.0,
+            temperature=float(self.temperature))
+
         return super().select_action(
             mcts, pi, remaining_horizon=remaining_horizon)
 
@@ -165,14 +245,23 @@ class EpsilonGreedyMixin:
         super().__init__(**kwargs)
 
     def select_action(self, mcts, pi, *, remaining_horizon=None):
-        if np.random.rand() < self.epsilon:
+        random_draw = float(np.random.rand())
+        if random_draw < self.epsilon:
             pi_sum = np.sum(pi)
             if pi_sum > 0:
                 pi_norm = pi / pi_sum
             else:
                 pi_norm = np.ones_like(pi) / len(pi)
-            return int(np.random.choice(len(pi), p=pi_norm))
+            selected = int(np.random.choice(len(pi), p=pi_norm))
+            self._trace_stage(
+                "epsilon_greedy", applied=True,
+                epsilon=float(self.epsilon), random_draw=random_draw,
+                selected_action=selected)
+            return selected
 
+        self._trace_stage(
+            "epsilon_greedy", applied=False,
+            epsilon=float(self.epsilon), random_draw=random_draw)
         return super().select_action(
             mcts, pi, remaining_horizon=remaining_horizon)
 
@@ -202,10 +291,16 @@ class PathDuplicatePenaltyMixin:
     def select_action(self, mcts, pi, *, remaining_horizon=None):
         root = mcts.curr_tree_root
         if root.children is None or root.children.is_empty():
+            self._trace_stage(
+                "duplicate_penalty", applied=False,
+                reason="no_root_children")
             return super().select_action(
                 mcts, pi, remaining_horizon=remaining_horizon)
         traj_mask = root.get_child_on_trajectory_mask()
         if traj_mask.size == 0:
+            self._trace_stage(
+                "duplicate_penalty", applied=False,
+                reason="empty_trajectory_mask")
             return super().select_action(
                 mcts, pi, remaining_horizon=remaining_horizon)
         orig_pi = pi
@@ -222,6 +317,15 @@ class PathDuplicatePenaltyMixin:
             pi /= s
         else:
             pi = orig_pi
+        self._trace_stage(
+            "duplicate_penalty",
+            applied=bool(np.any(traj_mask > 0)),
+            duplicate_penalty=float(self.duplicate_penalty),
+            duplicate_actions=[
+                int(action) for action, duplicate in zip(
+                    child_actions, traj_mask > 0) if duplicate],
+            fallback_to_input=bool(s <= 0),
+        )
         return super().select_action(
             mcts, pi, remaining_horizon=remaining_horizon)
 
@@ -339,8 +443,23 @@ class TerminalSafeMixin:
                 post_duplicate = self._normalise_or_fallback(
                     post_duplicate, post_terminal, eligible_safe)
 
+        trace = self._trace_stage(
+            "terminal_safe",
+            applied=bool(excluded_count or np.any(duplicate_mask)),
+            terminal_excluded_actions=[
+                int(action) for action in np.flatnonzero(
+                    terminal_mask & (raw_pi > 0.0))],
+            duplicate_actions=[
+                int(action) for action in np.flatnonzero(duplicate_mask)],
+            duplicate_fallback=bool(duplicate_fallback),
+            no_safe_child=bool(not np.any(safe_mask)),
+            post_terminal_policy=post_terminal.tolist(),
+            post_duplicate_policy=post_duplicate.tolist(),
+        )
         action = super().select_action(
             mcts, post_duplicate, remaining_horizon=remaining_horizon)
+        if trace is not None:
+            trace["selected_action"] = int(action)
         # Bulk campaigns log only safety events. Full root vectors are emitted
         # above solely when an invariant fails; printing them on every action
         # can turn a normal evaluation into a multi-gigabyte debug log.
@@ -380,6 +499,7 @@ def build_action_policy(
         duplicate_penalty=None,
         terminal_safe=False,
         root_visit_tie_break="action_id",
+        selection_trace_enabled=False,
 ):
     base = BASE_POLICIES[base_policy]
 
@@ -423,4 +543,5 @@ def build_action_policy(
         epoch=epoch,
         duplicate_penalty=duplicate_penalty,
         root_visit_tie_break=root_visit_tie_break,
+        selection_trace_enabled=selection_trace_enabled,
     )

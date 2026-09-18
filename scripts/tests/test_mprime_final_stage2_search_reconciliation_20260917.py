@@ -8,6 +8,7 @@ from pathlib import Path
 from scripts.reconcile_mprime_final_stage2_search_20260917 import (
     evidence_from_ledger,
     evidence_from_log,
+    identity_paths,
     merge_evidence,
 )
 
@@ -116,6 +117,22 @@ class MPrimeStage2ReconciliationTest(unittest.TestCase):
                 path, declared_timeout=21600.0, max_actions=10000
             )
             self.assertEqual(evidence, {})
+
+    def test_recovery_ledgers_remain_separate_and_are_discovered(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            identity = root / "fixed" / "off" / "1"
+            original = identity / "completion" / "row.jsonl"
+            recovery = identity / "recovery_completion" / "instance_6_job.jsonl"
+            original.parent.mkdir(parents=True)
+            recovery.parent.mkdir(parents=True)
+            original.write_text("", encoding="utf-8")
+            recovery.write_text("", encoding="utf-8")
+            ledgers, _ = identity_paths(root, {
+                "search_method": "fixed", "value_head": "off", "seed": "1",
+                "manifest_id": "row", "array_index": "0",
+            })
+            self.assertEqual(ledgers, [original, recovery])
 
 
 if __name__ == "__main__":

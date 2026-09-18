@@ -773,6 +773,8 @@ class SpawnExploreSpec:
     # mcts debugging options
     puct_debug: bool = False
     action_debug: bool = False
+    mcts_first_divergence_record: bool = False
+    checkpoint_path: Optional[str] = None
 
     # estimator decay
     use_estimator_decay: bool = False
@@ -942,6 +944,12 @@ list[SpawnExploreSpec]:
             action_policy_duplicate_penalty=args.action_policy_duplicate_penalty,
             action_debug=args.action_debug,
             puct_debug=args.puct_debug,
+            mcts_first_divergence_record=(
+                evaluation_mode and getattr(
+                    args, "eval_mcts_first_divergence_record", False)),
+            checkpoint_path=(
+                getattr(args, "resume_from", None)
+                if evaluation_mode else None),
             timeout=args.graceful_timeout,
             use_estimator=args.use_estimator,
         )

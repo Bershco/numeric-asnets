@@ -124,6 +124,14 @@ goal-chase and duplicate-control overrides; branching width; search depth;
 successor-generation and elapsed time; state/action-history digests; eventual
 outcome/failure type; and whether trajectories later rejoin.
 
+The compact root line itself is emitted at decision time and therefore cannot
+contain future terminal outcome or a later-rejoin claim. Stage 2 must join the
+terminal outcome/failure type from the exact completion ledger and frozen
+candidate identity. Later rejoin remains a separate trajectory post-processing
+question requiring aligned policy/search state-digest sequences; v1 does not
+claim it. This distinction prevents blank future information from being
+silently presented as a negative result.
+
 The economical implementation is a compact first-divergence recorder with
 optional sparse landmarks, not full debug output at every external action.
 
@@ -149,6 +157,77 @@ identity, expansion membership, N/Q/U/prior decomposition and override flags.
 Smoke-test one already understood Counters root.  Estimated implementation and
 preflight time: one development day; no primary test job is released unless
 the recorded action and visits reproduce that known root.
+
+#### Local implementation status — 18 September 2026
+
+The compact recorder is implemented behind the evaluation-only flag
+`--eval-mcts-first-divergence-record`. With the flag absent, the historical
+selector path and historical completion-ledger signature are preserved. With
+the flag present, each instance emits at most one
+`[MCTS FIRST DIVERGENCE] {json}` line after the ordinary selector has already
+chosen its action. The recorder is therefore an observer, not an alternative
+action-selection implementation.
+
+Schema `mcts-first-divergence-v1` records:
+
+- checkpoint path, trainer/worker seed, evaluation index, exact PDDL paths,
+  VH mode and all fixed/PW search settings;
+- physical-state, action-history, applicability and successor-state digests;
+- full action-space vectors for raw and applicable-masked network policy,
+  MCTS visit distribution, edge visits, expansion membership, edge priors,
+  Q, U and sign-correct `Q+U`; unexpanded PW actions are explicit `null`
+  Q/U/prior entries rather than fabricated zero values;
+- the actual external-selector path, including goal chase, terminal safety,
+  duplicate control and visit-tie resolution. The final selector-input vector
+  is retained separately from the original visit distribution;
+- entropy/JS summaries, tie count, margin/share/prominence, policy rank and
+  expansion membership, Q-versus-U argmax attribution, timing counters and
+  search-depth histogram.
+
+Focused local tests cover entropy/JS, full-vector alignment with unexpanded
+actions, non-divergence suppression, goal-chase/tie provenance and a SAFE
+transformation in which the final selector vector differs from the original
+visit vector. The complete progressive-widening/selection test module passes
+29/29 locally, including an exact expanded-root reconstruction from the
+existing Counters job-21178321 trace fixture. Python syntax compilation passes
+for the recorder, both
+CLI layers, evaluation-spec plumbing, worker integration and manifest builder.
+
+`build_stage1_manifest.py` freezes the Stage-0 candidates into
+`stage1_grouped_tasks.csv` and `stage1_grouped_tasks.freeze.json`: ten primary
+fixed tasks plus the two requested optional FO-Counters PW70/Kmin3 tasks,
+40 exact candidate runs in total. Block Grouping and Counters reproduce the
+narrow 5/20 comparator; Drone, FO Counters and Rover reproduce their original
+normal fixed 20/70 arm. Both preserve estimator coefficient 0.5 and PUCT
+exploration weight 0.1 from the source evaluations. A task is a sequential
+group of up to four
+exact checkpoint/seed/instance runs; candidates within a task do not
+incorrectly share a checkpoint. Every row is marked `submitted=false` and is
+gated on `known_counters_root_compute_smoke_passed`. No Slurm command was run
+and no cluster state was modified.
+
+The remaining pre-release work requires the compute-node environment and exact
+remote checkpoint/log tree:
+
+1. deploy the code to an isolated cluster worktree without changing the active
+   experiment payload;
+2. run one exact VH-on Counters 5/20, action-ID smoke using checkpoint
+   `src20430427_e0000` and `fz_instance_51.pddl`;
+3. require its first divergence to reproduce decision 1, selected action 52
+   versus policy action 50, root visits 25 and total edge visits 24, while the
+   JSON vectors pass schema/length/finite-value checks and match the frozen
+   expanded-child fixture;
+4. compare the emitted root against the existing counterfactual and visit
+   audit, then freeze the deployed commit/checksum in the task ledger;
+5. only after that gate passes, render exact per-candidate commands from the
+   grouped manifest and request explicit approval for the 10 fixed plus two
+   optional PW task submissions.
+
+The local fixture smoke establishes record construction but cannot establish
+that JPDDL, checkpoint loading and the cluster TensorFlow stack reproduce the
+known root. Consequently Stage 1 is implemented and locally verified, but it
+is not yet compute-node-smoke-complete and the grouped campaign remains
+unsubmitted.
 
 ### Stage 2 — fill only genuinely missing strata
 

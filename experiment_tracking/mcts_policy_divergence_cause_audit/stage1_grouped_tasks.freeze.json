@@ -1,0 +1,11 @@
+{
+  "candidate_runs": 40,
+  "grouped_manifest": "stage1_grouped_tasks.csv",
+  "grouped_manifest_sha256": "56204d595a70d4b92eabf88970612d36c69506af864c4b56506136f524744659",
+  "optional_fo_pw_tasks": 2,
+  "primary_fixed_tasks": 10,
+  "schema_version": "mcts-divergence-stage1-task-freeze-v1",
+  "source_manifest": "stage0_missing_strata_manifest.csv",
+  "source_manifest_sha256": "568be5de0a01ee17cd8f77bd39f199e50784431cf10bc24d5f4d9630ed2a213b",
+  "submitted": false
+}

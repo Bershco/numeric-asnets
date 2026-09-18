@@ -1,0 +1,5 @@
+domain,checkpoint_tasks,states_per_task,shared_core_states,on_policy_states_per_task,cpus_per_task,memory_gib_per_task,time_limit_hours_per_task,max_concurrent_cpu,max_concurrent_memory_gib,estimate_status
+drone,4,60,40,20,4,48,8,16,192,provisional_until_6-state_preflight
+fo_counters,4,60,40,20,4,64,8,16,256,provisional_until_6-state_preflight
+rover,4,60,40,20,4,96,12,16,384,provisional_until_6-state_preflight
+mprime,4,60,40,20,4,120,12,16,480,provisional_until_6-state_preflight

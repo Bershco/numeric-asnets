@@ -26,6 +26,13 @@ mechanism but cannot estimate prevalence across independent primary networks.
   and targets that it consumes. The deterministic-current arm starts from the
   identical checkpoint and replays those files with the identical fixed
   optimizer RNG. Thus only KL current-policy semantics differ.
+- This pairing is checkpoint-specific: no network is updated from another
+  network's replay. It is nevertheless a controlled *conditional* comparison.
+  After the first update, a deterministic-current network might have generated
+  different states and targets if allowed to interact with the environment.
+  The 60-step result therefore estimates the direct update effect of KL
+  semantics conditional on the legacy-generated data stream; it is not an
+  endogenous one-epoch or 100-epoch algorithm-performance comparison.
 - A fail-closed verifier requires source-checkpoint hashes, ordered replay
   hashes, per-step RNG, step-0 policy-gradient norm and target-disagreement bits
   to match before endpoint evaluation.
@@ -95,3 +102,36 @@ exact sign-flip p-values and Holm corrections. Nodes `intl-14` and `intl-15`
 were added to the exclusion list after both produced native `-4` failures in
 the baseline array; the exact failed identities were resubmitted, not the
 whole array.
+
+## Final result
+
+The repaired chain completed all 50 primary lineages on 18 September 2026.
+`primary_lineage_results.csv` contains every source checkpoint and endpoint;
+`domain_summary.csv` contains all paired confidence intervals, exact
+sign-flip tests and within-family Holm corrections.
+
+| Domain | Starting policy | Legacy after 60 updates | Deterministic-current after the same frozen stream | Deterministic - legacy [95% CI] | Raw / Holm p |
+|---|---:|---:|---:|---:|---:|
+| Block Grouping | 16.3/20 | 14.6/20 | 15.2/20 | +0.6 [-0.92, 2.12] | .500 / 1.000 |
+| Drone | 5.9/20 | 5.5/20 | 6.2/20 | +0.7 [-0.47, 1.87] | .313 / 1.000 |
+| FO Counters | 4.2/20 | 2.1/20 | 2.7/20 | +0.6 [0.10, 1.10] | .063 / .313 |
+| Rover | 4.0/20 | 4.0/20 | 4.0/20 | 0.0 [-0.34, 0.34] | 1.000 / 1.000 |
+| Counters | 32.5/59 | 26.5/59 | 28.1/59 | +1.6 [-7.77, 10.97] | .750 / 1.000 |
+
+The only Holm-significant source-to-treatment contrast is FO Counters under
+legacy KL: 4.2 to 2.1, change -2.1 [-2.81, -1.39], raw p=.00195 and Holm
+p=.00977. Deterministic-current attenuates that loss to -1.5 [-2.41, -0.59],
+raw p=.0117 and Holm p=.0586. No deterministic-minus-legacy contrast is
+Holm-significant.
+
+The mechanistic conclusion is firm: deterministic-current KL removes the
+unintended initial anchor gradient. The coverage conclusion is narrower:
+under legacy-generated frozen data it is not uniformly better, but it avoids
+some severe individual losses and modestly improves four of five domain means.
+This diagnostic does not replace any primary RQ result.
+
+Any decision to make deterministic-current KL the primary pipeline requires
+matched full Stage-2 training where each arm generates its own replay. Drone
+is the cheap/stable candidate and FO Counters has the clearest systematic
+one-epoch harm/attenuation signal. Counters remains useful as a high-variance
+stress test, but is a weaker first choice for a clean method-effect estimate.

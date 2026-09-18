@@ -19,18 +19,24 @@ learned values. Keep three label sources separate:
 3. bounded ENHSP result/estimate — independent external planner evidence, not
    guaranteed optimal value.
 
-Metrics: MAE/MSE and calibration bins; Spearman/Kendall sibling ranking;
-pairwise ordering; top-value child regret and agreement with externally best
-successor; dead-end/unsolved discrimination where meaningful; and matched
-Stage-1 to Stage-2 change. Report per seed/domain rather than pretending every
-state is independent.
+Metrics are label-semantic-specific. MAE/MSE and calibration bins are allowed
+only for a label explicitly marked scale-comparable, currently exact persisted
+replay `z`. Raw ENHSP `h` and raw remaining-action counts are not on the learned
+bounded/transformed value scale, so they support Spearman/Kendall sibling
+ranking, pairwise ordering, top-child regret and best-successor agreement only.
+Goal, unsolved and timeout outcomes support separate classification metrics;
+they are not numeric calibration targets. Also report matched Stage-1 to
+Stage-2 change per seed/domain rather than pretending every state is an
+independent replicate.
 
-Recommended pilot: Rover, Drone and FO Counters; two predeclared VH-on seeds
-per domain; Stage-1 and validation-led Stage-2 checkpoints. This is 12
-checkpoint tasks, about 4 CPU and 40–120 GiB each, with an 8–12 hour bound
-depending on labels. Avoid Block Grouping initially because successor
-generation is expensive and Counters because extremely long trajectories can
-dominate. Add MPrime after endpoints freeze.
+The original recommended pilot was Rover, Drone and FO Counters with two
+predeclared VH-on seeds per domain. MPrime's exact Phase-B-A Stage-1 and final
+validation-led Stage-2 endpoint paths are now recorded locally, and both
+Stage-2 hashes are present. MPrime is therefore included as a conditional
+fourth domain. The design now contains **16 checkpoint tasks**, not 12. It
+remains blocked until every checkpoint and state manifest has a verified hash.
+Avoid Block Grouping initially because successor generation is expensive and
+ordinary Counters because extremely long trajectories can dominate.
 
 ### Implemented local preparation (2026-09-17)
 
@@ -46,34 +52,96 @@ probability mass, and rejection of VH-off networks.
 status, orientation, comparability, and log provenance. This prevents replay,
 continuation, and ENHSP targets from being silently pooled.
 
-This is preparation, not an executed V1 result. Before submission we still
-must predeclare two VH-on seeds per domain, freeze Stage-1 and validation-led
-Stage-2 checkpoint hashes, materialize the state-source mixture, implement the
-three independent label providers, and run a short memory/runtime preflight.
-No V1 cluster task has been submitted.
+`v1_checkpoint_candidates.csv` now freezes seeds `534933607` and `923500475`
+without selecting them on audit outcomes. For Drone, FO Counters and Rover it
+uses the canonical MAIN-VAL validation-selected Stage-1 and Stage-2 rows. For
+MPrime it uses the Phase-B-A Stage-1 selector and final validation-led Stage-2
+manifest. The candidate builder asserts the complete factorial and records a
+checksum of each source ledger.
+
+`v1_state_mixture.csv` predeclares one 60-state manifest per domain/seed
+lineage: 20 common planner-reached states, 20 common seeded-random legal-walk
+states, 10 Stage-1-policy states, and 10 Stage-2-policy states. Both checkpoints
+in a lineage must reference the exact same manifest and hash. The common 40
+states provide the primary paired comparison. Results on the two policy-state
+strata are reported separately as distribution-sensitivity evidence: a state
+from one policy is an intentionally out-of-distribution stress case for the
+other, not a claim about its natural trajectory distribution. No network is
+updated from these states, so this is a paired offline evaluation, not shared
+replay training.
+
+`v1_label_sources.csv` freezes label meanings, orientations, scale
+comparability, cache identities, timeouts and prohibited fallbacks. Replay `z`
+is the only currently comparable numeric scale. Raw ENHSP `h` and raw
+continuation length are explicitly non-comparable and rank/regret-only. Local
+provider scaffolding enforces that a timeout/unsolved/error cannot carry a
+fabricated numeric label. A strict preflight checks these comparability rules,
+the 16-task factorial, hashes, resources, label families, and the shared
+Stage-1/Stage-2 state-manifest identity.
+
+This is still preparation, not an executed V1 scientific result, and no V1
+cluster task has been submitted. The current strict preflight reports 30 row
+issues: 14 checkpoint hashes are absent (all but the two MPrime Stage-2 rows)
+and the eight shared state manifests have not been materialized, so their hash
+is absent from both checkpoint rows. Candidate identity is frozen; submission
+readiness is not.
 
 ### V1 execution plan and resources
 
-1. Freeze two seeds, exact Stage-1/Stage-2 checkpoint hashes and a state-source
-   mixture per domain before inspecting value scores.  Include policy-reached,
-   planner-reached and limited off-policy states so the audit is not restricted
-   to trajectories that the policy already survives.
-2. Materialize a checksumed state manifest and cache successor identities once.
+1. Materialize/verify the 14 missing checkpoint hashes and confirm the saved
+   training configuration uses the expected higher-is-better value target (not
+   raw minimization mode). Do not replace a missing endpoint based on audit
+   performance.
+2. Materialize the eight checksumed 60-state lineage manifests and cache
+   successor identities once. Stage-1 and Stage-2 must reference the same file.
    Cache each label family separately; never turn a timeout from one labeler
    into a numeric target from another.
-3. Run the twelve checkpoint tasks, then aggregate at the lineage/domain level.
+3. Run a six-state/domain preflight (two common planner, two common random, one
+   state from each policy stratum). Measure peak RSS, successors/state, ENHSP
+   latency, continuation latency and missing replay-label rate before releasing
+   the pilot.
+4. Run the sixteen checkpoint tasks, then aggregate at the lineage/domain level.
    State-level observations within a trajectory are not treated as independent
    seeds.
-4. Accept the V1 gate only if sibling ordering, top-child regret and dead-end
+5. Accept the V1 gate only if sibling ordering, top-child regret and dead-end
    discrimination are reproducible across both seeds in at least two domains.
    Global correlation alone is insufficient.
 
-Maximum simultaneous request: 48 CPU and 480 GiB–1.44 TiB, depending on the
-domain-specific memory preflight.  With full concurrency the cluster hard
-bound is 8–12 hours after manifests and label caches are ready.  Preparation,
-implementation and smoke testing are estimated at one development day.  Every
-aggregate CSV must include the checkpoint, state-manifest and raw label-log
-paths.
+The provisional per-task requests are Drone 4 CPU/48 GiB/8 h, FO Counters
+4 CPU/64 GiB/8 h, Rover 4 CPU/96 GiB/12 h, and MPrime 4 CPU/120 GiB/12 h.
+Releasing all 16 simultaneously would request 64 CPU and 1,312 GiB. These are
+ceilings pending the six-state preflight, not measured requirements. Label
+cache construction is a separate workload and is not included in that total.
+Every aggregate CSV must include checkpoint, state-manifest and raw label-log
+paths and hashes.
+
+### Remaining ambiguities and release blockers
+
+- Fourteen checkpoint hashes remain to be computed from the actual saved
+  checkpoint payload. A path/epoch match is not a hash substitute.
+- The eight state manifests and their canonical serialized-state hashes do not
+  exist yet; the plan fixes quotas and selection rules, not the realized states.
+- Historical replay targets may be absent for validation states. Missing is an
+  allowed observation; generating new checkpoint-specific MCTS targets would
+  be a separate, explicitly circular diagnostic and is not silently substituted.
+- Deterministic continuation uses the audited checkpoint's stable policy
+  argmax. It is therefore a within-checkpoint utility label, not common ground
+  truth for the paired Stage-1/Stage-2 comparison.
+- ENHSP raw heuristic values are independent planner evidence, not optimal
+  costs. State injection, planner status parsing and cache writing still need
+  the domain-specific adapter and smoke test.
+- Raw ENHSP `h` and remaining-action counts are not scale-comparable with the
+  normally bounded/transformed learned value. Calibration against either would
+  require a separately named transformed label with the exact training formula,
+  coefficient/minimization mode and configuration hash frozen first. No such
+  transformed label is part of V1 yet.
+- The saved configuration must confirm raw-value orientation, minimization mode
+  and target transform before any scale-sensitive metric is computed; the
+  schema records orientation and scale comparability explicitly.
+- Resource requests and the 300 s ENHSP / 900 s continuation limits are
+  provisional until the four-domain preflight measures tails and peak memory.
+- MPrime expands the pilot from 12 to 16 tasks. Its two Stage-2 hashes are
+  locally frozen; both Stage-1 hashes are still blockers.
 
 ## Phase V2: raw-value-greedy inference
 
@@ -115,8 +183,9 @@ surprising trajectory-level behavior worth investigating.
 ## Interpretation limits
 
 Planner estimates are not optimal ground truth; label sources must not be
-pooled. Global correlations can be driven by instance difficulty, so sibling
-ranking is more informative. Policy-only states have survivorship bias; sample
-off-policy/planner-reachable states too. A failed value-greedy trajectory can
-reflect compounding distribution shift or successor-generation cost as well as
-poor calibration.
+pooled. Raw-cost labels must not be used for MAE/MSE or calibration against the
+bounded learned value. Global correlations can be driven by instance
+difficulty, so sibling ranking is more informative. Policy-only states have
+survivorship bias; sample off-policy/planner-reachable states too. A failed
+value-greedy trajectory can reflect compounding distribution shift or
+successor-generation cost as well as poor calibration.

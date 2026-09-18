@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -13,6 +15,35 @@ from pathlib import Path
 def read_csv(path: Path) -> list[dict[str, str]]:
     with path.open(newline="", encoding="utf-8-sig") as stream:
         return list(csv.DictReader(stream))
+
+
+def read_jsonl(path: Path) -> list[dict[str, object]]:
+    return [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+
+def verify_recovery_record(
+    *, temporary: Path, expected_number: int, expected_path: str,
+) -> None:
+    recovered = read_jsonl(temporary)
+    if len(recovered) != 1:
+        raise RuntimeError(
+            f"exact recovery must produce one record, found {len(recovered)}: {temporary}"
+        )
+    record = recovered[0]
+    if int(record["instance_number"]) != expected_number:
+        raise RuntimeError(
+            f"recovery instance {record['instance_number']} != {expected_number}"
+        )
+    if record["instance_path"] != expected_path:
+        raise RuntimeError(
+            f"recovery path {record['instance_path']!r} != {expected_path!r}"
+        )
+    if not record.get("evaluation_signature"):
+        raise RuntimeError(f"recovery record lacks its own signature: {temporary}")
 
 
 def main() -> int:
@@ -60,6 +91,16 @@ def main() -> int:
     if not 1 <= instance <= 20:
         raise ValueError(f"invalid recovery instance: {instance}")
 
+    recovery_job_id = os.environ.get("SLURM_JOB_ID", "local")
+    temporary = (
+        args.campaign_root / source["search_method"] / source["value_head"] /
+        source["seed"] / "recovery_completion" /
+        f"instance_{instance}_{recovery_job_id}.jsonl"
+    )
+    temporary.parent.mkdir(parents=True, exist_ok=True)
+    if temporary.exists():
+        temporary.unlink()
+
     command = [
         sys.executable,
         str(args.checkout / "scripts" / "run_mprime_final_stage2_search_20260916.py"),
@@ -72,13 +113,26 @@ def main() -> int:
         "--output-root", str(args.campaign_root),
         "--code-commit", args.code_commit,
         "--only-instance-number", str(instance),
+        "--completion-file-override", str(temporary),
     ]
     print(
         "[MPRIME FINAL S2 EXACT RECOVERY] "
         f"recovery_index={args.recovery_index} manifest_id={row['manifest_id']} "
         f"instance={instance} path={row['instance_path']}"
     )
-    return subprocess.run(command).returncode
+    returncode = subprocess.run(command).returncode
+    if returncode:
+        return returncode
+    verify_recovery_record(
+        temporary=temporary, expected_number=instance,
+        expected_path=row["instance_path"],
+    )
+    print(
+        "[MPRIME FINAL S2 EXACT RECOVERY] "
+        f"instance={instance} disposition=verified_separate_ledger "
+        f"completion={temporary}"
+    )
+    return 0
 
 
 if __name__ == "__main__":

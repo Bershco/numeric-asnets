@@ -84,6 +84,15 @@ def main() -> int:
             "Used only by exact recovery jobs; the primary campaign omits it."
         ),
     )
+    parser.add_argument(
+        "--completion-file-override", type=Path,
+        help=(
+            "Write completion evidence to a separate ledger. Exact recovery "
+            "uses this because historical ledgers may use an older signature "
+            "schema; verified evidence remains separate and is reconciled by "
+            "exact manifest/checkpoint/instance identity."
+        ),
+    )
     parser.add_argument("--print-command", action="store_true")
     args = parser.parse_args()
 
@@ -120,7 +129,12 @@ def main() -> int:
     for directory in (completion_dir, attempts_dir, validation_dir):
         directory.mkdir(parents=True, exist_ok=True)
     identity = row["manifest_id"]
-    completion = completion_dir / f"{identity}.jsonl"
+    completion = (
+        args.completion_file_override
+        if args.completion_file_override is not None
+        else completion_dir / f"{identity}.jsonl"
+    )
+    completion.parent.mkdir(parents=True, exist_ok=True)
     job_id = os.environ.get("SLURM_JOB_ID", "local")
     restart = os.environ.get("SLURM_RESTART_COUNT", "0")
     attempt = f"{job_id}_r{restart}"

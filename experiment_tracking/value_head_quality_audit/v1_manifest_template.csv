@@ -1,1 +1,1 @@
-task_id,domain,seed,stage,checkpoint_role,checkpoint_path,checkpoint_sha256,state_manifest_path,state_manifest_sha256,state_sources,label_sources,cpus,memory_gib,time_limit_hours,status
+task_id,domain,seed,stage,value_head,checkpoint_role,checkpoint_path,checkpoint_sha256,source_training_job_id,snapshot_epoch,source_manifest,source_manifest_sha256,selection_rule,state_manifest_path,state_manifest_sha256,state_sources,label_sources,cpus,memory_gib,time_limit_hours,status

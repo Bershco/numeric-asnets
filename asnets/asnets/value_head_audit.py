@@ -9,9 +9,11 @@ never silently pooled.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Callable, Iterable, Sequence
+from typing import Callable, Iterable, Mapping, Protocol, Sequence
 
 import numpy as np
+
+from .value_head_audit_manifest import validate_task_manifest_rows
 
 
 @dataclass(frozen=True)
@@ -23,6 +25,117 @@ class SuccessorValueRow:
     raw_network_value: float
     successor_terminal: bool
     successor_goal: bool
+
+
+@dataclass(frozen=True)
+class LabelResult:
+    """One label-family result for a single, stable successor identity.
+
+    A non-``valid`` result never carries a numeric value.  In particular,
+    timeout and unsolved are observations, not substitute heuristic values.
+    """
+
+    label_source: str
+    label_status: str
+    label_value: float | None
+    label_higher_is_better: bool
+    label_scale_comparable: bool
+    label_log_path: str
+
+
+class LabelProvider(Protocol):
+    """Resolve one label family without falling back to another family."""
+
+    def label(self, row: SuccessorValueRow) -> LabelResult:
+        ...
+
+
+def successor_key(row: SuccessorValueRow) -> tuple[str, int, int]:
+    """Return the stable join key shared by all independent label caches."""
+
+    return row.state_id, row.action_id, row.successor_index
+
+
+class MappingLabelProvider:
+    """Label provider for a checksumed, already-materialized numeric cache."""
+
+    def __init__(
+        self,
+        *,
+        label_source: str,
+        values: Mapping[tuple[str, int, int], float],
+        higher_is_better: bool,
+        scale_comparable: bool,
+        label_log_path: str,
+    ):
+        if not label_source:
+            raise ValueError("label_source must be non-empty")
+        if not label_log_path:
+            raise ValueError("label_log_path must be non-empty")
+        self._label_source = label_source
+        self._values = values
+        self._higher_is_better = bool(higher_is_better)
+        self._scale_comparable = bool(scale_comparable)
+        self._label_log_path = label_log_path
+
+    def label(self, row: SuccessorValueRow) -> LabelResult:
+        value = self._values.get(successor_key(row))
+        return LabelResult(
+            label_source=self._label_source,
+            label_status="valid" if value is not None else "missing",
+            label_value=None if value is None else float(value),
+            label_higher_is_better=self._higher_is_better,
+            label_scale_comparable=self._scale_comparable,
+            label_log_path=self._label_log_path,
+        )
+
+
+class CallableLabelProvider:
+    """Adapter for continuation/planner runners that preserve status.
+
+    The injected callable is responsible for resolving the persisted
+    successor identity and returning a :class:`LabelResult`.  This keeps the
+    audit module independent of ENHSP and simulator startup while still
+    enforcing the no-fallback/no-timeout-as-number contract.
+    """
+
+    def __init__(self, fn: Callable[[SuccessorValueRow], LabelResult]):
+        self._fn = fn
+
+    def label(self, row: SuccessorValueRow) -> LabelResult:
+        return validate_label_result(self._fn(row))
+
+
+def validate_label_result(result: LabelResult) -> LabelResult:
+    """Validate status/value semantics shared by every V1 label family."""
+
+    allowed = {"valid", "missing", "timeout", "unsolved", "error", "not_applicable"}
+    if result.label_status not in allowed:
+        raise ValueError(f"unknown label status: {result.label_status}")
+    if not result.label_source:
+        raise ValueError("label_source must be non-empty")
+    if not result.label_log_path:
+        raise ValueError("label_log_path must be non-empty")
+    if result.label_status == "valid":
+        if result.label_value is None or not np.isfinite(result.label_value):
+            raise ValueError("valid label requires a finite numeric value")
+    elif result.label_value is not None:
+        raise ValueError(
+            f"{result.label_status} label must not carry a numeric value"
+        )
+    return result
+
+
+def apply_label_provider(
+    rows: Sequence[SuccessorValueRow], provider: LabelProvider
+) -> list[dict[str, object]]:
+    """Join exactly one label family to raw values without pooling families."""
+
+    labelled: list[dict[str, object]] = []
+    for row in rows:
+        result = validate_label_result(provider.label(row))
+        labelled.append({**asdict(row), **asdict(result)})
+    return labelled
 
 
 def evaluate_successor_values(

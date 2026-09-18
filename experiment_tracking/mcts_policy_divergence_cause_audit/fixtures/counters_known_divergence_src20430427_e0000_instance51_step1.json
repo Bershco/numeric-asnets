@@ -1,0 +1,21 @@
+{
+  "checkpoint_identity": "src20430427_e0000",
+  "source_job": "21178321",
+  "source_log": "/home/hersco/training_new_domains/2026-09-10/counters_visit_audit/21178321_parallel_control_on.txt",
+  "value_head": "on",
+  "seed": 1963100312,
+  "instance": "fz_instance_51.pddl",
+  "step": 1,
+  "root_visits": 25,
+  "exploration_weight": 0.1,
+  "total_edge_visits": 24,
+  "network_argmax_action": 50,
+  "selected_action": 52,
+  "children": [
+    {"action": 50, "N": 14, "Q": 0.22138825058937073, "U": 0.0009181356678406397, "prior": 0.027544070035219193},
+    {"action": 52, "N": 10, "Q": 0.22138825058937073, "U": 0.0008995686234398323, "prior": 0.019790509715676308},
+    {"action": 53, "N": 0, "Q": 0.0, "U": 0.009895254857838156, "prior": 0.019790509715676308},
+    {"action": 54, "N": 0, "Q": 0.0, "U": 0.009895254857838156, "prior": 0.019790509715676308},
+    {"action": 55, "N": 0, "Q": 0.0, "U": 0.009895254857838156, "prior": 0.019790509715676308}
+  ]
+}

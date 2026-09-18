@@ -198,9 +198,14 @@ def merge_evidence(
     return terminal, conflicts, oom_hints
 
 
-def identity_paths(campaign_root: Path, row: dict[str, str]) -> tuple[Path, list[Path]]:
+def identity_paths(campaign_root: Path, row: dict[str, str]) -> tuple[list[Path], list[Path]]:
     identity_root = campaign_root / row["search_method"] / row["value_head"] / row["seed"]
-    ledger = identity_root / "completion" / f"{row['manifest_id']}.jsonl"
+    ledgers = [identity_root / "completion" / f"{row['manifest_id']}.jsonl"]
+    # Exact-instance recovery intentionally uses its own filtered-test-set
+    # signature and therefore never appends to or rewrites the historical
+    # full-test-set ledger. Scientific reconciliation joins the separate,
+    # internally signed record by exact instance number and path.
+    ledgers.extend(sorted((identity_root / "recovery_completion").glob("*.jsonl")))
     logs = sorted((identity_root / "attempts").glob("*.txt"))
     array_index = row["array_index"]
     logs.extend(sorted((campaign_root / "slurm").glob(f"*_{array_index}.out")))
@@ -212,7 +217,7 @@ def identity_paths(campaign_root: Path, row: dict[str, str]) -> tuple[Path, list
         if resolved not in seen:
             seen.add(resolved)
             unique.append(path)
-    return ledger, unique
+    return ledgers, unique
 
 
 def reconcile_identity(
@@ -224,8 +229,14 @@ def reconcile_identity(
     expected = int(row["expected_test_instances"])
     if expected != 20:
         raise ValueError(f"{row['manifest_id']}: expected_test_instances must be 20")
-    ledger_path, log_paths = identity_paths(campaign_root, row)
-    ledger = evidence_from_ledger(ledger_path, max_actions)
+    ledger_paths, log_paths = identity_paths(campaign_root, row)
+    ledger_evidence = [
+        evidence_from_ledger(path, max_actions) for path in ledger_paths
+    ]
+    ledger: dict[int, list[Evidence]] = defaultdict(list)
+    for source in ledger_evidence:
+        for number, entries in source.items():
+            ledger[number].extend(entries)
     log_evidence = [
         evidence_from_log(
             path, declared_timeout=declared_timeout, max_actions=max_actions
