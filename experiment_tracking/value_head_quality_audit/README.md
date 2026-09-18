@@ -96,12 +96,16 @@ readiness is not yet claimed.
 
 On 18 September 2026, smoke `21453653` correctly exposed that the isolated
 checkout lacked the ignored compiled TensorFlow operator; no scientific work
-ran. The checksum-verified production operator is now linked into the isolated
-checkout. Corrected smoke `21453918` is running. The four two-task capture
-arrays are already dependency-pending as `21453919` (Drone), `21453920`
-(FO Counters), `21453921` (Rover), and `21453922` (MPrime), with finalizer
-`21453923` dependent on all eight captures. Thus no user input remains: the
-paired-state manifests will materialize automatically after the smoke passes.
+ran. The checksum-verified production operator was linked into the isolated
+checkout. Smoke `21453918` then reached state capture but exposed that
+`to_tup_state()` omits MDPSim special fluents, so its round-trip record could
+not be restored. Commit `2b86060b` fixes the serializer to preserve the full
+fluent vector, including total cost, and passes 17/17 focused tests. Repaired
+smoke `21454176` is resource-pending. The four two-task capture arrays are
+dependency-pending as `21454177` (Drone), `21454178` (FO Counters), `21454179`
+(Rover), and `21454180` (MPrime), with finalizer `21454181` dependent on all
+eight captures. No user input remains: the paired-state manifests materialize
+automatically after the smoke passes.
 
 ### V1 execution plan and resources
 
