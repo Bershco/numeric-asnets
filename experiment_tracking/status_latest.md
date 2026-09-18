@@ -1,6 +1,6 @@
 # Current experiment status
 
-Updated: 2026-09-18T10:20:20+03:00.
+Updated: 2026-09-18T10:44:00+03:00.
 
 Primary RQ evidence is validation-led only. Terminal-led campaigns remain
 provenance archives and are excluded from primary tables and plots.
@@ -9,11 +9,13 @@ provenance archives and are excluded from primary tables and plots.
 
 | Experiment | State and scientific progress | Allocated resources |
 |---|---|---:|
-| MPrime final Stage-2 fixed/PW70 exact recovery | All 40 original tasks are scheduler-terminal: 25 completed normally and 15 OOM. Scientific reconciliation found 784/800 terminal identities: 677 successes, 107 exact six-hour timeouts and 16 genuinely unclassified fixed-search instances. Recovery array `21449285_[0-15]` runs only those 16; `21449286` performs the final reconciliation. Current lower bounds are fixed/off >=14.2/15.8/16.6, fixed/on >=12.9/14.6/16.0, PW70/off 16.0/17.7/17.9 and PW70/on 15.2/17.0/17.2 at 30m/2h/6h. | Up to 32 CPU / 1,920 GiB, plus 1 CPU / 4 GiB dependency-pending |
-| Counters strict tie-break exact tail | The last Action-ID arm reconciles to 58/59 terminal identities: 28 successes and 30 exact six-hour timeouts. Instance 59 is one of those terminal timeouts; instance 44 alone remains unclassified. Exact recovery `21449257_[1]` is running, followed by full-root trace controller `21449258`. | 2 CPU / 200 GiB, plus 1 CPU / 2 GiB dependency-pending |
+| MPrime final Stage-2 fixed/PW70 exact recovery | All 40 original tasks are scheduler-terminal: 25 completed normally and 15 OOM. Scientific reconciliation found 784/800 terminal identities: 677 successes, 107 exact six-hour timeouts and 16 genuinely unclassified fixed-search instances. The first two operational recovery attempts failed safely before inference because they used the pre-fix checkout. Corrected array `21449642_[0-15]` is now verified on commit `e5b44c25` and writes separate recovery ledgers; `21449643` performs the final reconciliation. Current lower bounds are fixed/off >=14.2/15.8/16.6, fixed/on >=12.9/14.6/16.0, PW70/off 16.0/17.7/17.9 and PW70/on 15.2/17.0/17.2 at 30m/2h/6h. | 32 CPU / 1,920 GiB, plus one dependency-pending finalizer |
+| Counters strict tie-break exact tail | The last Action-ID arm reconciles to 58/59 terminal identities: 28 successes and 30 exact six-hour timeouts. Evaluator slot 59 is a terminal timeout; slot 44 alone remains unclassified. Exact recovery `21449257_[1]` is running, followed by full-root trace controller `21449258`. A newer exact duplicate, `21449584_[1]` plus controller `21449585`, targets the same identity and completion ledger; the newer pair should be cancelled after exact-ID authorization to avoid a shared-ledger collision. | 4 CPU / 400 GiB across the original and accidental duplicate; controllers allocate zero while pending |
+| MCTS first-divergence audit | Known-root smoke `21449720` is running on commit `30a1b1a5`. The ten fixed grouped tasks `21449721` and two optional FO-Counters PW70 tasks `21449722` are strictly `afterok`-gated; Slurm confirms they cannot start unless the smoke succeeds. | Smoke 2 CPU / 120 GiB; grouped arrays currently allocate zero while dependency-pending |
 
-At the snapshot, active/releasing scientific work requested at most 34 CPU /
-2,120 GiB. Dependency-pending controllers allocate nothing until released.
+At the snapshot, active work requested 38 CPU / 2,440 GiB, including the
+accidental duplicate Counters recovery. Dependency-pending controllers allocate
+nothing until released.
 
 ## Scientific interpretation
 
@@ -31,7 +33,8 @@ At the snapshot, active/releasing scientific work requested at most 34 CPU /
 - The Counters primary RQ values remain frozen until instance 44 and the exact
   full-root trace follow-up complete.
 - The compact MCTS first-divergence recorder and grouped candidate manifest are
-  locally implemented; compute-node smoke remains mandatory before submission.
+  implemented. Its known-root compute smoke is live; the grouped fixed and
+  optional FO-PW arrays are submitted but strictly dependency-gated on success.
   The value-head V1 design now uses identical shared state manifests for each
   matched Stage-1/Stage-2 pair, but checkpoint hashes and eight state manifests
   remain deliberately preflight-blocking. Neither is yet a scientific result.

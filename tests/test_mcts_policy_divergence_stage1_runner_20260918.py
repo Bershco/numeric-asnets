@@ -106,6 +106,13 @@ class Stage1RunnerTests(unittest.TestCase):
         self.assertEqual(row["source_training_job_id"], "20430427")
         self.assertIn("/snapshot_0_", checkpoint)
         self.assertEqual(runner.instance_index(ROOT, "counters", "fz_instance_51.pddl"), 49)
+        self.assertEqual(
+            {key: runner.SMOKE[key] for key in (
+                "step", "policy_action", "selected_action",
+                "root_visits", "total_edge_visits")},
+            {"step": 0, "policy_action": 52, "selected_action": 101,
+             "root_visits": 20, "total_edge_visits": 19},
+        )
 
 
 if __name__ == "__main__":

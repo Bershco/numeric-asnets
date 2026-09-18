@@ -213,8 +213,8 @@ remote checkpoint/log tree:
    experiment payload;
 2. run one exact VH-on Counters 5/20, action-ID smoke using checkpoint
    `src20430427_e0000` and `fz_instance_51.pddl`;
-3. require its first divergence to reproduce decision 1, selected action 52
-   versus policy action 50, root visits 25 and total edge visits 24, while the
+3. require its first divergence to reproduce decision 0, selected action 101
+   versus policy action 52, root visits 20 and total edge visits 19, while the
    JSON vectors pass schema/length/finite-value checks and match the frozen
    expanded-child fixture;
 4. compare the emitted root against the existing counterfactual and visit

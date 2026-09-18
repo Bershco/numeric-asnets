@@ -49,11 +49,14 @@ SMOKE = {
     "value_head": "on",
     "seed": 1963100312,
     "instance": "fz_instance_51.pddl",
-    "step": 1,
-    "root_visits": 25,
-    "total_edge_visits": 24,
-    "policy_action": 50,
-    "selected_action": 52,
+    # The historical log 21178321 first diverges at step 0.  Step 1 is also a
+    # policy/search mismatch, but it is not the first one and is therefore not
+    # the correct invariant for a first-divergence recorder.
+    "step": 0,
+    "root_visits": 20,
+    "total_edge_visits": 19,
+    "policy_action": 52,
+    "selected_action": 101,
 }
 
 

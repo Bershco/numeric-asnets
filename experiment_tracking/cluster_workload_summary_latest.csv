@@ -1,6 +1,8 @@
 snapshot_time_idt,experiment,state,jobs,allocated_cpus,allocated_memory_gib,scheduler_source
-2026-09-18T10:20:20+03:00,MPrime fixed/PW exact recovery,RUNNING_OR_COMPLETING,16,32,1920.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-18T10:20:20+03:00,Counters instance44 exact recovery,RUNNING,1,2,200.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-18T10:20:20+03:00,MPrime/Counters downstream controllers,DEPENDENCY_PENDING,2,0,0.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-18T10:20:20+03:00,PRIMARY-50 KL crossover,COMPLETED,0,0,0.0,experiment_tracking/cluster_workload_latest.csv
-2026-09-18T10:20:20+03:00,Total allocated workload,RUNNING_OR_COMPLETING,17,34,2120.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-18T10:41:00+03:00,MPrime fixed/PW exact recovery,RUNNING,16,32,1920.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-18T10:41:00+03:00,Counters instance44 exact recovery plus accidental duplicate,RUNNING,2,4,400.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-18T10:44:00+03:00,MCTS divergence known-root smoke,RUNNING,1,2,120.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-18T10:44:00+03:00,MCTS divergence grouped fixed and optional FO-PW,DEPENDENCY_PENDING,12,0,0.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-18T10:41:00+03:00,MPrime/Counters downstream controllers,DEPENDENCY_PENDING,3,0,0.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-18T10:41:00+03:00,PRIMARY-50 KL crossover,COMPLETED,0,0,0.0,experiment_tracking/cluster_workload_latest.csv
+2026-09-18T10:44:00+03:00,Total allocated workload,RUNNING,19,38,2440.0,experiment_tracking/cluster_workload_latest.csv
