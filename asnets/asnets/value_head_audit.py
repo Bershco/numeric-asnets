@@ -8,12 +8,114 @@ never silently pooled.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import asdict, dataclass
 from typing import Callable, Iterable, Mapping, Protocol, Sequence
 
 import numpy as np
 
 from .value_head_audit_manifest import validate_task_manifest_rows
+
+
+STATE_RECORD_SCHEMA = "value-head-audit-canonical-state-v1"
+STATE_HASH_FIELDS = (
+    "schema", "atoms", "fluents", "aux_data", "aux_data_interp",
+    "network_input", "is_goal", "is_terminal",
+)
+
+
+def _canonical_json_bytes(value: Mapping[str, object]) -> bytes:
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+
+
+def _state_hash_payload(record: Mapping[str, object]) -> dict[str, object]:
+    return {field: record[field] for field in STATE_HASH_FIELDS}
+
+
+def canonical_state_record(state, **metadata: object) -> dict[str, object]:
+    """Serialize an exact audit state, including history-dependent features.
+
+    Physical PDDL state alone is insufficient when action-history data
+    generators are enabled.  The frozen payload therefore includes the exact
+    auxiliary vector and its interpretation as well as a network-input witness.
+    """
+
+    atoms, fluents = state.to_tup_state()
+    payload: dict[str, object] = {
+        "schema": STATE_RECORD_SCHEMA,
+        "atoms": list(atoms),
+        "fluents": [[name, float(value)] for name, value in fluents],
+        "aux_data": np.asarray(state.aux_data, dtype=np.float32).tolist(),
+        "aux_data_interp": list(state._aux_data_interp or ()),
+        "network_input": np.asarray(
+            state.to_network_input(), dtype=np.float32
+        ).tolist(),
+        "is_goal": bool(state.is_goal),
+        "is_terminal": bool(state.is_terminal),
+    }
+    payload.update(metadata)
+    payload["state_sha256"] = hashlib.sha256(
+        _canonical_json_bytes(_state_hash_payload(payload))
+    ).hexdigest()
+    return payload
+
+
+def validate_canonical_state_record(record: Mapping[str, object]) -> None:
+    """Reject a mutated or incomplete serialized canonical state."""
+
+    if record.get("schema") != STATE_RECORD_SCHEMA:
+        raise ValueError("unknown canonical-state record schema")
+    recorded_hash = record.get("state_sha256")
+    if not isinstance(recorded_hash, str):
+        raise ValueError("state_sha256 is missing")
+    try:
+        hash_payload = _state_hash_payload(record)
+    except KeyError as exc:
+        raise ValueError(
+            f"canonical-state record is missing {exc.args[0]}"
+        ) from exc
+    actual_hash = hashlib.sha256(_canonical_json_bytes(hash_payload)).hexdigest()
+    if actual_hash != recorded_hash:
+        raise ValueError("canonical-state record hash mismatch")
+    for field in ("atoms", "fluents", "aux_data", "aux_data_interp", "network_input"):
+        if field not in record:
+            raise ValueError(f"canonical-state record is missing {field}")
+
+
+def restore_canonical_state(record: Mapping[str, object], planner_exts):
+    """Restore and verify a manifest state against one PlannerExtensions."""
+
+    from .state_reprs import CanonicalState
+
+    validate_canonical_state_record(record)
+    prop_string = ", ".join(str(atom) for atom in record["atoms"])
+    flnt_string = ", ".join(
+        f"{name}: {float(value)}" for name, value in record["fluents"]
+    )
+    mdpsim_state = planner_exts.mdpsim_problem.intermediate_state(
+        prop_string, flnt_string
+    )
+    state = CanonicalState.from_mdpsim(
+        mdpsim_state, planner_exts, is_init_cstate=False
+    )
+    state._aux_data = np.asarray(record["aux_data"], dtype=np.float32)
+    state._aux_data_interp = list(record["aux_data_interp"])
+    state._aux_data_interp_to_id = {
+        name: index for index, name in enumerate(state._aux_data_interp)
+    }
+    expected = np.asarray(record["network_input"], dtype=np.float32)
+    actual = np.asarray(state.to_network_input(), dtype=np.float32)
+    if expected.shape != actual.shape or not np.array_equal(expected, actual):
+        raise ValueError("restored state does not reproduce exact network input")
+    if bool(record["is_goal"]) != bool(state.is_goal):
+        raise ValueError("restored state goal flag mismatch")
+    if bool(record["is_terminal"]) != bool(state.is_terminal):
+        raise ValueError("restored state terminal flag mismatch")
+    return state
 
 
 @dataclass(frozen=True)
@@ -104,6 +206,62 @@ class CallableLabelProvider:
 
     def label(self, row: SuccessorValueRow) -> LabelResult:
         return validate_label_result(self._fn(row))
+
+
+def enhsp_search_value(
+    raw_h: float, *, coefficient: float = 1.0, minimization: bool = False
+) -> float:
+    """Apply the exact ENHSP transform used by current search.
+
+    This mirrors ``post_training.training_mcts.get_est_v`` after the raw
+    estimator result is available.  V1 freezes ``coefficient=1.0`` and
+    ``minimization=False`` in a checksumed configuration artifact.
+    """
+
+    raw_h = float(raw_h)
+    coefficient = float(coefficient)
+    if not np.isfinite(raw_h) or raw_h < 0:
+        raise ValueError("raw ENHSP h must be finite and nonnegative")
+    if not np.isfinite(coefficient) or coefficient <= 0:
+        raise ValueError("ENHSP coefficient must be finite and positive")
+    if minimization:
+        return raw_h
+    return float(np.exp(-coefficient * raw_h))
+
+
+class ENHSPSearchValueProvider:
+    """Transform an independent raw-ENHSP provider into search-scale value."""
+
+    def __init__(
+        self,
+        raw_provider: LabelProvider,
+        *,
+        coefficient: float = 1.0,
+        minimization: bool = False,
+    ):
+        self._raw_provider = raw_provider
+        self._coefficient = coefficient
+        self._minimization = minimization
+
+    def label(self, row: SuccessorValueRow) -> LabelResult:
+        raw = validate_label_result(self._raw_provider.label(row))
+        if raw.label_source != "enhsp_raw_h":
+            raise ValueError("ENHSPSearchValueProvider requires enhsp_raw_h")
+        value = None
+        if raw.label_status == "valid":
+            value = enhsp_search_value(
+                raw.label_value,
+                coefficient=self._coefficient,
+                minimization=self._minimization,
+            )
+        return LabelResult(
+            label_source="enhsp_search_v",
+            label_status=raw.label_status,
+            label_value=value,
+            label_higher_is_better=not self._minimization,
+            label_scale_comparable=not self._minimization,
+            label_log_path=raw.label_log_path,
+        )
 
 
 def validate_label_result(result: LabelResult) -> LabelResult:

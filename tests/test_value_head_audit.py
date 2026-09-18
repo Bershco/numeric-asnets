@@ -6,11 +6,15 @@ import numpy as np
 
 from asnets.value_head_audit import (
     CallableLabelProvider,
+    ENHSPSearchValueProvider,
     LabelResult,
     MappingLabelProvider,
     apply_label_provider,
+    canonical_state_record,
+    enhsp_search_value,
     evaluate_successor_values,
     rows_as_dicts,
+    validate_canonical_state_record,
     validate_task_manifest_rows,
 )
 
@@ -37,7 +41,31 @@ class _ValueNetwork:
         return policy, values
 
 
+class _SerializableState:
+    def __init__(self):
+        self.aux_data = np.asarray([0.0, 1.0], dtype=np.float32)
+        self._aux_data_interp = ["is_enabled", "action_count"]
+        self.is_terminal = False
+        self.is_goal = False
+
+    def to_tup_state(self):
+        return (("at rover waypoint0",), (("fuel rover", 3.5),))
+
+    def to_network_input(self):
+        return np.asarray([1.0, 0.0, 1.0, 3.5], dtype=np.float32)
+
+
 class ValueHeadAuditTest(unittest.TestCase):
+    def test_canonical_state_hash_excludes_capture_metadata_and_detects_mutation(self):
+        state = _SerializableState()
+        first = canonical_state_record(state, instance_name="p0", step=1)
+        second = canonical_state_record(state, instance_name="p1", step=9)
+        self.assertEqual(first["state_sha256"], second["state_sha256"])
+        validate_canonical_state_record(first)
+        first["aux_data"][0] = 1.0
+        with self.assertRaisesRegex(ValueError, "hash mismatch"):
+            validate_canonical_state_record(first)
+
     def test_batches_all_applicable_successors_and_preserves_identity(self):
         root = _State([0], mask=[True, False, True])
         successors = {
@@ -152,7 +180,7 @@ class ValueHeadAuditTest(unittest.TestCase):
             "state_manifest_sha256": "b" * 64,
             "source_manifest_sha256": "c" * 64,
             "state_sources": "common_planner+common_random_legal+stage1_on_policy+stage2_on_policy",
-            "label_sources": "replay_target+deterministic_continuation+enhsp_raw_h",
+            "label_sources": "replay_target+deterministic_continuation+enhsp_raw_h+enhsp_search_v",
             "cpus": "4",
             "memory_gib": "48",
             "time_limit_hours": "8",
@@ -168,6 +196,32 @@ class ValueHeadAuditTest(unittest.TestCase):
         self.assertIn("checkpoint_sha256", "\n".join(
             validate_task_manifest_rows([row, bad], domains=["drone"], seeds=["1"])
         ))
+
+    def test_search_enhsp_transform_matches_deployed_formula(self):
+        self.assertAlmostEqual(enhsp_search_value(0.0), 1.0)
+        self.assertAlmostEqual(enhsp_search_value(2.0), np.exp(-2.0))
+        with self.assertRaisesRegex(ValueError, "nonnegative"):
+            enhsp_search_value(-1.0)
+
+    def test_search_enhsp_provider_transforms_only_valid_raw_h(self):
+        rows = evaluate_successor_values(
+            state=_State([0], mask=[True, True]),
+            state_id="s",
+            network=_ValueNetwork(),
+            successor_fn=lambda _state, action: [(1.0, _State([action, 1]))],
+        )
+        raw = MappingLabelProvider(
+            label_source="enhsp_raw_h",
+            values={("s", 0, 0): 2.0},
+            higher_is_better=False,
+            scale_comparable=False,
+            label_log_path="cache/enhsp.csv",
+        )
+        labelled = apply_label_provider(rows, ENHSPSearchValueProvider(raw))
+        self.assertAlmostEqual(labelled[0]["label_value"], np.exp(-2.0))
+        self.assertTrue(labelled[0]["label_scale_comparable"])
+        self.assertEqual(labelled[1]["label_status"], "missing")
+        self.assertIsNone(labelled[1]["label_value"])
 
 
 if __name__ == "__main__":

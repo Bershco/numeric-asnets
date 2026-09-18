@@ -1,0 +1,17 @@
+{
+  "schema": "value-head-audit-enhsp-search-transform-v1",
+  "label_source": "enhsp_search_v",
+  "input_label_source": "enhsp_raw_h",
+  "formula": "exp(-coefficient * h)",
+  "coefficient": 1.0,
+  "minimization": false,
+  "higher_is_better": true,
+  "scale_comparable": true,
+  "non_valid_status_rule": "propagate status and leave label_value null",
+  "deployed_source_commit": "b6985638",
+  "deployed_source_path": "post_training/training_mcts.py",
+  "deployed_source_sha256": "fa7b15fa2a8112ad8953f01c4c89d57e8fd5a88b62e89ed1829db52da7d0202f",
+  "deployed_source_function": "get_est_v",
+  "coefficient_provenance": "run_asnets default 1.0; representative frozen logs contain no --estimator-h-to-v-coeff override",
+  "interpretation": "Exact bounded ENHSP value used by current non-minimization MCTS search; retain raw h separately for rank/regret."
+}

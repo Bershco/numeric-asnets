@@ -31,6 +31,7 @@ FIELDS = (
     "state_sources", "label_sources", "cpus", "memory_gib",
     "time_limit_hours", "status",
 )
+HASH_LEDGER = OUT_DIR / "v1_checkpoint_hashes.csv"
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
@@ -62,7 +63,7 @@ def base_row(*, domain: str, seed: str, stage: str) -> dict[str, str]:
         "state_manifest_path": f"v1_states/vhv1-{domain}-{seed}-paired.jsonl",
         "state_manifest_sha256": "",
         "state_sources": "common_planner+common_random_legal+stage1_on_policy+stage2_on_policy",
-        "label_sources": "replay_target+deterministic_continuation+enhsp_raw_h",
+        "label_sources": "replay_target+deterministic_continuation+enhsp_raw_h+enhsp_search_v",
         "cpus": str(cpus),
         "memory_gib": str(memory),
         "time_limit_hours": str(hours),
@@ -133,6 +134,16 @@ def mprime_rows() -> list[dict[str, str]]:
 
 def main() -> None:
     rows = sorted(main_rows() + mprime_rows(), key=lambda r: (r["domain"], int(r["seed"]), r["stage"]))
+    hashes = {row["task_id"]: row for row in read_csv(HASH_LEDGER)}
+    if set(hashes) != {row["task_id"] for row in rows}:
+        raise RuntimeError("checkpoint hash ledger does not match frozen task factorial")
+    for row in rows:
+        verified = hashes[row["task_id"]]
+        recorded = row["checkpoint_sha256"]
+        if recorded and recorded != verified["checkpoint_sha256"]:
+            raise RuntimeError(f"canonical hash mismatch for {row['task_id']}")
+        row["checkpoint_sha256"] = verified["checkpoint_sha256"]
+        row["status"] = "frozen_checkpoint_verified_state_manifest_pending"
     output = OUT_DIR / "v1_checkpoint_candidates.csv"
     with output.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=FIELDS, lineterminator="\n")

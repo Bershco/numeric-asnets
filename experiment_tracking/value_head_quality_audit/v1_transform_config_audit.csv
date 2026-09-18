@@ -1,0 +1,17 @@
+task_id,source_training_job_id,estimator_h_to_v_coeff,minimization,audit_status
+vhv1-drone-534933607-stage1,20401202,1.0,false,explicit_log_match
+vhv1-drone-534933607-stage2,20451797,1.0,false,explicit_log_match
+vhv1-drone-923500475-stage1,20401205,1.0,false,explicit_log_match
+vhv1-drone-923500475-stage2,20451798,1.0,false,explicit_log_match
+vhv1-fo_counters-534933607-stage1,20401223,1.0,false,explicit_log_match
+vhv1-fo_counters-534933607-stage2,20430382,1.0,false,explicit_log_match
+vhv1-fo_counters-923500475-stage1,20401226,1.0,false,explicit_log_match
+vhv1-fo_counters-923500475-stage2,20430385,1.0,false,explicit_log_match
+vhv1-mprime-534933607-stage1,20618731,1.0,false,explicit_log_match
+vhv1-mprime-534933607-stage2,21303727,1.0,false,explicit_log_match
+vhv1-mprime-923500475-stage1,20618734,1.0,false,explicit_log_match
+vhv1-mprime-923500475-stage2,21303728,1.0,false,explicit_log_match
+vhv1-rover-534933607-stage1,20401243,1.0,false,explicit_log_match
+vhv1-rover-534933607-stage2,20430402,1.0,false,explicit_log_match
+vhv1-rover-923500475-stage1,20401246,1.0,false,explicit_log_match
+vhv1-rover-923500475-stage2,20430405,1.0,false,explicit_log_match

@@ -12,16 +12,19 @@ MCTS coverage cannot isolate learned-value quality.
 
 Use VH-on Stage-1 and validation-led Stage-2 checkpoints on the same frozen
 validation states. Enumerate applicable successors in a batch and record raw
-learned values. Keep three label sources separate:
+learned values. Keep four label sources separate:
 
 1. held-out MCTS/replay target — target consistency, but partly circular;
 2. deterministic continuation outcome and remaining length — practical utility;
-3. bounded ENHSP result/estimate — independent external planner evidence, not
-   guaranteed optimal value.
+3. raw ENHSP `h` — independent external planner evidence for rank/regret, not
+   guaranteed optimal value;
+4. `enhsp_search_v = exp(-1.0 * h)` — the exact bounded transform used by the
+   deployed non-minimization search, retained as a separate scale-aligned
+   diagnostic with a checksumed transform configuration.
 
 Metrics are label-semantic-specific. MAE/MSE and calibration bins are allowed
-only for a label explicitly marked scale-comparable, currently exact persisted
-replay `z`. Raw ENHSP `h` and raw remaining-action counts are not on the learned
+only for a label explicitly marked scale-comparable: exact persisted replay
+`z` and the separately named `enhsp_search_v`. Raw ENHSP `h` and raw remaining-action counts are not on the learned
 bounded/transformed value scale, so they support Spearman/Kendall sibling
 ranking, pairwise ordering, top-child regret and best-successor agreement only.
 Goal, unsolved and timeout outcomes support separate classification metrics;
@@ -59,6 +62,10 @@ MPrime it uses the Phase-B-A Stage-1 selector and final validation-led Stage-2
 manifest. The candidate builder asserts the complete factorial and records a
 checksum of each source ledger.
 
+`v1_checkpoint_hashes.csv` records the exact `weights.joblib` SHA-256 for all
+sixteen endpoints. `v1_transform_config_audit.csv` records an explicit log
+match for all sixteen runs: coefficient 1.0 and non-minimization mode.
+
 `v1_state_mixture.csv` predeclares one 60-state manifest per domain/seed
 lineage: 20 common planner-reached states, 20 common seeded-random legal-walk
 states, 10 Stage-1-policy states, and 10 Stage-2-policy states. Both checkpoints
@@ -72,7 +79,8 @@ replay training.
 
 `v1_label_sources.csv` freezes label meanings, orientations, scale
 comparability, cache identities, timeouts and prohibited fallbacks. Replay `z`
-is the only currently comparable numeric scale. Raw ENHSP `h` and raw
+and `enhsp_search_v` are comparable bounded scales, while the latter remains
+planner/search evidence rather than optimal ground truth. Raw ENHSP `h` and raw
 continuation length are explicitly non-comparable and rank/regret-only. Local
 provider scaffolding enforces that a timeout/unsolved/error cannot carry a
 fabricated numeric label. A strict preflight checks these comparability rules,
@@ -80,18 +88,17 @@ the 16-task factorial, hashes, resources, label families, and the shared
 Stage-1/Stage-2 state-manifest identity.
 
 This is still preparation, not an executed V1 scientific result, and no V1
-cluster task has been submitted. The current strict preflight reports 30 row
-issues: 14 checkpoint hashes are absent (all but the two MPrime Stage-2 rows)
-and the eight shared state manifests have not been materialized, so their hash
-is absent from both checkpoint rows. Candidate identity is frozen; submission
-readiness is not.
+scientific checkpoint task has been submitted. All sixteen checkpoint payloads
+have now been verified and recorded in `v1_checkpoint_hashes.csv` (fourteen
+newly materialized hashes plus the two already recorded MPrime Stage-2 hashes).
+The eight shared state manifests remain to be materialized, so submission
+readiness is not yet claimed.
 
 ### V1 execution plan and resources
 
-1. Materialize/verify the 14 missing checkpoint hashes and confirm the saved
-   training configuration uses the expected higher-is-better value target (not
-   raw minimization mode). Do not replace a missing endpoint based on audit
-   performance.
+1. Re-audit all sixteen saved run logs/configurations for an explicit search
+   coefficient or minimization override. The frozen deployed default is
+   `exp(-1.0 * h)` in non-minimization mode; any differing run is a hard gate.
 2. Materialize the eight checksumed 60-state lineage manifests and cache
    successor identities once. Stage-1 and Stage-2 must reference the same file.
    Cache each label family separately; never turn a timeout from one labeler
@@ -117,8 +124,8 @@ paths and hashes.
 
 ### Remaining ambiguities and release blockers
 
-- Fourteen checkpoint hashes remain to be computed from the actual saved
-  checkpoint payload. A path/epoch match is not a hash substitute.
+- The checkpoint payload gate is complete: all sixteen hashes are frozen, and
+  source-ledger selection remains independent of audit outcomes.
 - The eight state manifests and their canonical serialized-state hashes do not
   exist yet; the plan fixes quotas and selection rules, not the realized states.
 - Historical replay targets may be absent for validation states. Missing is an
@@ -130,11 +137,11 @@ paths and hashes.
 - ENHSP raw heuristic values are independent planner evidence, not optimal
   costs. State injection, planner status parsing and cache writing still need
   the domain-specific adapter and smoke test.
-- Raw ENHSP `h` and remaining-action counts are not scale-comparable with the
-  normally bounded/transformed learned value. Calibration against either would
-  require a separately named transformed label with the exact training formula,
-  coefficient/minimization mode and configuration hash frozen first. No such
-  transformed label is part of V1 yet.
+- Raw ENHSP `h` and remaining-action counts remain non-comparable. V1 now adds
+  the separately named `enhsp_search_v` using the exact current-search formula,
+  coefficient/minimization mode and checksumed transform config. It is not the
+  reciprocal helper used elsewhere for training-target construction and is not
+  labeled optimal ground truth.
 - The saved configuration must confirm raw-value orientation, minimization mode
   and target transform before any scale-sensitive metric is computed; the
   schema records orientation and scale comparability explicitly.

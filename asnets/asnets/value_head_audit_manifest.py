@@ -25,6 +25,7 @@ def validate_task_manifest_rows(
     sha_re = re.compile(r"^[0-9a-f]{64}$")
     required_labels = {
         "replay_target", "deterministic_continuation", "enhsp_raw_h",
+        "enhsp_search_v",
     }
     required_sources = {
         "common_planner", "common_random_legal",
@@ -116,7 +117,10 @@ def validate_label_source_rows(rows: Sequence[Mapping[str, str]]) -> list[str]:
     """Check that independent label families have explicit failure semantics."""
 
     errors: list[str] = []
-    expected = {"replay_target", "deterministic_continuation", "enhsp_raw_h"}
+    expected = {
+        "replay_target", "deterministic_continuation", "enhsp_raw_h",
+        "enhsp_search_v",
+    }
     names = [row.get("label_source", "") for row in rows]
     if set(names) != expected or len(names) != len(expected):
         errors.append(f"label-source factorial is not {sorted(expected)}")
@@ -132,9 +136,18 @@ def validate_label_source_rows(rows: Sequence[Mapping[str, str]]) -> list[str]:
         if source != "replay_target" and not {"timeout", "unsolved", "error"}.issubset(statuses):
             errors.append(f"{source}: timeout/unsolved/error statuses are incomplete")
         comparable = row.get("scale_comparable")
-        expected_comparable = "true" if source == "replay_target" else "false"
+        expected_comparable = (
+            "true" if source in {"replay_target", "enhsp_search_v"} else "false"
+        )
         if source in expected and comparable != expected_comparable:
             errors.append(
-                f"{source}: scale_comparable must be {expected_comparable} for raw V1 labels"
+                f"{source}: scale_comparable must be {expected_comparable} for V1"
             )
+        if source == "enhsp_search_v":
+            transform_path = row.get("transform_config_path", "")
+            transform_sha = row.get("transform_config_sha256", "")
+            if not transform_path or not re.fullmatch(r"[0-9a-f]{64}", transform_sha):
+                errors.append(
+                    "enhsp_search_v: exact transform config path/hash is not frozen"
+                )
     return errors

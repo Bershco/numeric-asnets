@@ -20,7 +20,7 @@ class ValueHeadAuditManifestTest(unittest.TestCase):
             "state_manifest_sha256": "b" * 64,
             "source_manifest_sha256": "c" * 64,
             "state_sources": "common_planner+common_random_legal+stage1_on_policy+stage2_on_policy",
-            "label_sources": "replay_target+deterministic_continuation+enhsp_raw_h",
+            "label_sources": "replay_target+deterministic_continuation+enhsp_raw_h+enhsp_search_v",
             "cpus": "4", "memory_gib": "48", "time_limit_hours": "8",
         }
 
@@ -64,6 +64,11 @@ class ValueHeadAuditManifestTest(unittest.TestCase):
             {"label_source": "enhsp_raw_h", "orientation": "lower_is_better",
              "scale_comparable": "false", "cache_identity": "key",
              "do_not_do": "no fallback", "valid_statuses": "valid;timeout;unsolved;error"},
+            {"label_source": "enhsp_search_v", "orientation": "higher_is_better",
+             "scale_comparable": "true", "cache_identity": "key",
+             "do_not_do": "no fallback", "valid_statuses": "valid;timeout;unsolved;error",
+             "transform_config_path": "transform.json",
+             "transform_config_sha256": "d" * 64},
         ]
         self.assertEqual(validate_label_source_rows(rows), [])
 
@@ -78,8 +83,31 @@ class ValueHeadAuditManifestTest(unittest.TestCase):
             {"label_source": "enhsp_raw_h", "orientation": "lower_is_better",
              "scale_comparable": "false", "cache_identity": "key",
              "do_not_do": "no fallback", "valid_statuses": "valid;timeout;unsolved;error"},
+            {"label_source": "enhsp_search_v", "orientation": "higher_is_better",
+             "scale_comparable": "true", "cache_identity": "key",
+             "do_not_do": "no fallback", "valid_statuses": "valid;timeout;unsolved;error",
+             "transform_config_path": "transform.json",
+             "transform_config_sha256": "d" * 64},
         ]
         self.assertIn("scale_comparable", "\n".join(validate_label_source_rows(rows)))
+
+    def test_rejects_unfrozen_search_transform(self):
+        rows = [
+            {"label_source": "replay_target", "orientation": "higher_is_better",
+             "scale_comparable": "true", "cache_identity": "key",
+             "do_not_do": "no fallback", "valid_statuses": "valid;missing"},
+            {"label_source": "deterministic_continuation", "orientation": "lower_is_better",
+             "scale_comparable": "false", "cache_identity": "key",
+             "do_not_do": "no fallback", "valid_statuses": "valid;timeout;unsolved;error"},
+            {"label_source": "enhsp_raw_h", "orientation": "lower_is_better",
+             "scale_comparable": "false", "cache_identity": "key",
+             "do_not_do": "no fallback", "valid_statuses": "valid;timeout;unsolved;error"},
+            {"label_source": "enhsp_search_v", "orientation": "higher_is_better",
+             "scale_comparable": "true", "cache_identity": "key",
+             "do_not_do": "no fallback", "valid_statuses": "valid;timeout;unsolved;error",
+             "transform_config_path": "", "transform_config_sha256": ""},
+        ]
+        self.assertIn("transform config", "\n".join(validate_label_source_rows(rows)))
 
 
 if __name__ == "__main__":

@@ -1653,6 +1653,21 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
         planner_exts.problem_meta,
     )
     probe_capture_dir = os.environ.get("ASN_POLICY_PROBE_CAPTURE_DIR")
+    vh_capture_dir = os.environ.get("ASN_VH_STATE_CAPTURE_DIR")
+    vh_capture_actor = os.environ.get("ASN_VH_STATE_CAPTURE_ACTOR", "policy")
+    if vh_capture_actor not in {"policy", "random", "enhsp"}:
+        raise ValueError(
+            "ASN_VH_STATE_CAPTURE_ACTOR must be policy, random, or enhsp"
+        )
+    vh_capture_source = os.environ.get(
+        "ASN_VH_STATE_CAPTURE_SOURCE", vh_capture_actor
+    )
+    vh_capture_seed = int(os.environ.get("ASN_VH_STATE_CAPTURE_SEED", inp.seed))
+    vh_instance_seed = int.from_bytes(
+        hashlib.sha256(instance_name.encode("utf-8")).digest()[:8], "big"
+    ) ^ vh_capture_seed
+    vh_rng = np.random.default_rng(vh_instance_seed)
+    vh_records = []
     probe_input_dir = os.environ.get("ASN_POLICY_PROBE_INPUT_DIR")
     probe_output_dir = os.environ.get("ASN_POLICY_PROBE_OUTPUT_DIR")
     probe_key = (
@@ -1672,6 +1687,42 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
             applicable_mask=np.asarray(captured_masks, dtype=np.float32),
             selected_action=np.asarray(captured_actions, dtype=np.int64),
         )
+
+    def capture_vh_state(state, step, selected_action=None):
+        if not vh_capture_dir:
+            return
+        from .value_head_audit import (
+            canonical_state_record, restore_canonical_state,
+        )
+        record = canonical_state_record(
+            state,
+            instance_name=instance_name,
+            instance_path=inp.spec.pddls[1],
+            trajectory_actor=vh_capture_actor,
+            state_source=vh_capture_source,
+            sampling_seed=vh_capture_seed,
+            step=int(step),
+            selected_action=(
+                None if selected_action is None else int(selected_action)
+            ),
+        )
+        if os.environ.get("ASN_VH_STATE_CAPTURE_VALIDATE_ROUNDTRIP") == "1":
+            restore_canonical_state(record, planner_exts)
+        vh_records.append(record)
+
+    def save_vh_capture():
+        if not vh_capture_dir or not vh_records:
+            return
+        os.makedirs(vh_capture_dir, exist_ok=True)
+        output = os.path.join(vh_capture_dir, probe_key + ".jsonl")
+        temporary = output + f".tmp.{os.getpid()}"
+        with open(temporary, "w", encoding="utf-8", newline="\n") as stream:
+            for record in vh_records:
+                stream.write(json.dumps(
+                    record, sort_keys=True, separators=(",", ":"),
+                    allow_nan=False,
+                ) + "\n")
+        os.replace(temporary, output)
 
     if probe_input_dir and probe_output_dir:
         probe_path = os.path.join(probe_input_dir, probe_key + ".npz")
@@ -1725,6 +1776,25 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
     max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
     plan = []
     timed_out = False
+    if vh_capture_dir and vh_capture_actor == "enhsp":
+        teacher_timeout = int(os.environ.get("ASN_VH_ENHSP_TIMEOUT", "300"))
+        teacher = ENHSPTeacher(
+            planner_exts=planner_exts,
+            teacher_timeout_s=teacher_timeout,
+            enhsp_config=inp.spec.enhsp_config,
+        )
+        rollout = list(teacher.expert_policy_rollout(cstate, len_bound=max_len))
+        for step, rollout_state in enumerate(rollout):
+            if not rollout_state.is_terminal:
+                capture_vh_state(rollout_state, step)
+        save_vh_capture()
+        final_state = rollout[-1] if rollout else cstate
+        return EvalWorkerOutput(
+            hit_goal=float(final_state.is_goal),
+            steps=max(0, len(rollout) - 1),
+            instance_name=instance_name,
+            plan=None,
+        )
     for step in range(max_len):
         step_start_time = time.time()
         if inp.spec.timeout:
@@ -1737,6 +1807,7 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
             if timed_out:
                 print(f"{worker_tag} timed out after {inp.spec.timeout} seconds")
             save_probe_capture()
+            save_vh_capture()
             return EvalWorkerOutput(
                 hit_goal=float(cstate.is_goal),
                 steps=step,
@@ -1761,10 +1832,14 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
                 break
             masked_pi = np.zeros_like(pi)
             masked_pi[valid] = 1 / len(valid)
-        action_id = action_policy.select_action(
-            mcts=None,  # intentionally None
-            pi=masked_pi,
-        )
+        if vh_capture_dir and vh_capture_actor == "random":
+            action_id = int(vh_rng.choice(np.flatnonzero(mask)))
+        else:
+            action_id = action_policy.select_action(
+                mcts=None,  # intentionally None
+                pi=masked_pi,
+            )
+        capture_vh_state(cstate, step, action_id)
         if probe_capture_dir:
             captured_obs.append(np.asarray(obs, dtype=np.float32))
             captured_masked_pi.append(
@@ -1779,6 +1854,7 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
         print(f"fluents: {cstate.flnt_values}")
         print(f"comps: {cstate.comps_true}")
     save_probe_capture()
+    save_vh_capture()
     return EvalWorkerOutput(
         hit_goal=float(cstate.is_goal),
         steps=max_len,

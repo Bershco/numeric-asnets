@@ -1,0 +1,17 @@
+task_id,checkpoint_payload,checkpoint_sha256,payload_bytes,verified_at,verification_method,verification_host
+vhv1-drone-534933607-stage1,weights.joblib,efa1b6a7b8bad82f1ee52e5ccc49043bda2eff2d3e0c4f028133996850caecb2,207175,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-drone-534933607-stage2,weights.joblib,212431b3b4a6e24783547b7da6ad38a66a69fbb5a52979b7f42df0ca9a0ea664,206262,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-drone-923500475-stage1,weights.joblib,cfd7f812cf180c9fcab576710bda31980c44786973115f6036b19aad76d5758e,209831,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-drone-923500475-stage2,weights.joblib,a8527c0feddac831fcde7560cb8b7df44aa173e00ed0effafbc3eca85e081db7,207186,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-fo_counters-534933607-stage1,weights.joblib,9c02d8922175cc75fa57058747cebbbd7d5bdce6bbabe7655640890c3dc28ecb,45463,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-fo_counters-534933607-stage2,weights.joblib,7f248fc5bf1240d843b9d2a8fbfdff6ae7e3e7821a24ccb95f6894e9ea3586e3,44892,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-fo_counters-923500475-stage1,weights.joblib,9462a4d54228836288ad36afdba8362c067eaf596d8974ec385fe6816b32fa59,45309,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-fo_counters-923500475-stage2,weights.joblib,647c17ec69b9ccce286e5b7931c2700e90e0239c4ea8f7ec505cb7a43ca876c7,45006,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-mprime-534933607-stage1,weights.joblib,ba57649e1c5401557fcd5b50f2f66ccf6a4806653d8aa6396337dda7f0d0d98c,55078,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-mprime-534933607-stage2,weights.joblib,037b047bb4d7ddec16e6062a648c0322bd71c084ecc33e5fdf3d0ab11caf2ef5,54683,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-mprime-923500475-stage1,weights.joblib,761b2f60fd0745d16608fffebcadc92eaced169972e00b321594bd0b64ffe2cf,55595,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-mprime-923500475-stage2,weights.joblib,a4d9c02bb096dbacc97e211a07f2f8a8b07db0f3c970d8375461d31a5b67f212,54737,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-rover-534933607-stage1,weights.joblib,6303c130e550d98eeffbab8d78226fe2210dcbc898a3e08c5c30da57683d2f35,297978,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-rover-534933607-stage2,weights.joblib,4108f8de6295a0776ae85265b74244f8a64d9ccf3e70b0ef47f4ea75b0fbfe74,296639,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-rover-923500475-stage1,weights.joblib,a76ed7a2a380bb78c207d80635deecfe98a686206a3cff9d5c4cb9b44df355e8,294808,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
+vhv1-rover-923500475-stage2,weights.joblib,48e9df1908b734c6203f403c2e1e049dc83bb7728199565dfe6ed40cb4c21232,294345,2026-09-18,sha256sum,slurm-login-01.auth.ad.bgu.ac.il
