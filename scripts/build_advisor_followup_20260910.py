@@ -21,6 +21,10 @@ OUT = TRACK / "advisor_followup_20260910"
 OUT.mkdir(parents=True, exist_ok=True)
 DOMAINS = ["block_grouping", "drone", "fo_counters", "rover", "counters", "mprime"]
 MCTS_DOMAINS = list(DOMAINS)
+MPRIME_FINAL_STAGE2 = (
+    TRACK / "mprime_final_stage2_search_20260916" /
+    "final_per_seed_results_20260918.csv"
+)
 LABELS = {
     "block_grouping": "Block Grouping",
     "drone": "Drone",
@@ -218,6 +222,23 @@ def build_rq_rows() -> list[dict[str, object]]:
                     "mcts_6h": row["mcts_6h"],
                 }
                 for row in read_csv(mprime_path)
+            ]
+        elif stage == "Stage 2":
+            # MPrime finished after the original five-domain Stage-2 package.
+            # Add its exact Phase-B-A-selected endpoints before Holm correction
+            # so every Stage-2 family is recomputed over all six domains.
+            rows += [
+                {
+                    "domain": "mprime",
+                    "value_head": row["value_head"],
+                    "seed": row["seed"],
+                    "policy_score": row["stage2_policy"],
+                    "mcts_30m": row["fixed_30m"],
+                    "mcts_2h": row["fixed_2h"],
+                    "mcts_6h": row["fixed_6h"],
+                    "stage2_branch": "validation_led",
+                }
+                for row in read_csv(MPRIME_FINAL_STAGE2)
             ]
         if branch:
             rows = [row for row in rows if row.get("stage2_branch") == branch]
@@ -481,6 +502,21 @@ def build_raw_mean_rows(rq_rows: list[dict[str, object]]) -> tuple[list[dict[str
                     "evidence_status": "complete",
                 }
                 for row in read_csv(mprime_path)
+            ]
+        elif stage == "Stage 2":
+            source += [
+                {
+                    "domain": "mprime",
+                    "value_head": row["value_head"],
+                    "seed": row["seed"],
+                    "policy_score": row["stage2_policy"],
+                    "mcts_30m": row["fixed_30m"],
+                    "mcts_2h": row["fixed_2h"],
+                    "mcts_6h": row["fixed_6h"],
+                    "stage2_branch": "validation_led",
+                    "evidence_status": "complete",
+                }
+                for row in read_csv(MPRIME_FINAL_STAGE2)
             ]
         if branch:
             source = [row for row in source if row.get("stage2_branch") == branch]

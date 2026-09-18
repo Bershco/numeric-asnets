@@ -9,4 +9,5 @@ RQ2,Stage 2,block_grouping,off,10,20,16.0,11.4,15.0,15.7,complete,experiment_tra
 RQ2,Stage 2,drone,off,10,20,6.7,7.5,7.7,7.7,complete,experiment_tracking/stage2_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
 RQ2,Stage 2,rover,off,10,20,4.0,4.5,4.5,4.5,complete,experiment_tracking/stage2_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
 RQ2,Stage 2,counters,off,10,59,36.9,34.9,36.7,36.7,complete,experiment_tracking/stage2_policy_mcts_seed_cutoffs_latest.csv,mcts_job_id;source_policy_log;source_mcts_log;source_completion_ledger
+RQ2,Stage 2,mprime,off,10,20,16.5,14.2,15.8,16.6,complete,experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/results_20260914/per_instance_results.csv,source_job_id;source_attempt_log;source_completion_record;source_training_job_id;source_policy_job_id
 RQ2,Stage 2,fo_counters,off,10,20,2.9,6.1,6.1,6.1,complete,experiment_tracking/advisor_followup_20260910/fo_stage2_validation_vh_off_exact_seed_results_20260913.csv,source_training_job_id;source_policy_job_id;source_policy_log;source_mcts_logs;source_completion_ledgers

@@ -1,31 +1,31 @@
 rq,stage,search,value_head,estimand,cutoff,n,policy_mean,comparison_mean,effect,ci95_low,ci95_high,raw_exact_p,holm_p,evidence_status,provenance
 RQ2,Stage 2,fixed,off,fixed - same-checkpoint policy,30m,10,16.5,14.2,-2.3,-3.883510,-0.716490,0.015625,0.0625,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ2,Stage 2,pw70,off,pw70 - same-checkpoint policy,30m,10,16.5,16.0,-0.5,-1.859387,0.859387,0.53125,,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ2,Stage 2,pw70_vs_fixed,off,PW70 - fixed MCTS,30m,10,14.2,16.0,1.8,0.987861,2.612139,0.0078125,,complete_exploratory_method_comparison,final_per_seed_results_20260918.csv
+RQ2,Stage 2,pw70,off,pw70 - same-checkpoint policy,30m,10,16.5,16.0,-0.5,-1.859387,0.859387,0.53125,0.53125,complete_paired_inference,final_per_seed_results_20260918.csv
+RQ2,Stage 2,pw70_vs_fixed,off,PW70 - fixed MCTS,30m,10,14.2,16.0,1.8,0.987861,2.612139,0.0078125,0.0078125,complete_paired_method_comparison,final_per_seed_results_20260918.csv
 RQ2,Stage 2,fixed,off,fixed - same-checkpoint policy,2h,10,16.5,15.8,-0.7,-2.247186,0.847186,0.3984375,0.796875,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ2,Stage 2,pw70,off,pw70 - same-checkpoint policy,2h,10,16.5,17.7,1.2,0.041603,2.358397,0.078125,,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ2,Stage 2,pw70_vs_fixed,off,PW70 - fixed MCTS,2h,10,15.8,17.7,1.9,1.112746,2.687254,0.00390625,,complete_exploratory_method_comparison,final_per_seed_results_20260918.csv
+RQ2,Stage 2,pw70,off,pw70 - same-checkpoint policy,2h,10,16.5,17.7,1.2,0.041603,2.358397,0.078125,0.078125,complete_paired_inference,final_per_seed_results_20260918.csv
+RQ2,Stage 2,pw70_vs_fixed,off,PW70 - fixed MCTS,2h,10,15.8,17.7,1.9,1.112746,2.687254,0.00390625,0.00390625,complete_paired_method_comparison,final_per_seed_results_20260918.csv
 RQ2,Stage 2,fixed,off,fixed - same-checkpoint policy,6h,10,16.5,16.6,0.1,-1.567462,1.767462,1,1,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ2,Stage 2,pw70,off,pw70 - same-checkpoint policy,6h,10,16.5,17.9,1.4,0.129248,2.670752,0.0625,,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ2,Stage 2,pw70_vs_fixed,off,PW70 - fixed MCTS,6h,10,16.6,17.9,1.3,0.470542,2.129458,0.0078125,,complete_exploratory_method_comparison,final_per_seed_results_20260918.csv
+RQ2,Stage 2,pw70,off,pw70 - same-checkpoint policy,6h,10,16.5,17.9,1.4,0.129248,2.670752,0.0625,0.0625,complete_paired_inference,final_per_seed_results_20260918.csv
+RQ2,Stage 2,pw70_vs_fixed,off,PW70 - fixed MCTS,6h,10,16.6,17.9,1.3,0.470542,2.129458,0.0078125,0.0078125,complete_paired_method_comparison,final_per_seed_results_20260918.csv
 RQ4,Stage 2,fixed,on,fixed - same-checkpoint policy,30m,10,16.7,12.9,-3.8,-5.300545,-2.299455,0.00390625,0.015625,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ4,Stage 2,pw70,on,pw70 - same-checkpoint policy,30m,10,16.7,15.2,-1.5,-3.017501,0.017501,0.078125,,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ4,Stage 2,pw70_vs_fixed,on,PW70 - fixed MCTS,30m,10,12.9,15.2,2.3,1.179021,3.420979,0.00390625,,complete_exploratory_method_comparison,final_per_seed_results_20260918.csv
+RQ4,Stage 2,pw70,on,pw70 - same-checkpoint policy,30m,10,16.7,15.2,-1.5,-3.017501,0.017501,0.078125,0.078125,complete_paired_inference,final_per_seed_results_20260918.csv
+RQ4,Stage 2,pw70_vs_fixed,on,PW70 - fixed MCTS,30m,10,12.9,15.2,2.3,1.179021,3.420979,0.00390625,0.00390625,complete_paired_method_comparison,final_per_seed_results_20260918.csv
 RQ4,Stage 2,fixed,on,fixed - same-checkpoint policy,2h,10,16.7,14.6,-2.1,-3.834320,-0.365680,0.041015625,0.123046875,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ4,Stage 2,pw70,on,pw70 - same-checkpoint policy,2h,10,16.7,17.0,0.3,-1.579089,2.179089,0.84375,,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ4,Stage 2,pw70_vs_fixed,on,PW70 - fixed MCTS,2h,10,14.6,17.0,2.4,1.434342,3.365658,0.00390625,,complete_exploratory_method_comparison,final_per_seed_results_20260918.csv
+RQ4,Stage 2,pw70,on,pw70 - same-checkpoint policy,2h,10,16.7,17.0,0.3,-1.579089,2.179089,0.84375,0.84375,complete_paired_inference,final_per_seed_results_20260918.csv
+RQ4,Stage 2,pw70_vs_fixed,on,PW70 - fixed MCTS,2h,10,14.6,17.0,2.4,1.434342,3.365658,0.00390625,0.00390625,complete_paired_method_comparison,final_per_seed_results_20260918.csv
 RQ4,Stage 2,fixed,on,fixed - same-checkpoint policy,6h,10,16.7,16.0,-0.7,-2.421156,1.021156,0.4453125,0.890625,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ4,Stage 2,pw70,on,pw70 - same-checkpoint policy,6h,10,16.7,17.2,0.5,-1.354724,2.354724,0.65625,,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ4,Stage 2,pw70_vs_fixed,on,PW70 - fixed MCTS,6h,10,16.0,17.2,1.2,0.144327,2.255673,0.0546875,,complete_exploratory_method_comparison,final_per_seed_results_20260918.csv
+RQ4,Stage 2,pw70,on,pw70 - same-checkpoint policy,6h,10,16.7,17.2,0.5,-1.354724,2.354724,0.65625,0.65625,complete_paired_inference,final_per_seed_results_20260918.csv
+RQ4,Stage 2,pw70_vs_fixed,on,PW70 - fixed MCTS,6h,10,16.0,17.2,1.2,0.144327,2.255673,0.0546875,0.0546875,complete_paired_method_comparison,final_per_seed_results_20260918.csv
 RQ4,Stage 2,fixed,on,VH-on fixed - parallel VH-off policy,30m,10,16.5,12.9,-3.6,-5.543057,-1.656943,0.00390625,0.01953125,complete_paired_inference,final_per_seed_results_20260918.csv
 RQ4,Stage 2,fixed,on,VH-on fixed benefit - VH-off fixed benefit,30m,10,-2.3,-3.8,-1.5,-3.354724,0.354724,0.125,0.5,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ4,Stage 2,pw70,on,VH-on PW70 - parallel VH-off policy,30m,10,16.5,15.2,-1.3,-3.086006,0.486006,0.203125,,complete_exploratory_method_comparison,final_per_seed_results_20260918.csv
-RQ4,Stage 2,pw70,on,VH-on PW70 benefit - VH-off PW70 benefit,30m,10,-0.5,-1.5,-1.0,-2.815998,0.815998,0.34375,,complete_exploratory_method_comparison,final_per_seed_results_20260918.csv
+RQ4,Stage 2,pw70,on,VH-on PW70 - parallel VH-off policy,30m,10,16.5,15.2,-1.3,-3.086006,0.486006,0.203125,0.203125,complete_paired_method_comparison,final_per_seed_results_20260918.csv
+RQ4,Stage 2,pw70,on,VH-on PW70 benefit - VH-off PW70 benefit,30m,10,-0.5,-1.5,-1.0,-2.815998,0.815998,0.34375,0.34375,complete_paired_method_comparison,final_per_seed_results_20260918.csv
 RQ4,Stage 2,fixed,on,VH-on fixed - parallel VH-off policy,2h,10,16.5,14.6,-1.9,-3.698695,-0.101305,0.0625,0.1875,complete_paired_inference,final_per_seed_results_20260918.csv
 RQ4,Stage 2,fixed,on,VH-on fixed benefit - VH-off fixed benefit,2h,10,-0.7,-2.1,-1.4,-3.538107,0.738107,0.203125,0.8125,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ4,Stage 2,pw70,on,VH-on PW70 - parallel VH-off policy,2h,10,16.5,17.0,0.5,-1.354724,2.354724,0.625,,complete_exploratory_method_comparison,final_per_seed_results_20260918.csv
-RQ4,Stage 2,pw70,on,VH-on PW70 benefit - VH-off PW70 benefit,2h,10,1.2,0.3,-0.9,-2.850359,1.050359,0.375,,complete_exploratory_method_comparison,final_per_seed_results_20260918.csv
+RQ4,Stage 2,pw70,on,VH-on PW70 - parallel VH-off policy,2h,10,16.5,17.0,0.5,-1.354724,2.354724,0.625,0.625,complete_paired_method_comparison,final_per_seed_results_20260918.csv
+RQ4,Stage 2,pw70,on,VH-on PW70 benefit - VH-off PW70 benefit,2h,10,1.2,0.3,-0.9,-2.850359,1.050359,0.375,0.375,complete_paired_method_comparison,final_per_seed_results_20260918.csv
 RQ4,Stage 2,fixed,on,VH-on fixed - parallel VH-off policy,6h,10,16.5,16.0,-0.5,-2.227751,1.227751,0.6015625,0.6015625,complete_paired_inference,final_per_seed_results_20260918.csv
 RQ4,Stage 2,fixed,on,VH-on fixed benefit - VH-off fixed benefit,6h,10,0.1,-0.7,-0.8,-3.082176,1.482176,0.5,1,complete_paired_inference,final_per_seed_results_20260918.csv
-RQ4,Stage 2,pw70,on,VH-on PW70 - parallel VH-off policy,6h,10,16.5,17.2,0.7,-1.267773,2.667773,0.5,,complete_exploratory_method_comparison,final_per_seed_results_20260918.csv
-RQ4,Stage 2,pw70,on,VH-on PW70 benefit - VH-off PW70 benefit,6h,10,1.4,0.5,-0.9,-2.907819,1.107819,0.3828125,,complete_exploratory_method_comparison,final_per_seed_results_20260918.csv
+RQ4,Stage 2,pw70,on,VH-on PW70 - parallel VH-off policy,6h,10,16.5,17.2,0.7,-1.267773,2.667773,0.5,0.5,complete_paired_method_comparison,final_per_seed_results_20260918.csv
+RQ4,Stage 2,pw70,on,VH-on PW70 benefit - VH-off PW70 benefit,6h,10,1.4,0.5,-0.9,-2.907819,1.107819,0.3828125,0.3828125,complete_paired_method_comparison,final_per_seed_results_20260918.csv
