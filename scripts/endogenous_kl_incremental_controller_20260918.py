@@ -535,6 +535,12 @@ def main() -> int:
     valid_policy_identities = {
         row["identity"] for row in policy_rows if valid_policy_result(args.campaign, row)
     }
+    broken_policy = completed_without_result(policy_ledger, valid_policy_identities)
+    if broken_policy:
+        raise RuntimeError(
+            "scheduler-completed policy attempts lack exact scientific results: "
+            + ",".join(broken_policy)
+        )
     blocked = identities_blocked_by_ledger(policy_ledger) if policy_ledger else set()
     ready = [
         row for row in policy_rows
