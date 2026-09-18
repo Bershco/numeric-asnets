@@ -6,7 +6,7 @@
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-18/value_head_v1/finalize_%j.txt
 
 set -euo pipefail
-REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context
+REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-v1
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
 ROOT=/home/hersco/training_new_domains/2026-09-18/value_head_v1
 apptainer exec --bind /home/hersco:/home/hersco /home/hersco/Docker/image.sif /bin/bash -lc "

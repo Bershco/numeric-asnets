@@ -6,7 +6,7 @@
 
 set -euo pipefail
 : "${DOMAIN:?submit with --export=ALL,DOMAIN=<domain>}"
-REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-safe-context
+REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-v1
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
 ROOT=/home/hersco/training_new_domains/2026-09-18/value_head_v1
 case "$SLURM_ARRAY_TASK_ID" in
