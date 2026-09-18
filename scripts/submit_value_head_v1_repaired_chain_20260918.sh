@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-v1
 ROOT=/home/hersco/training_new_domains/2026-09-18/value_head_v1
-REQUIRED_FIX=7ebc2c16a7a3d7355e3a52effec3409ce5f9dfb4
+REQUIRED_FIX=7ebc2c16fa5bf38ffa8c8d8f1a3c32f088756633
 EXCLUDE='ise-cpu128-03,ise-cpu-intl-[01,09-15,25,27-28]'
 
 git -C "$REPO" merge-base --is-ancestor "$REQUIRED_FIX" HEAD
