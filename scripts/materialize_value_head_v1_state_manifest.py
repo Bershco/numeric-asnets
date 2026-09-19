@@ -51,6 +51,42 @@ def read_captures(directory: Path) -> list[dict[str, object]]:
     return records
 
 
+def select_balanced_unique(
+    *,
+    by_instance: dict[str, list[dict[str, object]]],
+    expected: list[str],
+    quota: int,
+    rank,
+    seen_hashes: set[str],
+) -> list[tuple[str, dict[str, object], str]]:
+    """Select deterministically without requiring every actor to reach every instance."""
+    ranked = {
+        ident: sorted(by_instance.get(ident, []), key=lambda row: rank(ident, row))
+        for ident in expected
+    }
+    selected: list[tuple[str, dict[str, object], str]] = []
+    depth = 0
+    while len(selected) < quota:
+        added = False
+        for ident in expected:
+            candidates = ranked[ident]
+            while depth < len(candidates):
+                chosen = candidates[depth]
+                state_hash = str(chosen["state_sha256"])
+                if state_hash not in seen_hashes:
+                    seen_hashes.add(state_hash)
+                    selected.append((ident, chosen, rank(ident, chosen)))
+                    added = True
+                    break
+                candidates.pop(depth)
+            if len(selected) == quota:
+                break
+        if not added:
+            break
+        depth += 1
+    return selected
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--domain", required=True)
@@ -83,28 +119,38 @@ def main() -> int:
                 continue
             ident = instance_identity(str(record["instance_path"]))
             by_instance.setdefault(ident, []).append(record)
-        for ident in expected:
-            candidates = by_instance.get(ident, [])
-            if not candidates:
-                raise RuntimeError(f"{source}/{ident}: no nonterminal post-initial state")
-            def rank(record: dict[str, object]) -> str:
-                payload = (
-                    f"{args.domain}|{args.seed}|{source}|{ident}|"
-                    f"{record['state_sha256']}"
-                )
-                return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-            chosen = min(candidates, key=rank)
-            state_hash = str(chosen["state_sha256"])
-            if state_hash in seen_hashes:
-                raise RuntimeError(f"duplicate exact state selected: {state_hash}")
-            seen_hashes.add(state_hash)
-            selected.append({
-                **chosen,
-                "audit_domain": args.domain,
-                "audit_seed": int(args.seed),
-                "instance_identity": ident,
-                "selection_rank_sha256": rank(chosen),
-            })
+        def rank(ident: str, record: dict[str, object]) -> str:
+            payload = (
+                f"{args.domain}|{args.seed}|{source}|{ident}|"
+                f"{record['state_sha256']}"
+            )
+            return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+        # Actor feasibility is independent of learned-value outcomes.  Some
+        # frozen instances yield no post-initial state (for example, ENHSP can
+        # time out before producing a plan).  Fill the frozen source quota in
+        # balanced rounds over the predeclared instance pool, rather than
+        # selecting replacement instances after observing network values.
+        chosen_rows = select_balanced_unique(
+            by_instance=by_instance,
+            expected=expected,
+            quota=quota,
+            rank=rank,
+            seen_hashes=seen_hashes,
+        )
+        if len(chosen_rows) != quota:
+            represented = sum(bool(by_instance.get(ident)) for ident in expected)
+            raise RuntimeError(
+                f"{source}: selected {len(chosen_rows)}/{quota} unique "
+                f"post-initial states from {represented}/{len(expected)} frozen instances"
+            )
+        selected.extend({
+            **chosen,
+            "audit_domain": args.domain,
+            "audit_seed": int(args.seed),
+            "instance_identity": ident,
+            "selection_rank_sha256": selection_rank,
+        } for ident, chosen, selection_rank in chosen_rows)
 
     if len(selected) != 60:
         raise RuntimeError(f"expected 60 selected states, got {len(selected)}")
@@ -125,6 +171,13 @@ def main() -> int:
         "states": len(selected),
         "manifest_path": str(args.output),
         "manifest_sha256": manifest_hash,
+        "represented_instances_by_source": {
+            source: len({
+                str(row["instance_identity"])
+                for row in selected if row["state_source"] == source
+            })
+            for source in sorted({str(row["state_source"]) for row in selected})
+        },
     }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"MATERIALIZED|{args.domain}|{args.seed}|60|{manifest_hash}|{args.output}")
     return 0

@@ -24,6 +24,7 @@ case "$DOMAIN" in
 esac
 OUT="$ROOT/captures/${DOMAIN}_${SEED}"
 mkdir -p "$OUT"
+CAPTURE_SOURCES=${CAPTURE_SOURCES:-common_planner,common_random_legal,stage1_on_policy,stage2_on_policy}
 
 mapfile -t CP < <(python3 - "$REPO/experiment_tracking/value_head_quality_audit/v1_checkpoint_candidates.csv" "$DOMAIN" "$SEED" <<'PY'
 import csv, sys
@@ -53,6 +54,7 @@ run_capture() {
     export ASN_VH_STATE_CAPTURE_SOURCE='$source'
     export ASN_VH_STATE_CAPTURE_SEED='$capture_seed'
     export ASN_VH_STATE_CAPTURE_VALIDATE_ROUNDTRIP=1
+    export ASN_VH_STATE_CAPTURE_MAX_RECORDS_PER_INSTANCE=8
     export ASN_VH_ENHSP_TIMEOUT=300
     ./run_experiment 'experiments_numeric.architecture_2.$ARCH' \
       'experiments_numeric.domain.$MODULE' --resume-from '$checkpoint' \
@@ -60,15 +62,20 @@ run_capture() {
   " >"$OUT/${source}.stdout" 2>&1
 }
 
-run_capture enhsp common_planner "$COMMON_SEED" "$STAGE1"
-run_capture random common_random_legal "$RANDOM_SEED" "$STAGE1"
-run_capture policy stage1_on_policy "$((SEED + 101))" "$STAGE1"
-run_capture policy stage2_on_policy "$((SEED + 102))" "$STAGE2"
+source_enabled() {
+  [[ ",$CAPTURE_SOURCES," == *",$1,"* ]]
+}
+source_enabled common_planner && run_capture enhsp common_planner "$COMMON_SEED" "$STAGE1"
+source_enabled common_random_legal && run_capture random common_random_legal "$RANDOM_SEED" "$STAGE1"
+source_enabled stage1_on_policy && run_capture policy stage1_on_policy "$((SEED + 101))" "$STAGE1"
+source_enabled stage2_on_policy && run_capture policy stage2_on_policy "$((SEED + 102))" "$STAGE2"
 
-MANIFEST="$OUT/v1_states/vhv1-${DOMAIN}-${SEED}-paired.jsonl"
-apptainer exec --bind /home/hersco:/home/hersco /home/hersco/Docker/image.sif /bin/bash -lc "
-  source '$PRODUCTION_REPO/venv-asnets/bin/activate'
-  export PYTHONPATH='$REPO/asnets':'$REPO':\${PYTHONPATH:-}
-  python '$REPO/scripts/materialize_value_head_v1_state_manifest.py' \
-    --domain '$DOMAIN' --seed '$SEED' --capture-root '$OUT' --output '$MANIFEST'
-"
+if [[ "${MATERIALIZE_AFTER_CAPTURE:-1}" == 1 ]]; then
+  MANIFEST="$OUT/v1_states/vhv1-${DOMAIN}-${SEED}-paired.jsonl"
+  apptainer exec --bind /home/hersco:/home/hersco /home/hersco/Docker/image.sif /bin/bash -lc "
+    source '$PRODUCTION_REPO/venv-asnets/bin/activate'
+    export PYTHONPATH='$REPO/asnets':'$REPO':\${PYTHONPATH:-}
+    python '$REPO/scripts/materialize_value_head_v1_state_manifest.py' \
+      --domain '$DOMAIN' --seed '$SEED' --capture-root '$OUT' --output '$MANIFEST'
+  "
+fi

@@ -1668,6 +1668,13 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
     ) ^ vh_capture_seed
     vh_rng = np.random.default_rng(vh_instance_seed)
     vh_records = []
+    vh_capture_max_records = int(os.environ.get(
+        "ASN_VH_STATE_CAPTURE_MAX_RECORDS_PER_INSTANCE", "0"
+    ))
+    if vh_capture_max_records < 0:
+        raise ValueError(
+            "ASN_VH_STATE_CAPTURE_MAX_RECORDS_PER_INSTANCE must be nonnegative"
+        )
     probe_input_dir = os.environ.get("ASN_POLICY_PROBE_INPUT_DIR")
     probe_output_dir = os.environ.get("ASN_POLICY_PROBE_OUTPUT_DIR")
     probe_key = (
@@ -1709,6 +1716,21 @@ def run_worker_eval_policy_only(inp: WorkerInput) -> EvalWorkerOutput:
         if os.environ.get("ASN_VH_STATE_CAPTURE_VALIDATE_ROUNDTRIP") == "1":
             restore_canonical_state(record, planner_exts)
         vh_records.append(record)
+        if vh_capture_max_records:
+            # Long failed/random trajectories can contain 10,000 states.  V1
+            # only needs a deterministic candidate pool per instance, so keep
+            # the lowest-ranked unique records instead of retaining the whole
+            # trajectory in worker memory.
+            unique = {row["state_sha256"]: row for row in vh_records}
+            prefix = (
+                f"{vh_capture_source}|{vh_capture_seed}|{instance_name}|"
+            )
+            vh_records[:] = sorted(
+                unique.values(),
+                key=lambda row: hashlib.sha256(
+                    (prefix + str(row["state_sha256"])).encode("utf-8")
+                ).hexdigest(),
+            )[:vh_capture_max_records]
 
     def save_vh_capture():
         if not vh_capture_dir or not vh_records:
