@@ -230,3 +230,50 @@ controller `21455181` are dependency-pending. If the captures pass, the latter
 automatically launches the measured resource preflight, its checksum gate, the
 16 scientific checkpoint tasks and the scientific finalizer. No further user
 action is required.
+
+## Overnight capture audit and exact recovery — 19 September 2026
+
+The eight capture tasks did not complete, and the previous finalizer/controller
+were cancelled by failed dependencies.  The durable outputs establish three
+separate causes:
+
+- Drone completed all four capture sources, but manifest materialization
+  rejected an exact state hash that appeared in more than one frozen stratum.
+- Both FO Counters tasks exhausted the 64-GiB allocation while buffering long
+  trajectories in worker memory.
+- Rover and MPrime stopped partway through their later sources.  MPrime's
+  random actors had already buffered 90,000--100,000 state records per lineage;
+  Rover's incomplete arm similarly stopped during Stage-2 policy capture.
+
+This is an execution failure, not a V1 scientific result.  Completed source
+files remain reusable.  Commit `29deb4b3` implements the minimal repair:
+
+1. V1 capture workers keep the eight lowest-ranked unique candidates per
+   instance instead of buffering an entire trajectory.  This is opt-in and
+   does not change ordinary policy evaluation, training, or MCTS.
+2. Recovery jobs can name only missing sources; completed sources are not
+   rerun.
+3. Manifest selection fills each already frozen source quota in balanced rounds
+   across the predeclared instance pool.  An actor timeout is therefore treated
+   as missing actor-reachable state evidence, not as permission to choose a new
+   instance after seeing value-head outputs.  Exact duplicates fall through to
+   the next deterministic candidate.
+4. The manifest sidecar records how many distinct frozen instances represent
+   each source, exposing any feasibility-driven concentration.
+
+The exact recovery plan contains six source-capture tasks: two FO random
+captures, one FO Stage-2 policy capture, one Rover Stage-2 policy capture, and
+two MPrime random-plus-policy captures.  Their maximum simultaneous request is
+30 worker CPUs and 624 GiB.  Only after all six succeed does an eight-task
+manifest rebuild run, followed by the existing strict finalizer, measured
+resource preflight and 16-task scientific V1 release.  A real-data Drone smoke
+must pass before the recovery controller releases that chain.
+
+At the 19 September preflight, the shared cluster home quota first prevented
+the last smoke/controller files from being written to the isolated checkout.
+No scientific captures were deleted to work around it.  Removing only
+reproducible Python bytecode caches created enough space for the two committed,
+checksum-verified scripts.  Smoke `21463884` is running with 1 CPU / 8 GiB;
+controller `21463885` is `afterok:21463884` and requests 1 CPU / 2 GiB.  The
+controller cannot release recovery or downstream scientific work unless the
+real-data Drone smoke succeeds.
