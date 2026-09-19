@@ -365,3 +365,20 @@ remained zero.  The final canonical dependency chain is
 rebuilds, strict state finalization, measured resource preflight, checksum gate
 and 16-task scientific release without manual intervention.  Earlier
 dependency-cancelled chains remain historical scheduler provenance only.
+
+### Post-quota exact-source recovery — 19 September 2026, 23:50 IDT
+
+After the 13.516-GiB home cleanup, the remaining two MPrime capture identities
+resumed as `21473679_[0-1]`. The Rover Stage-2 capture `21473678_0` was assigned
+to `ise-cpu-intl-26` and exited `1:0` after 85 seconds with only the scheduler
+prologue. In the same interval, every endogenous-KL policy task assigned to
+that node exited within seconds through child-process signal 4, while jobs on
+other nodes remained healthy. This is node-local operational evidence, not a
+V1 scientific failure.
+
+Exact Rover replacement `21473867_0` excludes
+`ise-cpu-intl-[01,09-15,25-28]` and started on `ise-cpu128-09`. The replacement
+automatic dependency chain reuses the two running MPrime captures:
+`21473868_[0-7]` -> `21473869` -> `21473870`. The earlier chain
+`21473680`--`21473682` is dependency-unsatisfied by the failed Rover task and
+cannot release duplicate science.

@@ -211,3 +211,15 @@ Fresh training/controller logs contain no quota, user-environment, OOM,
 traceback or killed-task signature. The watcher remains responsible for
 validation-best selection, fixed 20/70 and PW70 materialization, exact recovery
 and final summaries as training progresses.
+
+The first policy retries after this snapshot were all scheduled on
+`ise-cpu-intl-26` and their child evaluators exited through signal 4 within
+seconds; a contemporaneous V1 task on that node also failed before application
+output. The policy batch exclusion was immediately extended from
+`ise-cpu-intl-[01,09-15,25,27-28]` to
+`ise-cpu-intl-[01,09-15,25-28]`, then `ise-cpu-intl-18` after its first two
+allocations requeued at exactly 2:01 without creating stdout. The repaired
+script was checksum-verified in the live controller directory, and pending
+tasks were updated without cancelling scientific work. Failed node-local or
+pre-launch attempts contain no policy result and remain retryable through the
+idempotent watcher.

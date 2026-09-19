@@ -4,7 +4,7 @@
 #SBATCH --mem=20G
 #SBATCH --cpus-per-task=5
 #SBATCH --array=0-167
-#SBATCH --exclude=ise-cpu128-03,ise-cpu-intl-[01,09-15,25-28]
+#SBATCH --exclude=ise-cpu128-03,ise-cpu-intl-[01,09-15,18,25-28]
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-18/endogenous_kl_100epoch_pilot/policy_%A_%a.txt
 set -euo pipefail
 : "${CHECKOUT:?}"; : "${CODE_COMMIT:?}"; : "${CAMPAIGN_ROOT:?}"
