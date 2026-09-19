@@ -24,6 +24,9 @@ Advisor-requested method and mechanism inventories are canonicalized in:
   first-divergence causal analysis and the bounded trace design;
 - `value_head_quality_audit/README.md`: offline value calibration/ranking and
   the gated value-greedy inference diagnostic;
+- `ceiling_significance_audit_20260919/README.md`: per-domain perfect-coverage
+  counterfactuals showing whether the paired seed count can, even in principle,
+  pass the exact test and intended six-domain Holm family;
 - `tpp_kl_multirng_susceptibility_20260916/` and
   `imperfect_domains_kl_semantics_screen_20260916/`: the live KL-semantics
   confirmations and their exact job/log provenance.
