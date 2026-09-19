@@ -147,7 +147,7 @@ persisted original Stage-1 anchor.  It runs exactly `100 - (frontier + 1)`
 additional epochs.  Replay memory and process RNG state are not checkpointed;
 the continuation boundary and this limitation are retained as provenance.
 
-Continuation snapshots live in a separate `continuations/segment_001`
+Continuation snapshots live in a separate numbered `continuations/segment_*`
 directory and never overwrite original logs or checkpoints.  The incremental
 controller maps each segment's local snapshot number back to the canonical
 Stage-2 epoch, preserves all valid policy evaluations, and submits only missing
@@ -161,17 +161,29 @@ while new missing evaluations record the recovery-controller checkout.  They
 are reused because the evaluator implementation is unchanged, not because
 provenance was discarded.
 
-Recovery was deployed from orchestration commit `77f2ec43` at 11:40 IDT on
-19 September:
+The first recovery attempt was deployed from orchestration commit `77f2ec43`
+at 11:40 IDT on 19 September:
 
 | Role | Job | Tasks / resources | State at verification |
 |---|---:|---|---|
-| exact training continuations | `21463862_[0-7]` | 8 × 6 CPU / 48 GiB / 24h | all eight running |
-| incremental curve/search watcher | `21463863` | 1 task / 2 GiB / 20h | running |
+| exact training continuations | `21463862_[0-7]` | 8 × 6 CPU / 48 GiB / 24h | cancelled after quota failures/holds; no continuation checkpoint produced |
+| incremental curve/search watcher | `21463863` | 1 task / 2 GiB / 20h | cancelled after submitting retry array `21463871` |
+| five missing policy identities | `21463871_[0-4]` | 5 × 5 CPU / 20 GiB / 4h | cancelled after quota failures/holds |
 
 At release, 73 canonical curve checkpoints had been discovered and 68 already
-had exact policy results.  The watcher immediately submitted only the five
-missing existing identities, then remained active to discover continuation
-checkpoints.  Expected continuation time is approximately 1--8 hours for seven
-arms and about 18--19 hours for the slow Drone arm; 24 hours is the scheduler
-hard limit, not the expected duration.
+had exact policy results.  The watcher correctly submitted only the five
+missing existing identities.  The recovery then exposed a user-home quota
+failure: Slurm could not create some task environments/stdout files, and the
+tasks that did start stopped during initialization.  No task produced a new
+continuation checkpoint.  The three job groups were cancelled to avoid
+conflicting partial writers; all original checkpoints and the 68 exact policy
+results remain reusable.
+
+The dominant quota consumer is approximately 687 MiB of frozen first-update
+batch payloads from the original causal audit.  These are scientific evidence
+and were not deleted.  The repaired continuation deliberately does not request
+a second first-update audit, accepts a new numbered segment and manifest, and
+can restart from the unchanged frozen frontiers once sufficient persistent
+quota is available.  Expected continuation time remains approximately 1--8
+hours for seven arms and about 18--19 hours for the slow Drone arm; 24 hours is
+the scheduler hard limit, not the expected duration.

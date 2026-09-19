@@ -42,7 +42,9 @@ PY
 
 KL_FLAG=()
 [[ "$SEMANTICS" == deterministic_current ]] && KL_FLAG=(--policy-anchor-kl-deterministic-current)
-export ASN_FIRST_UPDATE_AUDIT_PATH="$SEG/first_update_audit.jsonl"
+# The original arm already captured the first-update causal audit.  A resumed
+# segment must not duplicate its large frozen-batch payload; the continuation
+# is for the learning trajectory only.
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
 set +e
 (
@@ -51,7 +53,6 @@ set +e
     /home/hersco/Docker/image.sif /bin/bash -lc "
       set -euo pipefail; cd '$CHECKOUT/asnets'; source '$PRODUCTION_REPO/venv-asnets/bin/activate';
       export PYTHONPATH='$CHECKOUT/asnets':'$CHECKOUT':\${PYTHONPATH:-};
-      export ASN_FIRST_UPDATE_AUDIT_PATH='$ASN_FIRST_UPDATE_AUDIT_PATH';
       ./run_experiment '$TRAIN_MOD' experiments_numeric.domain.'$DOMAIN' \\
         --resume-from '$SOURCE' --resume-train --no-eval --original-training-set --disable-value-head \\
         --random-seed '$SEED' --worker-logs --num-workers 3 --jpddl-max-heap 4g \\
@@ -87,4 +88,3 @@ pathlib.Path(segment).write_text(json.dumps(payload,sort_keys=True)+'\n')
 assert payload['final_epoch'] == 99, payload
 pathlib.Path(overall).write_text(json.dumps(payload,sort_keys=True)+'\n')
 PY
-

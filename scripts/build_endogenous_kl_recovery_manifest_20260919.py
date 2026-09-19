@@ -28,6 +28,8 @@ def sha256(path: Path) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--campaign", type=Path, required=True)
+    parser.add_argument("--segment", default="segment_001")
+    parser.add_argument("--output", default="recovery_manifest.csv")
     args = parser.parse_args()
     manifest = list(csv.DictReader((args.campaign / "manifest.csv").open()))
     rows = []
@@ -70,11 +72,11 @@ def main() -> int:
             "source_checkpoint": str(latest),
             "source_checkpoint_sha256": sha256(latest / "weights.joblib"),
             "start_epoch": start, "remaining_epochs": 100 - start,
-            "segment": "segment_001",
+            "segment": args.segment,
         })
     if len(rows) != 8:
         raise RuntimeError(f"expected eight interrupted arms, found {len(rows)}")
-    target = args.campaign / "recovery_manifest.csv"
+    target = args.campaign / args.output
     if target.exists():
         old = list(csv.DictReader(target.open()))
         if old != rows:
@@ -93,4 +95,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
