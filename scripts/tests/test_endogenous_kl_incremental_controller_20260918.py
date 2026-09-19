@@ -57,6 +57,11 @@ class IncrementalControllerTest(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["identity"], "arm00-epoch0000")
         self.assertEqual(rows[0]["validation_score"], "0.8")
+        rows = controller.discover_policy_rows(
+            self.campaign, [self.arm], rows, code_commit="controller-only-revision",
+            min_age_seconds=0, now=datetime.now(timezone.utc),
+        )
+        self.assertEqual(rows[0]["code_commit"], "abc")
         (checkpoint / "weights.joblib").write_bytes(b"changed")
         os.utime(checkpoint / "weights.joblib", (1, 1))
         with self.assertRaisesRegex(RuntimeError, "identity mutated"):

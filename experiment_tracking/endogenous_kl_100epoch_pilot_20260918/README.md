@@ -153,3 +153,10 @@ controller maps each segment's local snapshot number back to the canonical
 Stage-2 epoch, preserves all valid policy evaluations, and submits only missing
 curve identities.  `recovery_manifest.csv` freezes the eight exact source
 checkpoint hashes before submission.
+
+The recovery revision changes only orchestration, tests, and documentation;
+the scientific implementation under `asnets/` remains the frozen `c72c9080`
+build.  Existing policy results retain their exact original evaluator commit,
+while new missing evaluations record the recovery-controller checkout.  They
+are reused because the evaluator implementation is unchanged, not because
+provenance was discarded.

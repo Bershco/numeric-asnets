@@ -248,7 +248,11 @@ def discover_policy_rows(
             }
             old = by_identity.get(identity)
             if old is not None:
-                immutable = set(POLICY_FIELDS) - {"discovered_at"}
+                # Controller-only revisions may deploy a new orchestration
+                # commit without changing the evaluator under ``asnets/``.
+                # Retain the exact evaluator commit already frozen on an
+                # existing result instead of invalidating/repeating it.
+                immutable = set(POLICY_FIELDS) - {"discovered_at", "code_commit"}
                 differences = [field for field in immutable if str(old[field]) != str(row[field])]
                 if differences:
                     raise RuntimeError(f"checkpoint identity mutated: {identity}: {differences}")
