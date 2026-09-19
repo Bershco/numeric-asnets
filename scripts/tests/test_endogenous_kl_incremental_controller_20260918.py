@@ -48,7 +48,7 @@ class IncrementalControllerTest(unittest.TestCase):
         os.utime(weights, (1, 1))
         return path
 
-    def test_discovery_is_append_only_and_hash_frozen(self):
+    def test_discovery_freezes_completed_commit_but_updates_unfinished_commit(self):
         checkpoint = self.checkpoint(0, "0.7500")
         rows = controller.discover_policy_rows(
             self.campaign, [self.arm], [], code_commit="abc",
@@ -61,7 +61,21 @@ class IncrementalControllerTest(unittest.TestCase):
             self.campaign, [self.arm], rows, code_commit="controller-only-revision",
             min_age_seconds=0, now=datetime.now(timezone.utc),
         )
-        self.assertEqual(rows[0]["code_commit"], "abc")
+        self.assertEqual(rows[0]["code_commit"], "controller-only-revision")
+        target = self.output / "policy_epoch_0000" / "result.json"
+        target.parent.mkdir()
+        target.write_text(json.dumps({
+            "identity": rows[0]["identity"],
+            "checkpoint_sha256": rows[0]["checkpoint_sha256"],
+            "domain": "drone", "seed": 7,
+            "semantics": "legacy_dropout_current", "epoch": 0,
+            "total": 20, "seen": 20,
+        }))
+        rows = controller.discover_policy_rows(
+            self.campaign, [self.arm], rows, code_commit="later-controller-revision",
+            min_age_seconds=0, now=datetime.now(timezone.utc),
+        )
+        self.assertEqual(rows[0]["code_commit"], "controller-only-revision")
         (checkpoint / "weights.joblib").write_bytes(b"changed")
         os.utime(checkpoint / "weights.joblib", (1, 1))
         with self.assertRaisesRegex(RuntimeError, "identity mutated"):

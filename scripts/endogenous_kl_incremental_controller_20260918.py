@@ -250,12 +250,22 @@ def discover_policy_rows(
             if old is not None:
                 # Controller-only revisions may deploy a new orchestration
                 # commit without changing the evaluator under ``asnets/``.
-                # Retain the exact evaluator commit already frozen on an
-                # existing result instead of invalidating/repeating it.
+                # A completed result retains the evaluator commit that
+                # actually produced it.  An unfinished identity must instead
+                # follow the currently deployed evaluator commit; otherwise
+                # the policy sbatch's provenance guard rejects every retry.
                 immutable = set(POLICY_FIELDS) - {"discovered_at", "code_commit"}
                 differences = [field for field in immutable if str(old[field]) != str(row[field])]
                 if differences:
                     raise RuntimeError(f"checkpoint identity mutated: {identity}: {differences}")
+                if valid_policy_result(campaign, old):
+                    continue
+                replacement = dict(row)
+                by_identity[identity] = replacement
+                discovered = [
+                    replacement if item["identity"] == identity else item
+                    for item in discovered
+                ]
                 continue
             by_identity[identity] = {key: str(value) for key, value in row.items()}
             discovered.append(row)
