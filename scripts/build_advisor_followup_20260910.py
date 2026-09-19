@@ -162,6 +162,30 @@ def build_rq_rows() -> list[dict[str, object]]:
     output: list[dict[str, object]] = []
     policy = [row for row in read_csv(TRACK / "policy_paired_seed_results.csv")
               if row["experiment_id"] == "MAIN-VAL"]
+    # MPrime finished after the original five-domain policy package.  Join its
+    # final Phase-B-A Stage-2 endpoints to the exact Stage-1 policy scores here
+    # so RQ1/RQ3 Holm families are genuinely six-domain families, just like the
+    # already integrated RQ2/RQ4 families below.
+    mprime_stage1 = read_csv(
+        TRACK / "mprime_phase_b_a_stage1_mcts_20260913" /
+        "results_20260914" / "per_seed_results.csv"
+    )
+    mprime_stage2 = read_csv(MPRIME_FINAL_STAGE2)
+    stage1_by_key = {
+        (row["value_head"], row["seed"]): row for row in mprime_stage1
+    }
+    for row in mprime_stage2:
+        before = float(stage1_by_key[(row["value_head"], row["seed"])]["policy_score"])
+        after = float(row["stage2_policy"])
+        policy.append({
+            "experiment_id": "MAIN-VAL",
+            "domain": "mprime",
+            "value_head": row["value_head"],
+            "seed": row["seed"],
+            "before_score": str(before),
+            "after_score": str(after),
+            "difference": str(after - before),
+        })
     policy_map = {(row["domain"], row["value_head"], row["seed"]): row for row in policy}
 
     for domain in DOMAINS:
@@ -173,13 +197,21 @@ def build_rq_rows() -> list[dict[str, object]]:
             continue
         if len(off) != 10 or len(on) != 10:
             raise RuntimeError(f"{domain}: expected ten paired policy seeds per VH mode")
+        policy_provenance = (
+            "experiment_tracking/mprime_phase_b_a_stage1_mcts_20260913/"
+            "results_20260914/per_seed_results.csv;"
+            "experiment_tracking/mprime_final_stage2_search_20260916/"
+            "final_per_seed_results_20260918.csv"
+            if domain == "mprime" else
+            "experiment_tracking/policy_paired_seed_results.csv"
+        )
         output.append(result_row(
             rq="RQ1", stage="Stage 2", estimand="VH-off: Stage 2 policy - Stage 1 policy",
             domain=domain, cutoff="endpoint",
             values=[float(row["difference"]) for row in off],
             baseline_mean=statistics.mean(float(row["before_score"]) for row in off),
             comparison_mean=statistics.mean(float(row["after_score"]) for row in off),
-            provenance="experiment_tracking/policy_paired_seed_results.csv",
+            provenance=policy_provenance,
         ))
         output.append(result_row(
             rq="RQ3", stage="Stage 2", estimand="VH-on direct: Stage 2 policy - Stage 1 policy",
@@ -187,7 +219,7 @@ def build_rq_rows() -> list[dict[str, object]]:
             values=[float(row["difference"]) for row in on],
             baseline_mean=statistics.mean(float(row["before_score"]) for row in on),
             comparison_mean=statistics.mean(float(row["after_score"]) for row in on),
-            provenance="experiment_tracking/policy_paired_seed_results.csv",
+            provenance=policy_provenance,
         ))
         seeds = sorted(set(row["seed"] for row in off) & set(row["seed"] for row in on))
         off_delta = {seed: float(policy_map[(domain, "off", seed)]["difference"]) for seed in seeds}
@@ -198,7 +230,7 @@ def build_rq_rows() -> list[dict[str, object]]:
             values=[on_delta[seed] - off_delta[seed] for seed in seeds],
             baseline_mean=statistics.mean(off_delta.values()),
             comparison_mean=statistics.mean(on_delta.values()),
-            provenance="experiment_tracking/policy_paired_seed_results.csv",
+            provenance=policy_provenance,
         ))
 
     for stage, path, branch in (

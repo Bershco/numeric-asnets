@@ -1,0 +1,10 @@
+kind,remote_deleted,retained_copy,allocated_bytes,verification
+archived_raw_batches,/home/hersco/training_new_domains/2026-09-18/endogenous_kl_100epoch_pilot/outputs/arm_*/first_update_audit.jsonl.batches,C:/Users/roeeh/Desktop/School/Meitar/Thesis/cluster_storage_archive/2026-09-19/kl_first_update_batches,716770304,"SCP exit 0; 21262 files and 149438359 logical bytes matched"
+unused_duplicate_venv,/home/hersco/numeric-asnets-final-clean/numeric-asnets-thesis-artifacts/venv-asnets,production environment retained,5830058496,"no queued/running job or process referenced target"
+duplicate_stdout,2026-08-11T11:21:39.723699/.../run-info/stdout,2026-08-11T11:21:39.723699/runs/e40767c5d8086d83f27038fb9da591e3/stdout,2810086794,cmp -s exact match
+duplicate_stdout,2026-06-09T14:26:12.416949/.../run-info/stdout,2026-06-09T14:26:12.416949/runs/937915cedb8da681e38b8840aeabf07c/stdout,1565290508,cmp -s exact match
+duplicate_stdout,2026-06-09T01:30:00.650217/.../run-info/stdout,2026-06-09T01:30:00.650217/runs/02491c409af752bb1c5f47a968c66aba/stdout,853215295,cmp -s exact match
+duplicate_stdout,2026-06-09T14:26:12.417154/.../run-info/stdout,2026-06-09T14:26:12.417154/runs/69fed39d09c94e396436b82f2d112347/stdout,772376632,cmp -s exact match
+duplicate_stdout,2026-06-08T23:12:19.217540/.../run-info/stdout,2026-06-08T23:12:19.217540/runs/1637fa219be752b7e17fa096f0a49540/stdout,658358503,cmp -s exact match
+duplicate_stdout,2026-06-09T10:28:11.351983/.../run-info/stdout,2026-06-09T10:28:11.351983/runs/af6f88a2990cf0edfb7bc340378adda6/stdout,657975021,cmp -s exact match
+duplicate_stdout,2026-06-11T00:29:00.388061/.../run-info/stdout,2026-06-11T00:29:00.388061/runs/135aeee5c27fbbc3ba67565e8ec4a1b5/stdout,648814938,cmp -s exact match

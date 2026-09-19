@@ -179,11 +179,35 @@ continuation checkpoint.  The three job groups were cancelled to avoid
 conflicting partial writers; all original checkpoints and the 68 exact policy
 results remain reusable.
 
-The dominant quota consumer is approximately 687 MiB of frozen first-update
-batch payloads from the original causal audit.  These are scientific evidence
-and were not deleted.  The repaired continuation deliberately does not request
-a second first-update audit, accepts a new numbered segment and manifest, and
-can restart from the unchanged frozen frontiers once sufficient persistent
-quota is available.  Expected continuation time remains approximately 1--8
-hours for seven arms and about 18--19 hours for the slow Drone arm; 24 hours is
-the scheduler hard limit, not the expected duration.
+The dominant immediately removable quota consumer was approximately 684 MiB
+of frozen first-update batch payloads from the original causal audit. They
+were copied losslessly to the local thesis archive and verified by file count,
+logical byte count, successful SCP completion and a recorded aggregate digest
+before the remote copies were removed. Together with an unused duplicate
+environment and seven byte-identical stdout copies, the safe cleanup reclaimed
+13.516 GiB. Full provenance is in
+`experiment_tracking/storage_cleanup_20260919/`.
+
+## 19 September quota recovery and live continuation
+
+The eight exact continuations were resubmitted as `21473655_[0-7]` and were
+all running at the 23:40 IDT verification snapshot. They keep the unchanged
+frozen scientific implementation and resume the durable frontier. Their
+24-hour allocations provide modest grace over the expected 1--8 hours for
+seven arms and 18--19 hours for the slow Drone arm.
+
+The first post-quota watcher exposed a provenance-only retry bug: unfinished
+manifest rows retained the old orchestration commit while the unchanged policy
+evaluator correctly declared its currently deployed commit, so batch scripts
+rejected the mismatch before inference. Commit `4eea2e48` repairs only this
+retry bookkeeping: completed results retain their historical commit, while
+unfinished identities record the deployed evaluator commit. The stale watcher
+and its known-doomed pending batch were cancelled; watcher `21473760` is
+canonical. Its first three passes discovered 81, 84 and 86 durable checkpoints,
+retained all 68 completed policy evaluations, and submitted only missing
+identities.
+
+Fresh training/controller logs contain no quota, user-environment, OOM,
+traceback or killed-task signature. The watcher remains responsible for
+validation-best selection, fixed 20/70 and PW70 materialization, exact recovery
+and final summaries as training progresses.

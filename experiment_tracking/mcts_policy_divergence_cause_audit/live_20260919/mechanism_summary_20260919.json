@@ -1,0 +1,21 @@
+{
+  "divergence_observed": 30,
+  "no_divergence": 9,
+  "selector_counts": {
+    "goal_chase": 8,
+    "no_divergence": 9,
+    "root_visit_argmax": 22
+  },
+  "selector_outcomes": {
+    "goal_chase|success": 8,
+    "no_divergence|hard_timeout": 2,
+    "no_divergence|success": 4,
+    "no_divergence|unknown": 3,
+    "root_visit_argmax|action_limit": 1,
+    "root_visit_argmax|finished_unsolved": 1,
+    "root_visit_argmax|hard_timeout": 4,
+    "root_visit_argmax|success": 3,
+    "root_visit_argmax|unknown": 13
+  },
+  "unique_results": 39
+}

@@ -195,3 +195,27 @@ records plus 26 proper timeout failures.  Three workers are processing the
 next wave and two identities have not yet started.  Controller `21362904`
 performs this same unique-identity reconciliation before its 59/59 gate; no
 explicit timeout will be rerun merely because the historical JSONL omitted it.
+
+## 19 September final Action-ID reconciliation and full traces
+
+The last recovery task launched evaluator identities 58 and 59 together and
+ran for 6:01:45 before exiting `FAILED 1:0`. Both workers had crossed the exact
+six-hour scientific limit, but this historical wrapper emitted neither its
+usual timeout line nor a JSONL row before the parent returned nonzero. The
+pre-reconciliation ledger was preserved. A fail-closed materializer accepted
+the two timeouts only after verifying: the prior ledger was exactly identities
+1--57; the log contained exactly starts 58 and 59; neither identity had a
+success, action-limit, timeout or fatal marker; the Slurm state was `FAILED`
+with exit `1:0`; and elapsed time was inside the predeclared
+21,600--22,200-second deadline window.
+
+This yields 59/59 terminal Action-ID classifications in every one of the ten
+seeds: 590/590 total. It does not alter strict scores; it prevents an
+operational wrapper omission from being mistaken for missing science.
+
+Controller `21473764` passed the ten-arm gate and released full-root trace
+array `21473766_[0-171]%12`: 172 exact tasks, at most 12 concurrently, two CPU
+and 120 GiB each, eight-hour task limits. The trace set is the union of the
+final policy-success/Action-ID-failure identities under the two comparison
+rules. It supplies the complete root vectors needed to determine how broadly
+the selected three-instance policy-prior rescue generalizes.

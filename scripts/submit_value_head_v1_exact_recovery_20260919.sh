@@ -2,11 +2,12 @@
 set -euo pipefail
 REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-v1
 ROOT=/home/hersco/training_new_domains/2026-09-18/value_head_v1
+EXCLUDE='ise-cpu128-03,ise-cpu-intl-[01,09-15,25-28]'
 
 submit_capture() {
   local domain=$1 array=$2 sources=$3 mem=$4 limit=$5 name=$6
   local raw
-  raw=$(sbatch --parsable --array="$array" --mem="$mem" --time="$limit" \
+  raw=$(sbatch --parsable --array="$array" --mem="$mem" --time="$limit" --exclude="$EXCLUDE" \
     --job-name="$name" \
     --export="ALL,DOMAIN=$domain,CAPTURE_SOURCES=$sources,MATERIALIZE_AFTER_CAPTURE=0" \
     "$REPO/scripts/value_head_v1_state_capture.sbatch")

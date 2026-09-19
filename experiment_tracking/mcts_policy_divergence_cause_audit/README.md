@@ -294,6 +294,31 @@ Do not duplicate the campaign for PW. Add PW traces only where fixed-search
 evidence cannot explain an important result: initially FO Counters and MPrime,
 both VH modes, at most four additional tasks.
 
+## 19 September interim mechanism join
+
+The current deduplicated local join contains 39 exact result artifacts:
+
+- 30 observed first divergences and nine trajectories with no observed
+  divergence;
+- 22 ordinary root-visit selections and eight goal-chase selections;
+- every one of the eight goal-chase selections reached the goal in this
+  selected audit;
+- among ordinary root selections with a currently joined terminal outcome,
+  three succeeded and six failed (one action limit, one ordinary unsolved and
+  four hard timeouts); 13 still require the final terminal-outcome join.
+
+Thus goal chasing is empirically beneficial in the present sample—there is no
+observed goal-chase failure—but this is not a proof that every future known-goal
+override is safe. The unresolved scientific question is ordinary root
+selection: earlier root-vector attribution found Q/exploitation alignment to
+dominate and no uniquely exploration-U-aligned winner, but helpful and harmful
+outcomes both occur.
+
+The exact interim rows and summary are stored under `live_20260919/`. Final
+FO-Counters recovery `21473765_0` is running with a 26-hour hard limit. The
+mechanism taxonomy remains descriptive until it terminates and the 13 pending
+outcome joins are reconciled.
+
 ### Stage 3 — causal intervention, gated
 
 Only after Stage 2 identifies a repeated mechanism should a treatment be

@@ -47,3 +47,43 @@ families.
   the exact-test resolution.
 
 See `perfect_coverage_counterfactual.csv` for every audited RQ/stage/cutoff.
+
+## Minimum realistic improvement audit
+
+Perfect coverage is an extreme resolution bound, not a sensible performance
+target for difficult domains such as Rover. The companion file
+`minimum_consistent_gain_for_holm.csv` asks a more useful question: starting
+from the actual paired baseline, what is the smallest favorable, perfectly
+consistent improvement pattern that would pass the six-domain Holm family?
+
+For each row, the audit adds exactly one solved test instance to `k` distinct
+non-ceiling paired seeds, introduces no regressions, recomputes the exact
+paired sign-flip p-value, replaces only that raw p-value in the observed
+six-domain family and recomputes Holm. It reports the smallest passing `k` and
+resulting mean coverage. This is the most favorable arrangement for a given
+number of improved seeds; real effects with regressions or fewer nonzero pairs
+can have a better mean and still fail.
+
+| Cell | Baseline | Smallest favorable passing mean | Improved seeds |
+|---|---:|---:|---:|
+| RQ1 Rover, Stage 2 policy | 4.0/20 | 4.8/20 | 8/10 |
+| RQ3 Rover, VH-on refinement | 3.8/20 | 4.6/20 | 8/10 |
+| RQ2 Rover, Stage-1 MCTS, 30m | 4.0/20 | 4.7/20 | 7/10 |
+| RQ2 Rover, Stage-1 MCTS, 2h/6h | 4.0/20 | 4.8/20 | 8/10 |
+| RQ1 MPrime | 16.3/20 | 17.1/20 | 8/10 |
+| RQ3 MPrime | 15.7/20 | 16.5/20 | 8/10 |
+| RQ3 Counters | 18.6/59 | 19.4/59 | 8/10 |
+
+Rover illustrates why there is no single mean-coverage cutoff: its observed
+Stage-1 MCTS mean already exceeds some favorable thresholds, yet inconsistent
+seed-wise directions keep the actual exact test nonsignificant.
+
+Holm is a multiple-testing correction, not the underlying paired test. The
+canonical report keeps paired effect sizes and confidence intervals primary,
+reports raw exact p-values, and treats Holm as familywise-error control.
+Legitimate sensitivity analyses include dependence-aware maxT or
+Westfall--Young correction, or a predeclared hierarchical paired bounded-count
+model. Benjamini--Hochberg is appropriate only for an explicitly exploratory
+false-discovery family. None should be selected post hoc merely because it
+makes a result significant, and per-instance tests remain invalid because the
+same instances are shared within seeds.
