@@ -7,6 +7,7 @@
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-18/value_head_v1/postcapture_%j.txt
 
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-v1
 ROOT=/home/hersco/training_new_domains/2026-09-18/value_head_v1
 READY="$ROOT/ready/v1_checkpoint_candidates.ready.csv"

@@ -5,6 +5,7 @@
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-18/value_head_v1/resource_%x_%A_%a.txt
 
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 : "${DOMAIN:?submit with DOMAIN}"
 : "${READY_CANDIDATES:?submit with READY_CANDIDATES}"
 : "${EXPECTED_CANDIDATES_SHA256:?submit with EXPECTED_CANDIDATES_SHA256}"

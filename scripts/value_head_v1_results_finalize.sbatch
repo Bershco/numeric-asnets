@@ -6,6 +6,7 @@
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-18/value_head_v1/results_finalize_%j.txt
 
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 : "${READY_CANDIDATES:?missing READY_CANDIDATES}"
 : "${RESOURCE_GATE:?missing RESOURCE_GATE}"
 REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-v1

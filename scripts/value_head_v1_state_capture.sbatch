@@ -5,6 +5,7 @@
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-18/value_head_v1/capture_%x_%A_%a.txt
 
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 : "${DOMAIN:?submit with --export=ALL,DOMAIN=<domain>}"
 REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-v1
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
@@ -49,6 +50,7 @@ run_capture() {
     cd '$REPO/asnets'
     source '$PRODUCTION_REPO/venv-asnets/bin/activate'
     export PYTHONPATH='$REPO/asnets':'$REPO':\${PYTHONPATH:-}
+    export PYTHONDONTWRITEBYTECODE=1
     export ASN_VH_STATE_CAPTURE_DIR='$capture_dir'
     export ASN_VH_STATE_CAPTURE_ACTOR='$actor'
     export ASN_VH_STATE_CAPTURE_SOURCE='$source'

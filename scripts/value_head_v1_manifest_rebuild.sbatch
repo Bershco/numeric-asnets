@@ -8,6 +8,7 @@
 #SBATCH --output=/home/hersco/training_new_domains/2026-09-18/value_head_v1/manifest_%A_%a.txt
 
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 REPO=/home/hersco/bershco-nu-asnets/numeric-asnets-v1
 PRODUCTION_REPO=/home/hersco/bershco-nu-asnets/numeric-asnets
 ROOT=/home/hersco/training_new_domains/2026-09-18/value_head_v1
