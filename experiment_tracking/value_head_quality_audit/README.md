@@ -299,3 +299,38 @@ All six source-recovery tasks began running immediately.  Their maximum active
 request is 36 allocated CPUs and 624 GiB.  Existing complete source captures
 remain in place and are joined by the deterministic manifest rebuild; they are
 not recomputed by these filtered jobs.
+
+### Operational recovery revision — 19 September 2026, 12:00 IDT
+
+The initial released jobs did not all reach the V1 program.  FO-random array
+element `21463887_0` (actual job `21463894`) failed after 45 seconds with only
+the scheduler prologue in its log.  Its sibling and the FO/Rover recoveries
+were requeued and held with `user env retrieval failed`; both MPrime elements
+failed before producing program output.  These are operational launch
+failures, not failed captures or scientific outcomes.  Consequently the
+original downstream chain `21463891`--`21463893` and two intermediate
+replacement chains were dependency-cancelled and are obsolete.
+
+The shared home quota was again unable to create even the tiny recovery
+ledger.  Only regenerated `__pycache__` directories in the isolated V1
+checkout were removed; no capture, checkpoint, log or scientific result was
+deleted.  A write/delete probe then succeeded.  The exact held recoveries were
+released and exact MPrime replacements were submitted while preserving every
+durable source capture.  All six required recovery identities were verified as
+genuinely running after the cleanup:
+
+- FO random seed 534933607: `21463904_0`, 96 GiB / four hours;
+- FO random seed 923500475: `21463920_1`, 96 GiB / four hours;
+- FO Stage-2 policy seed 923500475: `21463888_1`, 96 GiB / four hours;
+- Rover Stage-2 policy seed 534933607: `21463889_0`, 96 GiB / four hours;
+- MPrime random plus both policy sources: `21463944_[0-1]`, 120 GiB / eight
+  hours per seed.
+
+The canonical downstream chain is now `21463956_[0-7]` (deterministic
+manifest rebuild) -> `21463957` (strict finalizer) -> `21463969` (automatic
+resource preflight, checksum gate and scientific release).  Its dependency
+record contains only the live exact recoveries above.  The maximum concurrent
+capture request remains 36 allocated CPUs and 624 GiB; the four- and eight-hour
+figures are scheduler bounds, while the bounded-capture implementation is
+expected to finish substantially sooner if the cluster launch environment
+remains healthy.
