@@ -160,3 +160,18 @@ build.  Existing policy results retain their exact original evaluator commit,
 while new missing evaluations record the recovery-controller checkout.  They
 are reused because the evaluator implementation is unchanged, not because
 provenance was discarded.
+
+Recovery was deployed from orchestration commit `77f2ec43` at 11:40 IDT on
+19 September:
+
+| Role | Job | Tasks / resources | State at verification |
+|---|---:|---|---|
+| exact training continuations | `21463862_[0-7]` | 8 × 6 CPU / 48 GiB / 24h | all eight running |
+| incremental curve/search watcher | `21463863` | 1 task / 2 GiB / 20h | running |
+
+At release, 73 canonical curve checkpoints had been discovered and 68 already
+had exact policy results.  The watcher immediately submitted only the five
+missing existing identities, then remained active to discover continuation
+checkpoints.  Expected continuation time is approximately 1--8 hours for seven
+arms and about 18--19 hours for the slow Drone arm; 24 hours is the scheduler
+hard limit, not the expected duration.
