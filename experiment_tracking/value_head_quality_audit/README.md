@@ -277,3 +277,25 @@ checksum-verified scripts.  Smoke `21463884` is running with 1 CPU / 8 GiB;
 controller `21463885` is `afterok:21463884` and requests 1 CPU / 2 GiB.  The
 controller cannot release recovery or downstream scientific work unless the
 real-data Drone smoke succeeds.
+
+Smoke `21463884` completed in 73 seconds: all twelve existing audit tests and
+both new manifest-selection tests passed, and both durable Drone capture trees
+materialized valid 60-state temporary manifests.  Controller `21463885` then
+released the canonical exact chain:
+
+- FO random recovery `21463887_[0-1]`: 6 allocated CPUs, 96 GiB and four hours
+  per task;
+- FO seed-923500475 Stage-2 policy recovery `21463888_1`: 6 CPUs, 96 GiB and
+  four hours;
+- Rover seed-534933607 Stage-2 policy recovery `21463889_0`: 6 CPUs, 96 GiB and
+  four hours;
+- MPrime random plus both policy sources `21463890_[0-1]`: 6 CPUs, 120 GiB and
+  eight hours per task;
+- eight-manifest rebuild `21463891_[0-7]`, strict state finalizer `21463892`,
+  and automatic preflight/science controller `21463893`, all linked by
+  `afterok` dependencies.
+
+All six source-recovery tasks began running immediately.  Their maximum active
+request is 36 allocated CPUs and 624 GiB.  Existing complete source captures
+remain in place and are joined by the deterministic manifest rebuild; they are
+not recomputed by these filtered jobs.
