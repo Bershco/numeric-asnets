@@ -83,6 +83,42 @@ class IncrementalControllerTest(unittest.TestCase):
         target.write_text(json.dumps(data))
         self.assertFalse(controller.valid_policy_result(self.campaign, row))
 
+    def test_continuation_segment_maps_local_to_canonical_epoch(self):
+        self.checkpoint(0, "0.5000", b"base")
+        segment = self.output / "continuations" / "segment_001"
+        segment.mkdir(parents=True)
+        continued = self.root / "continued"
+        continued.mkdir()
+        (segment / "plan.json").write_text(json.dumps({"start_epoch": 26}))
+        (segment / "snapshot_root.txt").write_text(str(continued))
+        (segment / "training.stdout").write_text(
+            "[VALIDATION] Current network validation success rate: 0.9\n"
+        )
+        checkpoint = continued / "snapshot_0_1.0000"
+        checkpoint.mkdir()
+        (checkpoint / "weights.joblib").write_bytes(b"continued")
+        os.utime(checkpoint / "weights.joblib", (1, 1))
+        rows = controller.discover_policy_rows(
+            self.campaign, [self.arm], [], code_commit="abc",
+            min_age_seconds=0, now=datetime.now(timezone.utc),
+        )
+        self.assertEqual([row["epoch"] for row in rows], [0])
+        # Epoch 26 is not a predeclared curve point, but epoch 30 is local 4.
+        for local in range(1, 5):
+            path = continued / f"snapshot_{local}_1.0000"
+            path.mkdir(); (path / "weights.joblib").write_bytes(bytes([local]))
+            os.utime(path / "weights.joblib", (1, 1))
+        (segment / "training.stdout").write_text("".join(
+            f"[VALIDATION] Current network validation success rate: {0.9-local/100}\n"
+            for local in range(5)
+        ))
+        rows = controller.discover_policy_rows(
+            self.campaign, [self.arm], rows, code_commit="abc",
+            min_age_seconds=0, now=datetime.now(timezone.utc),
+        )
+        self.assertEqual([row["epoch"] for row in rows], [0, 30])
+        self.assertEqual(rows[1]["validation_score"], "0.86")
+
     def test_validation_best_uses_earliest_epoch_and_builds_both_searches(self):
         policy_rows, results = [], []
         for arm in range(8):

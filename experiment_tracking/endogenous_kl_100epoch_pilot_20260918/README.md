@@ -129,3 +129,27 @@ identities on its first pass and submitted them as array `21455208`.  Later
 passes append only newly stable checkpoints.  Validation-selected fixed 20/70
 and PW70 jobs remain automatically gated on complete training validation
 records plus the eight exact selected-policy results.
+
+## 19 September interruption and continuation
+
+All eight original training tasks ended `FAILED` after approximately 2h32 on
+18 September.  This was not an OOM, timeout, or application exception: the
+tasks ran on five distinct nodes, stopped within 77 seconds of one another,
+and every log ends abruptly inside ordinary validation evaluation without a
+traceback.  Other independent jobs also failed in that interval.  The evidence
+therefore supports a synchronized operational interruption; its exact external
+trigger is not present in the application or Slurm accounting logs.
+
+The durable Stage-2 checkpoint frontiers were local epochs 25, 11, 28, 24,
+67, 64, 66, and 56 for arms 0--7.  Recovery resumes each arm from its latest
+complete weights, optimizer, trainer-state, validation-selection state, and
+persisted original Stage-1 anchor.  It runs exactly `100 - (frontier + 1)`
+additional epochs.  Replay memory and process RNG state are not checkpointed;
+the continuation boundary and this limitation are retained as provenance.
+
+Continuation snapshots live in a separate `continuations/segment_001`
+directory and never overwrite original logs or checkpoints.  The incremental
+controller maps each segment's local snapshot number back to the canonical
+Stage-2 epoch, preserves all valid policy evaluations, and submits only missing
+curve identities.  `recovery_manifest.csv` freezes the eight exact source
+checkpoint hashes before submission.

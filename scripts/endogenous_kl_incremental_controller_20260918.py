@@ -122,19 +122,54 @@ def load_base_manifest(path: Path) -> list[dict[str, str]]:
     return rows
 
 
-def snapshot_root(campaign: Path, arm: dict[str, str]) -> Path | None:
-    output = campaign / "outputs" / (
-        f"arm_{arm['arm_index']}_{arm['domain']}_{arm['seed']}_{arm['semantics']}"
-    )
+def _root_from_output(output: Path, log_name: str = "training.stdout") -> Path | None:
+    """Resolve a segment's snapshot root without requiring segment completion."""
     root_file = output / "snapshot_root.txt"
     if root_file.exists():
         value = root_file.read_text(encoding="utf-8").strip()
         return Path(value) if value else None
-    log = output / "training.stdout"
+    log = output / log_name
     if not log.exists():
         return None
-    matches = re.findall(r"^Snapshot directory:\s*(.+?)\s*$", log.read_text(errors="replace"), re.MULTILINE)
+    matches = re.findall(
+        r"^Snapshot directory:\s*(.+?)\s*$",
+        log.read_text(errors="replace"),
+        re.MULTILINE,
+    )
     return Path(matches[-1]) if matches else None
+
+
+def snapshot_segments(
+    campaign: Path, arm: dict[str, str]
+) -> list[tuple[int, Path, Path]]:
+    """Return ``(canonical start epoch, root, log)`` for one lineage.
+
+    Interrupted Stage-2 jobs resume into a new run directory.  Their local
+    snapshot numbers restart at zero, while the thesis learning curve must
+    retain the original 0..99 Stage-2 epoch identity.  Each recovery segment
+    therefore freezes its canonical ``start_epoch`` in ``plan.json``.
+    """
+    output = campaign / "outputs" / (
+        f"arm_{arm['arm_index']}_{arm['domain']}_{arm['seed']}_{arm['semantics']}"
+    )
+    segments: list[tuple[int, Path, Path]] = []
+    base_root = _root_from_output(output)
+    if base_root is not None:
+        segments.append((0, base_root, output / "training.stdout"))
+    continuations = output / "continuations"
+    if continuations.is_dir():
+        for segment in sorted(continuations.glob("segment_*")):
+            plan_path = segment / "plan.json"
+            if not plan_path.is_file():
+                continue
+            plan = json.loads(plan_path.read_text(encoding="utf-8"))
+            root = _root_from_output(segment)
+            if root is not None:
+                segments.append((int(plan["start_epoch"]), root, segment / "training.stdout"))
+    starts = [start for start, _, _ in segments]
+    if len(starts) != len(set(starts)):
+        raise RuntimeError(f"arm {arm['arm_index']}: duplicate continuation starts")
+    return sorted(segments)
 
 
 def discover_policy_rows(
@@ -149,27 +184,37 @@ def discover_policy_rows(
     by_identity = {row["identity"]: row for row in existing}
     discovered = list(existing)
     for arm in arms:
-        root = snapshot_root(campaign, arm)
-        if root is None or not root.is_dir():
-            continue
-        training_log = campaign / "outputs" / (
-            f"arm_{arm['arm_index']}_{arm['domain']}_{arm['seed']}_{arm['semantics']}"
-        ) / "training.stdout"
-        if not training_log.exists():
-            continue
-        validation_rates = [
-            float(value) for value in re.findall(
-                r"\[VALIDATION\] Current network validation success rate:\s*([0-9.]+)",
-                training_log.read_text(errors="replace"),
-            )
-        ]
+        segments = snapshot_segments(campaign, arm)
         for position, epoch in enumerate(EPOCHS):
-            matches = sorted(root.glob(f"snapshot_{epoch}_*"))
-            if not matches:
+            candidates: list[tuple[Path, float]] = []
+            for start_epoch, root, training_log in segments:
+                local_epoch = epoch - start_epoch
+                if local_epoch < 0 or not root.is_dir() or not training_log.is_file():
+                    continue
+                matches = sorted(root.glob(f"snapshot_{local_epoch}_*"))
+                if len(matches) > 1:
+                    raise RuntimeError(
+                        f"arm {arm['arm_index']} canonical epoch {epoch}: "
+                        f"{len(matches)} snapshots in segment {start_epoch}"
+                    )
+                if not matches:
+                    continue
+                validation_rates = [
+                    float(value) for value in re.findall(
+                        r"\[VALIDATION\] Current network validation success rate:\s*([0-9.]+)",
+                        training_log.read_text(errors="replace"),
+                    )
+                ]
+                if local_epoch < len(validation_rates):
+                    candidates.append((matches[0], validation_rates[local_epoch]))
+            if not candidates:
                 continue
-            if len(matches) != 1:
-                raise RuntimeError(f"arm {arm['arm_index']} epoch {epoch}: {len(matches)} snapshots")
-            checkpoint = matches[0]
+            if len(candidates) != 1:
+                raise RuntimeError(
+                    f"arm {arm['arm_index']} canonical epoch {epoch}: "
+                    f"{len(candidates)} segment candidates"
+                )
+            checkpoint, validation_score = candidates[0]
             weights = checkpoint / "weights.joblib"
             if not weights.is_file():
                 continue
@@ -178,9 +223,6 @@ def discover_policy_rows(
             # Stage-2 snapshot suffixes contain training/replay coverage, not
             # validation coverage.  VALIDATE_EVERY is frozen to one in this
             # training build, so the Nth validation record is epoch N.
-            if epoch >= len(validation_rates):
-                continue
-            validation_score = validation_rates[epoch]
             curve_index = int(arm["arm_index"]) * len(EPOCHS) + position
             identity = f"arm{int(arm['arm_index']):02d}-epoch{epoch:04d}"
             row: dict[str, object] = {
