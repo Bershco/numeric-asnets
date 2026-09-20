@@ -72,10 +72,41 @@ def main() -> None:
                 "identity": row["identity"],
                 "result": str(result),
             })
+    selected = {
+        int(row["arm_index"]): int(row["selected_epoch"])
+        for row in csv.DictReader((CAMPAIGN / "selected_endpoints.csv").open(newline=""))
+    }
+    policy_trajectories = []
+    for arm_index in range(8):
+        arm_dirs = list((CAMPAIGN / "outputs").glob(f"arm_{arm_index}_*"))
+        if len(arm_dirs) != 1:
+            continue
+        arm_dir = arm_dirs[0]
+        epochs = (0, selected[arm_index], 99)
+        records = {
+            epoch: json.loads(
+                (arm_dir / f"policy_epoch_{epoch:04d}" / "result.json").read_text()
+            )
+            for epoch in epochs
+        }
+        base = records[0]
+        policy_trajectories.append({
+            "arm_index": arm_index,
+            "domain": base["domain"],
+            "seed": base["seed"],
+            "kl_semantics": base["semantics"],
+            "start_epoch": 0,
+            "start_score": records[0]["score"],
+            "selected_epoch": selected[arm_index],
+            "selected_score": records[selected[arm_index]]["score"],
+            "final_epoch": 99,
+            "final_score": records[99]["score"],
+        })
     print(json.dumps({
         "policy_manifest_identities": len(policy_manifest),
         "policy_result_files": len(policy_results),
         "missing_policy": missing_policy,
+        "policy_trajectories": policy_trajectories,
         "mcts": rows,
     }, indent=2, sort_keys=True))
 
