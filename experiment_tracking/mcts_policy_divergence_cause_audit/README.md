@@ -307,9 +307,9 @@ The current deduplicated local join contains 39 exact result artifacts:
   three succeeded and six failed (one action limit, one ordinary unsolved and
   four hard timeouts); 13 still require the final terminal-outcome join.
 
-Thus goal chasing is empirically beneficial in the present sample—there is no
-observed goal-chase failure—but this is not a proof that every future known-goal
-override is safe. The unresolved scientific question is ordinary root
+All eight goal-chase overrides reached the goal in the present sample—there is
+no observed harmful goal-chase case—but this is not a proof that every future
+known-goal override is safe. The unresolved scientific question is ordinary root
 selection: earlier root-vector attribution found Q/exploitation alignment to
 dominate and no uniquely exploration-U-aligned winner, but helpful and harmful
 outcomes both occur.
@@ -339,3 +339,26 @@ The maximum initial new workload is therefore 10 fixed-search tasks for the
 five current imperfect domains, or 12 after MPrime is available.  Optional PW
 diagnostics add at most four tasks.  No such tasks are submitted until the
 Stage-0 join produces the exact missing-strata manifest.
+
+## 20 September reconciliation
+
+Job `21473765_0` reached scheduler completion, but it did not materialize the
+fortieth `.result.json` or a terminal scientific marker. Its log contains a
+complete first-divergence record and then stops after the instance budget. It
+therefore remains scientifically unresolved until a fail-closed reconciliation
+can prove the terminal class or an exact rerun supplies it.
+
+The current scientific artifact count remains 39:
+
+- 30 contain an observed first divergence;
+- nine contain no observed divergence in the recorded trajectory;
+- those nine end as four successes, two explicit hard timeouts and three
+  unknown/incomplete outcomes. “No observed divergence” must not be rewritten
+  as “followed the policy to a terminal result.”
+
+All eight recorded goal-chase divergences reached the goal in this selected
+audit; no harmful goal-chase case was observed. This does not prove the
+override is universally safe. The remaining unresolved
+mechanism question is ordinary visit-based selection, where accumulated
+Q/exploitation evidence dominates the observed harmful and helpful
+divergences.

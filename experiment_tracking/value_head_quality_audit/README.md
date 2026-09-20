@@ -382,3 +382,24 @@ automatic dependency chain reuses the two running MPrime captures:
 `21473868_[0-7]` -> `21473869` -> `21473870`. The earlier chain
 `21473680`--`21473682` is dependency-unsatisfied by the failed Rover task and
 cannot release duplicate science.
+
+## 20 September exact-source status
+
+Rover replacement `21473867` completed. Of the two MPrime source recoveries,
+one scheduler task completed and one failed after 48 minutes with a fresh
+user-quota error. Neither seed currently has the required
+`stage2_on_policy.stdout` capture in its frozen source directory. The dependent
+manifest/finalizer/science chain `21473868 -> 21473869 -> 21473870` was
+cancelled by the upstream failure and is no longer automatic.
+
+There are still no scientific V1 results. The next exact recovery must:
+
+1. rerun the missing MPrime Stage-2 on-policy captures and strictly verify all
+   source classes for both seeds;
+2. rebuild the eight shared 60-state manifests;
+3. run the measured resource/checksum preflight;
+4. release the 16 checkpoint tasks only after those gates pass.
+
+Existing valid Drone, FO Counters and Rover captures remain reusable. A global
+node exclusion is not justified for the mixed-success quota node; the recovery
+must instead begin with a successful quota/write probe.

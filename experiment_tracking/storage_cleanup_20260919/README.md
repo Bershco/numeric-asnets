@@ -55,3 +55,41 @@ Checkpoints, compact gradient summaries, hashes, manifests, completion
 ledgers, policy results, unique logs, and scientific result files remain on
 the cluster. No ambiguous candidate was removed. Additional large unique
 artifacts must be archived and verified locally before any future deletion.
+
+## Systemic log-duplication mechanism
+
+The seven deleted stdout files were not an isolated logging accident. The
+main experiment launchers deliberately create a canonical
+`runs/<md5(command)>/{cmdline,stdout,stderr}` directory, tee the child output
+there, and then copy the whole directory into the scientific output's
+`run-info/` directory. The same pattern is present in `run_experiment.py`,
+`run_learning.py`, and `run_planning.py`. Many Slurm wrappers additionally tee
+the combined launcher output to an outer experiment log; that outer file is
+not assumed byte-identical because it can contain scheduler/wrapper text.
+
+The internal duplicate mapping is deterministic in both directions:
+
+- `run-info/cmdline` -> MD5 of its exact bytes -> sibling root
+  `runs/<digest>`;
+- `runs/<digest>/stdout` -> its `Unique prefix:` line -> scientific output
+  directory containing `run-info/`.
+
+Future cleanup can therefore enumerate every `run-info/cmdline`, derive its
+canonical `runs/<digest>` partner, require matching file sizes and streaming
+byte comparison for `cmdline`, `stdout`, and `stderr`, and delete only one side
+of a proven pair. Never infer identity from the path or `Unique prefix` alone.
+Keep the scientific `run-info` copy by default and delete the sibling
+`runs/<digest>` copy only after confirming that no live/recovery script treats
+the latter as canonical, or apply the reverse policy consistently if the
+campaign explicitly declares `runs/<digest>` canonical.
+
+`collate_results.py` consumes `run-info`, so the preferred future policy is to
+retain `run-info` and delete only a byte-identical `runs/<digest>` sibling. The
+seven September deletions removed the opposite copy but retained the exact
+bytes in `runs/<digest>`; no scientific content was lost, although the future
+direction is operationally cleaner.
+
+The locally archived KL payload described above is only the first cleanup row:
+21,262 files, 149,438,359 logical bytes and 716,770,304 remote allocated bytes.
+The duplicate environment and stdout removals were not downloaded because a
+verified retained remote copy remained or the environment was provably unused.

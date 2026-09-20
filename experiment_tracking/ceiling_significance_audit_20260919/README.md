@@ -22,11 +22,8 @@ the exact p-value when all nonzero differences share a sign.
 
 The CSV contains target-wise counterfactuals: one domain is replaced by
 perfect coverage while every other hypothesis keeps its observed raw p-value,
-then Holm is recomputed within the intended final six-domain family.  The
-stored RQ1/RQ3 evidence currently keeps MPrime in a separate extension file;
-those files must be merged and the real six-domain Holm values recomputed
-before the final thesis tables.  RQ2/RQ4 already use six-domain fixed-search
-families.
+then Holm is recomputed within the final six-domain family. RQ1/RQ3 and
+RQ2/RQ4 now all use the merged MPrime-inclusive six-domain families.
 
 ## Main conclusion
 
@@ -48,23 +45,23 @@ families.
 
 See `perfect_coverage_counterfactual.csv` for every audited RQ/stage/cutoff.
 
-## Minimum realistic improvement audit
+## Favorable baseline-plus-one resolution counterfactual
 
 Perfect coverage is an extreme resolution bound, not a sensible performance
 target for difficult domains such as Rover. The companion file
-`minimum_consistent_gain_for_holm.csv` asks a more useful question: starting
-from the actual paired baseline, what is the smallest favorable, perfectly
-consistent improvement pattern that would pass the six-domain Holm family?
+`minimum_consistent_gain_for_holm.csv` asks a narrower resolution question:
+what is the smallest favorable, perfectly consistent *baseline-plus-one*
+pattern that would pass the six-domain Holm family?
 
-For each row, the audit adds exactly one solved test instance to `k` distinct
-non-ceiling paired seeds, introduces no regressions, recomputes the exact
-paired sign-flip p-value, replaces only that raw p-value in the observed
-six-domain family and recomputes Holm. It reports the smallest passing `k` and
-resulting mean coverage. This is the most favorable arrangement for a given
-number of improved seeds; real effects with regressions or fewer nonzero pairs
-can have a better mean and still fail.
+For each row, the audit constructs a hypothetical comparison that equals the
+baseline plus one solved instance in `k` distinct non-ceiling seeds and equals
+the baseline in every other seed. It does **not** add those solves to the
+observed comparison result. The audit recomputes the exact paired sign-flip
+p-value, replaces only that raw p-value in the observed six-domain family and
+recomputes Holm. The old label “minimum target mean” was misleading and has
+been replaced by `counterfactual_mean_under_baseline_plus_one_pattern`.
 
-| Cell | Baseline | Smallest favorable passing mean | Improved seeds |
+| Cell | Baseline | Passing baseline-plus-one counterfactual mean | Positive pairs |
 |---|---:|---:|---:|
 | RQ1 Rover, Stage 2 policy | 4.0/20 | 4.8/20 | 8/10 |
 | RQ3 Rover, VH-on refinement | 3.8/20 | 4.6/20 | 8/10 |
@@ -74,9 +71,18 @@ can have a better mean and still fail.
 | RQ3 MPrime | 15.7/20 | 16.5/20 | 8/10 |
 | RQ3 Counters | 18.6/59 | 19.4/59 | 8/10 |
 
-Rover illustrates why there is no single mean-coverage cutoff: its observed
-Stage-1 MCTS mean already exceeds some favorable thresholds, yet inconsistent
-seed-wise directions keep the actual exact test nonsignificant.
+These values are not coverage targets for the observed methods. Rover
+illustrates why: its observed Stage-1 MCTS mean already exceeds some listed
+counterfactual means, yet inconsistent seed-wise directions keep the actual
+exact test nonsignificant. Exact paired inference depends on where gains and
+losses occur, not only on the mean.
+
+There is consequently no unique answer to “what mean must the current method
+reach?” without freezing an allocation rule for additional solves. Any future
+current-result continuation audit must separately declare whether solves are
+allocated to the most negative pairs, to distinct zero pairs, uniformly, or
+by another predeclared rule. The perfect-coverage bound and this favorable
+baseline-plus-one pattern remain useful as resolution diagnostics only.
 
 Holm is a multiple-testing correction, not the underlying paired test. The
 canonical report keeps paired effect sizes and confidence intervals primary,

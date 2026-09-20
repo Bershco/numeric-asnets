@@ -10,6 +10,9 @@ Read this together with
 `../experiment_tracking/cluster_access_and_ssh.md`. The access document is the
 authority for Windows profile, SSH alias, VPN diagnosis and retry behavior;
 this document is the authority for efficient scheduler and status workflows.
+Before submission or recovery, also load `cluster_node_exclusions.md` and copy
+its current hard-exclusion string into the manifest/controller. Do not infer a
+global node exclusion from an OOM, user-quota failure, or scientific timeout.
 
 ## Default cluster workflow
 

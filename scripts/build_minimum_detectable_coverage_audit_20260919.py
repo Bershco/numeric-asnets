@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-"""Find the least uniformly distributed coverage gain that can pass Holm.
+"""Build a favorable baseline-plus-one Holm-resolution counterfactual.
 
 This is a resolution counterfactual.  For each direct coverage estimand, it
-adds exactly one solved instance to ``k`` distinct non-ceiling seed pairs,
-leaves the other pairs unchanged, and recomputes the exact two-sided sign-flip
-p-value and the target's Holm value in the declared six-domain family.
+constructs a new hypothetical comparison equal to ``baseline + 1`` in ``k``
+distinct non-ceiling seed pairs and equal to the baseline elsewhere.  It then
+recomputes the exact two-sided sign-flip p-value and the target's Holm value in
+the declared six-domain family.
+
+This does *not* add improvements to the observed comparison scores.  Exact
+paired significance depends on the complete seed-level difference vector, so
+there is no unique mean-coverage threshold for the observed method without an
+explicit rule for allocating additional solves across seeds.
 """
 
 from __future__ import annotations
@@ -96,13 +102,18 @@ def main() -> None:
                 "observed_holm_p": target["holm_p"],
                 "available_non_ceiling_pairs": max_pairs,
                 "required_positive_pairs": "" if required is None else required,
-                "minimum_total_additional_solves": "" if required is None else required,
-                "minimum_mean_gain": "" if required is None else required / n,
-                "minimum_target_mean": "" if required is None else baseline + required / n,
+                "counterfactual_positive_pairs": "" if required is None else required,
+                "counterfactual_mean_gain_over_baseline": "" if required is None else required / n,
+                "counterfactual_mean_under_baseline_plus_one_pattern": (
+                    "" if required is None else baseline + required / n
+                ),
                 "counterfactual_raw_p": "" if required_raw is None else required_raw,
                 "counterfactual_holm_p": "" if required_holm is None else required_holm,
                 "attainable_with_current_pairs": "no" if required is None else "yes",
-                "assumption": "one additional solve in each of k distinct seed pairs; no regressions",
+                "assumption": (
+                    "hypothetical comparison is baseline+1 in k distinct non-ceiling "
+                    "seed pairs and equals baseline elsewhere; observed comparison is replaced"
+                ),
             })
     fields = list(output[0])
     with OUTPUT.open("w", newline="", encoding="utf-8") as stream:

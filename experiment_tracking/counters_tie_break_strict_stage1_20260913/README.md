@@ -219,3 +219,28 @@ and 120 GiB each, eight-hour task limits. The trace set is the union of the
 final policy-success/Action-ID-failure identities under the two comparison
 rules. It supplies the complete root vectors needed to determine how broadly
 the selected three-instance policy-prior rescue generalizes.
+
+## 20 September strict result and trace status
+
+The same-build ten-seed coverage comparison is scientifically complete:
+
+- Action-ID tie-breaking: `25.5/59` mean; per-seed scores
+  `20, 28, 59, 17, 38, 18, 22, 14, 20, 19`.
+- Policy-prior tie-breaking: `25.3/59` mean; per-seed scores
+  `19, 28, 59, 17, 38, 17, 22, 14, 20, 19`.
+- Paired policy-prior minus Action-ID differences:
+  `-1, 0, 0, 0, 0, -1, 0, 0, 0, 0`; mean `-0.2/59`.
+- Two-sided exact sign-flip `p=.5`; approximate paired 95% t interval
+  `[-0.50, 0.10]`.
+
+The selected 3/3 pilot rescue was real but did not generalize into a
+domain-wide coverage improvement. This is a mechanism/configuration result;
+it does not overwrite the historical primary RQ2 Counters row.
+
+The full-root array was not scientifically complete despite the strict-score
+completion: 12 tasks produced durable trace completion records, 54 failed and
+106 were dependency-cancelled. No failed or cancelled identity is counted as
+a trace. An exact recovery must retain the 12 valid identities and run only
+the remaining 160 in a fresh attempt namespace with the canonical hard node
+exclusions. Until then, the broader per-root mechanism distribution remains
+unfinished.

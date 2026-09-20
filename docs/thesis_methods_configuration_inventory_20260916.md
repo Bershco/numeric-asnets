@@ -19,7 +19,7 @@ methods and obscure what was actually learned.
 | Leaf evaluation | Network value (when VH is enabled) / ENHSP estimator blend (`use_estimator=.5`) | Combine learned value generalization, when available, with an external planning estimate. VH-off cells do not emit a learned value. | Current mainline estimator setting in fixed and PW campaigns. End-to-end results exist, but the estimator components have not been factorially isolated. | A for the end-to-end method; C for claims about why the blend helps. |
 | Leaf evaluation | Learned-only / ENHSP-only | Isolate the learned and heuristic components. | Code support exists; no canonical matched result table. | C: implemented options; rerun only if making a component claim. |
 | Expansion | Fixed expansion | Retain a fixed policy-ranked action set throughout search. | Strong FO Counters and Drone/VH-on gains, smaller Rover gains, variable/negative Counters behavior. | A: replicated primary method. |
-| Expansion | Progressive widening | Start narrow and admit actions as evidence accumulates. | Strong FO Counters evidence, promising live MPrime lower bounds, approximate Rover parity, and weaker Drone/Block Grouping/Counters evidence. | A where ten-seed confirmation is complete; B/live where it is not. |
+| Expansion | Progressive widening | Start narrow and admit actions as evidence accumulates. | Strong FO Counters evidence; completed MPrime evidence exceeds policy at two and six hours and exceeds fixed search at every cutoff; approximate Rover parity; weaker Drone/Block Grouping/Counters evidence. | A where ten-seed confirmation is complete; B where only a stopped pilot exists. |
 
 The normal and narrow budgets are **parameterizations of fixed search**, not
 separate method families. Likewise PW20 and PW70 are simulation-budget
@@ -28,7 +28,7 @@ variants of progressive widening, not separate methods:
 | Parameter study | Result | Correct thesis use |
 |---|---|---|
 | Fixed top-20 / 70 simulations versus top-5 / 20 simulations | The broad setting is stronger where affordable; 5/20 makes expensive Block Grouping/Counters evaluations feasible but can lose coverage. | Computational trade-off, not a new algorithm. |
-| PW20 versus PW70 | PW20 produced isolated Counters recoveries; PW70 is the standard matched normal-search budget, strongly positive in FO Counters and promising but still live in MPrime. | Budget sensitivity; never pool the two. |
+| PW20 versus PW70 | PW20 produced isolated Counters recoveries; PW70 is the standard matched normal-search budget, strongly positive in FO Counters and complete in MPrime. | Budget sensitivity; never pool the two. |
 | Drone PW `Kmin=2` versus `Kmin=3` | `Kmin=2` greatly reduced tree/runtime but lost coverage; `Kmin=3` reached 9.5/20 versus policy 7.0 and fixed 10.5. | Hyperparameter-optimization pilot, not a method-family comparison. |
 | PUCT exploration constant `.1` | Frozen main setting; no controlled evidence that it is optimal. | Declare it, do not call it optimal. A test-set grid would be descriptive post-hoc sensitivity, not valid tuning. |
 
@@ -38,7 +38,7 @@ variants of progressive widening, not separate methods:
 |---|---|---|---|
 | Maximum visits, action-index tie | Historical deterministic root selection. | Selected Counters failures exposed arbitrary index dependence. | Baseline behavior. |
 | Q tie-break | Let learned/search value resolve equal visits. | 0/3 on the selected Counters causal pilot. | B: selected-case negative pilot. |
-| Policy-prior tie-break | Preserve the learned preference when visit/Q evidence is unresolved. | Recovered 3/3 selected Counters policy successes; strict confirmation is unfinished. | B: promising selected-case mechanism, not a primary replacement. |
+| Policy-prior tie-break | Preserve the learned preference when visit/Q evidence is unresolved. | Recovered 3/3 selected Counters policy successes, but the completed ten-seed same-build comparison scored 25.3/59 versus 25.5/59 for Action-ID (paired change -0.2; no domain-wide benefit). | B: selected-case rescue that did not generalize; not a primary replacement. |
 | SAFE-1 terminal protection | Refuse a known terminal non-goal commitment. | Repaired 2/4 selected Drone failures. | B: useful selected-case pilot; broaden before an effectiveness claim. |
 | SAFE-CONTEXT | Distinguish identical physical states with different action histories. | Exposed real aliasing, but the selected screen reduced coverage and increased memory. | B: negative development evidence, not a replicated main result. |
 | Remaining-horizon enforcement | Prevent search below the remaining executable budget. | Nonbinding in audited cases; no observed coverage change. | B/D: documented negative/non-result. |
@@ -121,7 +121,7 @@ MCTS inventory above.
 |---|---|---|---|
 | Adaptive target-KL coefficient | Increase anchoring when observed KL becomes too high. | Never activated because the target statistic and monitored statistic were on mismatched scales. | Completed negative activation screen. |
 | Adam rollback / LR backtracking | Reject an excessive update, restore network and optimizer state, lower LR and retry. | Apparent selected-seed rescue was confounded by deterministic-current KL; exact-RNG inactive arms also stayed 20/20. | Held; no isolated guard benefit. |
-| Deterministic-current anchor KL | Keep replay training stochastic but compare deterministic current and Stage-1 anchor policies. | The catastrophic TPP seed is stochastically susceptible to legacy dropout-current KL, while deterministic-current KL protected it across all four tested optimizer RNG schedules. A frozen-replay crossover in the imperfect domains is dependency-submitted to isolate KL semantics from replay differences. | Selected-seed mechanism result; broader causal screen live. |
+| Deterministic-current anchor KL | Keep replay training stochastic but compare deterministic current and Stage-1 anchor policies. | The catastrophic TPP seed is stochastically susceptible to legacy dropout-current KL, while deterministic-current KL protected it across four optimizer RNG schedules. The 50-lineage frozen-replay crossover removed the unintended initial anchor gradient but showed no Holm-significant one-epoch policy advantage. The endogenous Drone/FO-Counters 100-epoch pilot is 7/8 training-complete; its policy/search chain is operationally held. | Selected-seed mechanism established; broader end-to-end decision gate unfinished. |
 | MPrime validation redesign | Replace a saturated validator with harder frozen alternatives. | Phase B removed saturation; Phase C did not improve selector quality enough; Phase-B-A is final. | Methodological contribution. |
 
 Until an explicit adoption decision is made, the primary RQs continue to

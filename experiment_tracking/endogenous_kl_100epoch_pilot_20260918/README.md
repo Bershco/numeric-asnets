@@ -223,3 +223,20 @@ script was checksum-verified in the live controller directory, and pending
 tasks were updated without cancelling scientific work. Failed node-local or
 pre-launch attempts contain no policy result and remain retryable through the
 idempotent watcher.
+
+## 20 September morning status
+
+Seven of eight 100-epoch training continuations are complete. The remaining
+Drone seed-534933607 deterministic-current arm had reached canonical epoch
+95/99, with four continuation epochs left and approximately 40--60 minutes at
+its observed rate.
+
+The incremental controller has discovered 166 checkpoints and retained
+144/168 exact policy evaluations. Twenty-two missing policy jobs are currently
+held by Slurm with `user env retrieval failed`; they are not healthy queued
+work. Two final checkpoints may appear when the last lineage completes.
+Validation-selected fixed 20/70 and PW70 searches have not started because
+endpoint selection and selected-policy materialization are downstream of this
+held policy work. Repair must preserve the 144 results, apply the canonical
+hard node exclusions, and release or exactly resubmit only the missing
+identities.
