@@ -75,7 +75,10 @@ def main() -> int:
         )
         writer.writeheader()
         for key in sorted(ledger):
-            writer.writerow(ledger[key])
+            # Metadata sidecars may add provenance fields over time.  The
+            # compact hash ledger intentionally exports only its declared
+            # stable schema; extra sidecar fields remain in the sidecars.
+            writer.writerow({field: ledger[key][field] for field in writer.fieldnames})
     print(f"READY_INPUTS|16|8|{ready_path}|{ledger_path}")
     return 0
 
