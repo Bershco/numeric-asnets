@@ -207,10 +207,32 @@ canonical. Its first three passes discovered 81, 84 and 86 durable checkpoints,
 retained all 68 completed policy evaluations, and submitted only missing
 identities.
 
+## 20 September 13:25 IDT recovery update
+
+All eight 100-epoch lineages are now complete. The incremental controller
+discovered all 168 declared curve checkpoints, froze eight validation-selected
+endpoints, and materialized all 16 selected-endpoint searches: eight fixed
+20/70 and eight PW70. One search is terminal and the other fifteen have been
+released; the live ledgers contain partial classifications, but no paired
+corrected-KL conclusion is frozen until every arm is terminal.
+
+Policy reconciliation found 166/168 durable results. Nine active evaluations
+whose exact `result.json` already existed were cancelled as duplicate compute.
+The only genuine gaps are Drone deterministic-current epochs 70 and 99; their
+persistently held attempts were replaced by exact no-requeue array `21480077`
+with the canonical hard-node exclusions. Existing results and selected
+endpoints were not recomputed.
+
 Fresh training/controller logs contain no quota, user-environment, OOM,
 traceback or killed-task signature. The watcher remains responsible for
 validation-best selection, fixed 20/70 and PW70 materialization, exact recovery
 and final summaries as training progresses.
+
+The two exact policy gaps were subsequently recovered: the campaign now has
+`168/168` policy results.  Both selected-search families are scientifically
+live: eight fixed top-20/70-simulation arms and eight PW70 arms.  Partial
+coverage is reported only as a lower bound until all 320 seed-instance
+identities terminate; paired intervals and tests are not computed early.
 
 The first policy retries after this snapshot were all scheduled on
 `ise-cpu-intl-26` and their child evaluators exited through signal 4 within

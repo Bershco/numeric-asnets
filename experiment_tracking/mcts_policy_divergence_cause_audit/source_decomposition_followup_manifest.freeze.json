@@ -1,0 +1,9 @@
+{
+  "schema_version": "mcts-source-decomposition-followup-freeze-v1",
+  "manifest_sha256": "6e056cbb9029ed61cf3e6eb452415fab573ade02333d58bc58958427b3463ded",
+  "source_grouped_manifest_sha256": "56204d595a70d4b92eabf88970612d36c69506af864c4b56506136f524744659",
+  "source_reconciliation_sha256": "980afc85dbbd4a2fdd4b3b9839b1d722fd5c2de8b60a924e288365cad8cfbbcf",
+  "task_count": 6,
+  "submitted": false,
+  "submission_job_ids": []
+}

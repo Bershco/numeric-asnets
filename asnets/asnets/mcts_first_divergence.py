@@ -19,6 +19,7 @@ from post_training.monte_carlo_tree_search import action_history_digest
 
 
 SCHEMA_VERSION = "mcts-first-divergence-v2"
+SOURCE_SCHEMA_VERSION = "mcts-root-source-decomposition-v1"
 
 
 def _normalise(vector: Sequence[float]) -> np.ndarray:
@@ -149,6 +150,7 @@ def build_first_divergence_record(
         elapsed_seconds: float | None,
         override_path: Sequence[Mapping[str, Any]],
         provenance: Mapping[str, Any],
+        record_if_actions_agree: bool = False,
 ) -> dict[str, Any] | None:
     """Return a complete first-divergence root record, or ``None``.
 
@@ -171,7 +173,7 @@ def build_first_divergence_record(
         return None
     policy_action = int(np.argmax(masked_policy))
     selected_action = int(selected_action)
-    if selected_action == policy_action:
+    if selected_action == policy_action and not record_if_actions_agree:
         return None
 
     action_ids = list(range(act_dim))
@@ -243,6 +245,13 @@ def build_first_divergence_record(
         selected_action=selected_action,
         visit_policy=visits_distribution,
     )
+    source_decomposition = None
+    source_reader = getattr(mcts, "root_q_source_decomposition", None)
+    if getattr(mcts, "source_decomposition", False) and callable(source_reader):
+        source_decomposition = source_reader(act_dim)
+        if (not isinstance(source_decomposition, list)
+                or len(source_decomposition) != act_dim):
+            raise ValueError("root source decomposition has wrong length")
     record = {
         "schema_version": SCHEMA_VERSION,
         "provenance": dict(provenance),
@@ -254,6 +263,7 @@ def build_first_divergence_record(
         "policy_action_name": action_names[policy_action],
         "selected_action": selected_action,
         "selected_action_name": action_names[selected_action],
+        "actions_diverge": selected_action != policy_action,
         "override_path": [dict(stage) for stage in override_path],
         "selection": selection,
         "state": {
@@ -284,6 +294,7 @@ def build_first_divergence_record(
             "child_terminal": terminal,
             "child_goal": goal,
             "child_state_digests": child_state_digests,
+            "q_source_decomposition": source_decomposition,
         },
         "summary": {
             "policy_entropy": entropy(masked_policy),
@@ -329,4 +340,21 @@ def build_first_divergence_record(
             for depth, count in sorted(mcts.selection_depth_hist.items())
         },
     }
+    return record
+
+
+def build_source_decomposition_record(mcts, **kwargs) -> dict[str, Any]:
+    """Record one predeclared root, including policy/search agreement roots."""
+    record = build_first_divergence_record(
+        mcts,
+        record_if_actions_agree=True,
+        **kwargs,
+    )
+    if record is None:  # pragma: no cover - guarded by record-if-agree
+        raise RuntimeError("source diagnostic unexpectedly produced no record")
+    rows = record["root"].get("q_source_decomposition")
+    if not isinstance(rows, list):
+        raise RuntimeError("MCTS source decomposition was not enabled")
+    record["schema_version"] = SOURCE_SCHEMA_VERSION
+    record["diagnostic_stop_after_record"] = True
     return record

@@ -244,3 +244,19 @@ a trace. An exact recovery must retain the 12 valid identities and run only
 the remaining 160 in a fresh attempt namespace with the canonical hard node
 exclusions. Until then, the broader per-root mechanism distribution remains
 unfinished.
+
+Exact rich-trace recovery was released on 20 September as
+`21479818_[0-159]`. The recovery builder revalidated and retained the 12
+scientifically complete identities, rejected malformed or trace-less ledgers,
+and froze only the remaining 160 identities in a new attempt namespace.
+Every identity has a separate completion ledger and output directory; there is
+no shared-writer collision and no completed trace is rerun. Tasks request two
+CPUs, 120 GiB and eight hours, use the canonical hard-node exclusions, and are
+left to Slurm's resource scheduler without an artificial array throttle.
+
+Four initial recovery tasks (`24`, `28`, `37`, and `42`) landed on
+`ise-cpu-intl-28` and exited with native code `-4` within 57--121 seconds,
+before producing a scientific classification.  Exact retry array `21480788`
+contains only those four identities and adds node 28 as a workload-specific
+exclusion.  Node 28 is not promoted to the global exclusion list because it
+also completed a lightweight V1 manifest task in the same evidence window.

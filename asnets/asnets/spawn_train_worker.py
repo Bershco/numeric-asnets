@@ -37,7 +37,10 @@ from asnets.utils.py_utils import set_random_seeds, RandomPopContainer,strip_par
 from post_training.enhspwrapper import ENHSPEstimator, EstimatorMode
 from post_training.training_mcts import TrainingMCTS, get_est_v
 from post_training.monte_carlo_tree_search import action_history_digest
-from .mcts_first_divergence import build_first_divergence_record
+from .mcts_first_divergence import (
+    build_first_divergence_record,
+    build_source_decomposition_record,
+)
 
 from enum import Enum, auto
 
@@ -1419,8 +1422,13 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
         worker_tag, instance_name, start_time = init_eval_worker(inp)
         planner_exts = _build_planner_exts_from_spec(inp.spec, inp.epoch)
         act_dim = planner_exts.problem_meta.num_acts
+        source_decomposition_step = int(getattr(
+            inp.spec, "mcts_source_decomposition_step", -1))
+        source_decomposition_enabled = source_decomposition_step >= 0
         first_divergence_enabled = bool(getattr(
             inp.spec, "mcts_first_divergence_record", False))
+        selection_trace_enabled = (
+            first_divergence_enabled or source_decomposition_enabled)
         action_policy = build_action_policy(
             base_policy=inp.spec.action_policy,
             worker_tag=worker_tag,
@@ -1431,7 +1439,7 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
             duplicate_penalty=inp.spec.action_policy_duplicate_penalty,
             terminal_safe=inp.spec.mcts_terminal_safe_action_selection,
             root_visit_tie_break=inp.spec.mcts_root_visit_tie_break,
-            selection_trace_enabled=first_divergence_enabled,
+            selection_trace_enabled=selection_trace_enabled,
         )
         wm_local = _rebuild_weight_manager_local(
             planner_exts.problem_meta,
@@ -1471,6 +1479,10 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
             context_diagnostics=inp.spec.mcts_context_diagnostics,
             contextual_nodes=inp.spec.mcts_contextual_nodes,
             context_witness_limit=inp.spec.mcts_context_witness_limit,
+            leaf_evaluator=inp.spec.mcts_leaf_evaluator,
+            rollout_horizon=inp.spec.mcts_rollout_horizon,
+            rollout_seed=inp.seed,
+            source_decomposition=source_decomposition_enabled,
         )
         cstate = ctx.get_init_state()
         max_len = int(inp.spec.max_len * eval_max_len_coeff_by_diff(inp.spec.difficulty))
@@ -1504,15 +1516,72 @@ def run_worker_eval_mcts(inp: WorkerInput) -> EvalWorkerOutput:
                     mcts=mcts,
                     masked_pi=masked_pi,
                 )
-            if first_divergence_enabled and not recorded_first_divergence:
+            capture_first_divergence = (
+                first_divergence_enabled and not recorded_first_divergence)
+            capture_source_root = step == source_decomposition_step
+            if capture_first_divergence or capture_source_root:
                 action_policy.begin_selection_trace()
             action_id = action_policy.select_action(
                 mcts=mcts,
                 pi=masked_pi,
                 remaining_horizon=enforced_horizon,
             )
-            if first_divergence_enabled and not recorded_first_divergence:
+            if capture_first_divergence or capture_source_root:
                 selection_trace = action_policy.consume_selection_trace()
+            if capture_source_root:
+                source_record = build_source_decomposition_record(
+                    mcts,
+                    visit_policy=masked_pi,
+                    selected_action=action_id,
+                    step=step,
+                    instance_name=instance_name,
+                    elapsed_seconds=time.time() - start_time,
+                    override_path=selection_trace,
+                    provenance={
+                        "checkpoint_path": getattr(
+                            inp.spec, "checkpoint_path", None),
+                        "epoch": inp.epoch,
+                        "trainer_seed": inp.spec.trainer_seed,
+                        "worker_seed": inp.seed,
+                        "evaluation_index": inp.spec.evaluation_index,
+                        "domain_pddl": inp.spec.pddls[0],
+                        "instance_pddl": inp.spec.pddls[1],
+                        "value_head_enabled": bool(
+                            mcts.network.value_head_enabled),
+                        "minimization": bool(inp.minimization),
+                        "mcts_iterations": int(mcts.iterations),
+                        "mcts_expansion_k": int(mcts.k),
+                        "mcts_exploration_weight": float(
+                            mcts.exploration_weight),
+                        "estimator_coeff": float(mcts.estimator_coeff),
+                        "progressive_widening": bool(
+                            mcts.progressive_widening),
+                        "root_visit_tie_break": (
+                            inp.spec.mcts_root_visit_tie_break),
+                        "diagnostic_target_step": source_decomposition_step,
+                    },
+                )
+                print(
+                    "[MCTS SOURCE DECOMPOSITION] "
+                    + json.dumps(
+                        source_record,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                    flush=True,
+                )
+                print(
+                    "[MCTS SOURCE DECOMPOSITION STOP] "
+                    f"step={step} instance={instance_name}",
+                    flush=True,
+                )
+                return EvalWorkerOutput(
+                    hit_goal=float(cstate.is_goal),
+                    steps=step,
+                    instance_name=instance_name,
+                    plan=plan,
+                )
+            if capture_first_divergence:
                 divergence_record = build_first_divergence_record(
                     mcts,
                     visit_policy=masked_pi,

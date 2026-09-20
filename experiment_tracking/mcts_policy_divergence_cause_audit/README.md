@@ -294,30 +294,12 @@ Do not duplicate the campaign for PW. Add PW traces only where fixed-search
 evidence cannot explain an important result: initially FO Counters and MPrime,
 both VH modes, at most four additional tasks.
 
-## 19 September interim mechanism join
+## 19 September interim mechanism join (superseded)
 
-The current deduplicated local join contains 39 exact result artifacts:
-
-- 30 observed first divergences and nine trajectories with no observed
-  divergence;
-- 22 ordinary root-visit selections and eight goal-chase selections;
-- every one of the eight goal-chase selections reached the goal in this
-  selected audit;
-- among ordinary root selections with a currently joined terminal outcome,
-  three succeeded and six failed (one action limit, one ordinary unsolved and
-  four hard timeouts); 13 still require the final terminal-outcome join.
-
-All eight goal-chase overrides reached the goal in the present sample—there is
-no observed harmful goal-chase case—but this is not a proof that every future
-known-goal override is safe. The unresolved scientific question is ordinary root
-selection: earlier root-vector attribution found Q/exploitation alignment to
-dominate and no uniquely exploration-U-aligned winner, but helpful and harmful
-outcomes both occur.
-
-The exact interim rows and summary are stored under `live_20260919/`. Final
-FO-Counters recovery `21473765_0` is running with a 26-hour hard limit. The
-mechanism taxonomy remains descriptive until it terminates and the 13 pending
-outcome joins are reconciled.
+The former 39/40 and three-unknown snapshot was an artifact-discovery and
+schema-reconciliation problem, not unfinished scientific inference. The final
+40-case reconciliation below supersedes it. The interim artifacts under
+`live_20260919/` remain historical provenance only.
 
 ### Stage 3 — causal intervention, gated
 
@@ -340,25 +322,167 @@ five current imperfect domains, or 12 after MPrime is available.  Optional PW
 diagnostics add at most four tasks.  No such tasks are submitted until the
 Stage-0 join produces the exact missing-strata manifest.
 
-## 20 September reconciliation
+## 20 September final 40-case reconciliation
 
-Job `21473765_0` reached scheduler completion, but it did not materialize the
-fortieth `.result.json` or a terminal scientific marker. Its log contains a
-complete first-divergence record and then stops after the instance budget. It
-therefore remains scientifically unresolved until a fail-closed reconciliation
-can prove the terminal class or an exact rerun supplies it.
+The apparent fortieth missing result and the three unknown no-divergence
+outcomes were bookkeeping defects, now resolved without rerunning anything.
 
-The current scientific artifact count remains 39:
+- Job `21473765_0` wrote to the newer
+  `2026-09-19/mcts_policy_divergence_stage1_final_recovery` root, while the old
+  audit inspected only the `2026-09-18/...stage1_recovery` root. Its result is
+  a scientifically explicit hard timeout for FO Counters, VH-off, fixed 20/70,
+  seed `1510771779`, checkpoint `src20401235_e0066`, `instance_8.pddl`.
+- The three formerly unknown terminal joins use the version-1 result schema,
+  where terminal status is stored in top-level `completion_record` rather than
+  nested `outcome.classification`. They are all successes: Counters/VH-on
+  fixed `fz_instance_10.pddl` (57 steps), FO Counters/VH-on PW
+  `instance_2.pddl` (8 steps), and Rover/VH-off fixed `pfile1.pddl` (10 steps).
+- The final join therefore contains 40/40 identities and zero unknown terminal
+  outcomes: 27 successes, seven hard timeouts, five action-limit failures and
+  one ordinary finished-unsolved result. Nine trajectories have no observed
+  policy/search divergence: seven successes and two hard timeouts.
 
-- 30 contain an observed first divergence;
-- nine contain no observed divergence in the recorded trajectory;
-- those nine end as four successes, two explicit hard timeouts and three
-  unknown/incomplete outcomes. “No observed divergence” must not be rewritten
-  as “followed the policy to a terminal result.”
+The selector taxonomy must distinguish raw root visits from transformations
+applied before final argmax:
 
-All eight recorded goal-chase divergences reached the goal in this selected
-audit; no harmful goal-chase case was observed. This does not prove the
-override is universally safe. The remaining unresolved
-mechanism question is ordinary visit-based selection, where accumulated
-Q/exploitation evidence dominates the observed harmful and helpful
-divergences.
+- eight divergences use known-goal chasing; all eight succeed in this selected
+  sample;
+- 20 use the unmodified root-visit argmax;
+- three use root argmax only after duplicate-control transformed the visit
+  vector. These are not evidence that raw visits or Q won. Duplicate-control
+  produced two successes and one finished-unsolved result.
+
+Among the 20 genuinely raw root-visit selections, the policy action was
+expanded in every case. Sixteen selected actions are signed-Q argmaxes, none
+is U argmax, eight are Q+U argmaxes and four have a maximum-visit tie. The
+selected action has higher signed Q than the policy action in 17/20 roots and
+equal Q in 3/20. Outcomes are ten successes, five action-limit failures and
+five hard timeouts. By predeclared outcome stratum these are eight both-fail,
+eight policy-failure/search-success, two both-success and two
+policy-success/search-failure cases.
+
+The two harmful raw-root cases are:
+
+- Block Grouping/VH-on fixed, `instance_20_30_7_2.pddl`: selected visits
+  2053 versus policy 1572, selected-minus-policy Q `+0.000703`, but
+  selected-minus-policy U `-0.000760` and selected-minus-policy Q+U
+  `-0.000057`; it reaches the action limit.
+- FO Counters/VH-off fixed, `instance_8.pddl`: at step zero the selected action
+  has 61 visits versus one for the policy action, Q difference `+0.000308`, U
+  difference `-0.032490`, policy/visit Jensen-Shannon divergence `0.68596`,
+  and winner visit share `0.884`; it reaches the six-hour timeout.
+
+One additional harmful divergence in Drone is not a raw-root winner:
+duplicate-control bans the 124-visit policy action, after which a 36-visit
+action is selected and the run finishes unsolved. This should be tested with a
+duplicate-control ablation rather than a tie-break or PUCT intervention.
+
+Q is a backed-up MCTS return, not automatically a learned-value-head verdict.
+VH-off uses the ENHSP-derived estimator (plus terminal outcomes) in the declared
+leaf blend; VH-on blends learned value and ENHSP-derived estimation. The
+current trace records only the blended Q. It therefore supports the descriptive
+conclusion that accumulated backed-up exploitation evidence often overrides the
+policy, but it cannot yet attribute a harmful Q difference to learned value,
+ENHSP, terminal discovery or finite-search path dependence. It also cannot
+compare divergent with non-divergent roots because version 1 records a root
+vector only at first divergence.
+
+The smallest causal-source follow-up is source-decomposed tracing for the two harmful
+raw-root cases, the one duplicate-control case and descriptive helpful/control
+roots. Record learned leaf value, transformed ENHSP value, blended value,
+terminal source, per-action backed-up source contributions, raw visits before
+selector transforms and final selector input. Use observation-only controls
+at predeclared steps so non-divergent roots have comparable vectors.
+This is a selected mechanism diagnostic, not an RQ population estimate.
+
+The existing harmful divergences occurred after approximately 31.6 minutes
+(Block Grouping), 7.7 minutes (Drone) and 16.8 seconds (FO Counters). A minimal
+six-task design—those three exact cases plus one frozen matched control each—
+can therefore request 2 CPU, 120 GiB and two hours per task, for at most
+12 concurrent CPU and 720 GiB. It should stop immediately after materializing
+the predeclared diagnostic root; it must not repeat the already-known full
+six-hour terminal outcome. Code instrumentation and local validation are now
+complete. The step-zero FO harmful task is the cluster compute-smoke gate for
+the remaining five tasks. No recovery or causal job was submitted during this
+reconciliation or preparation.
+
+Canonical local outputs:
+
+- `reconcile_result_roots.py`: version-aware, multi-root, deduplicating join;
+- `stage1_final_40_reconciled.csv`: the 40 resolved rows with terminal,
+  selector and root-vector evidence.
+
+The reproducible cluster-side reconciliation command is:
+
+```text
+python3 reconcile_result_roots.py --format summary \
+  /home/hersco/training_new_domains/2026-09-18/mcts_policy_divergence_stage1_v2 \
+  /home/hersco/training_new_domains/2026-09-18/mcts_policy_divergence_stage1_recovery \
+  /home/hersco/training_new_domains/2026-09-19/mcts_policy_divergence_stage1_final_recovery
+```
+
+This command is login-node parsing only and requests no Slurm resources.
+
+## Source-decomposed causal follow-up (prepared, not submitted)
+
+The minimal next diagnostic is frozen as six observation-only tasks: the two
+harmful raw-root cases above, the harmful Drone duplicate-control case, and one
+predeclared descriptive control for each. These are contrast groups, not
+matched pairs or a harmful-versus-helpful causal comparison. The controls match
+the most important available
+axes: Block Grouping and FO
+Counters match domain, search family and raw-root mechanism; Drone matches
+domain, VH mode and fixed-search configuration and deliberately records an
+agreement root. BG and FO cross VH mode, seed, checkpoint and instance; all
+three controls differ in at least checkpoint/seed/instance. This limitation
+must remain explicit, and each root should be interpreted individually.
+
+The added instrumentation does not change scalar Q or action selection.  For
+every backup it records the additive contributions from raw network value,
+transformed ENHSP estimator value and terminal/rollout outcome.  At the frozen
+external step it writes one complete root record and exits before executing the
+selected action.  The result schema says both
+`diagnostic_stopped_after_record=true` and `terminal_outcome_repeated=false`;
+the generic evaluation completion ledger is disabled because it would label an
+intentional early stop `finished_unsolved`. Only the dedicated validated
+diagnostic result is written. The
+historical terminal outcome remains joined only from the already completed
+source evaluation.
+
+Source statistics have scope `node_global_matches_child_q`.  This is
+intentional: a transposed child node has one global Q across all of its parents,
+so its accumulated source statistics use exactly the same scope.  Focused tests
+cover blended, estimator-only and terminal backups, transposition/global-node
+scope, agreement-root recording and diagnostic-stop result semantics.
+
+Frozen artifacts:
+
+- `source_decomposition_followup_manifest.json`: six exact roots and resources;
+- `source_decomposition_followup_manifest.freeze.json`: SHA-256 lock against
+  the manifest, source grouped manifest and final reconciliation;
+- `../../scripts/run_mcts_source_decomposition_followup_20260920.py`: dry-run
+  by default, exact join/record validation and fail-closed output handling;
+- `../../scripts/mcts_source_decomposition_followup_20260920.sbatch`: reviewed
+  Slurm payload with the global hard-node exclusion list.
+
+Each task requests 2 CPUs, 120 GiB and two hours.  Running all six would request
+at most 12 CPUs and 720 GiB; the gated release below peaks at 10 CPUs and
+600 GiB after the smoke.  The longest historical target
+root appeared after 31.6 minutes; the two-hour allocation leaves substantial
+operational grace while still stopping immediately once the target record is
+written.  A submission must first deploy a reviewed commit, create the output
+directory, then run exactly:
+
+```text
+mkdir -p /home/hersco/training_new_domains/2026-09-20/mcts_source_decomposition_followup
+smoke=$(sbatch --parsable --array=4 \
+  --export=ALL,CODE_COMMIT=<reviewed-deployed-commit> \
+  scripts/mcts_source_decomposition_followup_20260920.sbatch)
+sbatch --parsable --dependency=afterok:$smoke --array=0-3,5 \
+  --export=ALL,CODE_COMMIT=<reviewed-deployed-commit> \
+  scripts/mcts_source_decomposition_followup_20260920.sbatch
+```
+
+As of preparation, no task has been submitted and no causal result exists.
+This selected six-root diagnostic can attribute backed-up Q to its direct
+sources; it is not a population estimate and does not alter any RQ table.

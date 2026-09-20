@@ -253,6 +253,8 @@ def build_command(
     instance_timeout: int,
     max_actions: int = 10000,
     action_debug: bool = False,
+    first_divergence_record: bool = True,
+    source_decomposition_step: int | None = None,
 ) -> list[str]:
     if value_head not in {"off", "on"}:
         raise RuntimeError(f"invalid value-head setting: {value_head}")
@@ -263,7 +265,6 @@ def build_command(
         problem_module,
         "--resume-from", checkpoint,
         "--eval-with-mcts",
-        "--eval-mcts-first-divergence-record",
         "--eval-mcts-root-visit-tie-break", tie_break,
         "--mcts-expansion-size", str(int(search_config["mcts_expansion_k"])),
         "--mcts-iterations", str(int(search_config["mcts_iterations"])),
@@ -280,6 +281,15 @@ def build_command(
         "--worker-logs",
         "--random-seed", str(seed),
     ]
+    if first_divergence_record:
+        command.append("--eval-mcts-first-divergence-record")
+    if source_decomposition_step is not None:
+        if int(source_decomposition_step) < 0:
+            raise RuntimeError("source decomposition step cannot be negative")
+        command.extend([
+            "--eval-mcts-source-decomposition-step",
+            str(int(source_decomposition_step)),
+        ])
     if action_debug:
         command.append("--action-debug")
     if terminal_safe:

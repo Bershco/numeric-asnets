@@ -602,6 +602,14 @@ parser.add_argument(
         'divergence in each evaluated instance. This is opt-in and does not '
         'change search or action selection.'))
 parser.add_argument(
+    '--eval-mcts-source-decomposition-step',
+    type=int,
+    default=-1,
+    help=(
+        'At this zero-based external-action step, emit one source-decomposed '
+        'root diagnostic and stop the evaluated instance immediately. '
+        'Negative disables the diagnostic. Requires --eval-with-mcts.'))
+parser.add_argument(
     '--puct-debug',
     action='store_true',
     default=False,
@@ -671,6 +679,14 @@ parser.add_argument(
     type=int,
     default=3,
     help='How far should the mcts rollout go for.')
+parser.add_argument(
+    '--eval-mcts-leaf-evaluator',
+    choices=('value', 'policy_rollout'),
+    default='value',
+    help=(
+        'Evaluation-only MCTS leaf evaluator. "value" preserves the current '
+        'learned-value/ENHSP path; "policy_rollout" runs a bounded stochastic '
+        'network-policy rollout on the current 0/1 value scale.'))
 parser.add_argument(
     '--graceful-timeout',
     type=int,
@@ -997,6 +1013,13 @@ def evaluation_signature(args):
     # without trace evidence cannot be reused for a trace campaign.
     if getattr(args, 'eval_mcts_first_divergence_record', False):
         payload_fields['mcts_first_divergence_record'] = True
+    if getattr(args, 'eval_mcts_source_decomposition_step', -1) >= 0:
+        payload_fields['mcts_source_decomposition_step'] = int(
+            args.eval_mcts_source_decomposition_step)
+    if getattr(args, 'eval_mcts_leaf_evaluator', 'value') != 'value':
+        payload_fields['mcts_leaf_evaluator'] = args.eval_mcts_leaf_evaluator
+        payload_fields['mcts_rollout_horizon'] = int(
+            args.mcts_rollout_horizon)
     payload = json.dumps(
         payload_fields, separators=(',', ':'), ensure_ascii=False,
         sort_keys=True)
@@ -1559,10 +1582,20 @@ def main():
             and not args.eval_with_mcts):
         parser.error(
             '--eval-mcts-first-divergence-record requires --eval-with-mcts')
+    if (args.eval_mcts_source_decomposition_step >= 0
+            and not args.eval_with_mcts):
+        parser.error(
+            '--eval-mcts-source-decomposition-step requires --eval-with-mcts')
+    if (args.eval_mcts_leaf_evaluator != 'value'
+            and not args.eval_with_mcts):
+        parser.error(
+            '--eval-mcts-leaf-evaluator requires --eval-with-mcts')
     if args.eval_mcts_context_witness_limit < 0:
         parser.error('--eval-mcts-context-witness-limit cannot be negative')
     if args.mcts_pw_min_width < 1:
         parser.error('--mcts-pw-min-width must be at least 1')
+    if args.mcts_rollout_horizon < 1:
+        parser.error('--mcts-rollout-horizon must be at least 1')
     if args.mcts_pw_min_width > args.mcts_expansion_size:
         parser.error(
             '--mcts-pw-min-width cannot exceed --mcts-expansion-size')

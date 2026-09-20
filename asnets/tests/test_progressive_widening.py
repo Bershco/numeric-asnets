@@ -146,6 +146,32 @@ class FakeContext:
             ))
         return results
 
+    def env_simulate_step(self, state, action):
+        return FakeState(
+            f"rollout:{state.depth + 1}:{int(action)}",
+            depth=state.depth + 1,
+            goal=(state.depth + 1 >= 2 and int(action) == 0),
+            terminal=(state.depth + 1 >= 2),
+        )
+
+
+class FakeGoalChildContext(FakeContext):
+    def env_simulate_batch_steps(self, state, actions):
+        results = []
+        for action in actions:
+            child = FakeState(
+                f"goal:{state.depth + 1}:{int(action)}",
+                depth=state.depth + 1,
+                goal=True,
+                terminal=True,
+            )
+            results.append((
+                int(action), child, 1.0, True, True,
+                child.to_network_input(),
+                child.get_applicable_action_mask(),
+            ))
+        return results
+
 
 def make_node(state, policy=(0.4, 0.3, 0.2, 0.1)):
     node = search.wrapInMCTSNode(state, cost_until_now=state.depth)
@@ -329,6 +355,72 @@ class FixedExpansionRegressionTests(unittest.TestCase):
             child.visit_count == 0
             for child in root.children.values()
         ))
+
+
+class LeafEvaluatorModeTests(unittest.TestCase):
+    def test_value_mode_remains_default(self):
+        mcts = training.TrainingMCTS(FakeNetwork(), FakeContext())
+        self.assertEqual(mcts.leaf_evaluator, "value")
+
+    def test_rollout_mode_uses_bounded_policy_trajectory(self):
+        root = make_node(FakeState("rollout-root"))
+        mcts = training.TrainingMCTS(
+            FakeNetwork(), FakeContext(), iterations=1, expansion_k=2,
+            leaf_evaluator="policy_rollout", rollout_horizon=2,
+            rollout_seed=2,
+        )
+        mcts.curr_tree_root = root
+        mcts.original_tree_root = root
+        mcts.state_key_to_node[root.state_key] = root
+
+        mcts.run_search()
+
+        self.assertEqual(root.visit_count, 1)
+        self.assertEqual(root.Q_value, 1.0)
+        self.assertEqual(mcts.leaf_evaluator, "policy_rollout")
+        self.assertEqual(mcts.rollout_evaluations, 1)
+        self.assertEqual(mcts.rollout_goal_hits, 1)
+        self.assertEqual(root.known_distance_to_goal, np.inf)
+        self.assertIsNone(root.best_goal_child)
+
+        selector = policies.build_action_policy(
+            base_policy="argmax",
+            distance_threshold=np.inf,
+            selection_trace_enabled=True,
+        )
+        selector.begin_selection_trace()
+        action = selector.select_action(
+            mcts, np.zeros(4, dtype=np.float32))
+        trace = selector.consume_selection_trace()
+        self.assertEqual(action, 0)
+        goal_stage = next(
+            entry for entry in trace if entry["stage"] == "goal_chase")
+        self.assertFalse(goal_stage["applied"])
+
+    def test_rollout_mode_preserves_materialized_goal_child(self):
+        root = make_node(FakeState("materialized-goal-root"))
+        mcts = training.TrainingMCTS(
+            FakeNetwork(), FakeGoalChildContext(), iterations=1,
+            expansion_k=1, progressive_widening=True, pw_min_width=1,
+            leaf_evaluator="policy_rollout", rollout_horizon=2,
+            rollout_seed=2,
+        )
+        mcts.curr_tree_root = root
+        mcts.original_tree_root = root
+        mcts.state_key_to_node[root.state_key] = root
+
+        mcts.run_search()
+
+        self.assertEqual(root.known_distance_to_goal, 1)
+        self.assertIsNotNone(root.best_goal_child)
+        self.assertTrue(root.best_goal_child.goal_state)
+        self.assertEqual(root.best_goal_child.known_distance_to_goal, 0)
+
+    def test_invalid_rollout_horizon_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "rollout_horizon"):
+            training.TrainingMCTS(
+                FakeNetwork(), FakeContext(),
+                leaf_evaluator="policy_rollout", rollout_horizon=0)
 
 
 class HorizonTests(unittest.TestCase):
@@ -576,6 +668,56 @@ class FirstDivergenceRecorderTests(unittest.TestCase):
         )
         self.assertIsNone(result)
 
+    def test_source_diagnostic_records_policy_search_agreement(self):
+        root = make_node(FakeState("source-agreement-root"))
+        child = make_node(FakeState("source-agreement-child"))
+        child.Q_value = 0.5
+        root.children = search.FixedChildMap([0], [child], [0.4])
+        root.children.visits[:] = [1]
+        root.visit_count = 1
+        source_row = {
+            "scope": "node_global_matches_child_q",
+            "backups": 1,
+            "mean_raw_network_value": 0.2,
+            "mean_transformed_estimator_value": 0.6,
+            "mean_network_contribution": 0.1,
+            "mean_estimator_contribution": 0.4,
+            "mean_terminal_contribution": 0.0,
+            "reconstructed_q": 0.5,
+            "observed_q": 0.5,
+            "reconstruction_residual": 0.0,
+            "leaf_source_counts": {"network_estimator_blend": 1},
+        }
+        mcts = self._mcts(root)
+        mcts.source_decomposition = True
+        mcts.root_q_source_decomposition = lambda act_dim: [
+            source_row, *([None] * (act_dim - 1))]
+
+        result = recorder.build_source_decomposition_record(
+            mcts,
+            visit_policy=[1.0, 0.0, 0.0, 0.0],
+            selected_action=0,
+            step=0,
+            instance_name="fixture.pddl",
+            elapsed_seconds=0.25,
+            override_path=[{
+                "stage": "root_visit_argmax",
+                "applied": True,
+                "selected_action": 0,
+                "selector_input_distribution": [1.0, 0.0, 0.0, 0.0],
+            }],
+            provenance={},
+        )
+
+        self.assertEqual(
+            result["schema_version"],
+            recorder.SOURCE_SCHEMA_VERSION,
+        )
+        self.assertFalse(result["actions_diverge"])
+        self.assertTrue(result["diagnostic_stop_after_record"])
+        self.assertEqual(
+            result["root"]["q_source_decomposition"][0], source_row)
+
     def test_existing_counters_trace_fixture_reproduces_root(self):
         fixture_path = (
             Path(__file__).resolve().parents[2]
@@ -636,6 +778,97 @@ class FirstDivergenceRecorderTests(unittest.TestCase):
         for row in fixture["children"]:
             self.assertAlmostEqual(
                 result["root"]["u_values"][row["action"]], row["U"])
+
+
+class SourceDecompositionTests(unittest.TestCase):
+    def setUp(self):
+        self.mcts = training.TrainingMCTS(
+            network=FakeNetwork(),
+            ctx=FakeContext(),
+            source_decomposition=True,
+        )
+
+    @staticmethod
+    def _edge(parent_key, child_key, action=0):
+        parent = make_node(FakeState(parent_key))
+        child = make_node(FakeState(child_key))
+        parent.children = search.FixedChildMap([action], [child], [1.0])
+        return parent, child
+
+    def _backup(self, path, value, *, network_raw=0.0,
+                estimator_raw=0.0, network=0.0, estimator=0.0,
+                terminal=0.0, source="fixture"):
+        self.mcts._set_source_components(
+            network_raw=network_raw,
+            estimator_raw=estimator_raw,
+            network=network,
+            estimator=estimator,
+            terminal=terminal,
+            source=source,
+        )
+        self.mcts._backpropagate(path, value, False)
+
+    def test_blend_estimator_only_and_terminal_backups_reconstruct_q(self):
+        root, child = self._edge("source-root", "source-child")
+        self.mcts.curr_tree_root = root
+        self._backup(
+            [root, child], 0.5,
+            network_raw=0.2, estimator_raw=0.6,
+            network=0.1, estimator=0.4,
+            source="network_estimator_blend",
+        )
+        self._backup(
+            [root, child], 0.7,
+            estimator_raw=0.7, estimator=0.7,
+            source="estimator_only",
+        )
+        self._backup(
+            [root, child], 1.0,
+            terminal=1.0, source="terminal_goal",
+        )
+
+        row = self.mcts.root_q_source_decomposition(4)[0]
+        self.assertEqual(row["backups"], 3)
+        self.assertEqual(
+            row["leaf_source_counts"], {
+                "estimator_only": 1,
+                "network_estimator_blend": 1,
+                "terminal_goal": 1,
+            })
+        self.assertAlmostEqual(row["mean_network_contribution"], 0.1 / 3)
+        self.assertAlmostEqual(row["mean_estimator_contribution"], 1.1 / 3)
+        self.assertAlmostEqual(row["mean_terminal_contribution"], 1.0 / 3)
+        self.assertAlmostEqual(row["reconstructed_q"], (0.5 + 0.7 + 1.0) / 3)
+        self.assertAlmostEqual(row["observed_q"], child.Q_value)
+        self.assertAlmostEqual(row["reconstruction_residual"], 0.0)
+
+    def test_source_scope_matches_transposition_global_child_q(self):
+        first, shared = self._edge("first-parent", "shared-child", action=0)
+        second = make_node(FakeState("second-parent"))
+        second.children = search.FixedChildMap([1], [shared], [1.0])
+
+        self._backup(
+            [first, shared], 0.25,
+            network_raw=0.25, network=0.25, source="network_only")
+        self._backup(
+            [second, shared], 0.75,
+            estimator_raw=0.75, estimator=0.75,
+            source="estimator_only")
+
+        self.mcts.curr_tree_root = second
+        row = self.mcts.root_q_source_decomposition(4)[1]
+        self.assertEqual(row["scope"], "node_global_matches_child_q")
+        self.assertEqual(row["backups"], 2)
+        self.assertAlmostEqual(row["observed_q"], 0.5)
+        self.assertAlmostEqual(row["reconstructed_q"], 0.5)
+        self.assertAlmostEqual(row["reconstruction_residual"], 0.0)
+
+    def test_inconsistent_components_fail_closed(self):
+        root, child = self._edge("bad-source-root", "bad-source-child")
+        self.mcts._set_source_components(
+            network=0.2, estimator=0.2, source="bad-fixture")
+        with self.assertRaisesRegex(RuntimeError, "does not reconstruct"):
+            self.mcts._backpropagate([root, child], 0.9, False)
 
 
 class TerminalSafeActionSelectionTests(unittest.TestCase):

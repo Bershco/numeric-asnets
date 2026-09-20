@@ -403,3 +403,17 @@ There are still no scientific V1 results. The next exact recovery must:
 Existing valid Drone, FO Counters and Rover captures remain reusable. A global
 node exclusion is not justified for the mixed-success quota node; the recovery
 must instead begin with a successful quota/write probe.
+
+## 20 September exact MPrime source chain
+
+Only the two missing MPrime Stage-2 on-policy sources are being recaptured in
+`21479227_[0-1]`; all other durable source classes are reused. The automatic
+chain is `21479228_[0-7]` (manifest rebuild), `21479229` (strict finalizer) and
+`21479230` (measured preflight/checksum/science release). Once the source gate
+passes, it releases the predeclared 16-checkpoint V1 pilot without further user
+action.
+
+The controller scripts and still-pending chain use the evidence-backed global
+exclusion list `ise-cpu-intl-[01,05,15,18,24,26]`. An older workload-specific
+union was removed before the downstream chain ran; mixed-success or
+resource-specific nodes are not globally blacklisted.

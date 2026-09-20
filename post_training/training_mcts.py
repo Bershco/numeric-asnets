@@ -28,7 +28,9 @@ class TrainingMCTS(MCTS):
                  minimization=False, progressive_widening=False,
                  pw_min_width=2, pw_c=0.6, pw_alpha=0.5,
                  context_diagnostics=False, contextual_nodes=False,
-                 context_witness_limit=128):
+                 context_witness_limit=128,
+                 leaf_evaluator="value", rollout_horizon=3,
+                 rollout_seed=0, source_decomposition=False):
         super().__init__(exploration_weight, network=network, select_logging=select_logging, minimization=minimization)
         if expansion_k < 1:
             raise ValueError("expansion_k must be at least 1")
@@ -59,6 +61,16 @@ class TrainingMCTS(MCTS):
         self.context_diagnostics = bool(context_diagnostics)
         self.contextual_nodes = bool(contextual_nodes)
         self.context_witness_limit = int(context_witness_limit)
+        if leaf_evaluator not in ("value", "policy_rollout"):
+            raise ValueError(
+                "leaf_evaluator must be 'value' or 'policy_rollout'")
+        if rollout_horizon < 1:
+            raise ValueError("rollout_horizon must be at least 1")
+        self.leaf_evaluator = leaf_evaluator
+        self.rollout_horizon = int(rollout_horizon)
+        self.rollout_rng = np.random.RandomState(int(rollout_seed))
+        self.rollout_evaluations = 0
+        self.rollout_goal_hits = 0
         if self.context_witness_limit < 0:
             raise ValueError("context_witness_limit cannot be negative")
         self.context_observations = 0
@@ -68,6 +80,93 @@ class TrainingMCTS(MCTS):
         self.context_first_digest = {}
         self.context_first_node = {}
         self.context_witnesses = []
+        # Observation-only accounting for selected causal diagnostics.  The
+        # ordinary scalar Q update remains unchanged; this records an additive
+        # decomposition of the exact value passed to that update.
+        self.source_decomposition = bool(source_decomposition)
+        self._pending_source_components = None
+        self._source_backup_stats = {}
+
+    def _set_source_components(
+            self, *, network_raw=0.0, estimator_raw=0.0,
+            network=0.0, estimator=0.0, terminal=0.0, source):
+        if not self.source_decomposition:
+            return
+        self._pending_source_components = {
+            "network_raw": float(network_raw),
+            "estimator_raw": float(estimator_raw),
+            "network": float(network),
+            "estimator": float(estimator),
+            "terminal": float(terminal),
+            "source": str(source),
+        }
+
+    def _backpropagate(self, path, value, subtree_contains_goal):
+        components = self._pending_source_components
+        super()._backpropagate(path, value, subtree_contains_goal)
+        if not self.source_decomposition or components is None:
+            return
+        reconstructed = (
+            components["network"]
+            + components["estimator"]
+            + components["terminal"]
+        )
+        if not math.isclose(
+                reconstructed, float(value), rel_tol=1e-6, abs_tol=1e-8):
+            raise RuntimeError(
+                "source decomposition does not reconstruct backup value: "
+                f"{reconstructed} != {value}")
+        for node in path:
+            stats = self._source_backup_stats.setdefault(node, {
+                "backups": 0,
+                "network_raw_sum": 0.0,
+                "estimator_raw_sum": 0.0,
+                "network_contribution_sum": 0.0,
+                "estimator_contribution_sum": 0.0,
+                "terminal_contribution_sum": 0.0,
+                "leaf_source_counts": Counter(),
+            })
+            stats["backups"] += 1
+            stats["network_raw_sum"] += components["network_raw"]
+            stats["estimator_raw_sum"] += components["estimator_raw"]
+            stats["network_contribution_sum"] += components["network"]
+            stats["estimator_contribution_sum"] += components["estimator"]
+            stats["terminal_contribution_sum"] += components["terminal"]
+            stats["leaf_source_counts"][components["source"]] += 1
+        self._pending_source_components = None
+
+    def root_q_source_decomposition(self, act_dim):
+        """Return additive backed-up Q sources aligned to grounded actions."""
+        rows = [None] * int(act_dim)
+        root = self.curr_tree_root
+        if root.children is None:
+            return rows
+        for action, child in root.children.items():
+            stats = self._source_backup_stats.get(child)
+            if not stats or not stats["backups"]:
+                continue
+            count = int(stats["backups"])
+            network = stats["network_contribution_sum"] / count
+            estimator = stats["estimator_contribution_sum"] / count
+            terminal = stats["terminal_contribution_sum"] / count
+            reconstructed = network + estimator + terminal
+            observed = float(child.Q_value)
+            rows[int(action)] = {
+                "scope": "node_global_matches_child_q",
+                "backups": count,
+                "mean_raw_network_value": stats["network_raw_sum"] / count,
+                "mean_transformed_estimator_value": (
+                    stats["estimator_raw_sum"] / count),
+                "mean_network_contribution": network,
+                "mean_estimator_contribution": estimator,
+                "mean_terminal_contribution": terminal,
+                "reconstructed_q": reconstructed,
+                "observed_q": observed,
+                "reconstruction_residual": observed - reconstructed,
+                "leaf_source_counts": dict(sorted(
+                    stats["leaf_source_counts"].items())),
+            }
+        return rows
 
     def node_registry_key(self, state: CanonicalState):
         if not self.contextual_nodes:
@@ -373,9 +472,15 @@ class TrainingMCTS(MCTS):
 
     def _evaluate_node(self, node: MCTSNode) -> float:
         if node.goal_state:
-            return self.best_value()
+            value = self.best_value()
+            self._set_source_components(
+                terminal=value, source="terminal_goal")
+            return value
         if node.terminal_state:
-            return self.worst_value()
+            value = self.worst_value()
+            self._set_source_components(
+                terminal=value, source="terminal_non_goal")
+            return value
         net_v = node.pred_value
         alpha = self.estimator_coeff
         if alpha > 0.0 and self.estimator_mode in (EstimatorMode.V_ONLY, EstimatorMode.BOTH):
@@ -387,15 +492,115 @@ class TrainingMCTS(MCTS):
             else:
                 est_v = get_est_v(estimator, node.state.to_tup_state(), self.ctx.estimator_h_to_v_coeff, self.minimization)
                 estimator.state_key_cache[key] = (est_v, None)
-            value = (1.0 - alpha) * net_v + alpha * est_v
+            network_contribution = (1.0 - alpha) * net_v
+            estimator_contribution = alpha * est_v
+            value = network_contribution + estimator_contribution
+            self._set_source_components(
+                network_raw=net_v,
+                estimator_raw=est_v,
+                network=network_contribution,
+                estimator=estimator_contribution,
+                source="network_estimator_blend",
+            )
             node.pred_value = value  # overwrite prior with refined estimate
         else:
             value = net_v
+            self._set_source_components(
+                network_raw=net_v,
+                network=net_v,
+                source="network_only",
+            )
         return value
 
     def _rollout(self, node, horizon=0):
         """Use value head for evaluation instead of random rollout."""
         return self.get_value_from_mcts_node(node)
+
+    def _policy_rollout_value(self, node: MCTSNode) -> tuple[float, bool]:
+        """Evaluate a leaf through a bounded stochastic network-policy rollout.
+
+        This restores the historical policy-rollout *method family* inside the
+        current search implementation.  The old code returned ``1000 / cost``;
+        that scale is incompatible with current 0..1 learned/ENHSP values and
+        would change PUCT exploitation strength in addition to the leaf
+        evaluator.  The compatibility arm therefore returns current-scale
+        terminal success (1) or non-success (0).
+        """
+        self.rollout_evaluations += 1
+        state = node.state
+        if state.is_goal:
+            self.rollout_goal_hits += 1
+            return self.best_value(), True
+        if state.is_terminal:
+            return self.worst_value(), False
+
+        for _ in range(self.rollout_horizon):
+            network_input = state.to_network_input()
+            network_out = self.network(network_input, training=False)
+            policy = network_out[0] if self.network.value_head_enabled else network_out
+            policy = policy.numpy() if hasattr(policy, "numpy") else policy
+            policy = np.squeeze(np.asarray(policy, dtype=np.float64))
+            mask = np.asarray(state.get_applicable_action_mask(), dtype=bool)
+            probs = np.where(mask, np.maximum(policy, 0.0), 0.0)
+            total = probs.sum()
+            if not np.isfinite(total) or total <= 0.0:
+                return self.worst_value(), False
+            probs /= total
+            action = int(self.rollout_rng.choice(len(probs), p=probs))
+            state = self.ctx.env_simulate_step(state, action)
+            if state.is_goal:
+                self.rollout_goal_hits += 1
+                return self.best_value(), True
+            if state.is_terminal:
+                return self.worst_value(), False
+        return self.worst_value(), False
+
+    def mcts_iteration_policy_rollout(
+            self, node: MCTSNode, remaining_horizon=None) -> None:
+        """One current-tree MCTS simulation with policy-rollout leaf scoring."""
+        node.root_visit_count += 1
+        started = perf_counter()
+        path, stop_reason = self._select(
+            node,
+            max_depth=remaining_horizon,
+        )
+        self.selection_seconds += perf_counter() - started
+        selection_depth = len(path) - 1
+        self.selection_depth_hist[selection_depth] += 1
+        if self.select_logging:
+            self.select_depths.append(len(path))
+        leaf = path[-1]
+        if stop_reason == "horizon":
+            self.horizon_cutoff_depth_hist[selection_depth] += 1
+            evaluation_node = leaf
+        else:
+            started = perf_counter()
+            expanded_child = self._expand(leaf)
+            self.expansion_seconds += perf_counter() - started
+            if (expanded_child is not None
+                    and expanded_child.last_select_id != self._select_counter):
+                path.append(expanded_child)
+                evaluation_node = expanded_child
+            else:
+                evaluation_node = leaf
+        self.peak_node_count = max(
+            self.peak_node_count, len(self.state_key_to_node))
+        started = perf_counter()
+        value, reached_goal = self._policy_rollout_value(evaluation_node)
+        self.evaluation_seconds += perf_counter() - started
+        self._set_source_components(
+            terminal=value,
+            source=(
+                "policy_rollout_goal" if reached_goal
+                else "policy_rollout_non_goal"),
+        )
+        started = perf_counter()
+        # A successful *off-tree* rollout supplies only a scalar leaf estimate;
+        # it must not mark the evaluated tree leaf as a goal.  Preserve normal
+        # goal propagation when the materialized evaluation node itself is a
+        # goal child.
+        self._backpropagate(path, value, bool(evaluation_node.goal_state))
+        self.backpropagation_seconds += perf_counter() - started
 
     def initialise_tree(self, cstate) -> None:
         """Start a new tree for a fresh episode."""
@@ -462,10 +667,16 @@ class TrainingMCTS(MCTS):
         root = self.curr_tree_root
         self.search_calls += 1
         for iteration in range(self.iterations):
-            self.mcts_iteration_value_based(
-                root,
-                remaining_horizon=remaining_horizon,
-            )
+            if self.leaf_evaluator == "policy_rollout":
+                self.mcts_iteration_policy_rollout(
+                    root,
+                    remaining_horizon=remaining_horizon,
+                )
+            else:
+                self.mcts_iteration_value_based(
+                    root,
+                    remaining_horizon=remaining_horizon,
+                )
 
             if (
                     self.puct_debug
@@ -552,6 +763,9 @@ class TrainingMCTS(MCTS):
         print(
             "[MCTS SEARCH SUMMARY] "
             f"progressive_widening={self.progressive_widening} "
+            f"leaf_evaluator={self.leaf_evaluator} "
+            f"rollout_evaluations={self.rollout_evaluations} "
+            f"rollout_goal_hits={self.rollout_goal_hits} "
             f"iterations_per_search={self.iterations} "
             f"search_calls={self.search_calls} "
             f"nodes={len(self.state_key_to_node)} "

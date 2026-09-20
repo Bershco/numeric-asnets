@@ -774,6 +774,7 @@ class SpawnExploreSpec:
     puct_debug: bool = False
     action_debug: bool = False
     mcts_first_divergence_record: bool = False
+    mcts_source_decomposition_step: int = -1
     checkpoint_path: Optional[str] = None
 
     # estimator decay
@@ -802,6 +803,8 @@ class SpawnExploreSpec:
     mcts_context_diagnostics: bool = False
     mcts_contextual_nodes: bool = False
     mcts_context_witness_limit: int = 128
+    mcts_leaf_evaluator: str = "value"
+    mcts_rollout_horizon: int = 3
 
     def __str__(self) -> str:
         """A stylized and grouped representation of the spec."""
@@ -935,6 +938,8 @@ list[SpawnExploreSpec]:
             mcts_contextual_nodes=(
                 evaluation_mode and args.eval_mcts_contextual_nodes),
             mcts_context_witness_limit=args.eval_mcts_context_witness_limit,
+            mcts_leaf_evaluator=args.eval_mcts_leaf_evaluator,
+            mcts_rollout_horizon=args.mcts_rollout_horizon,
             fixed_instance_pddl=args.fixed_instance,
             mcts_exploration_weight=args.mcts_exploration_weight,
             action_policy=args.action_policy,
@@ -947,6 +952,9 @@ list[SpawnExploreSpec]:
             mcts_first_divergence_record=(
                 evaluation_mode and getattr(
                     args, "eval_mcts_first_divergence_record", False)),
+            mcts_source_decomposition_step=(
+                int(getattr(args, "eval_mcts_source_decomposition_step", -1))
+                if evaluation_mode else -1),
             checkpoint_path=(
                 getattr(args, "resume_from", None)
                 if evaluation_mode else None),

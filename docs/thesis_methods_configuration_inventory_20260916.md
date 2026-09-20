@@ -62,6 +62,13 @@ The most defensible missing MCTS-method evidence is:
    evaluation tasks. A full four-arm screen (rollout, learned-only, ENHSP-only,
    `.5` blend) is sixteen tasks. Report coverage, leaf-evaluation time, total
    runtime and generated nodes.
+
+   The non-duplicative four-arm pilot is now implementation-complete and
+   frozen in
+   `experiment_tracking/mcts_leaf_evaluator_four_arm_20260920/README.md`.
+   It has not been submitted: the required next step is the four-arm,
+   one-instance compatibility smoke, followed by the 16 scientific tasks only
+   if all smoke checks pass.
 2. **Estimator-component ablation.** If the thesis claims that the learned
    value is useful inside MCTS, compare learned-only, ENHSP-only and the `.5`
    blend after the separate value-head quality audit. Do not run this merely to

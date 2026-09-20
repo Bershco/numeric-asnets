@@ -478,6 +478,13 @@ parser.add_argument(
         'Emit one compact first policy/MCTS divergence record per evaluated '
         'instance. Requires --eval-with-mcts.'))
 parser.add_argument(
+    '--eval-mcts-source-decomposition-step',
+    type=int,
+    default=-1,
+    help=(
+        'Emit one source-decomposed MCTS root at the given zero-based '
+        'external-action step and stop that diagnostic instance.'))
+parser.add_argument(
     '--puct-debug',
     action='store_true',
     default=False,
@@ -539,6 +546,18 @@ parser.add_argument(
     action='store_true',
     default=False,
     help='Use value-based mcts instead of rollout-based mcts.')
+parser.add_argument(
+    '--eval-mcts-leaf-evaluator',
+    choices=('value', 'policy_rollout'),
+    default='value',
+    help=(
+        'Evaluation-only MCTS leaf evaluator. The default preserves current '
+        'value/estimator behavior.'))
+parser.add_argument(
+    '--mcts-rollout-horizon',
+    type=int,
+    default=3,
+    help='Maximum policy-rollout steps for the rollout leaf evaluator.')
 parser.add_argument(
     '--mcts-heuristic',
     choices=list(ENHSP_CONFIGS.keys()),
@@ -856,6 +875,10 @@ def main():
                    args.eval_mcts_context_witness_limit),
                eval_mcts_first_divergence_record=(
                    args.eval_mcts_first_divergence_record),
+               eval_mcts_source_decomposition_step=(
+                   args.eval_mcts_source_decomposition_step),
+               eval_mcts_leaf_evaluator=args.eval_mcts_leaf_evaluator,
+               mcts_rollout_horizon=args.mcts_rollout_horizon,
                eval_max_actions=args.eval_max_actions,
                eval_start_wave=args.eval_start_wave,
                eval_scheduling=args.eval_scheduling,
@@ -932,6 +955,9 @@ def main_inner(*,
                eval_mcts_contextual_nodes=False,
                eval_mcts_context_witness_limit=128,
                eval_mcts_first_divergence_record=False,
+               eval_mcts_source_decomposition_step=-1,
+               eval_mcts_leaf_evaluator='value',
+               mcts_rollout_horizon=3,
                eval_max_actions=None,
                eval_start_wave=1,
                eval_scheduling='wave',
@@ -1206,6 +1232,23 @@ evaluation = {"off" if no_eval else "on"}
                 '--eval-mcts-first-divergence-record requires '
                 '--eval-with-mcts')
         main_test_flags.append('--eval-mcts-first-divergence-record')
+    if eval_mcts_source_decomposition_step >= 0:
+        if not eval_with_mcts:
+            raise ValueError(
+                '--eval-mcts-source-decomposition-step requires '
+                '--eval-with-mcts')
+        main_test_flags.extend([
+            '--eval-mcts-source-decomposition-step',
+            str(eval_mcts_source_decomposition_step),
+        ])
+    if eval_mcts_leaf_evaluator != 'value':
+        if not eval_with_mcts:
+            raise ValueError(
+                '--eval-mcts-leaf-evaluator requires --eval-with-mcts')
+        main_test_flags.extend([
+            '--eval-mcts-leaf-evaluator', eval_mcts_leaf_evaluator,
+            '--mcts-rollout-horizon', str(mcts_rollout_horizon),
+        ])
     if eval_start_wave != 1:
         main_test_flags.extend(['--eval-start-wave', str(eval_start_wave)])
     main_test_flags.extend(['--eval-scheduling', eval_scheduling])
