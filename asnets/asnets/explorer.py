@@ -70,9 +70,10 @@ class WeightedReplayBuffer:
     def __init__(self):
         """Initialize the replay buffer."""
         self.counter = Counter()
+        self.provenance_counter = Counter()
         self.added_items = deque()
 
-    def update(self, new_elems: Iterable[Any]) -> None:
+    def update(self, new_elems: Iterable[Any], provenance: str = "UNSPECIFIED") -> None:
         """Add new elements to the replay buffer.
 
         Args:
@@ -81,7 +82,9 @@ class WeightedReplayBuffer:
         """
         item_counter = Counter(new_elems)
         self.counter.update(item_counter)
-        self.added_items.append(item_counter)
+        provenance_counter = Counter({provenance: sum(item_counter.values())})
+        self.provenance_counter.update(provenance_counter)
+        self.added_items.append((item_counter, provenance_counter))
 
     def __len__(self) -> int:
         """Get the number of unique elements in the replay buffer.
@@ -107,9 +110,11 @@ class WeightedReplayBuffer:
         if not self.added_items:
             return False
 
-        item_counter = self.added_items.popleft()
+        item_counter, provenance_counter = self.added_items.popleft()
         self.counter.subtract(item_counter)
         self.counter += Counter()  # remove zero and negative counts
+        self.provenance_counter.subtract(provenance_counter)
+        self.provenance_counter += Counter()
         return True
 
 

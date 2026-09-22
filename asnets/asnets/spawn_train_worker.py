@@ -110,6 +110,26 @@ class ProblemInitData:
     ssipp_dead_end_value: int
 
 
+@dataclass(frozen=True)
+class GoalConditionedState:
+    """Replay-only view of a state with an explicit proposition-goal mask."""
+
+    base_state: Any
+    goal_prop_mask: tuple[float, ...]
+    provenance: str = "HER_FUTURE"
+
+    def to_network_input(self) -> np.ndarray:
+        base = np.asarray(self.base_state.to_network_input(), dtype=np.float32)
+        goal = np.asarray(self.goal_prop_mask, dtype=np.float32)
+        return np.concatenate((base, goal), axis=0)
+
+    def __getattr__(self, name):
+        # Avoid recursive lookup while pickle is reconstructing this proxy and
+        # ``base_state`` has not yet been populated.
+        base_state = object.__getattribute__(self, "base_state")
+        return getattr(base_state, name)
+
+
 @dataclass
 class TrajectoryCollectionOutput:
     """Legacy imitation-collection data plus its concrete replay interface."""
@@ -127,9 +147,14 @@ class WorkerOutput:
     main_trajectory: list[tuple] # list of either (CanonicalState, PolicyVector) or (CanonicalState, PolicyVector, ValueFloat)
     expert_trajectory: list[tuple] = field(default_factory=list) # same but for expert planner trajectory from enhsp bootstrapping
     tree_samples: list[tuple] = field(default_factory=list)
+    her_samples: list[tuple] = field(default_factory=list)
     tree_nodes_examined: int = 0
     tree_eligible: int = 0
     tree_emitted: int = 0
+    her_attempted: int = 0
+    her_emitted: int = 0
+    her_rejected_numeric_goal: int = 0
+    her_rejected_empty_or_noop: int = 0
     compatibility_signature: Optional[str] = None
     compatibility_payload: Optional[tuple] = None
     problem_init_data: Optional[ProblemInitData] = None
@@ -160,10 +185,13 @@ def _make_compatibility_payload(
         for action in problem_meta.bound_acts_ordered
     )
     return (
-        "asnet-replay-interface-v1",
+        "asnet-replay-interface-v2-goal-tail",
         bool(spec.use_fluents),
         bool(spec.use_comps),
         int(obs_dim),
+        str(spec.mcts_her_strategy),
+        int(problem_meta.num_props if spec.mcts_her_strategy == "future" else 0),
+        "positive-dynamic-propositions-v1",
         int(problem_meta.num_acts),
         int(aux_dim),
         tuple(prop.unique_ident for prop in problem_meta.bound_props_ordered),
@@ -179,10 +207,68 @@ def _compatibility_signature(payload: tuple) -> str:
 
 class DataSource(Enum):
     TRAJECTORY = auto()
+    HER = auto()
     TREE_SAMPLE = auto()
     HEURISTIC_BOOTSTRAP = auto()
     GOAL_PATH = auto()
     ENHSP_PLAN = auto()
+
+
+def validate_her_options(strategy: str, her_k: int, tree_sampling_k: int) -> None:
+    if strategy not in ("off", "future"):
+        raise ValueError(f"unsupported HER strategy: {strategy}")
+    if strategy == "future":
+        if her_k <= 0:
+            raise ValueError("future HER requires --her-k >= 1")
+        if tree_sampling_k:
+            raise ValueError("HER-only arm cannot emit TREE_SAMPLE records")
+    elif her_k != 0:
+        raise ValueError("--her-k must be 0 when HER is off")
+
+
+def positive_dynamic_goal_mask(current, achieved) -> tuple[float, ...]:
+    """Positive facts newly achieved relative to the relabelled state."""
+    if len(current.props_true) != len(achieved.props_true):
+        raise ValueError("current/future proposition interfaces differ")
+    mask = []
+    for (current_prop, current_truth), (future_prop, future_truth) in zip(
+            current.props_true, achieved.props_true):
+        if current_prop != future_prop:
+            raise ValueError("current/future proposition order differs")
+        mask.append(float(bool(future_truth) and not bool(current_truth)))
+    return tuple(mask)
+
+
+def satisfies_positive_goal(state, goal_mask: tuple[float, ...]) -> bool:
+    if len(state.props_true) != len(goal_mask):
+        raise ValueError("state/goal proposition interfaces differ")
+    return all(
+        not wanted or bool(truth)
+        for wanted, (_prop, truth) in zip(goal_mask, state.props_true)
+    )
+
+
+def her_monte_carlo_value_target(
+        achieved_state,
+        goal_mask: tuple[float, ...],
+        steps_to_achievement: int,
+        gamma: float = 1.0,
+) -> float:
+    """Return the declared MC value of the demonstrated path to ``g'``.
+
+    ``z_tgt`` is a state-value target, not an immediate transition reward.
+    Every emitted HER row is backed by the actual recorded episode segment
+    ending in ``achieved_state``.  The campaign uses undiscounted success
+    values (gamma=1); the parameter remains explicit so a future discounted
+    arm cannot silently change the estimand.
+    """
+    if steps_to_achievement < 1:
+        raise ValueError("HER achievement must follow the relabelled state")
+    if not 0.0 < gamma <= 1.0:
+        raise ValueError("HER gamma must be in (0, 1]")
+    if not satisfies_positive_goal(achieved_state, goal_mask):
+        raise ValueError("HER segment endpoint does not satisfy g'")
+    return float(gamma ** steps_to_achievement)
 
 
 @dataclass
@@ -194,6 +280,8 @@ class WorkerCollector:
     pi_tgt: List[np.ndarray] = field(default_factory=list)
     z_tgt: List[float] = field(default_factory=list)
     sources: List[DataSource] = field(default_factory=list)
+    goal_prop_masks: List[Optional[tuple[float, ...]]] = field(default_factory=list)
+    default_goal_prop_mask: Optional[tuple[float, ...]] = None
 
     hit_goal: float = 0.0
 
@@ -207,6 +295,7 @@ class WorkerCollector:
             pi,
             z,
             source: DataSource,
+            goal_prop_mask: Optional[tuple[float, ...]] = None,
     ):
         self.cstates.append(cstate)
         self.children.append(children)
@@ -214,11 +303,25 @@ class WorkerCollector:
         self.pi_tgt.append(pi.astype(np.float32))
         self.z_tgt.append(float(z))
         self.sources.append(source)
+        self.goal_prop_masks.append(
+            self.default_goal_prop_mask
+            if goal_prop_mask is None else tuple(goal_prop_mask)
+        )
 
     # --------- batching ---------
 
     def as_batches(self):
-        obs_batch = np.asarray([s.to_network_input() for s in self.cstates])
+        obs_batch = np.asarray([
+            GoalConditionedState(
+                s,
+                mask,
+                provenance=("HER_FUTURE" if src == DataSource.HER
+                            else "ORIGINAL_GOAL"),
+            ).to_network_input()
+            if mask is not None else s.to_network_input()
+            for s, mask, src in zip(
+                self.cstates, self.goal_prop_masks, self.sources)
+        ])
         pi_tgt = np.asarray(self.pi_tgt, dtype=np.float32)
         z_tgt = np.asarray(self.z_tgt, dtype=np.float32)
         return obs_batch, pi_tgt, z_tgt
@@ -246,7 +349,9 @@ class WorkerCollector:
         # Pre-populate the dictionary for every enum member
         data_by_source = {ds: [] for ds in DataSource}
 
-        for cstate, pi, z, src in zip(self.cstates, pi_tgt, z_tgt, self.sources):
+        for cstate, pi, z, src, goal_mask in zip(
+                self.cstates, pi_tgt, z_tgt, self.sources,
+                self.goal_prop_masks):
             if len(pi) != len(bound_acts_ordered):
                 raise ValueError(
                     f"Policy length {len(pi)} does not match action count "
@@ -256,7 +361,17 @@ class WorkerCollector:
                 (bound_act, float(q_value))
                 for bound_act, q_value in zip(bound_acts_ordered, pi)
             )
-            sample = (cstate, rich_qvs, float(z)) if value_head_enabled else (cstate, rich_qvs)
+            replay_state = (
+                GoalConditionedState(
+                    cstate,
+                    goal_mask,
+                    provenance=("HER_FUTURE" if src == DataSource.HER
+                                else "ORIGINAL_GOAL"),
+                )
+                if goal_mask is not None else cstate
+            )
+            sample = ((replay_state, rich_qvs, float(z))
+                      if value_head_enabled else (replay_state, rich_qvs))
             data_by_source[src].append(sample)
 
         return data_by_source
@@ -581,10 +696,90 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
 
     max_len = inp.spec.max_len
 
+    validate_her_options(
+        inp.spec.mcts_her_strategy,
+        inp.spec.her_k,
+        inp.spec.sample_k_additional_states,
+    )
+
+    static_goal_prop_mask = tuple(
+        float(prop in planner_exts.problem_meta.goal_props)
+        for prop in planner_exts.problem_meta.bound_props_ordered
+    ) if inp.spec.mcts_her_strategy == "future" else None
+    if inp.spec.mcts_her_strategy == "future":
+        print(
+            "[HER GOAL PREFLIGHT] "
+            f"goal_props={len(planner_exts.problem_meta.goal_props)} "
+            f"goal_flnts={len(planner_exts.problem_meta.goal_flnts)} "
+            f"num_props={planner_exts.problem_meta.num_props} "
+            f"base_input_width={len(cstate.to_network_input())} "
+            f"goal_tail_width={len(static_goal_prop_mask)}",
+            flush=True,
+        )
+
+        # This expensive trace check is an explicit pre-release smoke only;
+        # ordinary HER science does not pay its per-worker/per-epoch cost.
+        run_network_preflight = (
+            os.environ.get("ASNET_HER_NETWORK_PREFLIGHT", "0") == "1"
+        )
+        if run_network_preflight:
+            # Trace the historical/base input first, then prove that the
+            # explicit static tail is numerically equivalent and that at least
+            # one changed tail reaches the network output.  This detects a
+            # tf.function trace that silently freezes or ignores the dynamic
+            # goal channel.
+            base_obs = np.asarray(cstate.to_network_input(), dtype=np.float32)
+
+            def flat_prediction(obs):
+                pred = net(tf.convert_to_tensor(obs[None, :]), training=False)
+                tensors = pred if isinstance(pred, (tuple, list)) else (pred,)
+                return np.concatenate([
+                    np.asarray(tensor).reshape(-1) for tensor in tensors
+                ])
+
+            base_prediction = flat_prediction(base_obs)
+            static_obs = np.concatenate((
+                base_obs,
+                np.asarray(static_goal_prop_mask, dtype=np.float32),
+            ))
+            static_prediction = flat_prediction(static_obs)
+            np.testing.assert_allclose(
+                base_prediction,
+                static_prediction,
+                rtol=1e-6,
+                atol=1e-7,
+                err_msg="explicit static HER goal tail changed base prediction",
+            )
+
+            changed_tail_consumed = False
+            changed_index = None
+            for prop_index in range(len(static_goal_prop_mask)):
+                alternate = np.asarray(
+                    static_goal_prop_mask, dtype=np.float32).copy()
+                alternate[prop_index] = 1.0 - alternate[prop_index]
+                alternate_prediction = flat_prediction(
+                    np.concatenate((base_obs, alternate)))
+                if not np.allclose(
+                        alternate_prediction,
+                        static_prediction,
+                        rtol=1e-7,
+                        atol=1e-8):
+                    changed_tail_consumed = True
+                    changed_index = prop_index
+                    break
+            if not changed_tail_consumed:
+                raise AssertionError(
+                    "no proposition-goal-tail change reached network output")
+            print(
+                "[HER NETWORK PREFLIGHT] "
+                "base_equals_static_tail=true "
+                f"changed_tail_consumed=true changed_prop_index={changed_index}",
+                flush=True,
+            )
     collector = (
-        WorkerCollectorWithLogging()
+        WorkerCollectorWithLogging(default_goal_prop_mask=static_goal_prop_mask)
         if inp.log
-        else WorkerCollector()
+        else WorkerCollector(default_goal_prop_mask=static_goal_prop_mask)
     )
 
     a = None
@@ -593,6 +788,13 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
         "eligible": 0,
         "emitted": 0,
     }
+    her_stats = {
+        "attempted": 0,
+        "emitted": 0,
+        "rejected_numeric_goal": 0,
+        "rejected_empty_or_noop": 0,
+    }
+    episode_transitions = []
 
     # Episode
     for t in range(max_len):
@@ -658,7 +860,63 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
             masked_pi = np.zeros_like(pi)
             masked_pi[valid] = 1.0 / len(valid)
         a = action_policy.select_action(mcts=mcts, pi=masked_pi)
-        cstate = mcts.step_forward(a)
+        next_state = mcts.step_forward(a)
+        episode_transitions.append((cstate, int(a), next_state))
+        cstate = next_state
+
+    # Genuine, explicit future-goal relabelling.  The initial supported goal
+    # language is positive dynamic propositions only.  Numeric goal thresholds
+    # are not representable by the current ASNet goal channel and therefore
+    # fail closed and are counted instead of being silently approximated.
+    if inp.spec.mcts_her_strategy == "future":
+        if planner_exts.problem_meta.goal_flnts:
+            her_stats["attempted"] = len(episode_transitions) * inp.spec.her_k
+            her_stats["rejected_numeric_goal"] = her_stats["attempted"]
+        else:
+            rng = np.random.default_rng(inp.seed ^ 0x484552)
+            for index, (state, action, _next_state) in enumerate(episode_transitions):
+                future = [row[2] for row in episode_transitions[index:]]
+                if not future:
+                    continue
+                replace = len(future) < inp.spec.her_k
+                selected = rng.choice(
+                    len(future), size=inp.spec.her_k, replace=replace)
+                for future_index in np.atleast_1d(selected):
+                    her_stats["attempted"] += 1
+                    selected_offset = int(future_index)
+                    achieved = future[selected_offset]
+                    mask = positive_dynamic_goal_mask(state, achieved)
+                    if not any(mask) or mask == static_goal_prop_mask:
+                        her_stats["rejected_empty_or_noop"] += 1
+                        continue
+                    if not satisfies_positive_goal(achieved, mask):
+                        raise AssertionError("sampled future state does not satisfy g'")
+                    pi_her = np.zeros(act_dim, dtype=np.float32)
+                    pi_her[action] = 1.0
+                    collector.add_sample(
+                        cstate=state,
+                        children=None,
+                        action=action,
+                        pi=pi_her,
+                        z=her_monte_carlo_value_target(
+                            achieved,
+                            mask,
+                            steps_to_achievement=selected_offset + 1,
+                            gamma=1.0,
+                        ),
+                        source=DataSource.HER,
+                        goal_prop_mask=mask,
+                    )
+                    her_stats["emitted"] += 1
+        print(
+            "[HER STATS] "
+            f"strategy=future k={inp.spec.her_k} "
+            f"attempted={her_stats['attempted']} "
+            f"emitted={her_stats['emitted']} "
+            f"rejected_numeric_goal={her_stats['rejected_numeric_goal']} "
+            f"rejected_empty_or_noop={her_stats['rejected_empty_or_noop']}",
+            flush=True,
+        )
 
     # Extract tree supervision once after the complete episode. This uses each
     # node's final visitation statistics and emits each tree node at most once.
@@ -746,6 +1004,7 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
             n_samples=0,
             instance_diff=inp.spec.difficulty,
             main_trajectory=[],
+            her_samples=[],
             slot_id=inp.spec.slot_id,
             compatibility_signature=None,
             compatibility_payload=None,
@@ -915,11 +1174,16 @@ def run_worker(inp: MCTSWorkerInput) -> WorkerOutput:
         root_kl=root_summary.get("root_kl"),
         instance_diff=inp.spec.difficulty,
         main_trajectory=data_points_by_source[DataSource.TRAJECTORY],
+        her_samples=data_points_by_source[DataSource.HER],
         expert_trajectory=data_points_by_source[DataSource.ENHSP_PLAN],
         tree_samples=data_points_by_source[DataSource.TREE_SAMPLE],
         tree_nodes_examined=tree_sample_stats["nodes_examined"],
         tree_eligible=tree_sample_stats["eligible"],
         tree_emitted=tree_sample_stats["emitted"],
+        her_attempted=her_stats["attempted"],
+        her_emitted=her_stats["emitted"],
+        her_rejected_numeric_goal=her_stats["rejected_numeric_goal"],
+        her_rejected_empty_or_noop=her_stats["rejected_empty_or_noop"],
         slot_id=inp.spec.slot_id,
         compatibility_signature=_compatibility_signature(compatibility_payload),
         compatibility_payload=compatibility_payload,

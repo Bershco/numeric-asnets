@@ -643,9 +643,16 @@ parser.add_argument(
 )
 parser.add_argument(
     '--mcts-her-strategy',
-    action='store_true',
-    default=False,
-    help='Enable hindsight experience replay strategy where states are sampled from the training-based mcts tree and trajectories are decalred her goals.'
+    choices=('off', 'future'),
+    default='off',
+    help=('Opt-in HER strategy. "future" emits only explicitly satisfied, '
+          'representable positive-proposition achieved goals; default is off.')
+)
+parser.add_argument(
+    '--her-k',
+    type=int,
+    default=0,
+    help='Number of deterministic future achieved goals sampled per transition.'
 )
 parser.add_argument(
     '--num-workers',

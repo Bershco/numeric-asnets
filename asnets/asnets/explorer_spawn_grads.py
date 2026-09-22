@@ -1,7 +1,7 @@
 # asnets/explorer_spawn_grads.py
 from __future__ import annotations
 
-from collections import deque, defaultdict
+from collections import Counter, deque, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 import shutil
@@ -211,7 +211,9 @@ class ParallelMCTSExplorerGrads:
                 continue
 
             problem = self._get_or_create_problem_bucket(out)
-            main_road_samples = out.main_trajectory + out.expert_trajectory
+            main_road_samples = (
+                out.main_trajectory + out.expert_trajectory + out.her_samples
+            )
 
             samples_to_validate = main_road_samples or out.tree_samples
             if samples_to_validate:
@@ -226,11 +228,20 @@ class ParallelMCTSExplorerGrads:
                         "compatibility bucket"
                     )
 
-            if main_road_samples:
-                problem.replay.update(main_road_samples)
-                main_road_added += len(main_road_samples)
+            if out.main_trajectory:
+                problem.replay.update(
+                    out.main_trajectory, provenance="TRAJECTORY")
+                main_road_added += len(out.main_trajectory)
+            if out.expert_trajectory:
+                problem.replay.update(
+                    out.expert_trajectory, provenance="ENHSP_PLAN")
+                main_road_added += len(out.expert_trajectory)
+            if out.her_samples:
+                problem.replay.update(out.her_samples, provenance="HER_FUTURE")
+                main_road_added += len(out.her_samples)
             if out.tree_samples:
-                problem.sampled_states_replay.update(out.tree_samples)
+                problem.sampled_states_replay.update(
+                    out.tree_samples, provenance="TREE_SAMPLE")
                 tree_added += len(out.tree_samples)
 
         tree_size_before_trim = sum(
@@ -259,7 +270,17 @@ class ParallelMCTSExplorerGrads:
             "tree_trimmed": tree_trimmed,
             "main_road_size": sum(len(problem.replay) for problem in self.problems),
             "tree_size": tree_size_after_trim,
+            "her_attempted": sum(out.her_attempted for out in worker_outs),
+            "her_emitted": sum(out.her_emitted for out in worker_outs),
+            "her_rejected_numeric_goal": sum(
+                out.her_rejected_numeric_goal for out in worker_outs),
+            "her_rejected_empty_or_noop": sum(
+                out.her_rejected_empty_or_noop for out in worker_outs),
             "compatibility_bucket_count": len(self.problems),
+            "main_replay_provenance": dict(sum(
+                (problem.replay.provenance_counter for problem in self.problems),
+                Counter(),
+            )),
         }
 
     def _compute_epoch_timeout(self) -> float:

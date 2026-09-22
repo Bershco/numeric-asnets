@@ -643,6 +643,18 @@ parser.add_argument(
     help='Set the amount of additional states sampled during training'
 )
 parser.add_argument(
+    '--mcts-her-strategy',
+    choices=('off', 'future'),
+    default='off',
+    help='Explicit opt-in HER strategy; default off.'
+)
+parser.add_argument(
+    '--her-k',
+    type=int,
+    default=0,
+    help='Future achieved goals sampled per transition when HER is enabled.'
+)
+parser.add_argument(
     '--profile-dir',
     default=None,
     help='Path to profile directory, default is not profiling at all.'
@@ -767,6 +779,8 @@ def main():
                freeze_train=args.freeze_train,
                num_workers=args.num_workers,
                sample_k_additional_states=args.sample_k_additional_states,
+               mcts_her_strategy=args.mcts_her_strategy,
+               her_k=args.her_k,
                profile_dir=args.profile_dir,
                estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
                use_estimator=args.use_estimator,
@@ -827,6 +841,8 @@ def main_inner(*,
                freeze_train=False,
                num_workers=None,
                sample_k_additional_states=0,
+               mcts_her_strategy='off',
+               her_k=0,
                profile_dir=None,
                estimator_h_to_v_coeff=None,
                use_estimator=0.0,
@@ -837,6 +853,17 @@ def main_inner(*,
                original_training_set=False,
                validation_on_test_instances=False,
                ):
+    if mcts_her_strategy not in ('off', 'future'):
+        raise ValueError(f"unsupported HER strategy: {mcts_her_strategy}")
+    if mcts_her_strategy == 'future':
+        if her_k < 1:
+            raise ValueError("future HER requires --her-k >= 1")
+        if sample_k_additional_states:
+            raise ValueError(
+                "HER-only arm cannot use --sample-k-additional-states")
+    elif her_k != 0:
+        raise ValueError("--her-k must be 0 when HER is off")
+
     root_cwd = getcwd()
 
     arch_name = arch_mod.__name__
@@ -914,6 +941,11 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend(['--num-workers', str(num_workers)])
         if sample_k_additional_states:
             train_flags.extend(['--sample-k-additional-states', str(sample_k_additional_states)])
+        if mcts_her_strategy != 'off':
+            train_flags.extend([
+                '--mcts-her-strategy', str(mcts_her_strategy),
+                '--her-k', str(her_k),
+            ])
         if profile_dir:
             train_flags.extend(['--profile-dir', str(profile_dir)])
         if estimator_h_to_v_coeff:
