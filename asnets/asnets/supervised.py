@@ -821,6 +821,16 @@ class SupervisedTrainer(BaseTrainer):
             tf_and_log('replay/tree_trimmed', replay_stats["tree_trimmed"])
             tf_and_log('replay/main_road_size', replay_stats["main_road_size"])
             tf_and_log('replay/tree_size', replay_stats["tree_size"])
+            tf_and_log('replay/her_attempted', replay_stats["her_attempted"])
+            tf_and_log('replay/her_emitted', replay_stats["her_emitted"])
+            tf_and_log(
+                'replay/her_rejected_numeric_goal',
+                replay_stats["her_rejected_numeric_goal"],
+            )
+            tf_and_log(
+                'replay/her_rejected_empty_or_noop',
+                replay_stats["her_rejected_empty_or_noop"],
+            )
             tf_and_log(
                 'replay/compatibility_bucket_count',
                 replay_stats["compatibility_bucket_count"],

@@ -691,7 +691,8 @@ class SpawnExploreSpec:
     max_len: int
     mcts_iterations: int
     heuristic_bootstrapping: bool
-    mcts_her_strategy: bool
+    mcts_her_strategy: str
+    her_k: int
     mcts_expansion_k: int
     use_fluents: bool
     use_comps: bool
@@ -748,7 +749,7 @@ class SpawnExploreSpec:
                            "use_numeric_landmarks", "use_contributions"],
             "MCTS & EXPLORATION": ["mcts_iterations", "mcts_expansion_k", "mcts_exploration_weight",
                                    "mcts_progressive_widening", "mcts_pw_min_width", "mcts_pw_c",
-                                   "mcts_pw_alpha", "mcts_her_strategy", "sample_k_additional_states"],
+                                   "mcts_pw_alpha", "mcts_her_strategy", "her_k", "sample_k_additional_states"],
             "ESTIMATOR & DECAY": ["estimator_h_to_v_coeff", "use_estimator", "estimator_decay_coeff_start",
                                   "estimator_decay_coeff_end", "estimator_decay_epochs"],
             "ACTION POLICY": ["action_policy", "action_policy_epsilon", "action_policy_temperature",
@@ -843,6 +844,7 @@ list[SpawnExploreSpec]:
             mcts_iterations=args.mcts_iterations,
             heuristic_bootstrapping=args.heuristic_bootstrapping,
             mcts_her_strategy=args.mcts_her_strategy,
+            her_k=args.her_k,
             mcts_expansion_k=args.mcts_expansion_size,
             mcts_progressive_widening=args.mcts_progressive_widening,
             mcts_pw_min_width=args.mcts_pw_min_width,

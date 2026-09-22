@@ -863,8 +863,8 @@ class PropNetwork(tf.keras.layers.Layer):
             training = False
         # input vector spec:
         #
-        # |<--num_acts-->|<--k*num_acts-->|<--num_props-->|<--num_flnts-->|<--num_comps-->|
-        # | action mask  |  action data   | propositions  |    fluents    |  comparisons  |
+        # |<--num_acts-->|<--k*num_acts-->|<--num_props-->|<--num_flnts-->|<--num_comps-->|[num_props]|
+        # | action mask  |  action data   | propositions  |    fluents    |  comparisons  |goal override|
         #
         # 1) `action_mask` tells us whether actions are enabled
         # 2) `action_data` is passed straight to action modules
@@ -906,22 +906,56 @@ class PropNetwork(tf.keras.layers.Layer):
             comp_truths = inputs[:, cur_index:cur_index + prob_meta.num_comps]
             cur_index += prob_meta.num_comps
 
+        # HER may append one positive-proposition goal mask.  This changes no
+        # trainable shape: it replaces the static goal channel which the
+        # proposition modules already consume.  Ordinary inputs retain the
+        # historical static PDDL goal and are byte-for-byte unchanged.
+        # This must be a runtime decision.  A Python/static-shape branch can
+        # be traced once on an ordinary input and then silently ignore the HER
+        # tail on later calls with a generalized TensorSpec.
+        remaining = input_dim - cur_index
+        valid_tail = tf.logical_or(
+            tf.equal(remaining, 0),
+            tf.equal(remaining, prob_meta.num_props),
+        )
+        with tf.control_dependencies([
+                tf.debugging.assert_equal(
+                    valid_tail,
+                    True,
+                    message=("network input must have either no goal tail "
+                             "or one value per proposition"),
+                )]):
+            remaining = tf.identity(remaining)
+
+        static_goal = tf.constant([
+            float(prop in prob_meta.goal_props)
+            for prop in prob_meta.bound_props_ordered
+        ], dtype=inputs.dtype)[None, :]
+        static_goal = tf.tile(static_goal, (tf.shape(inputs)[0], 1))
+        goal_prop_override = tf.cond(
+            tf.equal(remaining, prob_meta.num_props),
+            lambda: inputs[:, cur_index:cur_index + prob_meta.num_props],
+            lambda: static_goal,
+        )
+
         def merge_with_goal_vec(in_vec, goal_vec):
             # FIXME: it doesn't make sense to mess with goal vectors here; that
             # should be ActionDataGenerator's job, or whatever. Should be
             # passed in as part of network input, not fixed as  TF constant!
             reshaped_in_vec = in_vec[:, :, None]
-            tf_goals = tf.constant(goal_vec)[None, :, None]
-            batch_size = tf.shape(input=reshaped_in_vec)[0]
-            tf_goals_broad = tf.tile(tf_goals, (batch_size, 1, 1))
+            if tf.is_tensor(goal_vec):
+                tf_goals_broad = tf.cast(goal_vec[:, :, None], in_vec.dtype)
+            else:
+                tf_goals = tf.constant(goal_vec, dtype=in_vec.dtype)[None, :, None]
+                batch_size = tf.shape(input=reshaped_in_vec)[0]
+                tf_goals_broad = tf.tile(tf_goals, (batch_size, 1, 1))
             l_obs = tf.concat([reshaped_in_vec, tf_goals_broad], axis=2)
             return l_obs
 
         # [None, num_props, 2]
         l_obs_prop = merge_with_goal_vec(
             prop_truths,
-            [float(prop in prob_meta.goal_props)
-             for prop in prob_meta.bound_props_ordered]
+            goal_prop_override
         )
         pred_dict = self._split_input(
             l_obs_prop,
