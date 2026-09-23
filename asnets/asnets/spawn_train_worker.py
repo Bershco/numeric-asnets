@@ -459,7 +459,13 @@ def _build_estimator(planner_exts, spec):
     MUST return an object with:
         estimator.get_cstate_h(cstate) -> float
     """
-    return ENHSPEstimator(planner_exts, enhsp_config=spec.enhsp_config)
+    leaf_config = getattr(spec, "mcts_enhsp_config", None) or spec.enhsp_config
+    print(
+        "[CONFIG] ENHSP roles: "
+        f"teacher={spec.enhsp_config} mcts_leaf={leaf_config}",
+        flush=True,
+    )
+    return ENHSPEstimator(planner_exts, enhsp_config=leaf_config)
 
 
 def _rebuild_weight_manager_local(prob_meta, weights_np: dict):

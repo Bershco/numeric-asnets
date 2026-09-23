@@ -683,6 +683,7 @@ class SpawnExploreSpec:
     fd_heuristic: Optional[str]
     ssipp_teacher_heuristic: Optional[str]
     enhsp_config: Optional[str]
+    mcts_enhsp_config: Optional[str]
     estimator_h_to_v_coeff: float
     teacher_planner: str
     teacher_timeout_s: int
@@ -747,7 +748,8 @@ class SpawnExploreSpec:
                                   "max_len"],
             "HEURISTICS": ["ssipp_dg_heuristic", "fd_heuristic", "ssipp_teacher_heuristic", "use_lm_cuts",
                            "use_numeric_landmarks", "use_contributions"],
-            "MCTS & EXPLORATION": ["mcts_iterations", "mcts_expansion_k", "mcts_exploration_weight",
+            "MCTS & EXPLORATION": ["mcts_iterations", "mcts_expansion_k", "mcts_enhsp_config",
+                                   "mcts_exploration_weight",
                                    "mcts_progressive_widening", "mcts_pw_min_width", "mcts_pw_c",
                                    "mcts_pw_alpha", "mcts_her_strategy", "her_k", "sample_k_additional_states"],
             "ESTIMATOR & DECAY": ["estimator_h_to_v_coeff", "use_estimator", "estimator_decay_coeff_start",
@@ -835,6 +837,7 @@ list[SpawnExploreSpec]:
             fd_heuristic=args.fd_teacher_heuristic,
             ssipp_teacher_heuristic=args.ssipp_teacher_heuristic,
             enhsp_config=args.enhsp_config,
+            mcts_enhsp_config=(args.mcts_enhsp_config or args.enhsp_config),
             estimator_h_to_v_coeff=args.estimator_h_to_v_coeff,
             teacher_planner=args.teacher_planner,
             teacher_timeout_s=args.teacher_timeout_s,
