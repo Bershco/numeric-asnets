@@ -243,7 +243,16 @@ parser.add_argument(
     '--enhsp-config',
     default='hadd-gbfs',
     choices=ENHSP_CONFIGS.keys(),
-    help='configuration to use for ENHSP'
+    help='configuration used by the training teacher and plan bootstrapping'
+)
+parser.add_argument(
+    '--mcts-enhsp-config', '--mcts-heuristic',
+    dest='mcts_enhsp_config',
+    default=None,
+    choices=ENHSP_CONFIGS.keys(),
+    help=('ENHSP configuration used only as the MCTS leaf estimator. '
+          'Defaults to --enhsp-config for backwards compatibility. '
+          '--mcts-heuristic is retained as a deprecated alias.')
 )
 parser.add_argument(
     '--supervised-early-stop',
@@ -578,11 +587,6 @@ parser.add_argument(
     action='store_true',
     default=False,
     help='Disable evaluation after training.')
-parser.add_argument(
-    '--mcts-heuristic',
-    choices=list(ENHSP_CONFIGS.keys()),
-    default='hadd-gbfs',
-    help='When value-based mcts runs, this would be the state-value heuristic function.')
 parser.add_argument(
     '--minimization',
     action='store_true',
@@ -1386,6 +1390,17 @@ def main():
     parent_death_pact(signal.SIGKILL)
 
     args = parser.parse_args()
+    if args.mcts_enhsp_config is None and (
+            args.eval_with_mcts
+            or bool(args.use_estimator)
+            or bool(args.use_estimator_decay)
+            or bool(args.mcts_her_strategy)):
+        print(
+            "[CONFIG WARNING] MCTS leaf ENHSP config was not explicit; "
+            f"legacy fallback to teacher={args.enhsp_config} is active. "
+            "Canonical runs must use --mcts-enhsp-config.",
+            flush=True,
+        )
     os.environ['ASNETS_JPDDL_MAX_HEAP'] = args.jpddl_max_heap
     print(f"[JPDDL] Maximum heap per worker: {args.jpddl_max_heap}")
     if args.eval_instance_timeout is not None and args.eval_instance_timeout <= 0:

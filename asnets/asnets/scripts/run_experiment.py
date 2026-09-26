@@ -486,8 +486,7 @@ parser.add_argument(
 parser.add_argument(
     '--override-enhsp-config',
     default=None,
-    help='override the ENHSP config file with this one (useful for '
-         'changing ENHSP heuristic/search algorithm for different domains')
+    help='override the ENHSP training-teacher/plan-bootstrap configuration')
 parser.add_argument(
     'arch_module',
     metavar='arch-module',
@@ -514,10 +513,12 @@ parser.add_argument(
     default=False,
     help='Use value-based mcts instead of rollout-based mcts.')
 parser.add_argument(
-    '--mcts-heuristic',
+    '--override-mcts-enhsp-config', '--mcts-heuristic',
+    dest='mcts_heuristic',
     choices=list(ENHSP_CONFIGS.keys()),
-    default='hadd-gbfs',
-    help='When value-based mcts runs, this would be the state-value heuristic function.')
+    default=None,
+    help=('override only the MCTS leaf-estimator ENHSP configuration; '
+          '--mcts-heuristic is retained as a deprecated alias'))
 parser.add_argument(
     '--minimization',
     action='store_true',
@@ -718,6 +719,23 @@ parser.add_argument(
 def main():
     args = parser.parse_args()
 
+    canonical_mcts_run = (
+        args.eval_with_mcts
+        or (
+            args.resume_train
+            and (
+                bool(args.mcts_iterations)
+                or bool(args.use_estimator)
+                or bool(args.use_estimator_decay)
+            )
+        )
+    )
+    if canonical_mcts_run and args.mcts_heuristic is None:
+        parser.error(
+            "canonical MCTS evaluation/Stage-2 training requires "
+            "--override-mcts-enhsp-config; refusing the legacy silent "
+            "fallback to the training teacher")
+
     # 1. load config
     print('Importing architecture from %s' % args.arch_module)
     arch_mod = import_module(args.arch_module)
@@ -895,6 +913,9 @@ timeout = {arch_mod.TIME_LIMIT_SECONDS}
 evaluation = {"off" if no_eval else "on"}
 ========================================================
         ''', flush=True)
+        if mcts_heuristic is not None:
+            train_flags.extend([
+                '--mcts-enhsp-config', str(mcts_heuristic)])
         if mcts_iterations:
             train_flags.extend(['--mcts-iterations', str(mcts_iterations)])
         if heuristic_bootstrapping:
@@ -960,6 +981,13 @@ evaluation = {"off" if no_eval else "on"}
             train_flags.extend(['--resume-from', resume_from])
         if random_seed is not None:
             train_flags.extend(['--seed', str(random_seed)])
+        print(
+            "[CONFIG] resolved ENHSP roles: "
+            f"teacher={override_enhsp_config or getattr(arch_mod, 'ENHSP_CONFIG', None)} "
+            f"mcts_leaf={mcts_heuristic}",
+            flush=True,
+        )
+        print(f"[CONFIG] final training flags = {train_flags}", flush=True)
         final_checkpoint = run_asnets_local(
             flags=train_flags,
             cwd=root_cwd,
@@ -1025,7 +1053,8 @@ evaluation = {"off" if no_eval else "on"}
     if mcts_expansion_size is not None:
         main_test_flags.extend(['--mcts-expansion-size', str(mcts_expansion_size)])
     if mcts_heuristic is not None:
-        main_test_flags.extend(['--mcts-heuristic', str(mcts_heuristic)])
+        main_test_flags.extend([
+            '--mcts-enhsp-config', str(mcts_heuristic)])
     if mcts_exploration_weight != 1:
         main_test_flags.extend(['--mcts-exploration-weight', str(mcts_exploration_weight)])
     if minimization:
